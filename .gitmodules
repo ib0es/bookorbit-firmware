@@ -2,4 +2,3 @@
 	path = freeink-sdk
 	url = https://github.com/Free-Ink/freeink-sdk.git
 	branch = main
-	ignore = dirty

@@ -60,10 +60,18 @@ void AppController::setup() {
     BoardConfig::holdPowerRails();
     Battery.begin();
     Buttons.begin();
+    // FreeInk's bring-up order for boards whose SD card shares the display SPI
+    // bus (X4/X3): board/controller detection, then the SD card, then the
+    // panel. Arduino-ESP32 maps the bus pins on the first SPI.begin() only:
+    // SDCardManager maps SCLK/MISO/MOSI, the panel driver no MISO (the SSD1677
+    // is write-only), so with the panel first the card never got MISO
+    // ("MicroSD storage not available"). The detection bit-bangs the shared
+    // pins, so it goes before the SD card takes the bus.
+    Display.detectBoard();
+    Storage.begin();
     Display.begin();
     uikit::begin();      // FreeInkUI target over the same framebuffer
     Font.begin(Display); // book fonts (src/ui/book_fonts.h)
-    Storage.begin();
 
     // After a modal closes, the screen of the current state is redrawn.
     Modal.setRedrawHook([this](bool full) { redrawCurrentScreen(full); });

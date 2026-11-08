@@ -33,6 +33,12 @@ public:
     virtual ~EPDDisplay();
 
     // Hardware lifecycle
+    // Xteink X4/X3: pick the board profile and the panel controller of this
+    // unit's batch. The controller probe bit-bangs the display pins, which the
+    // SD card shares on these boards, so FreeInk wants it before
+    // SDCardManager::begin() and FreeInkDisplay::begin() (SDK README, "X3 and
+    // X4 share the ESP32-C3..."). begin() calls it if it has not run yet.
+    void detectBoard();
     bool begin();
     void reset();
     void sleep();
@@ -60,6 +66,7 @@ public:
 
 private:
     freeink::FreeInkDisplay* _eink;
+    bool _boardDetected = false;
 };
 
 extern EPDDisplay Display;
