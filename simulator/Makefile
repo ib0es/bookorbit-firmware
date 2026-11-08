@@ -35,6 +35,7 @@ SRCS_CXX = \
     src/services/progress_store.cpp \
     src/services/sync_clock.cpp \
     src/services/time_utils.cpp \
+    src/net/book_formats.cpp \
     src/ui/views/status_modal.cpp \
     src/ui/views/home_view.cpp \
     src/ui/views/catalog_view.cpp \

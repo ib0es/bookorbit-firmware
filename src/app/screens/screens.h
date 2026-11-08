@@ -20,6 +20,8 @@ namespace LibraryScreen {
 void handleEvent(AppContext& ctx, const ButtonEvent& event);
 // Opens the menu of the selected book (LEFT key, or a long press on the book).
 void openBookMenu(AppContext& ctx);
+// Lists the formats of the selected book (book menu "Format"); false if it has one.
+bool openFormatsOfSelected(AppContext& ctx);
 void handleBookMenuEvent(AppContext& ctx, const ButtonEvent& event);
 }
 

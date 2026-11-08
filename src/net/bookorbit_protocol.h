@@ -20,10 +20,12 @@ struct Progress {
 // POST /api/v1/auth/login response -> access token. False if none.
 bool parseLoginToken(const std::string& json, std::string& token);
 
-// GET /api/v1/books/:id/progress response (array or {"items":[...]}).
-// Several records (one per file/format/device) -> the most recently updated one.
-// Returns false only for malformed JSON; out.exists=false when there is no record.
-bool parseBookProgress(const std::string& json, Progress& out);
+// GET /api/v1/books/:id/progress response (array or {"items":[...]}): one record
+// per file (format) of the book. With fileId > 0 only that file's record counts
+// (formats are read separately: EPUB at 40% says nothing about the FB2); the most
+// recently updated record wins. Returns false only for malformed JSON;
+// out.exists=false when there is no record for the file.
+bool parseBookProgress(const std::string& json, Progress& out, int fileId = 0);
 
 // PUT /api/v1/reading-progress body. percent is 0..1 (values above 1 are taken as 0..100).
 // The server REPLACES the whole position with each write: a field left out is

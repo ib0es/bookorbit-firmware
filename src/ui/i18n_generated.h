@@ -468,7 +468,14 @@ enum class MsgId : uint16_t {
     READER_TOC_START = 453,
     READER_TOC_SECTION_PAGE_FMT = 454,
     READER_TOC_SECTION_FMT = 455,
-    COUNT = 456
+    LIB_FORMATS_HEADER_FMT = 456,
+    LIB_BADGE_UNSUPPORTED = 457,
+    LIB_FORMAT_UNSUPPORTED_TITLE = 458,
+    LIB_FORMAT_UNSUPPORTED_FMT = 459,
+    LIB_FORMAT_UNSUPPORTED_L2 = 460,
+    BOOK_MENU_FORMATS = 461,
+    BOOK_MENU_FORMATS_SUB = 462,
+    COUNT = 463
 };
 
 // Language: English (en)
@@ -929,6 +936,13 @@ static const char* const STRINGS_EN[(size_t)MsgId::COUNT] PROGMEM = {
     /* READER_TOC_START */ "Beginning",
     /* READER_TOC_SECTION_PAGE_FMT */ "Section (p. %d)",
     /* READER_TOC_SECTION_FMT */ "Section %d",
+    /* LIB_FORMATS_HEADER_FMT */ "%s: formats",
+    /* LIB_BADGE_UNSUPPORTED */ "not yet",
+    /* LIB_FORMAT_UNSUPPORTED_TITLE */ "Format not supported",
+    /* LIB_FORMAT_UNSUPPORTED_FMT */ "%s books cannot be opened yet.",
+    /* LIB_FORMAT_UNSUPPORTED_L2 */ "Choose another format of the book.",
+    /* BOOK_MENU_FORMATS */ "Formats",
+    /* BOOK_MENU_FORMATS_SUB */ "Read the book in another format",
 };
 
 // Language: Russian (ru)
@@ -1389,6 +1403,13 @@ static const char* const STRINGS_RU[(size_t)MsgId::COUNT] PROGMEM = {
     /* READER_TOC_START */ "Начало",
     /* READER_TOC_SECTION_PAGE_FMT */ "Раздел (стр. %d)",
     /* READER_TOC_SECTION_FMT */ "Раздел %d",
+    /* LIB_FORMATS_HEADER_FMT */ "%s: форматы",
+    /* LIB_BADGE_UNSUPPORTED */ "пока нет",
+    /* LIB_FORMAT_UNSUPPORTED_TITLE */ "Формат не поддерживается",
+    /* LIB_FORMAT_UNSUPPORTED_FMT */ "Книги в %s пока не открываются.",
+    /* LIB_FORMAT_UNSUPPORTED_L2 */ "Выберите другой формат книги.",
+    /* BOOK_MENU_FORMATS */ "Форматы",
+    /* BOOK_MENU_FORMATS_SUB */ "Читать книгу в другом формате",
 };
 
 // Language: Spanish (es)
@@ -1849,6 +1870,13 @@ static const char* const STRINGS_ES[(size_t)MsgId::COUNT] PROGMEM = {
     /* READER_TOC_START */ "Inicio",
     /* READER_TOC_SECTION_PAGE_FMT */ "Sección (pág. %d)",
     /* READER_TOC_SECTION_FMT */ "Sección %d",
+    /* LIB_FORMATS_HEADER_FMT */ "%s: formatos",
+    /* LIB_BADGE_UNSUPPORTED */ "aún no",
+    /* LIB_FORMAT_UNSUPPORTED_TITLE */ "Formato no compatible",
+    /* LIB_FORMAT_UNSUPPORTED_FMT */ "Los libros %s aún no se pueden abrir.",
+    /* LIB_FORMAT_UNSUPPORTED_L2 */ "Elija otro formato del libro.",
+    /* BOOK_MENU_FORMATS */ "Formatos",
+    /* BOOK_MENU_FORMATS_SUB */ "Leer el libro en otro formato",
 };
 
 static const char* const* const I18N_ALL_TABLES[(size_t)AppLanguage::COUNT] = {

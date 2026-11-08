@@ -19,7 +19,8 @@ build() {   # name sources...
     (cd "$OUT/$name" && $CXX $FLAGS "$@" -o "$OUT/$name/test")
 }
 build i18n     "$ROOT/test/host/test_i18n.cpp" "$ROOT/src/ui/i18n.cpp"
-build opds     "$ROOT/test/host/test_opds_stream_parser.cpp" "$ROOT/src/net/opds_stream_parser.cpp"
+build opds     "$ROOT/test/host/test_opds_stream_parser.cpp" "$ROOT/src/net/opds_stream_parser.cpp" "$ROOT/src/net/book_formats.cpp"
+build formats  "$ROOT/test/host/test_book_formats.cpp" "$ROOT/src/net/book_formats.cpp"
 build cfi      "$ROOT/test/host/test_epub_cfi.cpp" "$ROOT/src/reader/epub_cfi.cpp"
 build progress "$ROOT/test/host/test_progress_sync.cpp" "$ROOT/src/services/progress_sync.cpp" "$ROOT/src/services/time_utils.cpp"
 build protocol "$ROOT/test/host/test_bookorbit_protocol.cpp" "$ROOT/src/net/bookorbit_protocol.cpp" "$ROOT/src/services/time_utils.cpp"
@@ -32,6 +33,7 @@ fi
 rc=0
 echo "== I18n";              "$OUT/i18n/test" || rc=1
 echo "== OpdsStreamParser";  "$OUT/opds/test" || rc=1
+echo "== BookFormats";       "$OUT/formats/test" || rc=1
 echo "== EpubCfi";          "$OUT/cfi/test" | tail -1 || rc=1
 echo "== ProgressSync";      "$OUT/progress/test" > "$OUT/progress.log" || rc=1; tail -1 "$OUT/progress.log"; [ $rc = 0 ] || cat "$OUT/progress.log"
 echo "== BookOrbitProtocol"; "$OUT/protocol/test" | grep -v "^[a-zA-Z/]* *$" || rc=1

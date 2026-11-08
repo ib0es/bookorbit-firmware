@@ -48,13 +48,20 @@ namespace {
 using FakeNet::Request;
 using FakeNet::Response;
 
-struct Book { int id; int fileId; const char* title; const char* author; };
+// Extra formats of a book, besides its EPUB (fileId): each its own file, like
+// Book Orbit's OPDS (opds_alice.xml). Listed after the EPUB, FB2 last: the
+// firmware once downloaded the last link and saved it as ".epub".
+struct Format { int fileId; const char* mime; const char* title; };
+struct Book { int id; int fileId; const char* title; const char* author; Format extra[3]; };
 // Newest first, like the real server's catalog.
 const Book kBooks[] = {
-    {3, 103, "Moby Dick", "Herman Melville"},
-    {2, 102, "The Time Machine", "H. G. Wells"},
-    {1, 101, "Alice in Wonderland", "Lewis Carroll"},
+    {3, 103, "Moby Dick", "Herman Melville", {}},
+    {2, 102, "The Time Machine", "H. G. Wells", {}},
+    {1, 101, "Alice in Wonderland", "Lewis Carroll",
+     {{131, "text/plain", "TXT"}, {121, "application/x-mobipocket-ebook", "MOBI"}, {111, "application/x-fictionbook+xml", "FB2"}}},
 };
+const char* kTxtBody = "Alice was beginning to get very tired of sitting by her sister on the bank.\n";
+const char* kFb2Body = "<?xml version=\"1.0\"?><FictionBook><body><p>Alice</p></body></FictionBook>\n";
 const char* kUser = nullptr;   // from config.json (any user/password accepted)
 int g_tokenSerial = 0;
 
@@ -116,7 +123,18 @@ void saveState(const JsonDocument& st) {
 }
 
 const Book* bookById(int id) { for (const auto& b : kBooks) if (b.id == id) return &b; return nullptr; }
-const Book* bookByFile(int f) { for (const auto& b : kBooks) if (b.fileId == f) return &b; return nullptr; }
+const Book* bookByFile(int f) {
+    for (const auto& b : kBooks) {
+        if (b.fileId == f) return &b;
+        for (const auto& x : b.extra) if (x.fileId && x.fileId == f) return &b;
+    }
+    return nullptr;
+}
+bool fileOfBook(const Book& b, int f) {
+    if (b.fileId == f) return true;
+    for (const auto& x : b.extra) if (x.fileId && x.fileId == f) return true;
+    return false;
+}
 
 std::string path(const std::string& url) {
     size_t p = url.find("://");
@@ -145,7 +163,13 @@ std::string opdsFeed(int page) {
              "  <content type=\"text\">Описание &amp; аннотация</content>\n"
              "  <link rel=\"http://opds-spec.org/image/thumbnail\" href=\"/api/v1/opds/" + id + "/thumbnail\" type=\"image/jpeg\"/>\n"
              "  <link rel=\"http://opds-spec.org/acquisition\" href=\"/api/v1/opds/" + id + "/download?fileId=" + f +
-             "&amp;selection=abc\" type=\"application/epub+zip\"/>\n</entry>\n";
+             "&amp;selection=abc\" type=\"application/epub+zip\" title=\"EPUB\"/>\n";
+        for (const auto& fm : b.extra) {
+            if (!fm.fileId) continue;
+            x += "  <link rel=\"http://opds-spec.org/acquisition\" href=\"/api/v1/opds/" + id + "/download?fileId=" +
+                 std::to_string(fm.fileId) + "\" type=\"" + fm.mime + "\" title=\"" + fm.title + "\"/>\n";
+        }
+        x += "</entry>\n";
     }
     return x + "</feed>\n";
 }
@@ -202,8 +226,14 @@ Response route(const Request& rq, JsonDocument& st, bool& dirty) {
     if (p.find("/download") != std::string::npos) {
         std::string f = query(p, "fileId");
         if (f.empty()) f = p.substr(p.rfind('/') + 1);   // /api/v1/download/102
-        if (!bookByFile(atoi(f.c_str()))) { r.code = 404; return r; }
-        r.body = readFile(sdPath("/books/Pride and Prejudice.epub")); return r;
+        const int fid = atoi(f.c_str());
+        const Book* b = bookByFile(fid);
+        if (!b) { r.code = 404; return r; }
+        r.body = readFile(sdPath("/books/Pride and Prejudice.epub"));
+        for (const auto& x : b->extra) {
+            if (x.fileId == fid) r.body = strcmp(x.title, "TXT") == 0 ? kTxtBody : kFb2Body;
+        }
+        return r;
     }
 
     if (!bearer) { r.code = 401; r.body = "{\"error\":\"no token\"}"; return r; }
@@ -214,10 +244,10 @@ Response route(const Request& rq, JsonDocument& st, bool& dirty) {
         if (!b) { r.code = 404; return r; }
         JsonDocument out;   // a bare array with web-reader fields, like the real server
         JsonArray items = out.to<JsonArray>();
-        for (JsonObject rec : st["progress"].as<JsonArray>()) {
-            if ((rec["fileId"] | 0) != b->fileId) continue;
+        for (JsonObject rec : st["progress"].as<JsonArray>()) {   // every file (format) of the book
+            if (!fileOfBook(*b, rec["fileId"] | 0)) continue;
             JsonObject it = items.add<JsonObject>();
-            it["fileId"] = b->fileId;
+            it["fileId"] = rec["fileId"];
             it["positionSeconds"] = nullptr;
             it["percentage"] = rec["percentage"];
             if ((rec["pageNumber"] | 0) > 0) it["pageNumber"] = rec["pageNumber"];

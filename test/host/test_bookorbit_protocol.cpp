@@ -56,6 +56,23 @@ static void testBookProgress() {
     CHECK(parseBookProgress(R"J([{"percentage":12,"updatedAt":"garbage"}])J", p) && p.exists && p.updatedAt == 0);
 }
 
+// One record per format (file) of a book: each format is read on its own.
+static void testProgressPerFormat() {
+    printf("parseBookProgress per file\n");
+    const char* json = R"J([
+        {"fileId":7,"percentage":40,"cfi":"epubcfi(/6/8!/4/2/1:0)","updatedAt":"2026-11-08T10:00:00Z"},
+        {"fileId":5,"percentage":12,"pageNumber":30,"updatedAt":"2026-11-08T12:00:00Z"}])J";
+    Progress p;
+    CHECK(parseBookProgress(json, p));                    // any file: the newest
+    CHECK(near(p.percent, 0.12f));
+    CHECK(parseBookProgress(json, p, 7));                 // the EPUB, though the FB2 moved later
+    CHECK(p.exists && near(p.percent, 0.40f) && p.cfi == "epubcfi(/6/8!/4/2/1:0)");
+    CHECK(parseBookProgress(json, p, 5) && near(p.percent, 0.12f) && p.page == 30 && p.cfi.empty());
+    CHECK(parseBookProgress(json, p, 6) && !p.exists);    // the MOBI was never opened
+    // A record without a file id applies to any file.
+    CHECK(parseBookProgress(R"J([{"percentage":33}])J", p, 6) && p.exists && near(p.percent, 0.33f));
+}
+
 static void testLogin() {
     printf("parseLoginToken\n");
     std::string t;
@@ -91,6 +108,7 @@ static void testWrite() {
 
 int main() {
     testBookProgress();
+    testProgressPerFormat();
     testLogin();
     testWrite();
     printf("%s: %d/%d checks passed\n", g_failed ? "FAILED" : "OK", g_checks - g_failed, g_checks);

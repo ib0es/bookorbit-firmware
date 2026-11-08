@@ -4,6 +4,7 @@
 #include <ArduinoJson.h>
 #include <algorithm>
 #include "../net/bookorbit_client.h"
+#include "../net/book_formats.h"
 #include <Preferences.h>
 
 StorageManager Storage;
@@ -353,7 +354,14 @@ bool StorageManager::saveCatalog(const std::vector<BookMetadata>& catalog) {
         if (b.series.length() > 0) obj["series"] = b.series;
         if (b.seriesIndex > 0) obj["seriesIdx"] = b.seriesIndex;
         if (b.library.length() > 0) obj["library"] = b.library;
-        obj["url"] = b.downloadUrl;
+        // Formats: [{"f":fileId,"k":kind,"u":url}], "u" only when not canonical.
+        JsonArray fa = obj["formats"].to<JsonArray>();
+        for (const auto& f : b.formats) {
+            JsonObject fo = fa.add<JsonObject>();
+            fo["f"] = f.fileId;
+            fo["k"] = f.kind;
+            if (f.url.length() > 0) fo["u"] = f.url;
+        }
         obj["cover"] = b.coverUrl;
         obj["progress"] = b.lastProgress;
         obj["page"] = b.lastPage;
@@ -395,7 +403,22 @@ bool StorageManager::loadCatalog(std::vector<BookMetadata>& outCatalog) {
         if (obj["series"].is<const char*>()) b.series = obj["series"].as<String>();
         if (obj["seriesIdx"].is<int>()) b.seriesIndex = obj["seriesIdx"].as<int>();
         if (obj["library"].is<const char*>()) b.library = obj["library"].as<String>();
-        if (obj["url"].is<const char*>()) b.downloadUrl = obj["url"].as<String>();
+        if (obj["formats"].is<JsonArray>()) {
+            for (JsonObject fo : obj["formats"].as<JsonArray>()) {
+                BookFormatEntry f;
+                f.fileId = fo["f"] | 0;
+                f.kind = fo["k"] | 0;
+                if (fo["u"].is<const char*>()) f.url = fo["u"].as<String>();
+                if (f.fileId > 0 || f.url.length() > 0) b.formats.push_back(f);
+            }
+        } else if (obj["url"].is<const char*>()) {
+            // Catalog of older firmware: one address per book (EPUB, or TXT by its name).
+            BookFormatEntry f;
+            f.fileId = b.fileId;
+            f.url = obj["url"].as<String>();
+            f.kind = (uint8_t)(f.url.indexOf(".txt") > 0 ? BookFormats::Txt : BookFormats::Epub);
+            b.formats.push_back(f);
+        }
         if (obj["cover"].is<const char*>()) b.coverUrl = obj["cover"].as<String>();
         if (obj["progress"].is<float>()) b.lastProgress = obj["progress"].as<float>();
         if (obj["page"].is<int>()) b.lastPage = obj["page"].as<int>();

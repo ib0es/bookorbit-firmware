@@ -405,11 +405,19 @@ bool BookOrbitClient::fetchCatalogFromUrl(const String& serverHost, const String
             b.author = e.author.c_str();
             b.series = e.series.c_str();
             b.seriesIndex = e.seriesIndex;
-            b.downloadUrl = e.downloadUrl.c_str();
+            b.formats.reserve(e.formats.size());
+            for (const auto& f : e.formats) {
+                BookFormatEntry fe;
+                fe.fileId = f.fileId;
+                fe.kind = (uint8_t)f.kind;
+                fe.url = f.url.c_str();
+                b.formats.push_back(fe);
+            }
             b.coverUrl = e.coverUrl.c_str();
             b.library = libraryName;
             outBooks.push_back(b);
-            Serial.printf("[OPDS] Found book: %s (id=%s, fileId=%d, lib=%s)\n", b.title.c_str(), b.id.c_str(), b.fileId, b.library.c_str());
+            Serial.printf("[OPDS] Found book: %s (id=%s, fileId=%d, %u formats, lib=%s)\n", b.title.c_str(), b.id.c_str(),
+                          b.fileId, (unsigned)b.formats.size(), b.library.c_str());
             return true;
         }, 8 * 1024);   // entries are ~1-3 KB; the heap can be ~15 KB here
         OpdsParserSink sink(parser);
@@ -603,7 +611,7 @@ bool BookOrbitClient::downloadCover(const String& serverHost, const String& cove
     return downloadFile(serverHost, coverUrl, destSdPath, username, password, token, nullptr, checkCancel);
 }
 
-bool BookOrbitClient::fetchBookProgress(const String& serverHost, const String& username, const String& password, String& token, int bookId, ServerProgress& out) {
+bool BookOrbitClient::fetchBookProgress(const String& serverHost, const String& username, const String& password, String& token, int bookId, int fileId, ServerProgress& out) {
     if (!isConnected() || bookId <= 0) return false;
 
     // Login if token is missing
@@ -647,7 +655,7 @@ bool BookOrbitClient::fetchBookProgress(const String& serverHost, const String& 
     http.end();
 
     BookOrbitProtocol::Progress parsed;
-    if (!BookOrbitProtocol::parseBookProgress(json.c_str(), parsed)) {
+    if (!BookOrbitProtocol::parseBookProgress(json.c_str(), parsed, fileId)) {
         Serial.printf("[BookOrbit] Book %d progress: malformed response: %s\n", bookId, json.c_str());
         return false;
     }
@@ -658,10 +666,10 @@ bool BookOrbitClient::fetchBookProgress(const String& serverHost, const String& 
         out.page = parsed.page;
         out.cfi = parsed.cfi.c_str();
         out.updatedAt = parsed.updatedAt;
-        Serial.printf("[BookOrbit] Book %d progress from server: %.1f%% (page %d, cfi='%s', updated=%lu) raw: %s\n",
-                      bookId, out.percent * 100.0f, out.page, out.cfi.c_str(), (unsigned long)out.updatedAt, json.c_str());
+        Serial.printf("[BookOrbit] Book %d file %d progress from server: %.1f%% (page %d, cfi='%s', updated=%lu) raw: %s\n",
+                      bookId, fileId, out.percent * 100.0f, out.page, out.cfi.c_str(), (unsigned long)out.updatedAt, json.c_str());
     } else {
-        Serial.printf("[BookOrbit] Book %d has no progress on the server.\n", bookId);
+        Serial.printf("[BookOrbit] Book %d file %d has no progress on the server.\n", bookId, fileId);
     }
     return true;
 }

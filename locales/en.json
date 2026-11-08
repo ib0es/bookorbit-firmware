@@ -454,5 +454,12 @@
   "WIFI_ERR_CHECK_SETTINGS": "Check network settings.",
   "READER_TOC_START": "Beginning",
   "READER_TOC_SECTION_PAGE_FMT": "Section (p. %d)",
-  "READER_TOC_SECTION_FMT": "Section %d"
+  "READER_TOC_SECTION_FMT": "Section %d",
+  "LIB_FORMATS_HEADER_FMT": "%s: formats",
+  "LIB_BADGE_UNSUPPORTED": "not yet",
+  "LIB_FORMAT_UNSUPPORTED_TITLE": "Format not supported",
+  "LIB_FORMAT_UNSUPPORTED_FMT": "%s books cannot be opened yet.",
+  "LIB_FORMAT_UNSUPPORTED_L2": "Choose another format of the book.",
+  "BOOK_MENU_FORMATS": "Formats",
+  "BOOK_MENU_FORMATS_SUB": "Read the book in another format"
 }

@@ -57,6 +57,12 @@ SCENARIOS = [
      srv(0.30), srv(0.30, failPut=True), "C" + SYNC + "RRRS" + SYNC, ["pull", "push"], 31.7, True),
     ("server has no record: local reading is uploaded",
      {}, None, "CRRR" + SYNC, ["push"], None, False),
+    # One book, several formats: each has its own position. The FB2 read on another
+    # device later does not move the EPUB open here.
+    ("another format's newer position does not move this one",
+     {"progress": [{"fileId": 101, "percentage": 30, "updatedAt": "NOW-100"},
+                   {"fileId": 111, "percentage": 80, "updatedAt": "NOW-10"}]},
+     None, "C" + SYNC, ["pull"], 30.0, False),
 ]
 
 def run(sd, script):
@@ -137,6 +143,9 @@ def run_one(scenario):
     return True, "ok    " + name + "  " + " ".join(actions)
 
 CLOUD = "B" + "DC" + "DC" + "UC"  # after a home sync: Home -> Catalog -> All Books -> wrap up to cloud book ("Moby Dick")
+# After a home sync: Home -> Catalog -> All Books -> "Alice in Wonderland" -> book menu -> Formats.
+# The fake server has Alice as EPUB (101), TXT (131), MOBI (121) and FB2 (111), in that order.
+FORMATS = "B" + "DC" + "DC" + "D" + "L" + "DC"
 P40 = [{"fileId": f, "percentage": 40, "updatedAt": "NOW-50"} for f in (101, 102, 103)]
 
 # name, server state, server after 'S', script, log must match (all), log must not match (any)
@@ -230,6 +239,49 @@ LOG_SCENARIOS = [
     ("corrupt progress.json is ignored",
      {"_progressJson": "{not json"}, None, "w",
      [r"progress.json is corrupt"], []),
+    ("catalog: one book in four formats, EPUB preferred over the last link",
+     {}, None, HOME_SYNC,
+     [r"Found book: Alice in Wonderland \(id=1, fileId=101, 4 formats", r"Catalog metadata saved \(3 books\)"],
+     [r"format FB2", r"download\?fileId=111"]),
+    ("saved catalog of older firmware: its address still downloads",
+     {}, None, "DC" + "DC" + "UC" + "w",
+     [r"GET /api/v1/download/103 -> 200", r"Book /books/Moby Dick.epub downloaded successfully"], []),
+    ("formats list: a format the reader cannot open keeps the book's format",
+     {}, None, HOME_SYNC + FORMATS + "DDDC",
+     [r"Formats of 'Alice in Wonderland': 4", r"'Alice in Wonderland': FB2 cannot be opened yet"],
+     [r"format FB2", r"download\?fileId=111"]),
+    ("formats list: another format is downloaded and opened at its own position",
+     {"progress": [{"fileId": 101, "percentage": 40, "updatedAt": "NOW-50"},
+                   {"fileId": 131, "percentage": 10, "updatedAt": "NOW-50"}]}, None, HOME_SYNC + FORMATS + "DC" + "w",
+     [r"'Alice in Wonderland': format TXT \(/books/Alice in Wonderland.txt\)",
+      r"GET /api/v1/opds/1/download\?fileId=131 -> 200",
+      r"Book /books/Alice in Wonderland.txt downloaded successfully",
+      r"\[Sync\] 'Alice in Wonderland': local 0\.0% .* server 10\.0% .* -> pull",
+      r"Restoring position: .*10\.0%"],
+     [r"server 40\.0% .* -> pull.*\n.*Alice in Wonderland.txt"]),
+    ("the format read last opens from the list; BACK leaves the formats list",
+     {}, None, HOME_SYNC + FORMATS + "DCw" + "B" + "C" + "DC" + "D" + "C" + "w" + "B" + "C" + "DC" + "D" + "LDC" + "B",
+     [r"Book /books/Alice in Wonderland.txt downloaded successfully",
+      r"Formats of 'Alice in Wonderland': 4(.|\n)*Formats of 'Alice in Wonderland': 4",
+      r"Opening book: /books/Alice in Wonderland.txt(.|\n)*Opening book: /books/Alice in Wonderland.txt",
+      r"Formats of 'Alice in Wonderland': 4(.|\n)*List /books: 7 rows"], []),
+    # Book menu -> "Sync" (Read, Formats, Sync): only that book, only its active format.
+    ("book menu: sync one book",
+     {"progress": P40}, None, HOME_SYNC + "B" + "DC" + "DC" + "D" + "L" + "DDC",
+     [r"GET /api/v1/books/1/progress", r"Book menu sync of 'Alice in Wonderland': result 0"], []),
+    ("book menu: sync fails when the server is down",
+     {"progress": P40}, {"fail": True}, HOME_SYNC + "S" + "B" + "DC" + "DC" + "D" + "L" + "DDC",
+     [r"Book menu sync of 'Alice in Wonderland': result 1"], []),
+    ("book menu: sync without Wi-Fi settings",
+     {"_config": {"wifi_ssid": ""}}, None, "DC" + "DC" + "D" + "L" + "DC",   # one format: no "Formats" row
+     [r"Book menu sync of 'Alice in Wonderland': result 2"], [r"\[WiFi\] Initializing"]),
+    # A record from before the book had server ids, and no saved catalog: the ids
+    # come from the fresh catalog, by the path the EPUB is downloaded to.
+    ("record without server ids gets them from the fresh catalog",
+     {"_noSavedCatalog": True, "progress": P40,
+      "_progressJson": json.dumps({"version": 1, "books": [{"path": "/books/" + BOOK + ".epub", "title": BOOK,
+                                                            "local": {"p": 0}}]})}, None, HOME_SYNC,
+     [r"\[Sync\] '" + BOOK + r"': local 0\.0% .* server 40\.0% .* -> pull"], []),
     ("book without a server id is not synced by file id",
      {"_lastBook": "Frankenstein.epub", "progress": P40}, None, "CRB",
      [r"book id unknown yet"], [r"GET /api/v1/books/101/progress"]),

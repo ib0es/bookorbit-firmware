@@ -50,7 +50,7 @@ void openRecentBook(AppContext& ctx) {
 
     if (!cur.isDownloaded || !Storage.exists(cur.filePath.c_str())) {
         for (auto& b : lib.masterBooks) {
-            if (b.filePath.equalsIgnoreCase(cur.filePath) && b.downloadUrl.length() > 0) {
+            if (b.filePath.equalsIgnoreCase(cur.filePath) && b.downloadUrl().length() > 0) {
                 if (!SyncService::downloadBook(ctx, b, STATE_HOME)) {
                     drawHomeScreen(ctx, false);
                     return;

@@ -454,5 +454,12 @@
   "WIFI_ERR_CHECK_SETTINGS": "Проверьте настройки сети.",
   "READER_TOC_START": "Начало",
   "READER_TOC_SECTION_PAGE_FMT": "Раздел (стр. %d)",
-  "READER_TOC_SECTION_FMT": "Раздел %d"
+  "READER_TOC_SECTION_FMT": "Раздел %d",
+  "LIB_FORMATS_HEADER_FMT": "%s: форматы",
+  "LIB_BADGE_UNSUPPORTED": "пока нет",
+  "LIB_FORMAT_UNSUPPORTED_TITLE": "Формат не поддерживается",
+  "LIB_FORMAT_UNSUPPORTED_FMT": "Книги в %s пока не открываются.",
+  "LIB_FORMAT_UNSUPPORTED_L2": "Выберите другой формат книги.",
+  "BOOK_MENU_FORMATS": "Форматы",
+  "BOOK_MENU_FORMATS_SUB": "Читать книгу в другом формате"
 }

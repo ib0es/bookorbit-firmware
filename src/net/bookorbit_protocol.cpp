@@ -34,7 +34,7 @@ bool parseLoginToken(const std::string& json, std::string& token) {
     return false;
 }
 
-bool parseBookProgress(const std::string& json, Progress& out) {
+bool parseBookProgress(const std::string& json, Progress& out, int fileId) {
     out = Progress();
     JsonDocument doc;
     if (deserializeJson(doc, json.data(), json.size())) return false;
@@ -43,6 +43,9 @@ bool parseBookProgress(const std::string& json, Progress& out) {
     bool found = false;
     for (JsonObjectConst obj : arr) {
         if (obj["percentage"].isNull()) continue;   // not a reading position
+        // Each format (file) of a book has its own position: only this file's
+        // record counts. A record that names no file applies to any.
+        if (fileId > 0 && !obj["fileId"].isNull() && obj["fileId"].as<int>() != fileId) continue;
         Progress p;
         p.exists = true;
         p.percent = clamp01(obj["percentage"].as<float>() / 100.0f);   // server: 0..100

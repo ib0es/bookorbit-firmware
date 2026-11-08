@@ -16,6 +16,7 @@ TARGETS = [
     "src/services/sync_service.cpp",
     "src/net/bookorbit_protocol.cpp",
     "src/net/opds_stream_parser.cpp",
+    "src/net/book_formats.cpp",
     "src/reader/epub_cfi.cpp",
 ]
 # Shown for information, not counted: the HTTP/Wi-Fi transport also serves the
