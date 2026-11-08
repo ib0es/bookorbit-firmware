@@ -21,10 +21,15 @@ BookReader Reader;
 
 namespace {
 
-// Working memory for laying out one chapter (FREEINK_BOOK_SMALL, measured by
-// fibcheck on 27 real books: layout <= 50 KB with the page index, parse 46 KB).
-constexpr size_t kLayoutBytes = 56 * 1024;
-constexpr size_t kParseBytes = 48 * 1024;
+// Working memory (FREEINK_BOOK_SMALL). On the X4 after boot the heap's biggest
+// free block is ~96 KB and the next ~12 KB, so no two big buffers are ever live
+// together: a deflated chapter is first inflated to the card on its own
+// (kInflateBytes), then laid out from there as a stored entry, whose parse
+// state is small (kStoredParseBytes) and sits next to the layout buffer.
+constexpr size_t kLayoutBytes = 54 * 1024;        // layout state + page index chunks + image pre-scan
+constexpr size_t kStoredParseBytes = 10 * 1024;   // XML parse of a stored chapter (2.6 KB seen)
+constexpr size_t kInflateBytes = 48 * 1024;       // one inflate stream (window + decompressor)
+constexpr size_t kIndexScratchBytes = 24 * 1024;  // container index build (more for huge books, retried)
 constexpr size_t kRenderBytes = 12 * 1024;      // one page's runs and text (first try)
 constexpr size_t kImageBytes = 52 * 1024;       // inflate + decode of a page's images
 constexpr uint32_t kSpineFileMagic = 0x53424946;   // "FIBS"
@@ -34,11 +39,17 @@ constexpr float kDefaultBytesPerPage = 2600.0f;
 // A CFI more than this far from the record's own percent is another position.
 constexpr float kCfiTrustTolerance = 0.10f;
 
-// RAII malloc for the transient buffers.
+// RAII malloc for the transient buffers; tracks how much of them is live at once
+// (BookReader::peakTransientBytes: the tests hold it under the X4's free block).
+size_t g_liveTransient = 0, g_peakTransient = 0;
 struct Buffer {
     uint8_t* p = nullptr;
-    explicit Buffer(size_t n) : p((uint8_t*)malloc(n)) {}
-    ~Buffer() { free(p); }
+    size_t n = 0;
+    explicit Buffer(size_t size) : p((uint8_t*)malloc(size)), n(p ? size : 0) {
+        g_liveTransient += n;
+        if (g_liveTransient > g_peakTransient) g_peakTransient = g_liveTransient;
+    }
+    ~Buffer() { free(p); g_liveTransient -= n; }
     Buffer(const Buffer&) = delete;
     Buffer& operator=(const Buffer&) = delete;
 };
@@ -50,6 +61,12 @@ String stemOf(const String& path) {
 }
 
 }  // namespace
+
+size_t BookReader::peakTransientBytes(bool reset) {
+    const size_t peak = g_peakTransient;
+    if (reset) g_peakTransient = g_liveTransient;
+    return peak;
+}
 
 String BookReader::cacheDirFor(const String& bookPath) {
     // The file name with its extension: "Name.epub" and "Name.fb2" are different books to lay out.
@@ -117,16 +134,24 @@ bool BookReader::openContainer() {
         if (attempt > 0 || !_cache.exists(BookCatalog::kCatalogName)) {
             // One-time container index (ZIP directory, package, TOC, CSS) on the card.
             const uint32_t t0 = millis();
-            Buffer scratch(kLayoutBytes), parse(kParseBytes);
-            if (!scratch.p || !parse.p) {
-                Serial.println("[Reader] Not enough memory to index the book");
-                _noMemory = true;
-                return false;
+            BookStatus st = BookStatus::OutOfMemory;
+            // Record tables grow with the book (~70 KB for a 1,700-chapter omnibus): retried larger.
+            for (size_t cap = kIndexScratchBytes; st == BookStatus::OutOfMemory && cap <= 96 * 1024; cap *= 2) {
+                Buffer parse(kInflateBytes), scratch(cap);
+                if (!scratch.p || !parse.p) {
+                    const MemStats::Snapshot m = MemStats::now();
+                    Serial.printf("[Reader] Not enough memory to index the book (%u + %u KB; free %u KB, largest %u KB)\n",
+                                  (unsigned)(kInflateBytes / 1024), (unsigned)(cap / 1024),
+                                  (unsigned)(m.freeBytes / 1024), (unsigned)(m.largestBlock / 1024));
+                    _noMemory = true;
+                    return false;
+                }
+                Arena a(scratch.p, cap), b(parse.p, kInflateBytes);
+                st = BookCatalog::build(_src, _cache, a, &b);
+                Serial.printf("[Reader] Book index built: %s in %lu ms (scratch %u B of %u, parse %u B)\n",
+                              bookStatusName(st), (unsigned long)(millis() - t0), (unsigned)a.highWater(),
+                              (unsigned)cap, (unsigned)b.highWater());
             }
-            Arena a(scratch.p, kLayoutBytes), b(parse.p, kParseBytes);
-            const BookStatus st = BookCatalog::build(_src, _cache, a, &b);
-            Serial.printf("[Reader] Book index built: %s in %lu ms (scratch %u B, parse %u B)\n", bookStatusName(st),
-                          (unsigned long)(millis() - t0), (unsigned)a.highWater(), (unsigned)b.highWater());
             if (st != BookStatus::Ok) return false;
         }
         size_t resident = 0;
@@ -186,6 +211,7 @@ void BookReader::closeBook() {
     free(_bookMem);
     _bookMem = nullptr;
     _src.close();
+    _chapterSrc.close();
     std::vector<Spine>().swap(_spines);
     std::vector<ChapterItem>().swap(_toc);
     std::vector<uint32_t>().swap(_tocFragment);
@@ -271,6 +297,40 @@ int BookReader::globalPage(int spine, int page) const {
 
 // ------------------------------------------------------------------- layout
 
+// A chapter's bytes as a stored entry: the book itself when the ZIP stores it,
+// else its inflated copy "x<spine>.xhtml" in the cache directory (made on first
+// use with one inflate stream and nothing else allocated).
+bool BookReader::chapterSource(int spine, ZipEntry& entry, BookSource*& source) {
+    if (_catalog.spineEntry((size_t)spine, &entry) != BookStatus::Ok) return false;
+    if (entry.method == 0) {
+        source = &_src;
+        return true;
+    }
+    char name[24];
+    snprintf(name, sizeof(name), "x%d.xhtml", spine);
+    const String path = _cache.dir() + "/" + name;
+    if (_cache.fileSize(name) != (int64_t)entry.uncompressedSize) {
+        const uint32_t t0 = millis();
+        Buffer mem(kInflateBytes);
+        if (!mem.p) return false;
+        Arena arena(mem.p, kInflateBytes);
+        ZipEntryReader reader;
+        if (reader.open(_src, entry, arena) != BookStatus::Ok) return false;
+        if (!_cache.beginWrite(name)) return false;
+        uint8_t buf[1024];
+        bool ok = true;
+        for (int32_t n; ok && (n = reader.read(buf, sizeof(buf))) > 0;) ok = _cache.write(buf, (uint32_t)n);
+        ok = _cache.endWrite() && ok && reader.totalProduced() == entry.uncompressedSize;
+        Serial.printf("[Reader] Chapter %d unpacked: %u bytes in %lu ms%s\n", spine, (unsigned)entry.uncompressedSize,
+                      (unsigned long)(millis() - t0), ok ? "" : " FAILED");
+        if (!ok) { _cache.remove(name); return false; }
+    }
+    if (!_chapterSrc.open(path)) return false;
+    entry = ZipEntryReader::rawEntry(entry.uncompressedSize);
+    source = &_chapterSrc;
+    return true;
+}
+
 bool BookReader::layoutChapter(int spine) {
     const uint32_t t0 = millis();
     const Spine& sp = _spines[spine];
@@ -278,42 +338,69 @@ bool BookReader::layoutChapter(int spine) {
         drawStatusModal(tr(MsgId::READER_FORMAT_TITLE), _title.substring(0, 32).c_str(), tr(MsgId::READER_FORMAT_LINE),
                         tr(MsgId::READER_OPENING_WAIT));
     }
-    // The big buffers first, while the heap's biggest block is still whole.
-    Buffer layoutMem(kLayoutBytes);
-    Buffer parseMem(_isTxt ? 0 : kParseBytes);
-    if (!layoutMem.p || (!_isTxt && !parseMem.p)) {
-        const MemStats::Snapshot m = MemStats::now();
-        Serial.printf("[Reader] Not enough memory to lay out chapter %d: free %u KB, largest block %u KB\n", spine,
-                      (unsigned)(m.freeBytes / 1024), (unsigned)(m.largestBlock / 1024));
-        return false;
-    }
-    Arena layout(layoutMem.p, kLayoutBytes);
-    Arena parse(parseMem.p, _isTxt ? 0 : kParseBytes);
-    char name[48];
-    pageCacheName((uint16_t)spine, _gen, name, sizeof(name));
-    PageCacheWriter writer;
-    if (!writer.begin(_cache, name, _gen, layout)) {
-        Serial.printf("[Reader] Cannot write the page cache %s/%s\n", _cache.dir().c_str(), name);
-        return false;
-    }
-    uint32_t pages = 0, chars = 0;
-    BookStatus st;
-    if (_isTxt) {
-        st = ChapterLayout::layoutPlainText(_src, _params, layout, writer, &pages, &chars);
-    } else {
-        ZipEntry entry;
-        char href[256];
-        st = _catalog.spineEntry((size_t)spine, &entry);
-        if (st == BookStatus::Ok) st = _catalog.spineHref((size_t)spine, href, sizeof(href));
-        if (st == BookStatus::Ok) {
-            st = ChapterLayout::layout(_src, _catalog.zip(), entry, href, _params, layout, writer, &pages, &chars, &parse);
+    ZipEntry entry;
+    BookSource* chapter = &_src;
+    char href[256] = "";
+    if (!_isTxt) {
+        if (!chapterSource(spine, entry, chapter) ||
+            _catalog.spineHref((size_t)spine, href, sizeof(href)) != BookStatus::Ok) {
+            Serial.printf("[Reader] Chapter %d cannot be read\n", spine);
+            return false;
         }
     }
-    writer.setTotalChars(chars);
-    const bool ok = st == BookStatus::Ok && writer.finish() && !writer.failed();
+    // The page index grows ~1 KB per 128 pages inside the layout buffer: a whole
+    // novel in one file needs more than the usual 54 KB, so a full buffer is
+    // retried bigger (the parse state is small enough to sit beside it).
+    char name[48];
+    pageCacheName((uint16_t)spine, _gen, name, sizeof(name));
+    uint32_t pages = 0, chars = 0;
+    BookStatus st = BookStatus::OutOfMemory;
+    size_t layoutUsed = 0, parseUsed = 0;
+    PageCacheWriter writer;
+    for (size_t cap = kLayoutBytes; st == BookStatus::OutOfMemory && cap <= kLayoutBytes + 32 * 1024; cap += 16 * 1024) {
+        Buffer layoutMem(cap);
+        Buffer parseMem(_isTxt ? 0 : kStoredParseBytes);
+        if (!layoutMem.p || (!_isTxt && !parseMem.p)) {
+            const MemStats::Snapshot m = MemStats::now();
+            Serial.printf("[Reader] Not enough memory to lay out chapter %d (%u KB): free %u KB, largest block %u KB\n",
+                          spine, (unsigned)(cap / 1024), (unsigned)(m.freeBytes / 1024), (unsigned)(m.largestBlock / 1024));
+            break;
+        }
+        Arena layout(layoutMem.p, cap);
+        Arena parse(parseMem.p, _isTxt ? 0 : kStoredParseBytes);
+        writer = PageCacheWriter();
+        if (!writer.begin(_cache, name, _gen, layout)) {
+            Serial.printf("[Reader] Cannot write the page cache %s/%s\n", _cache.dir().c_str(), name);
+            st = BookStatus::IoError;
+            break;
+        }
+        if (_isTxt) {
+            st = ChapterLayout::layoutPlainText(_src, _params, layout, writer, &pages, &chars);
+        } else {
+            // The image pre-scan's transient inflate runs in the layout buffer before layout starts.
+            ChapterLayoutSession session;
+            st = session.begin(_src, &_catalog.zip(), *chapter, entry, href, _params, layout, writer, &parse, &layout);
+            while (st == BookStatus::Ok && !session.done()) st = session.step(1u << 30);
+            pages = session.pagesEmitted();
+            chars = session.totalChars();
+            session.abort();
+        }
+        layoutUsed = layout.highWater();
+        parseUsed = parse.highWater();
+        if (st == BookStatus::Ok) {
+            writer.setTotalChars(chars);
+            if (!writer.finish() || writer.failed()) st = BookStatus::IoError;
+        } else if (st == BookStatus::OutOfMemory) {
+            Serial.printf("[Reader] Chapter %d: layout buffer of %u KB full, retrying bigger\n", spine, (unsigned)(cap / 1024));
+            writer.finish();   // closes the half-built file...
+            _cache.remove(name);   // ...which must not pass for a laid-out chapter
+        }
+    }
+    _chapterSrc.close();
+    const bool ok = st == BookStatus::Ok;
     Serial.printf("[Reader] Chapter %d laid out: %s, %u pages, %u chars in %lu ms (layout %u B, parse %u B)\n", spine,
                   ok ? "ok" : bookStatusName(st), (unsigned)pages, (unsigned)chars, (unsigned long)(millis() - t0),
-                  (unsigned)layout.highWater(), (unsigned)parse.highWater());
+                  (unsigned)layoutUsed, (unsigned)parseUsed);
     if (!ok) return false;
     _spines[spine].pages = (int32_t)pages;
     _spines[spine].chars = chars;
@@ -541,41 +628,41 @@ bool BookReader::goToPosition(const String& cfi, const String& xpath, float perc
 
 // --------------------------------------------------------------------- CFI
 
+bool BookReader::walkChapter(int spine, EpubCfi::Walker& walker) {
+    ZipEntry entry;
+    BookSource* source = nullptr;
+    if (!chapterSource(spine, entry, source)) return false;
+    Buffer mem(4096);   // a stored entry: no inflate state
+    bool ok = mem.p != nullptr;
+    if (ok) {
+        Arena arena(mem.p, 4096);
+        ZipEntryReader reader;
+        ok = reader.open(*source, entry, arena) == BookStatus::Ok;
+        char buf[512];
+        for (int32_t n; ok && !walker.done() && (n = reader.read(buf, sizeof(buf))) > 0;) walker.feed(buf, (size_t)n);
+        walker.finish();
+    }
+    _chapterSrc.close();
+    return ok;
+}
+
 bool BookReader::cfiToChapterChar(const String& cfi, int& spine, uint32_t& chars) {
     EpubCfi::Location loc;
     if (_isTxt || !EpubCfi::parse(cfi.c_str(), loc)) return false;
     spine = loc.ordinal - 1;
     if (spine < 0 || spine >= (int)_spines.size()) return false;
-    ZipEntry entry;
-    if (_catalog.spineEntry((size_t)spine, &entry) != BookStatus::Ok) return false;
-    Buffer mem(kParseBytes);
-    if (!mem.p) return false;
-    Arena arena(mem.p, kParseBytes);
-    ZipEntryReader reader;
-    if (reader.open(_src, entry, arena) != BookStatus::Ok) return false;
     EngineTextCounter counter;
     EpubCfi::Walker walker = EpubCfi::Walker::toOffset(counter, loc.steps, loc.offset);
-    char buf[512];
-    for (int32_t n; !walker.done() && (n = reader.read(buf, sizeof(buf))) > 0;) walker.feed(buf, (size_t)n);
-    walker.finish();
+    if (!walkChapter(spine, walker)) return false;
     chars = walker.textOffset();
     return walker.reached();
 }
 
 bool BookReader::chapterCharToCfi(int spine, uint32_t chars, String& out) {
-    ZipEntry entry;
-    if (_isTxt || _catalog.spineEntry((size_t)spine, &entry) != BookStatus::Ok) return false;
-    Buffer mem(kParseBytes);
-    if (!mem.p) return false;
-    Arena arena(mem.p, kParseBytes);
-    ZipEntryReader reader;
-    if (reader.open(_src, entry, arena) != BookStatus::Ok) return false;
+    if (_isTxt) return false;
     EngineTextCounter counter;
     EpubCfi::Walker walker = EpubCfi::Walker::toLocation(counter, chars);
-    char buf[512];
-    for (int32_t n; !walker.done() && (n = reader.read(buf, sizeof(buf))) > 0;) walker.feed(buf, (size_t)n);
-    walker.finish();
-    if (!walker.reached()) return false;
+    if (!walkChapter(spine, walker) || !walker.reached()) return false;
     EpubCfi::Location loc = walker.location();
     loc.ordinal = spine + 1;
     out = EpubCfi::format(loc).c_str();

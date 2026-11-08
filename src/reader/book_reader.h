@@ -27,6 +27,7 @@
 #include <text/Hyphenator.h>
 
 #include "chapter_item.h"
+#include "epub_cfi.h"
 #include "engine/bitmap_book_font.h"
 #include "engine/sd_book_storage.h"
 
@@ -79,6 +80,11 @@ public:
     bool setFontSize(int size);
     static const char* getFontSizeName(int size);
 
+    // Most memory the reader's transient buffers (layout, parse, inflate, page
+    // record) held at once since the last reset. The X4's biggest free block
+    // after boot is ~96 KB: they must stay under it.
+    static size_t peakTransientBytes(bool reset = false);
+
     // The book's layout cache directory on the card ("/cache/<file name>.fib").
     static String cacheDirFor(const String& bookPath);
 
@@ -107,6 +113,8 @@ private:
     void setupLayout();
     bool loadChapter(int spine);              // laid out (if needed) and its page index open
     bool layoutChapter(int spine);
+    bool chapterSource(int spine, freeink::book::ZipEntry& entry, freeink::book::BookSource*& source);
+    bool walkChapter(int spine, EpubCfi::Walker& walker);
     bool resolve();                           // applies _want; false if the chapter is not available
     void settle() const { if (_want != Want::None) const_cast<BookReader*>(this)->resolve(); }
     void loadSpineTable();
@@ -129,6 +137,7 @@ private:
     int _fontSize;
 
     SdBookSource _src;
+    SdBookSource _chapterSrc;   // an unpacked chapter while it is laid out or walked
     SdCacheStorage _cache;
     freeink::book::BookCatalog _catalog;
     uint8_t* _bookMem = nullptr;

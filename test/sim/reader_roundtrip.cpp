@@ -26,6 +26,7 @@ int main(int argc, char** argv) {
     Display.begin(); Font.begin(Display); Storage.begin();
     int totalFail = 0;
     for (int a = 2; a < argc; a++) {
+        BookReader::peakTransientBytes(true);
         if (!Reader.openBook(argv[a])) { printf("open failed %s\n", argv[a]); totalFail++; continue; }
         Reader.layoutRemaining();   // exact page numbers
         const int n = Reader.getTotalPages();
@@ -78,6 +79,12 @@ int main(int argc, char** argv) {
             printf("  web CFI 'Chapter 10' -> page %d (%s)%s\n", page, here.c_str(), ok && chapterStart ? "" : "  WRONG");
             if (!ok || !chapterStart) failC++;
         }
+        // Transient buffers live at once: under the X4's biggest free block after boot
+        // (96 KB measured, Nov 8), with room to spare for the page index and the heap's own overhead.
+        const size_t peak = BookReader::peakTransientBytes(true);
+        const int failM = peak > 80 * 1024 ? 1 : 0;
+        printf("  transient memory peak %u KB%s\n", (unsigned)(peak / 1024), failM ? "  TOO MUCH" : "");
+        totalFail += failM;
         printf("%-40s pages=%d checked=%d (image pages sharing a position: %d)  draw-fail=%d  percent-fail=%d  xpath-fail=%d  cfi-fail=%d\n",
                argv[a], n, checked, shared, failD, failP, failX, failC);
         totalFail += failD + failP + failX + failC;
