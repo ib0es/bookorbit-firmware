@@ -13,7 +13,9 @@ EPDDisplay::~EPDDisplay() {
     }
 }
 
-bool EPDDisplay::begin() {
+void EPDDisplay::detectBoard() {
+    if (_boardDetected) return;
+    _boardDetected = true;
 #if defined(FREEINK_DEVICE_X3) && FREEINK_DEVICE_X3
     // X3 build: confirm the board (I2C fingerprint) and pick the UC8253 or
     // UC8279 controller profile, then switch the facade to the 792x528 panel.
@@ -25,6 +27,10 @@ bool EPDDisplay::begin() {
     // 1. Detect and apply the display controller for this unit's batch (SSD1677, UC8179, UC8279)
     freeink::applyXteinkDisplayController();
 #endif
+}
+
+bool EPDDisplay::begin() {
+    detectBoard();
 
     // 2. Initialize FreeInk display facade
     if (!_eink) {
