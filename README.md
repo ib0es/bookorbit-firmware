@@ -1,5 +1,19 @@
 # Book Orbit E-Ink Reader Firmware
 
+<p align="left">
+  <a href="https://ib0es.github.io/bookorbit-firmware/">
+    <img src="https://img.shields.io/badge/⚡_Web_Flasher-Install_in_Browser-2ea44f?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Open Web Flasher" />
+  </a>
+  <a href="https://github.com/ib0es/bookorbit-firmware/releases">
+    <img src="https://img.shields.io/badge/Firmware-Releases-blue?style=for-the-badge&logo=github" alt="Releases" />
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/License-MIT-gray?style=for-the-badge" alt="MIT License" />
+  </a>
+</p>
+
+> 🚀 **Quick Install**: Flash and configure your reader directly from Chrome or Edge (no setup required) with the **[Book Orbit Web Flasher](https://ib0es.github.io/bookorbit-firmware/)**!
+
 > [!NOTE]
 > **Release Status**:
 > * **Beta**: **Xteink X4** and **Picco** (hardware-tested, stable reading and sync features).
