@@ -48,6 +48,7 @@ void AppController::setup() {
     // Accidental wake-up protection
     PowerService::handleAccidentalWakeup();
 
+    MemStats::log("boot: start");
     // Ensure Wi-Fi radio is completely shut down at boot for zero background lag
     WiFi.mode(WIFI_OFF);
     BookOrbit.disconnectWiFi();
@@ -72,6 +73,7 @@ void AppController::setup() {
     Display.begin();
     uikit::begin();      // FreeInkUI target over the same framebuffer
     Font.begin(Display); // book fonts (src/ui/book_fonts.h)
+    MemStats::log("boot: display and fonts");
 
     // After a modal closes, the screen of the current state is redrawn.
     Modal.setRedrawHook([this](bool full) { redrawCurrentScreen(full); });
@@ -90,6 +92,7 @@ void AppController::setup() {
     lib.setHideCompleted(_ctx.config.hideCompleted);
     lib.scanLocalBooks();
     lib.initLastBook();
+    MemStats::log("boot: library");
 
     // 6. Fast wake-up: if we went to sleep while reading, resume that book immediately.
     // After sleep (Settings > Synchronization > After sleep): the current book is
@@ -115,6 +118,7 @@ void AppController::setup() {
 
     // 8. Open Main / Home screen with last book cover
     MemStats::log("boot done");
+    MemStats::logMap("boot done");
     _ctx.currentState = STATE_HOME;
     drawHomeScreen(_ctx, true); // Full refresh on boot
     syncAfterWake();

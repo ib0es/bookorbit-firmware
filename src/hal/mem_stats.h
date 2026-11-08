@@ -26,6 +26,11 @@ void log(const char* where);
 // Returns true if all fit.
 bool probeEngine(const char* where);
 
+// The heap's biggest pieces: "[Mem] map <where>: free blocks 63 11 7 4 KB (+N smaller),
+// used blocks 47 23 12 KB (+N smaller)". Shows what fragments the heap and who
+// holds the large allocations (diagnostics for the move to the new engine).
+void logMap(const char* where);
+
 // One line for the device info screen.
 String summary();
 
