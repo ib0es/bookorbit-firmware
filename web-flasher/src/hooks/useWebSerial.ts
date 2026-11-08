@@ -130,7 +130,9 @@ export function useWebSerial() {
     try {
       portRef.current = port;
       const nativeUsb = port.getInfo().usbVendorId === ESPRESSIF_VID;
-      const transport = new Transport(port, false);
+      // ?debug in the page URL: log every serial packet to the browser console.
+      const tracing = new URLSearchParams(window.location.search).has('debug');
+      const transport = new Transport(port, tracing);
       transportRef.current = transport;
 
       const terminal: IEspLoaderTerminal = {
@@ -150,6 +152,12 @@ export function useWebSerial() {
       const chipDesc = await loader.main();
       addLog(`Detected chip: ${chipDesc}`);
       const chipFamily: string = loader.chip.CHIP_NAME;
+
+      // Attach the SPI flash before any flash read/write. The bundled stub
+      // (esptool stub_flasher 2) no longer does it on start, and esptool-js
+      // never sends SPI_ATTACH itself: without it the first readFlash() waits
+      // for data that never comes (the connection "hangs" here).
+      await loader.flashSpiAttach(0);
 
       // 1) What firmware is installed (exact build name, if it is Book Orbit)?
       const sig = await scanInstalledFirmware(loader, addLog);

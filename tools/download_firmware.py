@@ -142,12 +142,10 @@ def main() -> int:
     out_dir = Path(args.output_dir).resolve()
 
     tag_desc = args.tag or ("Latest Master Build" if args.channel == "latest" else "Latest Official Release")
-    print("=" * 60)
     print(f"Book Orbit Firmware Downloader")
-    print(f"Device:   {device_name} ({device})")
-    print(f"Version:  {tag_desc}")
-    print(f"Repo:     {args.repo}")
-    print("=" * 60)
+    print(f"  Device:  {device_name} ({device})")
+    print(f"  Version: {tag_desc}")
+    print(f"  Repo:    {args.repo}")
 
     base_url = get_base_url(args.repo, args.channel, args.tag)
     filename = f"bookorbit-{device}.bin"
@@ -181,10 +179,8 @@ def main() -> int:
         print(f"\nDownload failed: {exc}", file=sys.stderr)
         return 1
 
-    print("\n" + "=" * 60)
-    print("Flashing Instruction (address 0x0):")
+    print(f"\nFlash command (offset 0x0):")
     print(f"  esptool.py write_flash 0x0 {dest.name}")
-    print("=" * 60)
     return 0
 
 

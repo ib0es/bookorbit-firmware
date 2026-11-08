@@ -158,6 +158,9 @@ export async function probeS3Board(loader: ESPLoader, log: Log): Promise<'picco'
 
 /** Reads the start of the first app partition and looks for Book Orbit / board markers. */
 export async function scanInstalledFirmware(loader: ESPLoader, log: Log): Promise<FirmwareSignature> {
+  // A detection read must not block the page for esptool-js's default 100 s.
+  const savedTimeout = loader.FLASH_READ_TIMEOUT;
+  loader.FLASH_READ_TIMEOUT = 5000;
   try {
     const table = parsePartitionTable(await loader.readFlash(PARTITION_TABLE_OFFSET, 0xc00));
     const app = table.find((p) => p.type === 0x00) ?? { offset: 0x10000 };
@@ -169,6 +172,8 @@ export async function scanInstalledFirmware(loader: ESPLoader, log: Log): Promis
   } catch (err) {
     log(`Firmware scan skipped: ${err instanceof Error ? err.message : err}`);
     return { isBookOrbit: false, board: null };
+  } finally {
+    loader.FLASH_READ_TIMEOUT = savedTimeout;
   }
 }
 
