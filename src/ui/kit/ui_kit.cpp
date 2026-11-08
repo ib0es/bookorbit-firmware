@@ -253,7 +253,7 @@ Rect appHeader(Frame& f) {
     const int16_t h = (int16_t)(lineHeight(FontTitle) + 16);
     Rect bar = takeTop(area, h);
     Rect inner = insetX(bar, kMargin + 4);
-    icon::logo(inner.x, (int16_t)(inner.y + (inner.height - 20) / 2), Color::Black);
+    icon::book(inner.x, (int16_t)(inner.y + (inner.height - 20) / 2), Color::Black);
     const int16_t batW = 92;
     text(Rect{(int16_t)(inner.x + 28), inner.y, (int16_t)(inner.width - 28 - batW), inner.height}, "book orbit",
          FontTitle);
@@ -367,12 +367,35 @@ const char* deviceDisplayName() {
 // ---------------------------------------------------------------------------
 namespace icon {
 
+void book(int16_t x, int16_t y, Color c) {
+    // Open book icon (20x20).
+    static const uint8_t kBookBits[60] = {
+        0x00, 0x00, 0x00,  // row  0
+        0x00, 0x00, 0x00,  // row  1
+        0x3E, 0x07, 0xC0,  // row  2: ..#####......#####..
+        0x41, 0x98, 0x20,  // row  3: .#.....##..##.....#.
+        0x80, 0x60, 0x10,  // row  4: #........##........#
+        0x80, 0x60, 0x10,  // row  5: #........##........#
+        0x9F, 0x6F, 0x90,  // row  6: #..#####.##.#####..#
+        0x80, 0x60, 0x10,  // row  7: #........##........#
+        0x80, 0x60, 0x10,  // row  8: #........##........#
+        0x9F, 0x6F, 0x90,  // row  9: #..#####.##.#####..#
+        0x80, 0x60, 0x10,  // row 10: #........##........#
+        0x80, 0x60, 0x10,  // row 11: #........##........#
+        0x9E, 0x67, 0x90,  // row 12: #..####..##..####..#
+        0x80, 0x60, 0x10,  // row 13: #........##........#
+        0x80, 0x60, 0x10,  // row 14: #........##........#
+        0x7E, 0x67, 0xE0,  // row 15: .######..##..######.
+        0x01, 0xF8, 0x00,  // row 16: .......######.......
+        0x00, 0x60, 0x00,  // row 17: .........##.........
+        0x00, 0x00, 0x00,  // row 18
+        0x00, 0x00, 0x00,  // row 19
+    };
+    target().bitmap(Rect{x, y, 20, 20}, fi::BitmapRef{kBookBits, 20, 20, fi::BitmapFormat::BW1}, fi::BitmapMode::Center, solid(c));
+}
+
 void logo(int16_t x, int16_t y, Color c) {
-    // Twin bookmark ribbons.
-    frameRect(Rect{x, y, 8, 20}, c, 1, 3);
-    fill(Rect{(int16_t)(x + 2), (int16_t)(y + 2), 4, 16}, c, 2);
-    frameRect(Rect{(int16_t)(x + 10), (int16_t)(y + 2), 8, 18}, c, 1, 3);
-    fill(Rect{(int16_t)(x + 12), (int16_t)(y + 4), 4, 14}, c, 2);
+    book(x, y, c);
 }
 
 void folder(int16_t x, int16_t y, Color c) {
