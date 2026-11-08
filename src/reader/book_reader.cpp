@@ -69,6 +69,29 @@ struct Buffer {
     Buffer& operator=(const Buffer&) = delete;
 };
 
+// One-time container index (ZIP directory, package, TOC, CSS) on the card.
+bool buildContainerIndex(SdBookSource& src, SdCacheStorage& cache, bool& noMemory) {
+    const uint32_t t0 = millis();
+    BookStatus st = BookStatus::OutOfMemory;
+    // Record tables grow with the book (~70 KB for a 1,700-chapter omnibus): retried larger.
+    for (size_t cap = kIndexScratchBytes; st == BookStatus::OutOfMemory && cap <= 96 * 1024; cap *= 2) {
+        Buffer parse(kInflateBytes), scratch(cap);
+        if (!scratch.p || !parse.p) {
+            const MemStats::Snapshot m = MemStats::now();
+            Serial.printf("[Reader] Not enough memory to index the book (%u + %u KB; free %u KB, largest %u KB)\n",
+                          (unsigned)(kInflateBytes / 1024), (unsigned)(cap / 1024), (unsigned)(m.freeBytes / 1024),
+                          (unsigned)(m.largestBlock / 1024));
+            noMemory = true;
+            return false;
+        }
+        Arena a(scratch.p, cap), b(parse.p, kInflateBytes);
+        st = BookCatalog::build(src, cache, a, &b);
+        Serial.printf("[Reader] Book index built: %s in %lu ms (scratch %u B of %u, parse %u B)\n", bookStatusName(st),
+                      (unsigned long)(millis() - t0), (unsigned)a.highWater(), (unsigned)cap, (unsigned)b.highWater());
+    }
+    return st == BookStatus::Ok;
+}
+
 String stemOf(const String& path) {
     const int slash = path.lastIndexOf('/');
     const int dot = path.lastIndexOf('.');
@@ -186,27 +209,7 @@ bool BookReader::openBook(const String& filePath) {
 bool BookReader::openContainer() {
     for (int attempt = 0; attempt < 2; attempt++) {
         if (attempt > 0 || !_cache.exists(BookCatalog::kCatalogName)) {
-            // One-time container index (ZIP directory, package, TOC, CSS) on the card.
-            const uint32_t t0 = millis();
-            BookStatus st = BookStatus::OutOfMemory;
-            // Record tables grow with the book (~70 KB for a 1,700-chapter omnibus): retried larger.
-            for (size_t cap = kIndexScratchBytes; st == BookStatus::OutOfMemory && cap <= 96 * 1024; cap *= 2) {
-                Buffer parse(kInflateBytes), scratch(cap);
-                if (!scratch.p || !parse.p) {
-                    const MemStats::Snapshot m = MemStats::now();
-                    Serial.printf("[Reader] Not enough memory to index the book (%u + %u KB; free %u KB, largest %u KB)\n",
-                                  (unsigned)(kInflateBytes / 1024), (unsigned)(cap / 1024),
-                                  (unsigned)(m.freeBytes / 1024), (unsigned)(m.largestBlock / 1024));
-                    _noMemory = true;
-                    return false;
-                }
-                Arena a(scratch.p, cap), b(parse.p, kInflateBytes);
-                st = BookCatalog::build(_src, _cache, a, &b);
-                Serial.printf("[Reader] Book index built: %s in %lu ms (scratch %u B of %u, parse %u B)\n",
-                              bookStatusName(st), (unsigned long)(millis() - t0), (unsigned)a.highWater(),
-                              (unsigned)cap, (unsigned)b.highWater());
-            }
-            if (st != BookStatus::Ok) return false;
+            if (!buildContainerIndex(_src, _cache, _noMemory)) return false;
         }
         size_t resident = 0;
         if (BookCatalog::residentBytes(_cache, &resident) != BookStatus::Ok) continue;
@@ -590,6 +593,66 @@ bool BookReader::layoutRemaining(int maxChapters) {
         if (!layoutChapter(s)) return false;
     }
     return true;
+}
+
+// ------------------------------------------------------------------ cover
+
+bool BookReader::extractCover(const String& epubPath, const String& outPath, bool* noMemory) {
+    if (noMemory) *noMemory = false;
+    bool oom = false;
+    SdBookSource src;
+    if (!src.open(epubPath)) return false;
+    SdCacheStorage cache;
+    Storage.mkdir("/cache");
+    cache.setDir(cacheDirFor(epubPath));
+    Storage.mkdir(cache.dir().c_str());
+    // The book's index (built once, then used when the book is opened too).
+    BookCatalog catalog;
+    BookStatus st = BookStatus::Stale;
+    size_t resident = 0;
+    uint8_t* mem = nullptr;
+    for (int attempt = 0; attempt < 2 && st == BookStatus::Stale; attempt++) {
+        if ((attempt > 0 || !cache.exists(BookCatalog::kCatalogName)) && !buildContainerIndex(src, cache, oom)) break;
+        if (BookCatalog::residentBytes(cache, &resident) != BookStatus::Ok) continue;
+        free(mem);
+        mem = (uint8_t*)malloc(resident + 64);
+        Buffer scratch(4096);
+        if (!mem || !scratch.p) { oom = true; break; }
+        Arena bookArena(mem, resident + 64), s(scratch.p, 4096);
+        catalog = BookCatalog();
+        st = catalog.open(src, cache, bookArena, s);
+    }
+    bool ok = false;
+    ZipEntry entry;
+    if (st == BookStatus::Ok && catalog.coverEntry(&entry)) {
+        // A stored image (the usual case) is copied; a deflated one needs an inflate stream.
+        Buffer inflate(entry.method == 0 ? 1024 : kInflateBytes);
+        if (!inflate.p) {
+            oom = true;
+        } else {
+            Arena a(inflate.p, inflate.n);
+            ZipEntryReader reader;
+            Storage.mkdir("/covers");
+            const String tmp = outPath + ".tmp";
+            FsFile out = Storage.open(tmp.c_str(), O_RDWR | O_CREAT | O_TRUNC);
+            if (out && reader.open(src, entry, a) == BookStatus::Ok) {
+                uint8_t buf[1024];
+                ok = true;
+                for (int32_t n; ok && (n = reader.read(buf, sizeof(buf))) > 0;) ok = out.write(buf, (size_t)n) == (size_t)n;
+                ok = ok && reader.totalProduced() == entry.uncompressedSize;
+            }
+            if (out) out.close();
+            ok = ok && Storage.replaceFile(tmp.c_str(), outPath.c_str());
+            if (!ok) Storage.remove(tmp.c_str());
+        }
+    }
+    catalog = BookCatalog();
+    free(mem);
+    src.close();
+    Serial.printf("[Reader] Cover of %s: %s\n", epubPath.c_str(),
+                  ok ? outPath.c_str() : oom ? "no memory" : st != BookStatus::Ok ? "unreadable book" : "none");
+    if (noMemory) *noMemory = oom;
+    return ok;
 }
 
 // ------------------------------------------------------ background layout

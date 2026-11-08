@@ -2,7 +2,7 @@
 #include "progress_sync.h"
 #include "sync_clock.h"
 #include "../reader/reader.h"
-#include "../reader/epub_extractor.h"
+#include "../reader/book_reader.h"
 #include "../ui/jpeg_viewer.h"
 #include "../net/bookorbit_client.h"
 #include "../net/book_formats.h"
@@ -61,6 +61,21 @@ bool LibraryManager::isProgressiveJpeg(const String& path) {
     return progressive;
 }
 
+// Where an EPUB's own cover goes: /covers/<file name without extension>.jpg
+static String epubCoverPath(const String& filePath) {
+    const int slash = filePath.lastIndexOf('/');
+    String base = slash >= 0 ? filePath.substring(slash + 1) : filePath;
+    const int dot = base.lastIndexOf('.');
+    if (dot > 0) base = base.substring(0, dot);
+    return "/covers/" + base + ".jpg";
+}
+
+static bool isEpubPath(const String& filePath) {
+    String lower = filePath;
+    lower.toLowerCase();
+    return lower.endsWith(".epub");
+}
+
 String LibraryManager::resolveCoverPath(const String& filePath, const String& title, const String& explicitCoverPath, bool allowExtract) {
     if (isValidCoverFile(explicitCoverPath)) {
         return explicitCoverPath;
@@ -111,7 +126,7 @@ String LibraryManager::resolveCoverPath(const String& filePath, const String& ti
 
     // 3. Check EPUB extracted cache cover in /covers/<basename>.jpg
     if (filePath.length() > 0) {
-        String cPath = EpubExtractor::getCoverPath(filePath);
+        String cPath = epubCoverPath(filePath);
         if (isValidCoverFile(cPath)) return cPath;
 
         String cPathJpeg = cPath;
@@ -126,9 +141,10 @@ String LibraryManager::resolveCoverPath(const String& filePath, const String& ti
         static std::vector<String> s_unusableEpubCovers;
         bool knownBad = false;
         for (const auto& p : s_unusableEpubCovers) if (p == cPath) { knownBad = true; break; }
-        if (allowExtract && !knownBad && EpubExtractor::isEpub(filePath) && Storage.exists(filePath.c_str())) {
-            if (EpubExtractor::extractCoverOnly(filePath, cPath) && isValidCoverFile(cPath)) return cPath;
-            s_unusableEpubCovers.push_back(cPath);
+        if (allowExtract && !knownBad && isEpubPath(filePath) && Storage.exists(filePath.c_str())) {
+            bool noMemory = false;
+            if (BookReader::extractCover(filePath, cPath, &noMemory) && isValidCoverFile(cPath)) return cPath;
+            if (!noMemory) s_unusableEpubCovers.push_back(cPath);   // short of memory now: tried again later
         }
     }
 
@@ -638,7 +654,7 @@ static void collectAllLocalBooks(const String& dir, int depth, std::vector<BookI
         const int dot = entry.name.lastIndexOf('.');
         item.title = (dot > 0) ? entry.name.substring(0, dot) : entry.name;
         item.filePath = entry.fullPath;
-        item.coverPath = EpubExtractor::getCoverPath(entry.fullPath);
+        item.coverPath = epubCoverPath(entry.fullPath);
         item.isDownloaded = true;
         item.formats.push_back(slot);
         item.activeFormat = 0;

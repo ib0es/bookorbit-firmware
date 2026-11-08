@@ -41,12 +41,6 @@ build_fib() {   # name sources... (with the engine; its own warnings are not our
 build_fib hyph "$ROOT/test/host/test_hyphenation.cpp"
 build_fib counter "$ROOT/test/host/test_engine_text_counter.cpp" "$ROOT/src/reader/engine/engine_text_counter.cpp" "$ROOT/src/reader/epub_cfi.cpp"
 
-if [ "$(uname)" = Linux ]; then   # needs GNU ld --wrap
-    mkdir -p "$OUT/miniz"
-    ${CC:-cc} ${COVERAGE_DIR:+--coverage} -O1 -w -c "$ROOT/src/reader/miniz.c" -o "$OUT/miniz/miniz.o"
-    (cd "$OUT/miniz" && $CXX $FLAGS "$ROOT/test/host/test_miniz_workspace.cpp" miniz.o -Wl,--wrap=malloc -o test)
-fi
-
 rc=0
 echo "== I18n";              "$OUT/i18n/test" || rc=1
 echo "== OpdsStreamParser";  "$OUT/opds/test" || rc=1
@@ -58,8 +52,5 @@ echo "== Hyphenation";      "$OUT/hyph/test" || rc=1
 echo "== EngineTextCounter"; "$OUT/counter/test" "$ROOT/simulator/sdcard/books/Alice in Wonderland.epub" \
     "$ROOT/simulator/sdcard/books/01. Frankenstein (1818).epub" "$ROOT/simulator/sdcard/books/Pride and Prejudice.epub" \
     | grep -v "^units" || rc=1
-if [ -x "$OUT/miniz/test" ]; then
-    echo "== miniz workspace"; "$OUT/miniz/test" "$ROOT/simulator/sdcard/books/Alice in Wonderland.epub" | tail -1 || rc=1
-fi
 [ -z "$COVERAGE_DIR" ] && rm -rf "$OUT"
 exit $rc

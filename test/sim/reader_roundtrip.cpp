@@ -88,12 +88,31 @@ static int backgroundLayout(const char* path) {
     return fail;
 }
 
+// The cover image the package declares, copied out byte for byte (a JPEG here).
+static int coverCheck(const char* path) {
+    const char* out = "/covers/_roundtrip.jpg";
+    Storage.remove(out);
+    const bool ok = BookReader::extractCover(path, out);
+    uint8_t magic[2] = {0, 0};
+    size_t size = 0;
+    if (ok) {
+        FsFile f = Storage.open(out, O_RDONLY);
+        size = f.size();
+        f.read(magic, 2);
+        f.close();
+    }
+    Storage.remove(out);
+    const bool good = ok && size > 1000 && magic[0] == 0xFF && magic[1] == 0xD8;
+    printf("  cover: %s (%u bytes)\n", good ? "ok" : "FAILED", (unsigned)size);
+    return good ? 0 : 1;
+}
+
 int main(int argc, char** argv) {
     SDCardManager::getInstance().setRoot(argv[1]);
     Display.begin(); Font.begin(Display); Storage.begin();
     int totalFail = 0;
     for (int a = 2; a < argc; a++) {
-        if (String(argv[a]).endsWith(".epub")) totalFail += backgroundLayout(argv[a]);
+        if (String(argv[a]).endsWith(".epub")) totalFail += backgroundLayout(argv[a]) + coverCheck(argv[a]);
         BookReader::peakTransientBytes(true);
         if (!Reader.openBook(argv[a])) { printf("open failed %s\n", argv[a]); totalFail++; continue; }
         Reader.layoutRemaining();   // exact page numbers

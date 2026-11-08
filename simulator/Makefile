@@ -67,9 +67,7 @@ SRCS_CXX = \
     src/reader/engine/bitmap_book_font.cpp \
     src/reader/engine/sd_book_storage.cpp \
     src/reader/engine/engine_text_counter.cpp \
-    src/reader/epub_extractor.cpp \
     src/reader/epub_cfi.cpp \
-    src/reader/html_stripper.cpp \
     simulator/lib_adafruit_gfx/Adafruit_GFX.cpp \
     freeink-sdk/libs/book/FreeInkBook/src/FreeInkBook.cpp \
     freeink-sdk/libs/book/FreeInkBook/src/BookCatalog.cpp \
@@ -91,7 +89,6 @@ SRCS_CXX = \
 # FreeInkBook's vendored C libraries; tjpgd comes from its tjpgd_impl.c (the
 # same vendored decoder the firmware links instead of the ROM one).
 SRCS_C = \
-    src/reader/miniz.c \
     freeink-sdk/libs/book/FreeInkBook/src/vendor/miniz_impl.c \
     freeink-sdk/libs/book/FreeInkBook/src/vendor/expat_xmlparse.c \
     freeink-sdk/libs/book/FreeInkBook/src/vendor/expat_xmlrole.c \

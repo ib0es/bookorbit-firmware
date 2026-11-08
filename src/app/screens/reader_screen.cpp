@@ -1,7 +1,6 @@
 #include "screens.h"
 #include "../../ui/font.h"
 #include "../../hal/mem_stats.h"
-#include "../../reader/epub_extractor.h"
 #include "../../reader/reader.h"
 #include "../../hal/storage.h"
 #include "../../services/library_manager.h"

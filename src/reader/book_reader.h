@@ -85,6 +85,11 @@ public:
     // after boot is ~96 KB: they must stay under it.
     static size_t peakTransientBytes(bool reset = false);
 
+    // Copies an EPUB's cover image (as the package declares it) to `outPath`. Builds
+    // the book's index if it has none (kept for opening the book). `noMemory` is set
+    // when it failed for lack of memory (worth trying again later).
+    static bool extractCover(const String& epubPath, const String& outPath, bool* noMemory = nullptr);
+
     // The book's layout cache directory on the card ("/cache/<file name>.fib").
     static String cacheDirFor(const String& bookPath);
 
