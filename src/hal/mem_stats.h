@@ -31,6 +31,14 @@ bool probeEngine(const char* where);
 // holds the large allocations (diagnostics for the move to the new engine).
 void logMap(const char* where);
 
+// Who holds the big blocks: mark("step") after each boot step remembers the used
+// blocks of 2 KB and more; the next mark lists the ones that appeared or went
+// ("Display.begin: +48.0 KB"). Task stacks are named ("stack loopTask"). The
+// lines are kept in RAM (the serial monitor attaches after the first seconds)
+// and printed by printMarks() at "boot done".
+void mark(const char* step);
+void printMarks();
+
 // One line for the device info screen.
 String summary();
 

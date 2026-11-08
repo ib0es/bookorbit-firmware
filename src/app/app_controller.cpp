@@ -48,10 +48,11 @@ void AppController::setup() {
     // Accidental wake-up protection
     PowerService::handleAccidentalWakeup();
 
-    MemStats::log("boot: start");
+    MemStats::mark("setup start");   // what the core and its tasks hold before our code
     // Ensure Wi-Fi radio is completely shut down at boot for zero background lag
     WiFi.mode(WIFI_OFF);
     BookOrbit.disconnectWiFi();
+    MemStats::mark("Wi-Fi off");
 
     // 2. Initialize HAL components
     // Board power rails first. Picco: GPIO4 latch and the active-low GPIO0 rail
@@ -61,6 +62,7 @@ void AppController::setup() {
     BoardConfig::holdPowerRails();
     Battery.begin();
     Buttons.begin();
+    MemStats::mark("battery, buttons");
     // FreeInk's bring-up order for boards whose SD card shares the display SPI
     // bus (X4/X3): board/controller detection, then the SD card, then the
     // panel. Arduino-ESP32 maps the bus pins on the first SPI.begin() only:
@@ -70,10 +72,13 @@ void AppController::setup() {
     // pins, so it goes before the SD card takes the bus.
     Display.detectBoard();
     Storage.begin();
+    MemStats::mark("SD card");
     Display.begin();
+    MemStats::mark("display");
     uikit::begin();      // FreeInkUI target over the same framebuffer
+    MemStats::mark("FreeInkUI");
     Font.begin(Display); // book fonts (src/ui/book_fonts.h)
-    MemStats::log("boot: display and fonts");
+    MemStats::mark("book fonts");
 
     // After a modal closes, the screen of the current state is redrawn.
     Modal.setRedrawHook([this](bool full) { redrawCurrentScreen(full); });
@@ -81,18 +86,21 @@ void AppController::setup() {
     // 3. Load configuration from SD card if present
     _ctx.config.load();
     I18n::setLanguage(_ctx.config.language);
+    MemStats::mark("config, language");
     Frontlight.begin();
     if (Buttons.hasLightSwitch()) Frontlight.setEnabled(Buttons.lightSwitchOn());
     Frontlight.apply(_ctx.config.frontlight, _ctx.config.frontlightWarm);
     Reader.setFontSize(_ctx.config.readerFontSize);
+    MemStats::mark("frontlight, reader");
 
     // 4. Per-book progress, scan local books on SD, 5. load last read book state
     ProgressStore::instance().load();
+    MemStats::mark("progress.json");
     auto& lib = LibraryManager::getInstance();
     lib.setHideCompleted(_ctx.config.hideCompleted);
     lib.scanLocalBooks();
     lib.initLastBook();
-    MemStats::log("boot: library");
+    MemStats::mark("library");
 
     // 6. Fast wake-up: if we went to sleep while reading, resume that book immediately.
     // After sleep (Settings > Synchronization > After sleep): the current book is
@@ -104,6 +112,8 @@ void AppController::setup() {
         }
     };
     if (isWakeFromSleep && PowerService::getSavedRtcState() == STATE_READING && ReaderScreen::resumeLastBook(_ctx)) {
+        MemStats::mark("book resumed");
+        MemStats::printMarks();
         Buttons.clearEvents();
         _ctx.lastActivityTime = millis();
         syncAfterWake();
@@ -117,6 +127,8 @@ void AppController::setup() {
     }
 
     // 8. Open Main / Home screen with last book cover
+    MemStats::mark("boot done");
+    MemStats::printMarks();
     MemStats::log("boot done");
     MemStats::logMap("boot done");
     _ctx.currentState = STATE_HOME;

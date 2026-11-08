@@ -1,10 +1,19 @@
 #include "mem_stats.h"
 
+#include <algorithm>
+#include <cstdarg>
+#include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 #if defined(ESP_PLATFORM)
 #include <esp_heap_caps.h>
 #include <esp_idf_version.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#if __has_include(<freertos/idf_additions.h>)
+#include <freertos/idf_additions.h>   // pxTaskGetStackStart()
+#endif
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
 #define MEM_HEAP_WALK 1   // heap_caps_walk()
 #endif
@@ -111,6 +120,97 @@ void logMap(const char* where) {
 #else
     Serial.printf("[Mem] map %s: (no heap walk in the simulator)\n", where);
 #endif
+}
+
+namespace {
+
+struct Big { uintptr_t p; uint32_t size; };
+constexpr int kMaxBig = 48;
+constexpr uint32_t kBigBytes = 2048;
+Big g_prev[kMaxBig];
+int g_prevN = 0;
+bool g_marked = false;
+char g_marks[2048];
+size_t g_marksLen = 0;
+
+#if MEM_HEAP_WALK
+struct BigWalk { Big b[kMaxBig]; int n; uint32_t lost; };
+BigWalk g_walk;   // static: the walker runs with the heap locked, no allocation there
+
+bool bigWalker(walker_heap_into_t, walker_block_info_t block, void*) {
+    if (!block.used || block.size < kBigBytes) return true;
+    if (g_walk.n < kMaxBig) g_walk.b[g_walk.n++] = Big{(uintptr_t)block.ptr, (uint32_t)block.size};
+    else g_walk.lost++;
+    return true;
+}
+
+// "stack loopTask" if the block holds a task's stack.
+const char* ownerOf(const Big& b) {
+    static const char* const kTasks[] = {"loopTask", "IDLE", "IDLE0", "esp_timer", "ipc0", "sys_evt", "tiT", "wifi",
+                                         "arduino_events", "Tmr Svc", "fi_input", "async_tcp", "ble-conn"};
+    static char buf[32];
+    for (const char* name : kTasks) {
+        TaskHandle_t h = xTaskGetHandle(name);
+        if (!h) continue;
+        const uintptr_t st = (uintptr_t)pxTaskGetStackStart(h);
+        if (st >= b.p && st < b.p + b.size) {
+            snprintf(buf, sizeof(buf), " (stack %s)", name);
+            return buf;
+        }
+    }
+    return "";
+}
+#endif
+
+void appendMark(const char* fmt, ...) {
+    if (g_marksLen >= sizeof(g_marks) - 1) return;
+    va_list ap;
+    va_start(ap, fmt);
+    const int n = vsnprintf(g_marks + g_marksLen, sizeof(g_marks) - g_marksLen, fmt, ap);
+    va_end(ap);
+    if (n > 0) g_marksLen = std::min(sizeof(g_marks) - 1, g_marksLen + (size_t)n);
+}
+
+}  // namespace
+
+void mark(const char* step) {
+#if MEM_HEAP_WALK
+    g_walk.n = 0;
+    g_walk.lost = 0;
+    heap_caps_walk(MALLOC_CAP_8BIT, bigWalker, nullptr);
+    const Snapshot s = now();
+    appendMark("[Mem] mark %-22s free %3u KB, largest %3u KB:", step, (unsigned)(s.freeBytes / 1024),
+               (unsigned)(s.largestBlock / 1024));
+    int listed = 0;
+    for (int i = 0; i < g_walk.n; i++) {
+        bool known = false;
+        for (int j = 0; j < g_prevN && !known; j++) known = g_prev[j].p == g_walk.b[i].p && g_prev[j].size == g_walk.b[i].size;
+        if (known && g_marked) continue;
+        appendMark(" +%.1f%s", g_walk.b[i].size / 1024.0f, ownerOf(g_walk.b[i]));
+        listed++;
+    }
+    for (int j = 0; j < g_prevN && g_marked; j++) {
+        bool still = false;
+        for (int i = 0; i < g_walk.n && !still; i++) still = g_prev[j].p == g_walk.b[i].p && g_prev[j].size == g_walk.b[i].size;
+        if (!still) { appendMark(" -%.1f", g_prev[j].size / 1024.0f); listed++; }
+    }
+    if (!listed) appendMark(" no big block changed");
+    if (g_walk.lost) appendMark(" (+%u not tracked)", (unsigned)g_walk.lost);
+    appendMark("\n");
+    memcpy(g_prev, g_walk.b, sizeof(Big) * g_walk.n);
+    g_prevN = g_walk.n;
+    g_marked = true;
+#else
+    (void)step;
+#endif
+}
+
+void printMarks() {
+    if (g_marksLen == 0) return;
+    Serial.print("[Mem] big blocks (2 KB and more, KB) appearing at each boot step:\n");
+    Serial.print(g_marks);
+    g_marksLen = 0;
+    g_marks[0] = 0;
 }
 
 String summary() {
