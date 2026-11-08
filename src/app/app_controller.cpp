@@ -186,6 +186,7 @@ void AppController::dispatch(const ButtonEvent& event) {
         case STATE_BOOK_MENU:         LibraryScreen::handleBookMenuEvent(_ctx, event); break;
         case STATE_FONT_MENU:         ReaderScreen::handleFontMenuEvent(_ctx, event); break;
         case STATE_SYNC_SETTINGS:     SettingsScreen::handleSyncSettingsEvent(_ctx, event); break;
+        case STATE_SLEEP_COVER_SETTINGS: SettingsScreen::handleSleepCoverSettingsEvent(_ctx, event); break;
         case STATE_SYNCING:           break;
     }
 }
@@ -206,6 +207,7 @@ void AppController::redrawCurrentScreen(bool fullRefresh) {
         case STATE_BOOK_MENU:         drawBookMenuScreen(_ctx, fullRefresh); break;
         case STATE_FONT_MENU:         drawFontMenuScreen(_ctx, fullRefresh); break;
         case STATE_SYNC_SETTINGS:     drawSyncSettingsScreen(_ctx, fullRefresh); break;
+        case STATE_SLEEP_COVER_SETTINGS: drawSleepCoverSettingsScreen(_ctx, fullRefresh); break;
         case STATE_SYNCING:           break;
     }
 }

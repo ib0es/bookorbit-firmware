@@ -12,6 +12,10 @@ WebConfigManager WebConfig;
 
 BookOrbitClient::BookOrbitClient() {}
 
+void BookOrbitClient::beginWiFi(const char* ssid, const char* pass) {
+    (void)ssid; (void)pass;
+}
+
 bool BookOrbitClient::connectWiFi(const char* ssid, const char* pass, uint32_t timeoutMs, bool (*checkCancel)()) {
     Serial.printf("[SimNet] Connecting to simulated WiFi: %s\n", ssid ? ssid : "");
     for (int i = 0; i < 5; i++) {

@@ -230,9 +230,9 @@ bool StorageManager::loadConfig(AppConfig& cfg) {
 
                 if (doc["cover_fit_mode"].is<int>()) {
                     int v = doc["cover_fit_mode"].as<int>();
-                    cfg.sleepCoverFitMode = (v < 0 || v > 1) ? 1 : v;
+                    cfg.sleepCoverFitMode = (v < 0 || v > 1) ? 0 : v;
                 } else {
-                    cfg.sleepCoverFitMode = 1;
+                    cfg.sleepCoverFitMode = 0;
                 }
                 // Book font size: "font_pt" = 12..48 (step 2). Older firmware stored
                 // "font_size" = 0..3 for its four fonts (13, 15, 20, 24 px): mapped to the

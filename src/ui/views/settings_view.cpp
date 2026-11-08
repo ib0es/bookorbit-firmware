@@ -68,8 +68,8 @@ SettingItemDef getSettingItemDef(const AppContext& ctx, int index) {
         }
         case 3: {
             String sleepVal = !ctx.config.coverOnSleep 
-                ? String(tr(MsgId::SETTINGS_SLEEP_OFF)) 
-                : (ctx.config.sleepCoverFitMode == 0 ? String(tr(MsgId::SETTINGS_SLEEP_FIT)) : String(tr(MsgId::SETTINGS_SLEEP_FILL)));
+                ? String(tr(MsgId::SLEEP_COVER_MODE_OFF)) 
+                : (ctx.config.sleepCoverFitMode == 0 ? String(tr(MsgId::SLEEP_COVER_MODE_FIT)) : String(tr(MsgId::SLEEP_COVER_MODE_FILL)));
             return { tr(MsgId::SETTINGS_ITEM_SLEEP_COVER), sleepVal, tr(MsgId::SETTINGS_TAG_SLEEP) };
         }
         case 4:
@@ -163,6 +163,24 @@ SettingItemDef getSyncSettingItemDef(const AppContext& ctx, int index) {
     }
 }
 
+SettingItemDef getSleepCoverSettingItemDef(const AppContext& ctx, int index) {
+    switch (index) {
+        case 0: {
+            const bool active = ctx.config.coverOnSleep && (ctx.config.sleepCoverFitMode == 0);
+            return { tr(MsgId::SLEEP_COVER_MODE_FIT), tr(MsgId::SLEEP_COVER_FIT_SUB), active ? tr(MsgId::LANG_ACTIVE_BADGE) : "" };
+        }
+        case 1: {
+            const bool active = ctx.config.coverOnSleep && (ctx.config.sleepCoverFitMode == 1);
+            return { tr(MsgId::SLEEP_COVER_MODE_FILL), tr(MsgId::SLEEP_COVER_FILL_SUB), active ? tr(MsgId::LANG_ACTIVE_BADGE) : "" };
+        }
+        case 2:
+        default: {
+            const bool active = !ctx.config.coverOnSleep;
+            return { tr(MsgId::SLEEP_COVER_MODE_OFF), tr(MsgId::SLEEP_COVER_OFF_SUB), active ? tr(MsgId::LANG_ACTIVE_BADGE) : "" };
+        }
+    }
+}
+
 const LangDef LANG_DEFS[(size_t)AppLanguage::COUNT] = {
     { AppLanguage::EN, "English", "English (Default)" },
     { AppLanguage::RU, "Русский", "Русский язык" },
@@ -208,6 +226,12 @@ void drawLanguageSettingsScreen(AppContext& ctx, bool fullRefresh) {
     drawCardScreen(ctx, tr(MsgId::LANG_SCREEN_TITLE), getLanguageItemDef, (int)AppLanguage::COUNT, ctx.selectedLanguageIndex,
                    tr(MsgId::LANG_HINT_NAV), tr(MsgId::SETTINGS_HINT_BACK), fullRefresh,
                    "drawLanguageSettingsScreen");
+}
+
+void drawSleepCoverSettingsScreen(AppContext& ctx, bool fullRefresh) {
+    drawCardScreen(ctx, tr(MsgId::SLEEP_COVER_TITLE), getSleepCoverSettingItemDef, NUM_SLEEP_COVER_ITEMS,
+                   ctx.selectedSleepCoverIndex, tr(MsgId::SETTINGS_HINT_NAV), tr(MsgId::SETTINGS_HINT_BACK),
+                   fullRefresh, "drawSleepCoverSettingsScreen");
 }
 
 // ============================================================================
@@ -306,3 +330,8 @@ void updateLanguageSettingsSelection(AppContext& ctx, int prevIndex, int newInde
     if (prevIndex != newIndex) drawLanguageSettingsScreen(ctx, false);
 }
 void updateLanguageSettingsItem(AppContext& ctx, int) { drawLanguageSettingsScreen(ctx, false); }
+
+void updateSleepCoverSettingsSelection(AppContext& ctx, int prevIndex, int newIndex) {
+    if (prevIndex != newIndex) drawSleepCoverSettingsScreen(ctx, false);
+}
+void updateSleepCoverSettingsItem(AppContext& ctx, int) { drawSleepCoverSettingsScreen(ctx, false); }

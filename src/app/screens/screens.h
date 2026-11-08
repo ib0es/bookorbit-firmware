@@ -45,6 +45,7 @@ void handleSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleWifiSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleServerSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleSyncSettingsEvent(AppContext& ctx, const ButtonEvent& event);
+void handleSleepCoverSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleLanguageSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleFrontlightEvent(AppContext& ctx, const ButtonEvent& event);
 // Touch on the frontlight screen (hit action/value from settings_view, tap x).

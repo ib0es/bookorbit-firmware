@@ -108,17 +108,16 @@ void executeSetting(AppContext& ctx, int index) {
             ctx.selectedServerSettingIndex = 0;
             drawServerSettingsScreen(ctx, false);
             break;
-        case 3:  // Sleep cover: fit -> crop -> off -> fit
-            if (ctx.config.coverOnSleep && ctx.config.sleepCoverFitMode == 0) {
-                ctx.config.sleepCoverFitMode = 1;
-            } else if (ctx.config.coverOnSleep && ctx.config.sleepCoverFitMode == 1) {
-                ctx.config.coverOnSleep = false;
+        case 3:  // Sleep cover submenu
+            ctx.currentState = STATE_SLEEP_COVER_SETTINGS;
+            if (!ctx.config.coverOnSleep) {
+                ctx.selectedSleepCoverIndex = 2;
+            } else if (ctx.config.sleepCoverFitMode == 1) {
+                ctx.selectedSleepCoverIndex = 1;
             } else {
-                ctx.config.coverOnSleep = true;
-                ctx.config.sleepCoverFitMode = 0;
+                ctx.selectedSleepCoverIndex = 0;
             }
-            ctx.config.save();
-            updateSettingsItem(ctx, 3);
+            drawSleepCoverSettingsScreen(ctx, false);
             break;
         case 4:  // Reload from SD
             if (ctx.config.load()) {
@@ -293,6 +292,26 @@ void executeSyncSetting(AppContext& ctx, int index) {
     updateSyncSettingsItem(ctx, index);
 }
 
+// ---------------------------------------------------------------- sleep cover settings
+void executeSleepCoverSetting(AppContext& ctx, int index) {
+    switch (index) {
+        case 0:
+            ctx.config.coverOnSleep = true;
+            ctx.config.sleepCoverFitMode = 0;
+            break;
+        case 1:
+            ctx.config.coverOnSleep = true;
+            ctx.config.sleepCoverFitMode = 1;
+            break;
+        case 2:
+        default:
+            ctx.config.coverOnSleep = false;
+            break;
+    }
+    ctx.config.save();
+    updateSleepCoverSettingsItem(ctx, index);
+}
+
 }  // namespace
 
 namespace SettingsScreen {
@@ -315,6 +334,11 @@ void handleServerSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
 void handleSyncSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
     handleMenu(ctx, event, ctx.selectedSyncSettingIndex, NUM_SYNC_SETTINGS_ITEMS, updateSyncSettingsSelection,
                executeSyncSetting, STATE_SETTINGS, drawSettingsScreen, false);
+}
+
+void handleSleepCoverSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
+    handleMenu(ctx, event, ctx.selectedSleepCoverIndex, NUM_SLEEP_COVER_ITEMS, updateSleepCoverSettingsSelection,
+               executeSleepCoverSetting, STATE_SETTINGS, drawSettingsScreen, false);
 }
 
 void handleLanguageSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
