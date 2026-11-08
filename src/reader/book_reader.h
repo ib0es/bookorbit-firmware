@@ -130,6 +130,18 @@ private:
     bool startBackground(int spine);
     bool stepBackground();                    // false: the job ended (done or failed)
     bool finishBackground();                  // runs the job on the current chapter to its end
+    // The chapter on screen while it is still being laid out: its pages come from
+    // the job's writer until the job ends, then from the cache file as usual.
+    bool building() const;
+    bool buildIncrementally(int spine);       // starts (or adopts) the job, waits for the first page
+    void buildUntilPages(uint32_t count);     // waits until `count` pages exist (or the chapter ends)
+    void buildUntilChar(uint32_t chars);      // until the page holding `chars` is complete
+    void buildUntilAnchor(uint32_t idHash);
+    uint32_t curCount() const;
+    uint32_t curCharStart(uint32_t page) const;
+    uint32_t curPageForChar(uint32_t chars) const;
+    bool curCharForAnchor(uint32_t idHash, uint32_t* chars) const;
+    uint32_t curTotalChars() const;           // estimated while building
 
     struct Spine {
         uint32_t bytes = 0;     // uncompressed size (estimates for chapters not laid out)

@@ -49,7 +49,7 @@ CASES = [
      lambda log, sd: "laid out in the background: ok" in log and "gave up" not in log),
     ("reader menu: font size submenu, tap 20 pt applies it and returns to the page",
      HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + "T240,236;",
-     lambda log, sd: log.split("TAP_240_236", 1)[1].count("laid out: ok") == 1 and config(sd)["font_pt"] == 20),
+     lambda log, sd: re.search(r"Chapter \d+( laid out|: first page)", log.split("TAP_240_236", 1)[1]) and config(sd)["font_pt"] == 20),
     ("reader menu: table of contents, tap a chapter",
      HOME_CARD + "w" + READ_MIDDLE + RMENU_TOC + "T240,300;",
      lambda log, sd: len(pages(log)) >= 2 and pages(log)[-1][0] != pages(log)[-2][0]),

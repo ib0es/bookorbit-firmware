@@ -88,6 +88,59 @@ static int backgroundLayout(const char* path) {
     return fail;
 }
 
+// A chapter shown while it is laid out: from a clean cache, turning pages one by
+// one (no idle time, so only what each turn needs is made) must give the very same
+// pages as the book laid out in full; stopping the job mid-chapter (leaving for the
+// library, Wi-Fi) must come back to the same text.
+static int incrementalLayout(const char* path) {
+    int fail = 0;
+    Storage.removeDir(BookReader::cacheDirFor(path).c_str());
+    BookReader::peakTransientBytes(true);
+    if (!Reader.openBook(path)) { printf("  incremental: open failed\n"); return 1; }
+    Reader.setPage(1);
+    Reader.renderCurrentPage();
+    bool built = false;   // some chapter was shown while it was laid out
+    std::vector<std::pair<int, uint32_t>> seen;
+    seen.push_back({Reader.position().spine, Reader.position().chars});
+    int stops = 0, stopFail = 0;
+    while (Reader.nextPage()) {
+        built = built || Reader.backgroundActive();
+        const BookReader::Position here = Reader.position();
+        seen.push_back({here.spine, here.chars});
+        if (seen.size() % 37 == 0 && Reader.backgroundActive()) {
+            Reader.stopBackground();
+            stops++;
+            if (Reader.position().spine != here.spine || Reader.position().chars != here.chars) {
+                if (stopFail++ < 3) printf("  incremental: after a stop at %d:%u, %d:%u\n", here.spine, (unsigned)here.chars,
+                                           Reader.position().spine, (unsigned)Reader.position().chars);
+            }
+        }
+        if (seen.size() > 100000) break;
+    }
+    const size_t peak = BookReader::peakTransientBytes();
+    const int failsDraw = Reader.renderFailures();
+    Reader.closeBook();
+    Reader.openBook(path);
+    Reader.layoutRemaining();
+    const int n = Reader.getTotalPages();
+    int differ = 0;
+    if ((int)seen.size() != n) { printf("  incremental: %d pages turned, %d in the book\n", (int)seen.size(), n); fail++; }
+    for (int p = 1; p <= n && p <= (int)seen.size(); p++) {
+        Reader.setPage(p);
+        const BookReader::Position at = Reader.position();
+        if (at.spine != seen[p - 1].first || at.chars != seen[p - 1].second) {
+            if (differ++ < 3) printf("  incremental: page %d at %d:%u, laid out in full %d:%u\n", p, seen[p - 1].first,
+                                     (unsigned)seen[p - 1].second, at.spine, (unsigned)at.chars);
+        }
+    }
+    Reader.closeBook();
+    fail += differ + stopFail + (built ? 0 : 1) + (failsDraw ? 1 : 0) + (peak > 96 * 1024 ? 1 : 0);
+    printf("  incremental: first chapter %s, %d pages turned, %d differ, %d stops, transient peak %u KB%s\n",
+           built ? "shown while laid out" : "NOT INCREMENTAL", (int)seen.size(), differ, stops, (unsigned)(peak / 1024),
+           fail ? " FAILED" : "");
+    return fail;
+}
+
 // The cover image the package declares, copied out byte for byte (a JPEG here).
 static int coverCheck(const char* path) {
     const char* out = "/covers/_roundtrip.jpg";
@@ -112,7 +165,7 @@ int main(int argc, char** argv) {
     Display.begin(); Font.begin(Display); Storage.begin();
     int totalFail = 0;
     for (int a = 2; a < argc; a++) {
-        if (String(argv[a]).endsWith(".epub")) totalFail += backgroundLayout(argv[a]) + coverCheck(argv[a]);
+        if (String(argv[a]).endsWith(".epub")) totalFail += backgroundLayout(argv[a]) + incrementalLayout(argv[a]) + coverCheck(argv[a]);
         BookReader::peakTransientBytes(true);
         if (!Reader.openBook(argv[a])) { printf("open failed %s\n", argv[a]); totalFail++; continue; }
         Reader.layoutRemaining();   // exact page numbers

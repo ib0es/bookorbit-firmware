@@ -189,10 +189,15 @@ void AppController::loop() {
     // While a page is being read, the chapters ahead are laid out in slices of a
     // few tens of milliseconds (buttons are polled between them). Leaving the page
     // or a radio coming up stops it: both need its memory.
-    if (_ctx.currentState == STATE_READING && !Modal.isActive() && !SyncService::backgroundActive()) {
-        if (millis() - _ctx.lastActivityTime > kPrelayoutIdleMs && Reader.tickBackground()) return;
-    } else if (Reader.backgroundActive()) {
-        Reader.stopBackground();
+    // The reader's own menus keep it (paused): the chapter on screen may still be
+    // coming from it, and dropping it would mean laying the chapter out again.
+    const AppState st = _ctx.currentState;
+    const bool readerScreens = st == STATE_READING || st == STATE_TOC || st == STATE_READER_MENU || st == STATE_FONT_MENU;
+    if (!readerScreens || SyncService::backgroundActive()) {
+        if (Reader.backgroundActive()) Reader.stopBackground();
+    } else if (st == STATE_READING && !Modal.isActive() && millis() - _ctx.lastActivityTime > kPrelayoutIdleMs &&
+               Reader.tickBackground()) {
+        return;
     }
 
     delay(10);

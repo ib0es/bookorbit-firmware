@@ -31,7 +31,11 @@ namespace {
 // state is small (kStoredParseBytes) and sits next to the layout buffer.
 constexpr size_t kLayoutBytes = 54 * 1024;        // layout state + page index chunks + image pre-scan
 constexpr size_t kStoredParseBytes = 10 * 1024;   // XML parse of a stored chapter (2.6 KB seen)
-constexpr size_t kInflateBytes = 48 * 1024;       // one inflate stream (window + decompressor)
+constexpr size_t kInflateBytes = 48 * 1024;
+// Most the transient buffers may hold together (the X4's free heap after boot is
+// ~140 KB, its biggest block ~96 KB): a page or image that would go past it while
+// a background job holds its ~64 KB stops (or finishes) the job first.
+constexpr size_t kTransientBudget = 96 * 1024;       // one inflate stream (window + decompressor)
 constexpr size_t kIndexScratchBytes = 24 * 1024;  // container index build (more for huge books, retried)
 constexpr size_t kRenderBytes = 12 * 1024;      // one page's runs and text (first try)
 constexpr size_t kImageBytes = 52 * 1024;       // inflate + decode of a page's images
@@ -127,6 +131,7 @@ struct BookReader::Prelayout {
     PageCacheWriter writer;
     ChapterLayoutSession session;
     bool writing = false;
+    bool current = false;   // the chapter on screen (pages served from `writer`)
 
     ~Prelayout() {
         session.abort();
@@ -358,7 +363,13 @@ int BookReader::pagesOf(int spine) const {
     if (spine < 0 || spine >= (int)_spines.size()) return 0;
     const Spine& s = _spines[spine];
     if (s.pages >= 0) return s.pages;
-    const int est = (int)((float)s.bytes * pagesPerByte() + 0.5f);
+    int est = (int)((float)s.bytes * pagesPerByte() + 0.5f);
+    if (building() && _bg->spine == spine && _bg->session.bytesConsumed() > 0) {
+        // Being laid out: the pages made so far, extrapolated over the rest of its bytes.
+        const uint32_t made = _bg->writer.pageCount();
+        est = (int)((double)made * (double)_bg->session.bytesTotal() / (double)_bg->session.bytesConsumed() + 0.5);
+        if (est < (int)made) est = (int)made;
+    }
     return est < 1 ? 1 : est;
 }
 
@@ -366,6 +377,7 @@ uint32_t BookReader::charsOf(int spine) const {
     if (spine < 0 || spine >= (int)_spines.size()) return 0;
     const Spine& s = _spines[spine];
     if (s.pages >= 0) return s.chars;
+    if (building() && _bg->spine == spine) return curTotalChars();
     constexpr float kPriorBytes = 64.0f * 1024.0f;   // as in pagesPerByte()
     uint64_t chars = 0, bytes = 0;
     for (const auto& o : _spines) {
@@ -504,13 +516,19 @@ bool BookReader::loadChapter(int spine) {
     if (spine < 0 || spine >= (int)_spines.size()) return false;
     if (_loadedSpine == spine) return true;
     releaseIndex();
+    if (_bg) _bg->current = false;
     char name[48];
     pageCacheName((uint16_t)spine, _gen, name, sizeof(name));
     bool laidOut = false;
-    if (_bg && _bg->spine == spine) finishBackground();   // half done: finish it rather than start over
     if (!_cache.exists(name)) {
-        if (!layoutChapter(spine)) return false;
-        laidOut = true;
+        // Shown while it is laid out: the first page comes up as soon as it is made,
+        // the rest follows behind the reader (or when a page not made yet is asked for).
+        if (!_isTxt && !_spines[spine].bgFailed && buildIncrementally(spine)) return true;
+        if (_bg && _bg->spine == spine) stopBackground();
+        if (!_cache.exists(name)) {
+            if (!layoutChapter(spine)) return false;
+            laidOut = true;
+        }
     }
     // The page index stays allocated while the chapter is read: sized to it.
     size_t cap = 2048;
@@ -546,26 +564,37 @@ bool BookReader::loadChapter(int spine) {
 bool BookReader::resolve() {
     if (!loadChapter(_spine)) return false;
     // A chapter without pages (an empty or image-less placeholder): the next one.
-    while (_pages.pageCount() == 0) {
+    while (curCount() == 0) {
         const bool back = _want == Want::LastPage;
         const int next = back ? _spine - 1 : _spine + 1;
         if (next < 0 || next >= (int)_spines.size()) return false;
         _spine = next;
         if (!loadChapter(_spine)) return false;
     }
-    const int count = (int)_pages.pageCount();
+    // While the chapter is still being laid out, only as much as the target needs.
     switch (_want) {
-        case Want::Char: _page = (int)_pages.pageForChar(_wantValue); break;
+        case Want::Char: buildUntilChar(_wantValue); break;
+        case Want::Page: buildUntilPages(_wantValue + 1); break;
+        case Want::Anchor: buildUntilAnchor(_wantValue); break;
+        case Want::LastPage:
+        case Want::Fraction: if (building()) finishBackground(); break;   // needs the chapter's end
+        case Want::None: buildUntilPages((uint32_t)_page + 1); break;
+    }
+    if (_loadedSpine != _spine && !loadChapter(_spine)) return false;   // the job failed: laid out in full
+    const int count = (int)curCount();
+    if (count == 0) return false;
+    switch (_want) {
+        case Want::Char: _page = (int)curPageForChar(_wantValue); break;
         case Want::Page: _page = (int)_wantValue; break;
         case Want::LastPage: _page = count - 1; break;
         case Want::Anchor: {
             uint32_t at = 0;
-            _page = _pages.charForAnchor(_wantValue, &at) ? (int)_pages.pageForChar(at) : 0;
+            _page = curCharForAnchor(_wantValue, &at) ? (int)curPageForChar(at) : 0;
             break;
         }
         case Want::Fraction: {
-            const uint32_t total = _pages.totalChars();
-            _page = (int)_pages.pageForChar((uint32_t)((double)total * _wantFraction + 0.5));
+            const uint32_t total = curTotalChars();
+            _page = (int)curPageForChar((uint32_t)((double)total * _wantFraction + 0.5));
             break;
         }
         case Want::None: break;
@@ -686,6 +715,16 @@ bool BookReader::tickBackground() {
 
 void BookReader::stopBackground() {
     if (!_bg) return;
+    if (_bg->current) {
+        // The chapter on screen loses its pages: come back to the same text when it is laid out again.
+        // By page number: laid out again it gives the same pages, and an image page
+        // shares its character position with the page after it.
+        if (_want == Want::None && _loadedSpine == _bg->spine && _bg->writer.pageCount() > 0) {
+            _want = Want::Page;
+            _wantValue = (uint32_t)_page;
+        }
+        _loadedSpine = -1;
+    }
     Serial.printf("[Reader] Background layout of chapter %d stopped\n", _bg->spine);
     delete _bg;
     _bg = nullptr;
@@ -799,19 +838,30 @@ bool BookReader::stepBackground() {
                       (unsigned long)job->busyMs, (unsigned long)(millis() - job->t0),
                       (unsigned)job->layout.highWater());
         const int spine = job->spine;
+        const bool current = job->current;
+        if (!ok) {
+            job->current = false;
+            if (current) {
+                if (_want == Want::None && pages > 0) { _want = Want::Page; _wantValue = (uint32_t)_page; }
+                _loadedSpine = -1;
+            }
+        }
         delete job;
         _bg = nullptr;
         if (ok) commitLaidOut(spine, pages, chars);
         else _spines[spine].bgFailed = true;
+        if (ok && current) {
+            _loadedSpine = -1;   // the same pages, now from the finished cache file
+            loadChapter(spine);
+        }
         return false;
     }
     if (failed) {
         // A chapter too big for the background buffer (or unreadable): the foreground
-        // lays it out when the reader gets there, with its retries.
+        // lays it out when the reader gets there (or now, if it is on screen), with its retries.
         Serial.printf("[Reader] Background layout of chapter %d gave up\n", job->spine);
         _spines[job->spine].bgFailed = true;
-        delete job;
-        _bg = nullptr;
+        stopBackground();
         return false;
     }
     return true;
@@ -829,6 +879,72 @@ bool BookReader::finishBackground() {
     return true;
 }
 
+bool BookReader::building() const { return _bg && _bg->current; }
+
+bool BookReader::buildIncrementally(int spine) {
+    if (!_bg || _bg->spine != spine) {
+        stopBackground();
+        ZipEntry e;
+        if (_catalog.spineEntry((size_t)spine, &e) == BookStatus::Ok && e.method != 0 && e.uncompressedSize > 200000) {
+            drawStatusModal(tr(MsgId::READER_FORMAT_TITLE), _title.substring(0, 32).c_str(), tr(MsgId::READER_FORMAT_LINE),
+                            tr(MsgId::READER_OPENING_WAIT));   // unpacking a big one takes seconds
+        }
+        if (!startBackground(spine)) return false;
+    }
+    _bg->current = true;
+    _loadedSpine = spine;
+    const uint32_t t0 = millis();
+    buildUntilPages(1);
+    if (building()) {
+        Serial.printf("[Reader] Chapter %d: first page in %lu ms, the rest is laid out behind the reader\n", spine,
+                      (unsigned long)(millis() - t0));
+    }
+    return _loadedSpine == spine;
+}
+
+void BookReader::buildUntilPages(uint32_t count) {
+    while (building() && _bg->writer.pageCount() < count) stepBackground();
+}
+
+void BookReader::buildUntilChar(uint32_t chars) {
+    // The page holding `chars` is complete once a later page starts after it.
+    while (building()) {
+        const uint32_t n = _bg->writer.pageCount();
+        if (n > 0 && _bg->writer.charStart(n - 1) > chars) break;
+        stepBackground();
+    }
+}
+
+void BookReader::buildUntilAnchor(uint32_t idHash) {
+    uint32_t at = 0;
+    while (building() && !_bg->writer.charForAnchor(idHash, &at)) stepBackground();
+    if (building()) buildUntilChar(at);
+}
+
+uint32_t BookReader::curCount() const { return building() ? _bg->writer.pageCount() : _pages.pageCount(); }
+
+uint32_t BookReader::curCharStart(uint32_t page) const {
+    return building() ? _bg->writer.charStart(page) : _pages.charStart(page);
+}
+
+uint32_t BookReader::curPageForChar(uint32_t chars) const {
+    return building() ? _bg->writer.pageForChar(chars) : _pages.pageForChar(chars);
+}
+
+bool BookReader::curCharForAnchor(uint32_t idHash, uint32_t* chars) const {
+    return building() ? _bg->writer.charForAnchor(idHash, chars) : _pages.charForAnchor(idHash, chars);
+}
+
+uint32_t BookReader::curTotalChars() const {
+    if (!building()) return _pages.totalChars();
+    // Not known before the end: the characters so far, extrapolated over the bytes left.
+    const uint32_t n = _bg->writer.pageCount();
+    const uint64_t done = _bg->session.bytesConsumed(), total = _bg->session.bytesTotal();
+    const uint32_t made = n > 0 ? _bg->writer.charStart(n - 1) : 0;
+    if (done == 0) return made;
+    return (uint32_t)((double)made * (double)total / (double)done);
+}
+
 // ---------------------------------------------------------------- position
 
 BookReader::Position BookReader::position() const {
@@ -837,7 +953,7 @@ BookReader::Position BookReader::position() const {
     p.spine = _spine;
     if (_want == Want::Char) p.chars = _wantValue;
     else if (_want == Want::Fraction) p.chars = (uint32_t)(_wantFraction * charsOf(_spine));
-    else if (_want == Want::None && _loadedSpine == _spine) p.chars = _pages.charStart((uint32_t)_page);
+    else if (_want == Want::None && _loadedSpine == _spine) p.chars = curCharStart((uint32_t)_page);
     return p;
 }
 
@@ -859,7 +975,7 @@ float BookReader::getProgress() const {
     }
     double inChapter = 0.0;
     if (_want == Want::Fraction) inChapter = _wantFraction;
-    else if (_loadedSpine == here.spine && _pages.totalChars() > 0) inChapter = (double)here.chars / _pages.totalChars();
+    else if (_loadedSpine == here.spine && curTotalChars() > 0) inChapter = (double)here.chars / curTotalChars();
     else if (charsOf(here.spine) > 0) inChapter = (double)here.chars / charsOf(here.spine);
     if (inChapter > 1.0) inChapter = 1.0;
     const double at = (double)before + inChapter * (double)_spines[here.spine].bytes;
@@ -1077,7 +1193,7 @@ int BookReader::getCurrentChapterIndex() const {
         if (spine > here.spine) break;
         if (spine == here.spine && _tocFragment[i] != 0 && _loadedSpine == spine) {
             uint32_t at = 0;
-            if (_pages.charForAnchor(_tocFragment[i], &at) && at > here.chars) break;
+            if (curCharForAnchor(_tocFragment[i], &at) && at > here.chars) break;
         }
         idx = i;
     }
@@ -1124,7 +1240,9 @@ bool BookReader::prevChapter() {
 
 bool BookReader::nextPage() {
     if (!_opened || !resolve()) return false;
-    if (_page + 1 < (int)_pages.pageCount()) {
+    buildUntilPages((uint32_t)_page + 2);
+    if (_loadedSpine != _spine && !resolve()) return false;
+    if (_page + 1 < (int)curCount()) {
         _page++;
     } else {
         if (_spine + 1 >= (int)_spines.size()) return false;
@@ -1203,13 +1321,16 @@ void BookReader::renderCurrentPage() {
         return;
     }
     Serial.printf("[Reader] Page %d/%d (chapter %d, page %d/%u)\n", getCurrentPage(), getTotalPages(), _spine,
-                  _page + 1, (unsigned)_pages.pageCount());
+                  _page + 1, (unsigned)curCount());
     Display.clear(EPD_WHITE);
     drawStatusBar();
     // A page record: runs plus text; justified text is many runs. Retried larger
     // when the page does not fit (dense pages need ~15 KB).
     for (size_t cap = kRenderBytes; cap <= 64 * 1024; cap *= 2) {
-        if (_bg && MemStats::now().largestBlock < cap + 4096) stopBackground();
+        if (_bg && (g_liveTransient + cap > kTransientBudget || MemStats::now().largestBlock < cap + 4096)) {
+            if (building()) finishBackground();   // the page on screen comes from it: finished, not dropped
+            else stopBackground();
+        }
         Buffer mem(cap);
         if (!mem.p) {
             Serial.printf("[Reader] No memory to draw the page (%u B)\n", (unsigned)cap);
@@ -1218,7 +1339,8 @@ void BookReader::renderCurrentPage() {
         }
         Arena arena(mem.p, cap);
         Page page{};
-        const BookStatus st = _pages.readPage((uint32_t)_page, arena, &page);
+        const BookStatus st = building() ? _bg->writer.readPage((uint32_t)_page, arena, &page)
+                                         : _pages.readPage((uint32_t)_page, arena, &page);
         if (st == BookStatus::OutOfMemory && cap < 64 * 1024) continue;
         if (st != BookStatus::Ok) {
             _renderFailures++;
@@ -1232,7 +1354,11 @@ void BookReader::renderCurrentPage() {
         if (missing) Serial.printf("[Reader] %u characters not in the font (first U+%04X)\n", (unsigned)missing,
                                    (unsigned)firstMissing);
         if (page.imageCount > 0 && !_isTxt) {
-            if (_bg && MemStats::now().largestBlock < kImageBytes + 4096) stopBackground();
+            if (_bg && (g_liveTransient + kImageBytes > kTransientBudget ||
+                        MemStats::now().largestBlock < kImageBytes + 4096)) {
+                if (building()) finishBackground();   // the page record is in our buffer: still valid
+                else stopBackground();
+            }
             Buffer img(kImageBytes);
             if (img.p) {
                 Arena a(img.p, kImageBytes);
