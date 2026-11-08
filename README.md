@@ -102,6 +102,15 @@ Copy `include/secrets.example.h` to `include/secrets.h` (this file is ignored by
 
 ## 3. Building and Flashing via PlatformIO
 
+### Clone repository with submodules:
+```bash
+git clone --recurse-submodules https://github.com/ib0es/bookorbit-firmware.git
+cd bookorbit-firmware
+
+# If cloned previously without --recurse-submodules:
+git submodule update --init --recursive
+```
+
 ### Using the PlatformIO CLI:
 ```bash
 # Build and flash default target (Xteink X4):

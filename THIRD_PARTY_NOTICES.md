@@ -4,11 +4,13 @@ Book Orbit firmware is released under the MIT License (see `LICENSE`). It
 includes or links the third-party components listed below, each under its own
 license.
 
-## Bundled in this repository
+## Git submodules
 
 | Component | Where | License |
 |---|---|---|
-| FreeInk SDK (display, input, power, SD card, UI, book libraries) | `freeink-sdk/` | MIT — see `freeink-sdk/LICENSE` and `freeink-sdk/NOTICE` (code derived from the OpenX4 E-Paper community SDK, MIT). Libraries under `freeink-sdk/libs/book/FreeInkBook/third_party/` (expat, libunibreak, miniz, pngle, stb, TJpgDec, hyphenation patterns) keep their license files or headers there |
+| FreeInk SDK (display, input, power, SD card, UI, book libraries) | `freeink-sdk/` (git submodule from `Free-Ink/freeink-sdk`) | MIT — see `freeink-sdk/LICENSE` and `freeink-sdk/NOTICE` (code derived from the OpenX4 E-Paper community SDK, MIT). Libraries under `freeink-sdk/libs/book/FreeInkBook/third_party/` (expat, libunibreak, miniz, pngle, stb, TJpgDec, hyphenation patterns) keep their license files or headers there |
+
+## Bundled in this repository
 | miniz | `src/reader/miniz.c`, `src/reader/miniz.h` | MIT — Copyright 2013-2014 RAD Game Tools and Valve Software, 2010-2014 Rich Geldreich and Tenacious Software LLC (license text in the file header) |
 | TJpgDec (JPEG decoder) | `freeink-sdk/libs/book/FreeInkBook/third_party/tjpgd/` | ChaN's free license (text in `tjpgd.c`) |
 | DejaVu Serif Condensed, DejaVu Sans glyphs (rendered to bitmaps) | `src/ui/book_fonts.h`, `src/ui/kit/ui_fonts.h` | Bitstream Vera Fonts license and Arev Fonts license; DejaVu changes are public domain — `LICENSES/DejaVu-Fonts-License.txt` |

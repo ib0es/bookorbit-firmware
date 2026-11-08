@@ -1,0 +1,32 @@
+# FreeInk SDK local patches for Xteink X4 / X3 SPI bus sharing
+# Kept for reference or re-application if needed.
+
+diff --git a/libs/display/FreeInkDisplay/src/driver/PanelDriver.h b/libs/display/FreeInkDisplay/src/driver/PanelDriver.h
+--- a/libs/display/FreeInkDisplay/src/driver/PanelDriver.h
++++ b/libs/display/FreeInkDisplay/src/driver/PanelDriver.h
+@@ -13,6 +13,7 @@
+ #include <Arduino.h>
++#include <BoardConfig.h>
+
+ #include "../../include/GrayscaleCapabilities.h"
+ #include "../bus/EpdBus.h"
+@@ -41,8 +42,8 @@ class PanelDriver {
+   virtual uint32_t spiHz() const = 0;
+   virtual BusyPolarity busyPolarity() const = 0;
+   virtual PanelGeometry geometry() const = 0;
+-  virtual int8_t spiMiso() const { return -1; }  // SSD1677 uses none; M5 shares MISO
+-  virtual int8_t coCs() const { return -1; }     // co-resident SPI CS to hold high (M5 SD)
++  virtual int8_t spiMiso() const { return BoardConfig::ACTIVE.sd.miso; }  // shares SD MISO if present
++  virtual int8_t coCs() const { return BoardConfig::ACTIVE.sd.cs; }        // co-resident SPI CS to hold high
+
+diff --git a/libs/hardware/SDCardManager/src/SDCardManager.cpp b/libs/hardware/SDCardManager/src/SDCardManager.cpp
+--- a/libs/hardware/SDCardManager/src/SDCardManager.cpp
++++ b/libs/hardware/SDCardManager/src/SDCardManager.cpp
+@@ -212,7 +212,7 @@ bool SDCardManager::begin() {
+   } else {
+ #endif
+     if (SD_SCLK >= 0 && SD_MOSI >= 0 && SD_MISO >= 0) {
+-      SPI.begin(SD_SCLK, SD_MISO, SD_MOSI, SD_CS);
++      SPI.begin(SD_SCLK, SD_MISO, SD_MOSI, -1);
+     }
+     // Other boards keep the single attempt so a missing card fails fast.
