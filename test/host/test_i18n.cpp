@@ -7,7 +7,7 @@ int main() {
     printf("Testing I18n subsystem...\n");
 
     // 1. Language count
-    assert(I18n::getLanguageCount() == 2);
+    assert(I18n::getLanguageCount() == 3);
 
     // 2. Default language should be EN
     I18n::setLanguage(AppLanguage::EN);
@@ -58,6 +58,8 @@ int main() {
     assert(strcmp(I18n::getLanguageName(static_cast<AppLanguage>(0)), "English") == 0);
     assert(strcmp(I18n::getLanguageCode(static_cast<AppLanguage>(1)), "ru") == 0);
     assert(strcmp(I18n::getLanguageName(static_cast<AppLanguage>(1)), "Русский") == 0);
+    assert(strcmp(I18n::getLanguageCode(static_cast<AppLanguage>(2)), "es") == 0);
+    assert(strcmp(I18n::getLanguageName(static_cast<AppLanguage>(2)), "Español") == 0);
 
     printf("All I18n tests passed successfully!\n");
     return 0;
