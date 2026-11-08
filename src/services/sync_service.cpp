@@ -10,7 +10,7 @@
 #include "../ui/views/library_view.h"
 #include "../ui/views/settings_view.h"
 #include "../ui/i18n.h"
-#include "../reader/simple_reader.h"
+#include "../reader/reader.h"
 #include "progress_sync.h"
 #include "sync_clock.h"
 

@@ -1,7 +1,7 @@
 #include "reader_menu_view.h"
 #include "../../hal/display.h"
 #include "../../ui/font.h"
-#include "../../reader/simple_reader.h"
+#include "../../reader/reader.h"
 #include "../i18n.h"
 #include "../kit/ui_kit.h"
 
@@ -124,7 +124,7 @@ void drawReaderMenuScreen(AppContext& ctx, bool fullRefresh) {
     else snprintf(chDesc, sizeof(chDesc), "%s", tr(MsgId::READER_MENU_TOC_NONE));
     char fontVal[64];
     snprintf(fontVal, sizeof(fontVal), tr(MsgId::READER_MENU_FONT_FMT),
-             SimpleReader::getFontSizeName(ctx.config.readerFontSize));
+             BookReader::getFontSizeName(ctx.config.readerFontSize));
 
     struct Item { const char* title; const char* value; const char* tag; };
     const Item items[NUM_READER_MENU_ITEMS] = {
@@ -151,7 +151,7 @@ void drawReaderMenuScreen(AppContext& ctx, bool fullRefresh) {
         fill(band, Color::Black);
         char previewTitle[64];
         snprintf(previewTitle, sizeof(previewTitle), tr(MsgId::READER_MENU_PREVIEW_TITLE_FMT),
-                 SimpleReader::getFontSizeName(ctx.config.readerFontSize));
+                 BookReader::getFontSizeName(ctx.config.readerFontSize));
         text(insetX(band, 8), previewTitle, FontSmall, Color::White);
         Font.drawString(box.x + 8, box.y + 8, tr(MsgId::READER_MENU_SAMPLE_TEXT), EPD_BLACK, ctx.config.readerFontSize,
                         box.width - 16, box.bottom() - 4);
@@ -204,7 +204,7 @@ void drawFontMenuScreen(AppContext& ctx, bool fullRefresh) {
         if (isSel) fill(row, Color::Black, 4);
         else frameRect(row, Color::Black, 1, 4);
         char label[16];
-        snprintf(label, sizeof(label), cur ? "%s \xE2\x9C\x93" : "%s", SimpleReader::getFontSizeName(i));  // U+2713
+        snprintf(label, sizeof(label), cur ? "%s \xE2\x9C\x93" : "%s", BookReader::getFontSizeName(i));  // U+2713
         text(Rect{(int16_t)(row.x + 10), row.y, labelW, row.height}, label, FontBody, isSel ? Color::White : Color::Black);
         // The sample in the book font itself, vertically centred.
         const int sx = row.x + 10 + labelW;

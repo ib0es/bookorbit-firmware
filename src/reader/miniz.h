@@ -1,3 +1,21 @@
+/* The firmware's own miniz (EPUB unpacking with a reusable workspace) links next to
+ * FreeInkBook's vendored one (tinfl only, see its MinizConfig.h): the symbols both
+ * define get the bo_ prefix here. */
+#define miniz_def_alloc_func bo_miniz_def_alloc_func
+#define miniz_def_free_func bo_miniz_def_free_func
+#define miniz_def_realloc_func bo_miniz_def_realloc_func
+#define mz_error bo_mz_error
+#define mz_inflate bo_mz_inflate
+#define mz_inflateEnd bo_mz_inflateEnd
+#define mz_inflateInit bo_mz_inflateInit
+#define mz_inflateInit2 bo_mz_inflateInit2
+#define mz_inflateReset bo_mz_inflateReset
+#define mz_uncompress bo_mz_uncompress
+#define mz_uncompress2 bo_mz_uncompress2
+#define mz_version bo_mz_version
+#define tinfl_decompressor_alloc bo_tinfl_decompressor_alloc
+#define tinfl_decompressor_free bo_tinfl_decompressor_free
+
 /*
  * Book Orbit X4: PATCHED copy of miniz 3.1.2 for the ESP32-C3 (no PSRAM).
  * This is the only miniz compiled into the firmware. The copies under

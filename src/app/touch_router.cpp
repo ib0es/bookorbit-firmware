@@ -2,7 +2,7 @@
 #include "../services/library_manager.h"
 #include "../ui/kit/ui_kit.h"
 #include "screens/screens.h"
-#include "../reader/simple_reader.h"
+#include "../reader/reader.h"
 #include "../ui/views/library_view.h"
 #include "../ui/views/reader_menu_view.h"
 #include "../ui/font.h"

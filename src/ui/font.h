@@ -31,6 +31,20 @@ public:
     static int paragraphIndent(int body);           // first-line indent, px
     static int clampSize(int scale);
 
+    // Raw access to the book fonts for the layout engine's font adapter
+    // (src/reader/engine/bitmap_book_font.cpp); book_fonts.h is compiled here only.
+    struct GlyphInfo {
+        const uint8_t* bits;   // 1 bpp, MSB first, rows not padded
+        uint8_t width, height;
+        int8_t xOffset, yOffset;
+        uint8_t advance;
+    };
+    static int fontIndexForPx(int px);                  // nearest size
+    static int fontPx(int index);
+    static int fontAscent(int index);
+    static int fontDescent(int index);
+    static bool glyph(int index, uint32_t cp, GlyphInfo& out);   // false: not in the font
+
     // Draw string with word wrapping
     // Wraps within `maxWidth` px from x; stops before a line would start below maxY
     // (-1: the bottom of the screen less 40 px). Returns the y under the last line.

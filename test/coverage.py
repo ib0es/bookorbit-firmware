@@ -18,10 +18,12 @@ TARGETS = [
     "src/net/opds_stream_parser.cpp",
     "src/net/book_formats.cpp",
     "src/reader/epub_cfi.cpp",
+    "src/reader/engine/engine_text_counter.cpp",
 ]
 # Shown for information, not counted: the HTTP/Wi-Fi transport also serves the
 # settings screens (connection test, Wi-Fi), which these tests do not drive.
-INFO = ["src/net/bookorbit_client.cpp", "src/services/library_manager.cpp"]
+INFO = ["src/net/bookorbit_client.cpp", "src/services/library_manager.cpp", "src/reader/book_reader.cpp",
+        "src/reader/engine/sd_book_storage.cpp", "src/reader/engine/bitmap_book_font.cpp"]
 
 def main():
     ap = argparse.ArgumentParser()

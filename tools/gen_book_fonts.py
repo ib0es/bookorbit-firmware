@@ -18,6 +18,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 FACE = "dejavu/DejaVuSerifCondensed.ttf"
 SIZES = list(range(12, 49, 2))
+THRESHOLD = 112   # coverage (0..255) that inks a pixel: a little under half keeps thin serifs
 CODEPOINTS = sorted(set(range(0x20, 0x7F)) | set(range(0xA0, 0x100)) | set(range(0x400, 0x460)) |
                     set(range(0x2010, 0x2016)) | set(range(0x2018, 0x201F)) |
                     {0x2020, 0x2021, 0x2022, 0x2026, 0x2030, 0x2039, 0x203A, 0x2116})
@@ -29,10 +30,22 @@ def glyph(font, cp):
     bbox = font.getbbox(ch, anchor="ls")
     if bbox is None or bbox[2] - bbox[0] <= 0 or bbox[3] - bbox[1] <= 0:
         return adv, 0, 0, 0, 0, b""
+    # Draw with a margin and crop to the pixels actually set: Pillow's bbox can be
+    # a pixel short of the 1-bit rendering, which cut the right edge off round
+    # letters (the bowl of "p", "b", "d", "o" at some sizes).
+    pad = 4
     l, t, r, b = bbox
-    w, h = r - l, b - t
-    img = Image.new("1", (w, h), 0)
-    ImageDraw.Draw(img).text((-l, -t), ch, font=font, fill=1, anchor="ls")
+    # Anti-aliased, then thresholded: FreeType's 1-bit mode hints DejaVu
+    # unevenly at small sizes (some stems doubled, some letters thinned).
+    gray = Image.new("L", (r - l + 2 * pad, b - t + 2 * pad), 0)
+    ImageDraw.Draw(gray).text((pad - l, pad - t), ch, font=font, fill=255, anchor="ls")
+    img = gray.point(lambda v: 1 if v >= THRESHOLD else 0, mode="1")
+    ink = img.getbbox()
+    if ink is None:
+        return adv, 0, 0, 0, 0, b""
+    img = img.crop(ink)
+    l, t = l - pad + ink[0], t - pad + ink[1]
+    w, h = img.size
     px = img.load()
     out = bytearray()
     acc = n = 0

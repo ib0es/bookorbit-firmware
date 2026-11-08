@@ -1,7 +1,7 @@
 #include "library_manager.h"
 #include "progress_sync.h"
 #include "sync_clock.h"
-#include "../reader/simple_reader.h"
+#include "../reader/reader.h"
 #include "../reader/epub_extractor.h"
 #include "../ui/jpeg_viewer.h"
 #include "../net/bookorbit_client.h"
@@ -167,10 +167,13 @@ void LibraryManager::deleteBookArtifacts(const BookItem& book, bool removeCover)
     removeIfExists(book.filePath + ".idx");
     for (int f = 0; f < 4; f++) removeIfExists(book.filePath + "_f" + String(f) + ".idx");
 
-    // /cache/<stem>.*: text, TOC, spine, CFI map, temp files and every page
-    // index (all font sizes and screen geometries, so one SD card shared by
-    // several devices is cleaned too). Matched by exact suffix so that a book
-    // whose name starts the same ("Name" vs "Name (2020)") is left alone.
+    // The layout engine's cache directory (container index, page caches of every
+    // font size and screen, so one SD card shared by several devices is cleaned too).
+    const String fib = BookReader::cacheDirFor(book.filePath);
+    if (Storage.exists(fib.c_str())) Storage.removeDir(fib.c_str());
+
+    // Caches of the old text converter: /cache/<stem>.*. Matched by exact suffix
+    // so that a book whose name starts the same ("Name" vs "Name (2020)") is left alone.
     const String stem = stemOf(book.filePath);
     if (stem.length() > 0) {
         const String txt = stem + ".txt";
@@ -194,13 +197,15 @@ void LibraryManager::deleteBookArtifacts(const BookItem& book, bool removeCover)
 namespace {
 
 // Stems (file name without extension) of every book file under `dir`.
-void collectBookStems(const String& dir, int depth, std::vector<String>& out, int& files) {
+void collectBookStems(const String& dir, int depth, std::vector<String>& out, int& files,
+                      std::vector<String>* names = nullptr) {
     if (depth > 4) return;
     for (const DirEntry& e : Storage.listDirectory(dir)) {  // books and folders only
         if (e.isDirectory) {
-            collectBookStems(e.fullPath, depth + 1, out, files);
+            collectBookStems(e.fullPath, depth + 1, out, files, names);
         } else {
             out.push_back(stemOf(e.name));
+            if (names) names->push_back(e.name);
             files++;
         }
     }
@@ -209,17 +214,6 @@ void collectBookStems(const String& dir, int depth, std::vector<String>& out, in
 bool contains(const std::vector<String>& v, const String& s) {
     for (const String& x : v) if (x == s) return true;
     return false;
-}
-
-// The book stem a /cache file belongs to, "" if the name is not one we write.
-String cacheOwner(const String& n) {
-    const char* exact[] = { ".toc.tmp", ".toc", ".spine", ".cfimap" };
-    for (const char* sfx : exact) {
-        if (n.endsWith(sfx)) return n.substring(0, n.length() - strlen(sfx));
-    }
-    const int t = n.lastIndexOf(".txt");  // .txt, .txt.idx, .txt_f1[_WxH].idx, .txt.tmp
-    if (t > 0) return n.substring(0, t);
-    return "";
 }
 
 // The cover stem a /covers file belongs to, "" if the name is not one we write.
@@ -237,9 +231,9 @@ void LibraryManager::cleanOrphanFiles() {
     if (!Storage.isAvailable()) return;
     const uint32_t t0 = millis();
 
-    std::vector<String> books;
+    std::vector<String> books, bookNames;
     int bookFiles = 0;
-    collectBookStems("/", 0, books, bookFiles);
+    collectBookStems("/", 0, books, bookFiles, &bookNames);
     if (bookFiles == 0) {
         // An empty or unreadable card would make every cache file look orphaned.
         Serial.println("[Library] Cleanup skipped: no book files found.");
@@ -256,14 +250,18 @@ void LibraryManager::cleanOrphanFiles() {
     }
 
     int removed = 0;
+    // Plain files in /cache are the old text converter's (text, TOC, spine, page
+    // indices): the layout engine keeps everything in per-book directories.
     for (const String& n : Storage.listFileNames("/cache")) {
-        // Leftover scratch files of an interrupted EPUB conversion.
-        const bool scratch = (n.startsWith(".") && n.endsWith(".tmp")) ||
-                             // page indices of the old U8g2 fonts (<stem>.txt_f<0..3>[_WxH].idx)
-                             (n.indexOf(".txt_f") > 0 && n.endsWith(".idx"));
-        const String owner = scratch ? String() : cacheOwner(n);
-        if (scratch || (owner.length() > 0 && !contains(books, owner))) {
-            removeIfExists("/cache/" + n);
+        removeIfExists("/cache/" + n);
+        removed++;
+    }
+    // "<file name>.fib": the layout cache of a book that is no longer on the card.
+    for (const String& d : Storage.listSubdirs("/cache")) {
+        if (!d.endsWith(".fib")) continue;
+        const String file = d.substring(0, d.length() - 4);
+        if (!contains(bookNames, file)) {
+            Storage.removeDir(("/cache/" + d).c_str());
             removed++;
         }
     }

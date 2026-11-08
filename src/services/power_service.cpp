@@ -12,7 +12,7 @@
 #include "../ui/i18n.h"
 #include "library_manager.h"
 #include "sync_service.h"
-#include "../reader/simple_reader.h"
+#include "../reader/reader.h"
 #include "../net/bookorbit_client.h"
 #include "../app/app_controller.h"
 #include "../hal/buttons.h"

@@ -96,6 +96,31 @@ bool StorageManager::mkdir(const char* path) {
     return SDCardManager::getInstance().mkdir(path);
 }
 
+bool StorageManager::removeDir(const char* path) {
+    return SDCardManager::getInstance().removeDir(path);
+}
+
+std::vector<String> StorageManager::listSubdirs(const String& path) {
+    std::vector<String> result;
+    if (!isAvailable()) return result;
+    FsFile dir = open(path.c_str(), O_RDONLY);
+    if (!dir || !dir.isDirectory()) {
+        if (dir) dir.close();
+        return result;
+    }
+    char nameBuf[256];
+    FsFile entry;
+    while (entry.openNext(&dir, O_RDONLY)) {
+        if (entry.isDirectory()) {
+            entry.getName(nameBuf, sizeof(nameBuf));
+            result.push_back(String(nameBuf));
+        }
+        entry.close();
+    }
+    dir.close();
+    return result;
+}
+
 std::vector<String> StorageManager::listBooks() {
     std::vector<String> books;
     if (!isAvailable()) return books;
@@ -179,10 +204,8 @@ std::vector<DirEntry> StorageManager::listDirectory(const String& path) {
         if (isDir) {
             result.push_back({ name, fullPath, true, 0 });
         } else {
-            String lower = name;
-            lower.toLowerCase();
-            if (lower.endsWith(".epub") || lower.endsWith(".epu") || 
-                lower.endsWith(".txt") || lower.endsWith(".fb2")) {
+            // Every book format the library lists (EPUB, FB2, MOBI, AZW3, AZW, TXT).
+            if (BookFormats::fromPath(name.c_str()) != BookFormats::Unknown) {
                 result.push_back({ name, fullPath, false, sz });
             }
         }

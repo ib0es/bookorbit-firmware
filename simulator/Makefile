@@ -8,10 +8,17 @@ CXXFLAGS += -Isimulator/lib_adafruit_gfx
 CXXFLAGS += -Isimulator/lib_arduinojson/src
 CXXFLAGS += -Ifreeink-sdk/libs/book/FreeInkBook/third_party/tjpgd
 CXXFLAGS += -Ifreeink-sdk/libs/ui/FreeInkUI/include
+# FreeInkBook (EPUB layout engine) + FreeInkFont, small memory profile like the X4.
+FIB := freeink-sdk/libs/book/FreeInkBook
+FIB_INCLUDES := -DFREEINK_BOOK_SMALL=1 -I$(FIB)/include -I$(FIB)/third_party/expat -I$(FIB)/third_party/miniz \
+    -I$(FIB)/third_party/libunibreak -I$(FIB)/third_party/pngle -I$(FIB)/third_party/stb \
+    -Ifreeink-sdk/libs/font/FreeInkFont/include -Ifreeink-sdk/libs/font/FreeInkFont/third_party/stb
+CXXFLAGS += $(FIB_INCLUDES)
 CXXFLAGS += $(shell sdl2-config --cflags)
 
 CFLAGS += -O2
 CFLAGS += -Ifreeink-sdk/libs/book/FreeInkBook/third_party/tjpgd
+CFLAGS += $(FIB_INCLUDES)
 
 LDFLAGS += $(shell sdl2-config --libs)
 
@@ -56,17 +63,43 @@ SRCS_CXX = \
     src/ui/jpeg_viewer.cpp \
     src/ui/keyboard_ui.cpp \
     src/ui/wifi_manager_ui.cpp \
-    src/reader/simple_reader.cpp \
+    src/reader/book_reader.cpp \
+    src/reader/engine/bitmap_book_font.cpp \
+    src/reader/engine/sd_book_storage.cpp \
+    src/reader/engine/engine_text_counter.cpp \
     src/reader/epub_extractor.cpp \
     src/reader/epub_cfi.cpp \
     src/reader/html_stripper.cpp \
-    src/reader/koreader_doc_id.cpp \
-    src/reader/koreader_sync_mapper.cpp \
-    simulator/lib_adafruit_gfx/Adafruit_GFX.cpp
+    simulator/lib_adafruit_gfx/Adafruit_GFX.cpp \
+    freeink-sdk/libs/book/FreeInkBook/src/FreeInkBook.cpp \
+    freeink-sdk/libs/book/FreeInkBook/src/BookCatalog.cpp \
+    freeink-sdk/libs/book/FreeInkBook/src/epub/ZipCatalog.cpp \
+    freeink-sdk/libs/book/FreeInkBook/src/epub/XmlSax.cpp \
+    freeink-sdk/libs/book/FreeInkBook/src/epub/PackageParsers.cpp \
+    freeink-sdk/libs/book/FreeInkBook/src/epub/ImageProbe.cpp \
+    freeink-sdk/libs/book/FreeInkBook/src/text/EntityFilter.cpp \
+    freeink-sdk/libs/book/FreeInkBook/src/text/Hyphenator.cpp \
+    freeink-sdk/libs/book/FreeInkBook/src/css/Css.cpp \
+    freeink-sdk/libs/book/FreeInkBook/src/layout/ChapterLayout.cpp \
+    freeink-sdk/libs/book/FreeInkBook/src/cache/PageCache.cpp \
+    freeink-sdk/libs/book/FreeInkBook/src/render/ImageRenderer.cpp \
+    freeink-sdk/libs/book/FreeInkBook/src/render/PageRenderer.cpp \
+    freeink-sdk/libs/font/FreeInkFont/src/TtfFont.cpp \
+    freeink-sdk/libs/font/FreeInkFont/src/Gpos.cpp \
+    freeink-sdk/libs/font/FreeInkFont/src/Gsub.cpp
 
+# FreeInkBook's vendored C libraries; tjpgd comes from its tjpgd_impl.c (the
+# same vendored decoder the firmware links instead of the ROM one).
 SRCS_C = \
     src/reader/miniz.c \
-    freeink-sdk/libs/book/FreeInkBook/third_party/tjpgd/tjpgd.c
+    freeink-sdk/libs/book/FreeInkBook/src/vendor/miniz_impl.c \
+    freeink-sdk/libs/book/FreeInkBook/src/vendor/expat_xmlparse.c \
+    freeink-sdk/libs/book/FreeInkBook/src/vendor/expat_xmlrole.c \
+    freeink-sdk/libs/book/FreeInkBook/src/vendor/expat_xmltok.c \
+    freeink-sdk/libs/book/FreeInkBook/src/vendor/unibreak_impl.c \
+    freeink-sdk/libs/book/FreeInkBook/src/vendor/pngle_impl.c \
+    freeink-sdk/libs/book/FreeInkBook/src/vendor/tjpgd_impl.c \
+    freeink-sdk/libs/font/FreeInkFont/src/FontAlloc.c
 
 BUILD_DIR = simulator/build
 TARGET = simulator/x4_simulator

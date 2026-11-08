@@ -24,6 +24,22 @@ build formats  "$ROOT/test/host/test_book_formats.cpp" "$ROOT/src/net/book_forma
 build cfi      "$ROOT/test/host/test_epub_cfi.cpp" "$ROOT/src/reader/epub_cfi.cpp"
 build progress "$ROOT/test/host/test_progress_sync.cpp" "$ROOT/src/services/progress_sync.cpp" "$ROOT/src/services/time_utils.cpp"
 build protocol "$ROOT/test/host/test_bookorbit_protocol.cpp" "$ROOT/src/net/bookorbit_protocol.cpp" "$ROOT/src/services/time_utils.cpp"
+# FreeInkBook (the layout engine) for the tests that check against it: vendored C
+# libraries once, the C++ core with each test.
+FIB="$ROOT/freeink-sdk/libs/book/FreeInkBook"
+FIB_INC="-DFREEINK_BOOK_SMALL=1 -I$FIB/include -I$FIB/third_party/expat -I$FIB/third_party/miniz -I$FIB/third_party/libunibreak -I$FIB/third_party/pngle -I$FIB/third_party/tjpgd -I$FIB/third_party/stb -I$ROOT/freeink-sdk/libs/font/FreeInkFont/include -I$ROOT/freeink-sdk/libs/font/FreeInkFont/third_party/stb"
+mkdir -p "$OUT/fib"
+for src in miniz_impl expat_xmlparse expat_xmlrole expat_xmltok unibreak_impl pngle_impl tjpgd_impl; do
+    ${CC:-cc} -O1 -w $FIB_INC -c "$FIB/src/vendor/$src.c" -o "$OUT/fib/$src.o"
+done
+FIB_CORE="$FIB/src/FreeInkBook.cpp $FIB/src/BookCatalog.cpp $FIB/src/epub/ZipCatalog.cpp $FIB/src/epub/XmlSax.cpp $FIB/src/epub/PackageParsers.cpp $FIB/src/epub/ImageProbe.cpp $FIB/src/text/EntityFilter.cpp $FIB/src/text/Hyphenator.cpp $FIB/src/css/Css.cpp $FIB/src/layout/ChapterLayout.cpp $FIB/src/cache/PageCache.cpp $FIB/src/render/ImageRenderer.cpp $FIB/src/render/PageRenderer.cpp $ROOT/freeink-sdk/libs/font/FreeInkFont/src/TtfFont.cpp $ROOT/freeink-sdk/libs/font/FreeInkFont/src/Gpos.cpp $ROOT/freeink-sdk/libs/font/FreeInkFont/src/Gsub.cpp"
+build_fib() {   # name sources... (with the engine; its own warnings are not ours)
+    local name=$1; shift
+    mkdir -p "$OUT/$name"
+    (cd "$OUT/$name" && $CXX $FLAGS -Wno-unused-parameter $FIB_INC "$@" $FIB_CORE "$OUT"/fib/*.o -o "$OUT/$name/test")
+}
+build_fib counter "$ROOT/test/host/test_engine_text_counter.cpp" "$ROOT/src/reader/engine/engine_text_counter.cpp" "$ROOT/src/reader/epub_cfi.cpp"
+
 if [ "$(uname)" = Linux ]; then   # needs GNU ld --wrap
     mkdir -p "$OUT/miniz"
     ${CC:-cc} ${COVERAGE_DIR:+--coverage} -O1 -w -c "$ROOT/src/reader/miniz.c" -o "$OUT/miniz/miniz.o"
@@ -37,6 +53,9 @@ echo "== BookFormats";       "$OUT/formats/test" || rc=1
 echo "== EpubCfi";          "$OUT/cfi/test" | tail -1 || rc=1
 echo "== ProgressSync";      "$OUT/progress/test" > "$OUT/progress.log" || rc=1; tail -1 "$OUT/progress.log"; [ $rc = 0 ] || cat "$OUT/progress.log"
 echo "== BookOrbitProtocol"; "$OUT/protocol/test" | grep -v "^[a-zA-Z/]* *$" || rc=1
+echo "== EngineTextCounter"; "$OUT/counter/test" "$ROOT/simulator/sdcard/books/Alice in Wonderland.epub" \
+    "$ROOT/simulator/sdcard/books/01. Frankenstein (1818).epub" "$ROOT/simulator/sdcard/books/Pride and Prejudice.epub" \
+    | grep -v "^units" || rc=1
 if [ -x "$OUT/miniz/test" ]; then
     echo "== miniz workspace"; "$OUT/miniz/test" "$ROOT/simulator/sdcard/books/Alice in Wonderland.epub" | tail -1 || rc=1
 fi

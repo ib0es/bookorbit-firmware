@@ -274,6 +274,14 @@ public:
         return rename(tmpPath, path);
     }
 
+    bool removeDir(const char* path) {
+        try {
+            return fs::remove_all(resolvePath(path)) > 0;
+        } catch (...) {
+            return false;
+        }
+    }
+
     bool mkdir(const char* path) {
         return ensureDirectoryExists(path);
     }

@@ -2,7 +2,7 @@
 #include "../../ui/font.h"
 #include "../../hal/mem_stats.h"
 #include "../../reader/epub_extractor.h"
-#include "../../reader/simple_reader.h"
+#include "../../reader/reader.h"
 #include "../../hal/storage.h"
 #include "../../services/library_manager.h"
 #include "../../services/progress_store.h"
@@ -93,7 +93,7 @@ bool openBook(AppContext& ctx, const String& path, const String& title, const St
     Buttons.clearEvents();
     Serial.printf("[Reader] Opening book: %s (file %d)\n", path.c_str(), fileId);
     if (!Reader.openBook(path)) {
-        if (EpubExtractor::lastFailedForMemory()) {
+        if (Reader.lastFailedForMemory()) {
             Modal.showMessage(tr(MsgId::COMMON_ERROR), tr(MsgId::READER_OPEN_ERR_L1),
                               tr(MsgId::READER_OPEN_ERR_L2), "", "", 4000, false, tr(MsgId::READER_OPEN_ERR_FOOTER));
         } else {

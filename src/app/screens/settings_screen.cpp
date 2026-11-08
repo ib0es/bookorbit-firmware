@@ -7,7 +7,7 @@
 #include "../../hal/display.h"
 #include "../../net/bookorbit_client.h"
 #include "../../net/web_config.h"
-#include "../../reader/simple_reader.h"
+#include "../../reader/reader.h"
 #include "../../services/sync_service.h"
 #include "../../ui/keyboard_ui.h"
 #include "../../ui/modal.h"

@@ -15,7 +15,7 @@
 #include "../ui/modal.h"
 #include "../ui/kit/ui_kit.h"
 #include "../net/bookorbit_client.h"
-#include "../reader/simple_reader.h"
+#include "../reader/reader.h"
 #include "../services/library_manager.h"
 #include "../services/power_service.h"
 #include "../services/sync_service.h"
