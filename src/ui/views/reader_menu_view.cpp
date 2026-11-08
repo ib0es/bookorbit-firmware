@@ -1,0 +1,221 @@
+#include "reader_menu_view.h"
+#include "../../hal/display.h"
+#include "../../ui/font.h"
+#include "../../reader/simple_reader.h"
+#include "../i18n.h"
+#include "../kit/ui_kit.h"
+
+using namespace uikit;
+
+static int s_tocRowsPerPage = 1;
+int tocRowsPerPage() { return s_tocRowsPerPage; }
+
+namespace {
+enum ReaderMenuAction : fi::ActionId { ActionChapter = 1, ActionMenuItem, ActionFontSize };
+}
+
+void drawTocScreen(AppContext& ctx, bool fullRefresh) {
+    uint32_t t0 = millis();
+    Pass pass;
+    Frame& f = pass.frame();
+    clear();
+    Rect area = topBar(f, tr(MsgId::READER_TOC_TITLE));
+
+    const auto& chapters = Reader.getChapters();
+    const int total = (int)chapters.size();
+    if (total == 0) {
+        area = footerHints(f, area, tr(MsgId::READER_TOC_HINT_BACK));
+        area = insetXY(area, kMargin, 20);
+        takeTop(area, area.height / 4);
+        text(takeTop(area, (int16_t)(lineHeight(FontBody) * 2)), tr(MsgId::READER_TOC_EMPTY), FontBody, Color::Black,
+             TextAlign::Center, 2);
+        present(true);
+        return;
+    }
+
+    // The footer shows "item x/y, page p/q": the page size depends on the
+    // row height, so compute it before writing the hint.
+    const int16_t footerH = (int16_t)(lineHeight(FontSmall) + 4 + 14);
+    const int16_t rowH = (int16_t)(lineHeight(FontBody) + lineHeight(FontSmall) + 18);
+    const int16_t step = (int16_t)(rowH + 6);
+    const int16_t listH = (int16_t)(area.height - footerH - 20);
+    int perPage = (listH + 6) / step;
+    if (perPage < 1) perPage = 1;
+    s_tocRowsPerPage = perPage;
+    const int windowStart = (ctx.selectedTocIndex / perPage) * perPage;
+    const int windowEnd = min(windowStart + perPage, total);
+
+    char navHints[160];
+    snprintf(navHints, sizeof(navHints), tr(MsgId::READER_TOC_NAV_HINT_FMT), ctx.selectedTocIndex + 1, total,
+             ctx.selectedTocIndex / perPage + 1, (total + perPage - 1) / perPage);
+    area = footerHints(f, area, navHints);
+    area = insetXY(area, kMargin, 10);
+
+    const int currentChapterIdx = Reader.getCurrentChapterIndex();
+    const int totalPages = max(1, Reader.getTotalPages());
+    for (int i = windowStart; i < windowEnd; i++) {
+        Rect row = takeTop(area, rowH);
+        takeTop(area, 6);
+        const bool selected = (i == ctx.selectedTocIndex);
+        const bool current = (i == currentChapterIdx);
+        const Color ink = selected ? Color::White : Color::Black;
+        if (selected) fill(row, Color::Black);
+        else frameRect(row, Color::Black);
+        f.hit(row, ActionChapter, (int16_t)i);
+
+        Rect inner = insetXY(row, 12, 8);
+        char pageBuf[32];
+        snprintf(pageBuf, sizeof(pageBuf), tr(MsgId::READER_TOC_PAGE_FMT), chapters[i].page);
+        char progBuf[32];
+        snprintf(progBuf, sizeof(progBuf), tr(MsgId::READER_TOC_PROGRESS_FMT),
+                 (float)chapters[i].page / (float)totalPages * 100.0f);
+        const int16_t rightW = (int16_t)(max(textWidth(FontSmall, pageBuf), textWidth(FontSmall, progBuf)) + 4);
+        Rect right{(int16_t)(inner.right() - rightW), inner.y, rightW, inner.height};
+        text(takeTop(right, lineHeight(FontBody)), pageBuf, FontSmall, ink, TextAlign::Right);
+        text(right, progBuf, FontSmall, ink, TextAlign::Right);
+
+        Rect title{inner.x, inner.y, (int16_t)(inner.width - rightW - kGap), inner.height};
+        if (current) {
+            text(Rect{title.x, title.y, 16, title.height}, "\xE2\x80\xA2", FontBody, ink);  // bullet
+            title.x = (int16_t)(title.x + 18);
+            title.width = (int16_t)(title.width - 18);
+        }
+        text(title, chapters[i].title.c_str(), FontBody, ink, TextAlign::Left, 2);
+    }
+
+    present(fullRefresh);
+    Serial.printf("[UI] drawTocScreen finished in %lu ms.\n", millis() - t0);
+}
+
+void drawReaderMenuScreen(AppContext& ctx, bool fullRefresh) {
+    uint32_t t0 = millis();
+    Pass pass;
+    Frame& f = pass.frame();
+    clear();
+    Rect area = topBar(f, tr(MsgId::READER_MENU_TITLE));
+    area = footerHints(f, area, tr(MsgId::READER_MENU_HINT_NAV), tr(MsgId::READER_MENU_HINT_BACK));
+    area = insetXY(area, kMargin, 8);
+
+    // Book status card.
+    {
+        const int16_t th = lineHeight(FontTitle), sh = lineHeight(FontSmall);
+        Rect st = takeTop(area, (int16_t)(th + 2 * (sh + 2) + 7 + 30));
+        frameRect(st, Color::Black);
+        Rect in = insetXY(st, 12, 8);
+        text(takeTop(in, th), Reader.getTitle().c_str(), FontTitle);
+        takeTop(in, 2);
+        char posBuf[80];
+        snprintf(posBuf, sizeof(posBuf), tr(MsgId::READER_MENU_PAGE_FMT), Reader.getCurrentPage(),
+                 Reader.getTotalPages(), Reader.getProgress() * 100.0f);
+        text(takeTop(in, (int16_t)(sh + 2)), posBuf, FontSmall);
+        String chTitle = Reader.getCurrentChapterTitle();
+        char chBuf[128];
+        if (chTitle.length() > 0) snprintf(chBuf, sizeof(chBuf), tr(MsgId::READER_MENU_CHAPTER_FMT), chTitle.c_str());
+        else snprintf(chBuf, sizeof(chBuf), "%s", tr(MsgId::READER_MENU_START_BOOK));
+        text(takeTop(in, (int16_t)(sh + 2)), chBuf, FontSmall);
+        takeTop(in, 5);
+        progress(f, takeTop(in, 7), (int32_t)(Reader.getProgress() * 1000.0f));
+    }
+    takeTop(area, 8);
+
+    int chCount = Reader.getChapterCount();
+    char chDesc[128];
+    if (chCount > 0) snprintf(chDesc, sizeof(chDesc), tr(MsgId::READER_MENU_TOC_SUB_FMT), chCount);
+    else snprintf(chDesc, sizeof(chDesc), "%s", tr(MsgId::READER_MENU_TOC_NONE));
+    char fontVal[64];
+    snprintf(fontVal, sizeof(fontVal), tr(MsgId::READER_MENU_FONT_FMT),
+             SimpleReader::getFontSizeName(ctx.config.readerFontSize));
+
+    struct Item { const char* title; const char* value; const char* tag; };
+    const Item items[NUM_READER_MENU_ITEMS] = {
+        { tr(MsgId::READER_MENU_ITEM_TOC), chDesc, tr(MsgId::READER_MENU_TAG_CHAPTERS) },
+        { tr(MsgId::READER_MENU_ITEM_FONT), fontVal, tr(MsgId::READER_MENU_TAG_FONT) },
+        { tr(MsgId::READER_MENU_ITEM_SYNC), tr(MsgId::READER_MENU_SYNC_SUB), tr(MsgId::READER_MENU_TAG_WIFI) },
+        { tr(MsgId::READER_MENU_ITEM_RESUME), tr(MsgId::READER_MENU_RESUME_SUB), tr(MsgId::READER_MENU_TAG_READ) },
+        { tr(MsgId::READER_MENU_ITEM_CLOSE), tr(MsgId::READER_MENU_CLOSE_SUB), tr(MsgId::READER_MENU_TAG_EXIT) },
+    };
+    const int16_t cardH = (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 22);
+    for (int i = 0; i < NUM_READER_MENU_ITEMS; i++) {
+        card(f, takeTop(area, cardH), items[i].title, items[i].value, items[i].tag, i == ctx.selectedReaderMenuIndex,
+             ActionMenuItem, (int16_t)i);
+        takeTop(area, kGap);
+    }
+
+    // Live preview of the book font (drawn with the reader's own font,
+    // so it shows exactly what the pages will look like).
+    if (area.height > 60) {
+        Rect box = area;
+        frameRect(box, Color::Black);
+        const int16_t bandH = (int16_t)(lineHeight(FontSmall) + 8);
+        Rect band = takeTop(box, bandH);
+        fill(band, Color::Black);
+        char previewTitle[64];
+        snprintf(previewTitle, sizeof(previewTitle), tr(MsgId::READER_MENU_PREVIEW_TITLE_FMT),
+                 SimpleReader::getFontSizeName(ctx.config.readerFontSize));
+        text(insetX(band, 8), previewTitle, FontSmall, Color::White);
+        Font.drawString(box.x + 8, box.y + 8, tr(MsgId::READER_MENU_SAMPLE_TEXT), EPD_BLACK, ctx.config.readerFontSize,
+                        box.width - 16, box.bottom() - 4);
+    }
+
+    present(fullRefresh);
+    Serial.printf("[UI] drawReaderMenuScreen finished in %lu ms.\n", millis() - t0);
+}
+
+static int s_fontWindowStart = 0;
+static int s_fontRowsVisible = 1;
+int fontMenuRowsVisible() { return s_fontRowsVisible; }
+
+void drawFontMenuScreen(AppContext& ctx, bool fullRefresh) {
+    Pass pass;
+    Frame& f = pass.frame();
+    clear();
+    const int n = FontEngine::kSizeCount;
+    const int sel = ctx.selectedFontIndex < 0 ? 0 : (ctx.selectedFontIndex >= n ? n - 1 : ctx.selectedFontIndex);
+    Rect area = topBar(f, tr(MsgId::FONT_MENU_TITLE));
+    area = footerHints(f, area, tr(MsgId::FONT_MENU_HINT));
+    area = insetXY(area, kMargin, 8);
+
+    // Rows grow with their font, so not all sizes fit: show a window of
+    // consecutive sizes that contains the selection.
+    const int pad = 14, gap = 4;
+    auto rowH = [&](int i) { return Font.getFontHeight(i) + pad; };
+    auto fits = [&](int from, int to) {   // rows from..to (inclusive) fit in the area
+        int h = 0;
+        for (int i = from; i <= to; i++) h += rowH(i) + (i > from ? gap : 0);
+        return h <= area.height;
+    };
+    int start = s_fontWindowStart;
+    if (start > sel) start = sel;
+    while (start < sel && !fits(start, sel)) start++;
+    int end = start;
+    while (end + 1 < n && fits(start, end + 1)) end++;
+    // Fill the screen when the window reaches the last size.
+    while (start > 0 && fits(start - 1, end)) start--;
+    s_fontWindowStart = start;
+    s_fontRowsVisible = end - start + 1;
+
+    const int16_t labelW = (int16_t)(textWidth(FontBody, "48 pt \xE2\x9C\x93") + 16);
+    int16_t y = area.y;
+    for (int i = start; i <= end; i++) {
+        const int16_t h = (int16_t)rowH(i);
+        Rect row{area.x, y, area.width, h};
+        const bool isSel = (i == sel);
+        const bool cur = (i == ctx.config.readerFontSize);
+        if (isSel) fill(row, Color::Black, 4);
+        else frameRect(row, Color::Black, 1, 4);
+        char label[16];
+        snprintf(label, sizeof(label), cur ? "%s \xE2\x9C\x93" : "%s", SimpleReader::getFontSizeName(i));  // U+2713
+        text(Rect{(int16_t)(row.x + 10), row.y, labelW, row.height}, label, FontBody, isSel ? Color::White : Color::Black);
+        // The sample in the book font itself, vertically centred.
+        const int sx = row.x + 10 + labelW;
+        const int sy = row.y + (h - Font.getFontHeight(i)) / 2 + 2;
+        Font.drawString(sx, sy, tr(MsgId::FONT_MENU_SAMPLE), isSel ? EPD_WHITE : EPD_BLACK, i,
+                        row.right() - 8 - sx, sy + Font.getFontHeight(i));
+        f.hit(row, ActionFontSize, (int16_t)i);
+        y = (int16_t)(y + h + gap);
+    }
+    // More sizes above / below: small arrows at the right edge of the gap rows.
+    if (start > 0) text(Rect{(int16_t)(area.right() - 24), (int16_t)(area.y - 8), 24, 10}, "\xE2\x96\xB2", FontSmall);
+    if (end < n - 1) text(Rect{(int16_t)(area.right() - 24), (int16_t)(y - 2), 24, 12}, "\xE2\x96\xBC", FontSmall);
+    present(fullRefresh);
+}

@@ -1,0 +1,12 @@
+{
+  "wifi_ssid": "TestNetwork",
+  "wifi_pass": "test-password",
+  "server_url": "http://bookorbit.test:3000",
+  "username": "tester",
+  "password": "test-password",
+  "token": "simulated_jwt_token_12345",
+  "language": "en",
+  "sync_on_boot": false,
+  "sync_on_sleep": false,
+  "cover_on_sleep": true
+}

@@ -1,0 +1,69 @@
+# PlatformIO / build artifacts & binaries
+.pio/
+**/build/
+**/build-cov/
+test/build-cov-host/
+simulator/x4_simulator
+test/host/run
+*.o
+*.a
+*.elf
+*.map
+__pycache__/
+*.pyc
+
+# Web Flasher build artifacts
+web-flasher/dist/
+web-flasher/node_modules/
+node_modules/
+*.tsbuildinfo
+
+# OS artifacts
+.DS_Store
+**/.DS_Store
+._*
+Thumbs.db
+desktop.ini
+*~
+*.swp
+*.swo
+
+# Local secrets & credentials (Wi-Fi, server credentials, tokens)
+include/secrets.h
+include/*.txt
+simulator/sdcard/config.json
+sdcard/config.json
+.env
+.env.*
+
+# Backups, archives & bundles
+*.bundle
+*.tar.gz
+*.tgz
+*.zip
+*.bak
+web-flasher-backup-*.tgz
+
+# Dumps & local catalogs
+catalog.xml
+opds*.xml
+
+# IDE & Editor artifacts
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.claude_tmp/
+.kilo/
+.kilocode/
+
+# Simulator outputs and build targets
+sim_out_*/
+test/sim/build-*/
+test/sim/build/
+
+# Web flasher site: built by CI (.github/workflows) and published from docs/.
+# Local builds may carry credentials from include/secrets.h.
+docs/
+
+# Source books for the simulator card (copies live in simulator/sdcard/books)
+gutenberg/

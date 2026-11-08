@@ -1,0 +1,37 @@
+#pragma once
+
+// Book Orbit wire format: building request bodies and parsing responses.
+// Pure (std::string + ArduinoJson, no HTTP/Wi-Fi), host-tested in
+// test/host/test_bookorbit_protocol.cpp. BookOrbitClient does the transport.
+
+#include <cstdint>
+#include <string>
+
+namespace BookOrbitProtocol {
+
+struct Progress {
+    bool exists = false;       // the server has a progress record for the book
+    float percent = 0.0f;      // 0..1
+    int page = 0;
+    std::string cfi;           // EPUB CFI of the web reader ("cfi"), may be empty
+    uint32_t updatedAt = 0;    // UTC seconds, 0 = unknown
+};
+
+// POST /api/v1/auth/login response -> access token. False if none.
+bool parseLoginToken(const std::string& json, std::string& token);
+
+// GET /api/v1/books/:id/progress response (array or {"items":[...]}).
+// Several records (one per file/format/device) -> the most recently updated one.
+// Returns false only for malformed JSON; out.exists=false when there is no record.
+bool parseBookProgress(const std::string& json, Progress& out);
+
+// PUT /api/v1/reading-progress body. percent is 0..1 (values above 1 are taken as 0..100).
+// The server REPLACES the whole position with each write: a field left out is
+// cleared (no cfi -> the web reader loses its place). With a cfi the page is not
+// sent: the web reader numbers pages differently.
+std::string buildProgressWrite(int fileId, float percent, int page, const std::string& cfi = "");
+
+// PUT /api/v1/reading-progress response -> server updatedAt (0 if absent).
+uint32_t parseProgressWriteUpdatedAt(const std::string& json);
+
+}  // namespace BookOrbitProtocol
