@@ -1,6 +1,7 @@
 #include "book_reader.h"
 
 #include <render/PageRenderer.h>
+#include <new>
 #include <strings.h>
 #include <text/hyph_en_us.h>
 #include "engine/hyph_ru.h"
@@ -44,14 +45,26 @@ constexpr float kCfiTrustTolerance = 0.10f;
 // RAII malloc for the transient buffers; tracks how much of them is live at once
 // (BookReader::peakTransientBytes: the tests hold it under the X4's free block).
 size_t g_liveTransient = 0, g_peakTransient = 0;
+uint8_t* takeTransient(size_t size) {
+    uint8_t* p = (uint8_t*)malloc(size);
+    if (!p) return nullptr;
+    g_liveTransient += size;
+    if (g_liveTransient > g_peakTransient) g_peakTransient = g_liveTransient;
+    return p;
+}
+
+void giveTransient(uint8_t*& p, size_t size) {
+    if (!p) return;
+    free(p);
+    p = nullptr;
+    g_liveTransient -= size;
+}
+
 struct Buffer {
     uint8_t* p = nullptr;
     size_t n = 0;
-    explicit Buffer(size_t size) : p((uint8_t*)malloc(size)), n(p ? size : 0) {
-        g_liveTransient += n;
-        if (g_liveTransient > g_peakTransient) g_peakTransient = g_liveTransient;
-    }
-    ~Buffer() { free(p); g_liveTransient -= n; }
+    explicit Buffer(size_t size) : p(takeTransient(size)), n(p ? size : 0) {}
+    ~Buffer() { giveTransient(p, n); }
     Buffer(const Buffer&) = delete;
     Buffer& operator=(const Buffer&) = delete;
 };
@@ -63,6 +76,44 @@ String stemOf(const String& path) {
 }
 
 }  // namespace
+
+// Background layout state (see tickBackground).
+struct BookReader::Prelayout {
+    enum class Phase : uint8_t { Unpack, Layout };
+    Phase phase = Phase::Unpack;
+    int spine = -1;
+    uint32_t t0 = 0;
+    uint32_t busyMs = 0;
+    ZipEntry bookEntry;   // the chapter in the container (the unpacker points at it)
+    ZipEntry entry;       // what the layout reads: bookEntry, or the unpacked file
+    char href[256] = "";
+    char name[48] = "";
+    char unpackName[24] = "";
+    SdCacheStorage cache;   // its own write stream: the foreground keeps _cache's
+    SdBookSource chapterSrc;
+    BookSource* source = nullptr;
+
+    uint8_t* inflateMem = nullptr;
+    Arena inflateArena;
+    ZipEntryReader unpacker;
+
+    uint8_t* layoutMem = nullptr;
+    uint8_t* parseMem = nullptr;
+    Arena layout;
+    Arena parse;
+    PageCacheWriter writer;
+    ChapterLayoutSession session;
+    bool writing = false;
+
+    ~Prelayout() {
+        session.abort();
+        if (writing) cache.abortWrite();
+        chapterSrc.close();
+        giveTransient(inflateMem, kInflateBytes);
+        giveTransient(layoutMem, kLayoutBytes);
+        giveTransient(parseMem, kStoredParseBytes);
+    }
+};
 
 size_t BookReader::peakTransientBytes(bool reset) {
     const size_t peak = g_peakTransient;
@@ -207,6 +258,8 @@ const freeink::book::Hyphenator* BookReader::hyphenatorFor(const char* language)
 }
 
 void BookReader::setupLayout() {
+    stopBackground();   // its pages would be of the old layout
+    _bgNothingFor = -1;
     const BookPageGeometry geo = bookPageGeometry();
     LayoutParams p;
     p.pageWidth = (int16_t)Display.width();
@@ -234,6 +287,8 @@ void BookReader::releaseIndex() {
 }
 
 void BookReader::closeBook() {
+    stopBackground();
+    _bgNothingFor = -1;
     releaseIndex();
     _catalog = BookCatalog();
     free(_bookMem);
@@ -328,7 +383,7 @@ int BookReader::globalPage(int spine, int page) const {
 // A chapter's bytes as a stored entry: the book itself when the ZIP stores it,
 // else its inflated copy "x<spine>.xhtml" in the cache directory (made on first
 // use with one inflate stream and nothing else allocated).
-bool BookReader::chapterSource(int spine, ZipEntry& entry, BookSource*& source) {
+bool BookReader::chapterSource(int spine, ZipEntry& entry, BookSource*& source, SdBookSource& unpacked) {
     if (_catalog.spineEntry((size_t)spine, &entry) != BookStatus::Ok) return false;
     if (entry.method == 0) {
         source = &_src;
@@ -338,6 +393,7 @@ bool BookReader::chapterSource(int spine, ZipEntry& entry, BookSource*& source) 
     snprintf(name, sizeof(name), "x%d.xhtml", spine);
     const String path = _cache.dir() + "/" + name;
     if (_cache.fileSize(name) != (int64_t)entry.uncompressedSize) {
+        stopBackground();   // the inflate stream needs the memory a background job holds
         const uint32_t t0 = millis();
         Buffer mem(kInflateBytes);
         if (!mem.p) return false;
@@ -353,13 +409,14 @@ bool BookReader::chapterSource(int spine, ZipEntry& entry, BookSource*& source) 
                       (unsigned long)(millis() - t0), ok ? "" : " FAILED");
         if (!ok) { _cache.remove(name); return false; }
     }
-    if (!_chapterSrc.open(path)) return false;
+    if (!unpacked.open(path)) return false;
     entry = ZipEntryReader::rawEntry(entry.uncompressedSize);
-    source = &_chapterSrc;
+    source = &unpacked;
     return true;
 }
 
 bool BookReader::layoutChapter(int spine) {
+    stopBackground();   // the layout buffers need the memory a background job holds
     const uint32_t t0 = millis();
     const Spine& sp = _spines[spine];
     if (sp.bytes > 60000 || _isTxt) {   // a big one: say why the screen waits
@@ -370,7 +427,7 @@ bool BookReader::layoutChapter(int spine) {
     BookSource* chapter = &_src;
     char href[256] = "";
     if (!_isTxt) {
-        if (!chapterSource(spine, entry, chapter) ||
+        if (!chapterSource(spine, entry, chapter, _chapterSrc) ||
             _catalog.spineHref((size_t)spine, href, sizeof(href)) != BookStatus::Ok) {
             Serial.printf("[Reader] Chapter %d cannot be read\n", spine);
             return false;
@@ -430,10 +487,14 @@ bool BookReader::layoutChapter(int spine) {
                   ok ? "ok" : bookStatusName(st), (unsigned)pages, (unsigned)chars, (unsigned long)(millis() - t0),
                   (unsigned)layoutUsed, (unsigned)parseUsed);
     if (!ok) return false;
+    commitLaidOut(spine, pages, chars);
+    return true;
+}
+
+void BookReader::commitLaidOut(int spine, uint32_t pages, uint32_t chars) {
     _spines[spine].pages = (int32_t)pages;
     _spines[spine].chars = chars;
     saveSpineTable();
-    return true;
 }
 
 bool BookReader::loadChapter(int spine) {
@@ -443,6 +504,7 @@ bool BookReader::loadChapter(int spine) {
     char name[48];
     pageCacheName((uint16_t)spine, _gen, name, sizeof(name));
     bool laidOut = false;
+    if (_bg && _bg->spine == spine) finishBackground();   // half done: finish it rather than start over
     if (!_cache.exists(name)) {
         if (!layoutChapter(spine)) return false;
         laidOut = true;
@@ -527,6 +589,180 @@ bool BookReader::layoutRemaining(int maxChapters) {
         if (done++ >= maxChapters) return false;
         if (!layoutChapter(s)) return false;
     }
+    return true;
+}
+
+// ------------------------------------------------------ background layout
+
+int BookReader::nextToPrelayout() const {
+    for (int s = _spine + 1; s <= _spine + kLookahead && s < (int)_spines.size(); s++) {
+        const Spine& sp = _spines[s];
+        if (sp.pages >= 0 || sp.bgFailed) continue;
+        char name[48];
+        pageCacheName((uint16_t)s, _gen, name, sizeof(name));
+        if (const_cast<SdCacheStorage&>(_cache).exists(name)) continue;   // laid out, counts read when opened
+        return s;
+    }
+    return -1;
+}
+
+bool BookReader::tickBackground() {
+    if (!_opened || _isTxt) return false;
+    if (_bg) {
+        stepBackground();
+        return true;
+    }
+    if (_bgNothingFor == _spine) return false;
+    const int s = nextToPrelayout();
+    if (s < 0 || !startBackground(s)) {
+        _bgNothingFor = _spine;   // looked again once the reader moves to another chapter
+        return false;
+    }
+    return true;
+}
+
+void BookReader::stopBackground() {
+    if (!_bg) return;
+    Serial.printf("[Reader] Background layout of chapter %d stopped\n", _bg->spine);
+    delete _bg;
+    _bg = nullptr;
+}
+
+bool BookReader::startBackground(int spine) {
+    const uint32_t t0 = millis();
+    Prelayout* job = new (std::nothrow) Prelayout();
+    if (!job) return false;
+    job->spine = spine;
+    job->t0 = t0;
+    job->cache.setDir(_cache.dir());
+    pageCacheName((uint16_t)spine, _gen, job->name, sizeof(job->name));
+    if (_catalog.spineEntry((size_t)spine, &job->bookEntry) != BookStatus::Ok ||
+        _catalog.spineHref((size_t)spine, job->href, sizeof(job->href)) != BookStatus::Ok) {
+        _spines[spine].bgFailed = true;
+        delete job;
+        return false;
+    }
+    _bg = job;
+    snprintf(job->unpackName, sizeof(job->unpackName), "x%d.xhtml", spine);
+    if (job->bookEntry.method == 0) {
+        job->entry = job->bookEntry;
+        job->source = &_src;
+        job->phase = Prelayout::Phase::Layout;
+    } else if (_cache.fileSize(job->unpackName) == (int64_t)job->bookEntry.uncompressedSize) {
+        job->phase = Prelayout::Phase::Layout;   // unpacked before (an earlier, stopped job)
+    } else {
+        job->inflateMem = takeTransient(kInflateBytes);
+        if (!job->inflateMem) {
+            stopBackground();
+            return false;
+        }
+        job->inflateArena.init(job->inflateMem, kInflateBytes);
+        if (job->unpacker.open(_src, job->bookEntry, job->inflateArena) != BookStatus::Ok ||
+            !job->cache.beginWrite(job->unpackName)) {
+            _spines[spine].bgFailed = true;
+            stopBackground();
+            return false;
+        }
+        job->writing = true;
+    }
+    Serial.printf("[Reader] Background layout of chapter %d started\n", spine);
+    job->busyMs += millis() - t0;
+    return true;
+}
+
+bool BookReader::stepBackground() {
+    Prelayout* job = _bg;
+    if (!job) return false;
+    const uint32_t t0 = millis();
+    bool failed = false;
+    bool finished = false;
+    if (job->phase == Prelayout::Phase::Unpack) {
+        // ~8 KB of output per slice: a few tens of milliseconds.
+        uint8_t buf[1024];
+        for (int i = 0; i < 8; i++) {
+            const int32_t n = job->unpacker.read(buf, sizeof(buf));
+            if (n < 0 || (n > 0 && !job->cache.write(buf, (uint32_t)n))) { failed = true; break; }
+            if (n == 0) break;
+        }
+        if (!failed && job->unpacker.totalProduced() >= job->bookEntry.uncompressedSize) {
+            job->writing = false;
+            failed = !job->cache.endWrite() || job->unpacker.totalProduced() != job->bookEntry.uncompressedSize;
+            giveTransient(job->inflateMem, kInflateBytes);
+            if (!failed) {
+                Serial.printf("[Reader] Chapter %d unpacked in the background: %u bytes\n", job->spine,
+                              (unsigned)job->bookEntry.uncompressedSize);
+                job->phase = Prelayout::Phase::Layout;
+            }
+        }
+    } else if (!job->session.active()) {
+        // Layout phase, first slice: buffers, the cache file and the parse.
+        if (!job->source) {
+            if (!job->chapterSrc.open(_cache.dir() + "/" + job->unpackName)) failed = true;
+            job->entry = ZipEntryReader::rawEntry(job->bookEntry.uncompressedSize);
+            job->source = &job->chapterSrc;
+        }
+        job->layoutMem = failed ? nullptr : takeTransient(kLayoutBytes);
+        job->parseMem = job->layoutMem ? takeTransient(kStoredParseBytes) : nullptr;
+        if (!job->parseMem) {
+            // No memory now (the foreground holds it): try again from the next chapter on.
+            if (!failed) _bgNothingFor = _spine;
+            stopBackground();
+            return false;
+        }
+        job->layout.init(job->layoutMem, kLayoutBytes);
+        job->parse.init(job->parseMem, kStoredParseBytes);
+        if (!failed && job->writer.begin(job->cache, job->name, _gen, job->layout)) {
+            job->writing = true;
+            const BookStatus st = job->session.begin(_src, &_catalog.zip(), *job->source, job->entry, job->href,
+                                                     _params, job->layout, job->writer, &job->parse, &job->layout);
+            failed = st != BookStatus::Ok;
+            finished = !failed && job->session.done();
+        } else {
+            failed = true;
+        }
+    } else {
+        failed = job->session.step(1) != BookStatus::Ok;
+        finished = !failed && job->session.done();
+    }
+    job->busyMs += millis() - t0;
+    if (finished) {
+        const uint32_t pages = job->session.pagesEmitted();
+        const uint32_t chars = job->session.totalChars();
+        job->writer.setTotalChars(chars);
+        job->writing = false;
+        const bool ok = job->writer.finish() && !job->writer.failed();
+        Serial.printf("[Reader] Chapter %d laid out in the background: %s, %u pages, %u chars, %lu ms of work in %lu ms "
+                      "(layout %u B)\n", job->spine, ok ? "ok" : "write failed", (unsigned)pages, (unsigned)chars,
+                      (unsigned long)job->busyMs, (unsigned long)(millis() - job->t0),
+                      (unsigned)job->layout.highWater());
+        const int spine = job->spine;
+        delete job;
+        _bg = nullptr;
+        if (ok) commitLaidOut(spine, pages, chars);
+        else _spines[spine].bgFailed = true;
+        return false;
+    }
+    if (failed) {
+        // A chapter too big for the background buffer (or unreadable): the foreground
+        // lays it out when the reader gets there, with its retries.
+        Serial.printf("[Reader] Background layout of chapter %d gave up\n", job->spine);
+        _spines[job->spine].bgFailed = true;
+        delete job;
+        _bg = nullptr;
+        return false;
+    }
+    return true;
+}
+
+bool BookReader::finishBackground() {
+    if (!_bg) return false;
+    const uint64_t total = _bg->bookEntry.uncompressedSize;
+    const uint64_t left = _bg->session.active() ? total - _bg->session.bytesConsumed() : total;
+    if (left > 60000) {
+        drawStatusModal(tr(MsgId::READER_FORMAT_TITLE), _title.substring(0, 32).c_str(), tr(MsgId::READER_FORMAT_LINE),
+                        tr(MsgId::READER_OPENING_WAIT));
+    }
+    while (stepBackground()) {}
     return true;
 }
 
@@ -659,7 +895,7 @@ bool BookReader::goToPosition(const String& cfi, const String& xpath, float perc
 bool BookReader::walkChapter(int spine, EpubCfi::Walker& walker) {
     ZipEntry entry;
     BookSource* source = nullptr;
-    if (!chapterSource(spine, entry, source)) return false;
+    if (!chapterSource(spine, entry, source, _chapterSrc)) return false;
     Buffer mem(4096);   // a stored entry: no inflate state
     bool ok = mem.p != nullptr;
     if (ok) {
@@ -910,6 +1146,7 @@ void BookReader::renderCurrentPage() {
     // A page record: runs plus text; justified text is many runs. Retried larger
     // when the page does not fit (dense pages need ~15 KB).
     for (size_t cap = kRenderBytes; cap <= 64 * 1024; cap *= 2) {
+        if (_bg && MemStats::now().largestBlock < cap + 4096) stopBackground();
         Buffer mem(cap);
         if (!mem.p) {
             Serial.printf("[Reader] No memory to draw the page (%u B)\n", (unsigned)cap);
@@ -932,6 +1169,7 @@ void BookReader::renderCurrentPage() {
         if (missing) Serial.printf("[Reader] %u characters not in the font (first U+%04X)\n", (unsigned)missing,
                                    (unsigned)firstMissing);
         if (page.imageCount > 0 && !_isTxt) {
+            if (_bg && MemStats::now().largestBlock < kImageBytes + 4096) stopBackground();
             Buffer img(kImageBytes);
             if (img.p) {
                 Arena a(img.p, kImageBytes);

@@ -85,6 +85,13 @@ bool SdCacheStorage::endWrite() {
     return ok;
 }
 
+void SdCacheStorage::abortWrite() {
+    if (!_write) return;
+    _write.close();
+    Storage.remove((path(_writeName.c_str()) + ".tmp").c_str());
+    _writeName = "";
+}
+
 int32_t SdCacheStorage::readBackAt(uint32_t offset, void* dst, uint32_t len) {
     if (!_write) return -1;
     if (!_write.seek(offset)) return -1;

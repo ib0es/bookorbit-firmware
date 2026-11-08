@@ -138,6 +138,9 @@ void AppController::setup() {
     _ctx.lastActivityTime = millis();
 }
 
+// A page turn redraws within ~50 ms; the next one usually comes seconds later.
+static constexpr uint32_t kPrelayoutIdleMs = 1000;
+
 void AppController::loop() {
     Buttons.update();
     SyncService::tickBackground(_ctx);
@@ -182,6 +185,15 @@ void AppController::loop() {
 
     // Auto deep sleep on inactivity (only when on battery, never while plugged into USB)
     PowerService::sleepIfIdle(_ctx);
+
+    // While a page is being read, the chapters ahead are laid out in slices of a
+    // few tens of milliseconds (buttons are polled between them). Leaving the page
+    // or a radio coming up stops it: both need its memory.
+    if (_ctx.currentState == STATE_READING && !Modal.isActive() && !SyncService::backgroundActive()) {
+        if (millis() - _ctx.lastActivityTime > kPrelayoutIdleMs && Reader.tickBackground()) return;
+    } else if (Reader.backgroundActive()) {
+        Reader.stopBackground();
+    }
 
     delay(10);
 }

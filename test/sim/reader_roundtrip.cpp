@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <vector>
 // Reader position invariants on real books (BookReader, every chapter laid out), for every page:
 //   setPageByProgress(getProgress()) and, for EPUBs, setPageByCfi(getCfi(), getProgress()) keep
 //   the page; setPageByXPath(getXPath(), ...) keeps the chapter (the xpath names only that).
@@ -21,11 +23,77 @@ freeink::DisplayUpdateCallback freeink::FreeInkDisplay::s_callback = nullptr;
 void simPumpEvents() {}
 void simInputPolled() {}
 
+// Background layout from a clean cache: the chapters ahead of the open one get
+// laid out in short slices, to the same pages as the foreground gives them, and a
+// chapter turned to while its job runs is finished rather than started over.
+static int backgroundLayout(const char* path) {
+    int fail = 0;
+    Storage.removeDir(BookReader::cacheDirFor(path).c_str());
+    BookReader::peakTransientBytes(true);
+    if (!Reader.openBook(path)) { printf("  bg: open failed\n"); return 1; }
+    Reader.setPage(1);
+    Reader.renderCurrentPage();
+    const int from = Reader.position().spine;
+    int slices = 0;
+    uint32_t longest = 0;
+    for (;;) {
+        const uint32_t t0 = millis();
+        if (!Reader.tickBackground()) break;
+        longest = std::max(longest, (uint32_t)(millis() - t0));
+        if (++slices > 100000) { printf("  bg: never ends\n"); fail++; break; }
+    }
+    std::vector<int> bgPages;
+    for (int s = from + 1; s <= from + BookReader::kLookahead && s < Reader.spineCount(); s++) {
+        bgPages.push_back(Reader.chapterPages(s));
+        if (Reader.chapterPages(s) < 0) { printf("  bg: chapter %d not laid out\n", s); fail++; }
+    }
+    const size_t peak = BookReader::peakTransientBytes();
+    // Next to the job (64 KB) the page being drawn must still fit.
+    Reader.setPage(2);
+    Reader.renderCurrentPage();
+    Reader.closeBook();
+
+    // The same chapters laid out in the foreground.
+    Storage.removeDir(BookReader::cacheDirFor(path).c_str());
+    Reader.openBook(path);
+    Reader.layoutRemaining();
+    for (size_t i = 0; i < bgPages.size(); i++) {
+        const int s = from + 1 + (int)i;
+        if (Reader.chapterPages(s) != bgPages[i]) {
+            printf("  bg: chapter %d has %d pages, %d in the foreground\n", s, bgPages[i], Reader.chapterPages(s));
+            fail++;
+        }
+    }
+    Reader.closeBook();
+
+    // Turning into a chapter whose job is half done finishes it.
+    Storage.removeDir(BookReader::cacheDirFor(path).c_str());
+    Reader.openBook(path);
+    Reader.setPage(1);
+    Reader.renderCurrentPage();
+    for (int i = 0; i < 3; i++) Reader.tickBackground();
+    const bool running = Reader.backgroundActive();
+    const int drawFails = Reader.renderFailures();
+    Reader.nextChapter();
+    Reader.renderCurrentPage();
+    if (Reader.renderFailures() != drawFails || Reader.position().spine <= from) {
+        printf("  bg: the next chapter did not open\n");
+        fail++;
+    }
+    Reader.closeBook();
+    printf("  background: %d slices, longest %u ms, chapters %d..%d, transient peak %u KB, job %s at the turn%s\n",
+           slices, (unsigned)longest, from + 1, from + (int)bgPages.size(), (unsigned)(peak / 1024),
+           running ? "running" : "idle", fail ? " FAILED" : "");
+    if (peak > 80 * 1024) { printf("  bg: transient peak over 80 KB\n"); fail++; }
+    return fail;
+}
+
 int main(int argc, char** argv) {
     SDCardManager::getInstance().setRoot(argv[1]);
     Display.begin(); Font.begin(Display); Storage.begin();
     int totalFail = 0;
     for (int a = 2; a < argc; a++) {
+        if (String(argv[a]).endsWith(".epub")) totalFail += backgroundLayout(argv[a]);
         BookReader::peakTransientBytes(true);
         if (!Reader.openBook(argv[a])) { printf("open failed %s\n", argv[a]); totalFail++; continue; }
         Reader.layoutRemaining();   // exact page numbers

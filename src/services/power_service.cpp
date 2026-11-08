@@ -98,7 +98,8 @@ void PowerService::enterDeepSleep(AppContext& ctx) {
 
     auto& lib = LibraryManager::getInstance();
 
-    // Ensure reading state is flushed to SD
+    // Ensure reading state is flushed to SD (a background layout is dropped: its file is not finished)
+    Reader.stopBackground();
     if (Reader.isOpened()) {
         lib.flushReaderPosition();
     }

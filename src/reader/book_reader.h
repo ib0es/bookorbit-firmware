@@ -100,11 +100,37 @@ public:
     // `maxChapters` bounds the work of one call; returns true when none is left.
     bool layoutRemaining(int maxChapters = 1 << 30);
 
+    // Background layout of the chapters ahead, so that turning into the next
+    // chapter does not wait for it. tickBackground() does one slice (a few
+    // pages, or ~8 KB of unpacking: tens of milliseconds) and is called from
+    // the main loop while the reader sits idle. The job holds ~64 KB; anything
+    // in the foreground that needs that memory (another chapter, a big page,
+    // an image, Wi-Fi) stops it first, and a chapter the reader turns to while
+    // it is being laid out is finished instead of started over.
+    bool tickBackground();
+    void stopBackground();
+    bool backgroundActive() const { return _bg != nullptr; }
+    static constexpr int kLookahead = 2;   // chapters ahead of the current one
+    // Pages of a laid-out spine item, -1 if it is not laid out (tests, logs).
+    int chapterPages(int spine) const {
+        return spine >= 0 && spine < (int)_spines.size() ? (int)_spines[spine].pages : -1;
+    }
+    int spineCount() const { return (int)_spines.size(); }
+
 private:
+    struct Prelayout;
+    Prelayout* _bg = nullptr;
+    int _bgNothingFor = -1;   // the current chapter for which nothing was left to lay out ahead
+    int nextToPrelayout() const;
+    bool startBackground(int spine);
+    bool stepBackground();                    // false: the job ended (done or failed)
+    bool finishBackground();                  // runs the job on the current chapter to its end
+
     struct Spine {
         uint32_t bytes = 0;     // uncompressed size (estimates for chapters not laid out)
         int32_t pages = -1;     // -1: not laid out yet in this generation
         uint32_t chars = 0;
+        bool bgFailed = false;  // the background job could not lay it out: left to the foreground
     };
     // Where to go once the chapter is laid out.
     enum class Want : uint8_t { None, Char, Page, LastPage, Anchor, Fraction };
@@ -113,7 +139,9 @@ private:
     void setupLayout();
     bool loadChapter(int spine);              // laid out (if needed) and its page index open
     bool layoutChapter(int spine);
-    bool chapterSource(int spine, freeink::book::ZipEntry& entry, freeink::book::BookSource*& source);
+    bool chapterSource(int spine, freeink::book::ZipEntry& entry, freeink::book::BookSource*& source,
+                       SdBookSource& unpacked);
+    void commitLaidOut(int spine, uint32_t pages, uint32_t chars);
     bool walkChapter(int spine, EpubCfi::Walker& walker);
     bool resolve();                           // applies _want; false if the chapter is not available
     void settle() const { if (_want != Want::None) const_cast<BookReader*>(this)->resolve(); }

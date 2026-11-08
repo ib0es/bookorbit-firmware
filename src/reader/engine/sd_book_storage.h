@@ -40,6 +40,9 @@ public:
     bool endWrite() override;
     int32_t readBackAt(uint32_t offset, void* dst, uint32_t len) override;
 
+    // Drops the file being written (its .tmp) without replacing the old one.
+    void abortWrite();
+
     // Removes every file of the directory (the directory stays).
     void clear();
 
