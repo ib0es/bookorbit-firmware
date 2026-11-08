@@ -1,0 +1,46 @@
+Shared SPI bus between the e-paper panel and the SD card (Xteink X4 / X3).
+
+On these boards the panel and the microSD card sit on one SPI bus
+(SCLK 8, MOSI 10, MISO 7; panel CS 21, SD CS 12). Upstream FreeInk:
+  * SDCardManager passes SD_CS to SPI.begin(), which makes the SPI
+    peripheral drive the SD chip-select in hardware on *every* transfer,
+    panel transfers included; the card sees garbage and drops off the bus
+    ("MicroSD storage not available", writes fail after a screen update);
+  * PanelDriver does not hold the SD CS high (deselected) during panel
+    transactions and does not route MISO.
+These were local fixes in the vendored SDK and were lost when the SDK
+became a submodule. tools/apply_sdk_patches.py applies this file before
+every PlatformIO build.
+
+--- a/libs/display/FreeInkDisplay/src/driver/PanelDriver.h
++++ b/libs/display/FreeInkDisplay/src/driver/PanelDriver.h
+@@ -13,6 +13,7 @@
+ // controller's own RAM holds the previous frame).
+ 
+ #include <Arduino.h>
++#include <BoardConfig.h>
+ 
+ #include "../../include/GrayscaleCapabilities.h"
+ #include "../bus/EpdBus.h"
+@@ -41,8 +42,8 @@
+   virtual uint32_t spiHz() const = 0;
+   virtual BusyPolarity busyPolarity() const = 0;
+   virtual PanelGeometry geometry() const = 0;
+-  virtual int8_t spiMiso() const { return -1; }  // SSD1677 uses none; M5 shares MISO
+-  virtual int8_t coCs() const { return -1; }     // co-resident SPI CS to hold high (M5 SD)
++  virtual int8_t spiMiso() const { return BoardConfig::ACTIVE.sd.miso; }  // shares SD MISO if present
++  virtual int8_t coCs() const { return BoardConfig::ACTIVE.sd.cs; }        // co-resident SPI CS to hold high
+ 
+   // True for drivers backed by an external library that manages its own SPI /
+   // display hardware (e.g. M5GFX, EPD_Painter). When true the facade does NOT
+--- a/libs/hardware/SDCardManager/src/SDCardManager.cpp
++++ b/libs/hardware/SDCardManager/src/SDCardManager.cpp
+@@ -212,7 +212,7 @@
+   } else {
+ #endif
+     if (SD_SCLK >= 0 && SD_MOSI >= 0 && SD_MISO >= 0) {
+-      SPI.begin(SD_SCLK, SD_MISO, SD_MOSI, SD_CS);
++      SPI.begin(SD_SCLK, SD_MISO, SD_MOSI, -1);
+     }
+     // Other boards keep the single attempt so a missing card fails fast.
+     const int attempts = BoardConfig::isOnePage() ? 5 : 1;

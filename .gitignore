@@ -67,3 +67,6 @@ docs/
 
 # Source books for the simulator card (copies live in simulator/sdcard/books)
 gutenberg/
+
+# PlatformIO device monitor logs (log2file filter)
+logs/
