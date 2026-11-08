@@ -183,13 +183,16 @@ bool SimpleReader::openBook(const String& filePath) {
 
 void SimpleReader::closeBook() {
     _isOpened = false;
-    _pageOffsets.clear();
-    _chapters.clear();
-    _spineItems.clear();
-    _cfiMap.clear();
+    // swap, not clear(): clear() keeps the capacity, and the page index alone is
+    // 23 KB for a 5800-page book. Held after closing, it split the heap's big free
+    // block (X4, Nov 8: 81 KB with it instead of ~104 KB).
+    std::vector<uint32_t>().swap(_pageOffsets);
+    std::vector<ChapterItem>().swap(_chapters);
+    std::vector<SpineItemInfo>().swap(_spineItems);
+    std::vector<EpubExtractor::CfiChapter>().swap(_cfiMap);
     _cfiMapLoaded = false;
     _cfiCacheOffset = UINT32_MAX;
-    _cfiCache = "";
+    _cfiCache = String();
     _currentPageIndex = 0;
 }
 
