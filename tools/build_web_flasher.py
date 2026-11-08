@@ -112,11 +112,7 @@ def merge_firmware(env: str, chip: str, boot_app0_path: Path):
     out_env_dir = BUILDS_DIR / env
     out_env_dir.mkdir(parents=True, exist_ok=True)
 
-    merged_out = out_env_dir / f"bookorbit-{env}-merged.bin"
-    app_out = out_env_dir / f"bookorbit-{env}-app.bin"
-
-    # Copy application bin standalone as well (useful for OTA)
-    shutil.copy2(firmware, app_out)
+    firmware_out = out_env_dir / f"bookorbit-{env}.bin"
 
     print(f"Merging binaries for {env} ({chip})...")
     # Offsets for ESP32-C3 and ESP32-S3 with default_16MB partition layout:
@@ -128,7 +124,7 @@ def merge_firmware(env: str, chip: str, boot_app0_path: Path):
         sys.executable, "-m", "esptool",
         "--chip", chip,
         "merge_bin",
-        "-o", str(merged_out),
+        "-o", str(firmware_out),
         "--flash_mode", "dio",
         "--flash_size", "16MB",
         "0x0", str(bootloader),
@@ -138,8 +134,8 @@ def merge_firmware(env: str, chip: str, boot_app0_path: Path):
     ]
     run_cmd(merge_cmd)
 
-    size_mb = merged_out.stat().st_size / (1024 * 1024)
-    print(f"✓ Created {merged_out.name} ({size_mb:.2f} MB)")
+    size_mb = firmware_out.stat().st_size / (1024 * 1024)
+    print(f"✓ Created {firmware_out.name} ({size_mb:.2f} MB)")
 
 
 def generate_manifests(targets):
@@ -159,7 +155,7 @@ def generate_manifests(targets):
                     "chipFamily": chip_family,
                     "parts": [
                         {
-                            "path": f"../builds/{env}/bookorbit-{env}-merged.bin",
+                            "path": f"../builds/{env}/bookorbit-{env}.bin",
                             "offset": 0
                         }
                     ]
@@ -181,7 +177,7 @@ def generate_manifests(targets):
                 "chipFamily": "ESP32-C3",
                 "parts": [
                     {
-                        "path": "builds/x4/bookorbit-x4-merged.bin",
+                        "path": "builds/x4/bookorbit-x4.bin",
                         "offset": 0
                     }
                 ]
@@ -190,7 +186,7 @@ def generate_manifests(targets):
                 "chipFamily": "ESP32-S3",
                 "parts": [
                     {
-                        "path": "builds/x4c/bookorbit-x4c-merged.bin",
+                        "path": "builds/x4c/bookorbit-x4c.bin",
                         "offset": 0
                     }
                 ]
@@ -207,7 +203,13 @@ def main():
     parser.add_argument("--targets", nargs="+", choices=list(TARGETS.keys()), default=list(TARGETS.keys()),
                         help="Target environments to process")
     parser.add_argument("--skip-build", action="store_true", help="Skip compilation, only merge existing artifacts")
+    parser.add_argument("--manifests-only", action="store_true", help="Only generate manifest JSON files without compiling or merging")
     args = parser.parse_args()
+
+    if args.manifests_only:
+        generate_manifests(args.targets)
+        print("\n✓ Manifests generated successfully!")
+        return
 
     boot_app0 = find_boot_app0()
     print(f"Found boot_app0: {boot_app0}")

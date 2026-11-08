@@ -9,7 +9,7 @@ export interface DeviceInfo {
   desc_en: string;
   desc_ru: string;
   merged: string;
-  app: string;
+  app?: string;
 }
 
 export interface GitHubReleaseAsset {

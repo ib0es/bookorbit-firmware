@@ -8,12 +8,10 @@ directly from GitHub.
 Usage:
     python3 tools/download_firmware.py x4
     python3 tools/download_firmware.py picco --channel release
-    python3 tools/download_firmware.py x3 --channel latest --type app
     python3 tools/download_firmware.py x4pro --tag v0.1.0 --output-dir ./firmware_bins
 """
 
 import argparse
-import json
 import os
 import sys
 import urllib.error
@@ -126,12 +124,6 @@ def main() -> int:
         help="Download from a specific GitHub release tag (e.g. 'v0.1.0'). Overrides --channel.",
     )
     parser.add_argument(
-        "--type",
-        choices=["merged", "app", "all"],
-        default="merged",
-        help="Binary type: 'merged' (monolithic image at 0x0), 'app' (OTA application at 0x10000), or 'all'. Default: merged",
-    )
-    parser.add_argument(
         "--output-dir",
         type=str,
         default=".",
@@ -150,56 +142,45 @@ def main() -> int:
     out_dir = Path(args.output_dir).resolve()
 
     tag_desc = args.tag or ("Latest Master Build" if args.channel == "latest" else "Latest Official Release")
-    print("=" * 60)
     print(f"Book Orbit Firmware Downloader")
-    print(f"Device:   {device_name} ({device})")
-    print(f"Version:  {tag_desc}")
-    print(f"Repo:     {args.repo}")
-    print("=" * 60)
+    print(f"  Device:  {device_name} ({device})")
+    print(f"  Version: {tag_desc}")
+    print(f"  Repo:    {args.repo}")
 
     base_url = get_base_url(args.repo, args.channel, args.tag)
+    filename = f"bookorbit-{device}.bin"
+    dest = out_dir / filename
 
-    targets = []
-    if args.type in ("merged", "all"):
-        targets.append((f"bookorbit-{device}-merged.bin", 0x0, "Monolithic image (0x0)"))
-    if args.type in ("app", "all"):
-        targets.append((f"bookorbit-{device}-app.bin", 0x10000, "Application partition (0x10000 / OTA)"))
-
-    success_files = []
-    for filename, offset, desc in targets:
-        url = f"{base_url}/{filename}"
-        dest = out_dir / filename
-        try:
-            download_file(url, dest)
-            success_files.append((dest, offset, desc))
-        except FileNotFoundError:
-            # If rolling release 'latest' is not yet seeded, fallback to GitHub Pages mirror for master
-            if args.channel == "latest" and not args.tag:
-                pages_url = f"https://ib0es.github.io/bookorbit-firmware/builds/{device}/{filename}"
-                print(f"GitHub release asset not found. Retrying via GitHub Pages mirror...")
+    try:
+        download_file(f"{base_url}/{filename}", dest)
+    except FileNotFoundError:
+        # Fallback to GitHub Pages mirror for master builds
+        if args.channel == "latest" and not args.tag:
+            pages_url = f"https://ib0es.github.io/bookorbit-firmware/builds/{device}/{filename}"
+            print(f"Release asset not found. Retrying via GitHub Pages mirror...")
+            try:
+                download_file(pages_url, dest)
+            except Exception as fallback_exc:
+                # Try legacy name on mirror if transition is in progress
+                legacy_url = f"https://ib0es.github.io/bookorbit-firmware/builds/{device}/bookorbit-{device}-merged.bin"
                 try:
-                    download_file(pages_url, dest)
-                    success_files.append((dest, offset, desc))
-                    continue
-                except Exception as fallback_exc:
-                    print(f"Fallback also failed: {fallback_exc}", file=sys.stderr)
-
+                    download_file(legacy_url, dest)
+                except Exception:
+                    print(f"Fallback failed: {fallback_exc}", file=sys.stderr)
+                    return 1
+        else:
             print(
                 f"\nError: Could not locate {filename} on GitHub for '{tag_desc}'.\n"
                 f"Make sure a release exists or that the build has completed on GitHub Actions.",
                 file=sys.stderr,
             )
             return 1
-        except Exception as exc:
-            print(f"\nDownload failed: {exc}", file=sys.stderr)
-            return 1
+    except Exception as exc:
+        print(f"\nDownload failed: {exc}", file=sys.stderr)
+        return 1
 
-    print("\n" + "=" * 60)
-    print("Flashing Instructions:")
-    for path, offset, desc in success_files:
-        print(f"• {desc}:")
-        print(f"  esptool.py write_flash {hex(offset)} {path.name}")
-    print("=" * 60)
+    print(f"\nFlash command (offset 0x0):")
+    print(f"  esptool.py write_flash 0x0 {dest.name}")
     return 0
 
 

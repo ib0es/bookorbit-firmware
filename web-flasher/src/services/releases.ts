@@ -3,11 +3,10 @@ import { DEVICES } from '../constants/devices';
 
 export interface FirmwareUrls {
   merged: string;
-  app: string | null;
 }
 
-export const mergedAssetName = (key: DeviceKey) => `bookorbit-${key}-merged.bin`;
-export const appAssetName = (key: DeviceKey) => `bookorbit-${key}-app.bin`;
+export const firmwareAssetName = (key: DeviceKey) => `bookorbit-${key}.bin`;
+export const legacyMergedAssetName = (key: DeviceKey) => `bookorbit-${key}-merged.bin`;
 
 /**
  * Resolves where to download firmware from. Release binaries are mirrored onto
@@ -19,14 +18,14 @@ export function resolveFirmwareUrls(
   key: DeviceKey, release: string, releases: GitHubRelease[]
 ): FirmwareUrls | null {
   if (release === 'latest') {
-    return { merged: DEVICES[key].merged, app: DEVICES[key].app };
+    return { merged: DEVICES[key].merged };
   }
   if (release.startsWith('tag:')) {
     const tag = release.slice(4);
     const rel = releases.find((r) => r.tag_name === tag);
     const find = (name: string) => rel?.assets?.find((a) => a.name === name)?.browser_download_url ?? null;
-    const merged = find(mergedAssetName(key));
-    return merged ? { merged, app: find(appAssetName(key)) } : null;
+    const url = find(firmwareAssetName(key)) || find(legacyMergedAssetName(key));
+    return url ? { merged: url } : null;
   }
   return null;
 }
