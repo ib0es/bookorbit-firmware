@@ -19,6 +19,13 @@ Snapshot now();
 // "[Mem] <where>: free 48 KB, largest block 30 KB, min since boot 12 KB"
 void log(const char* where);
 
+// Whether the new book engine (FreeInkBook, FREEINK_BOOK_SMALL) would fit now:
+// tries to allocate its two buffers for laying out a chapter (layout 50 KB, parse
+// 46 KB, each in one piece) and the open book (30 KB in 2 KB pieces), frees them
+// and logs "[Mem] engine probe <where>: layout 50 KB ok, parse 46 KB ok, book 30 KB ok".
+// Returns true if all fit.
+bool probeEngine(const char* where);
+
 // One line for the device info screen.
 String summary();
 

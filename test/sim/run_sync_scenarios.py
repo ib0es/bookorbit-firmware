@@ -216,6 +216,14 @@ LOG_SCENARIOS = [
       "progress": [{"fileId": 101, "percentage": 37.2, "cfi": "epubcfi(/6/34!/4/2[pgepubid00016]/2/3:0)", "updatedAt": "NOW-50"}]},
      None, "C" + SYNC,
      [r"-> pull", r"\[CFI\] 'epubcfi\(/6/34!/4/2\[pgepubid00016\]/2/3:0\)' -> OEBPS/\d+_84-h-15\.htm\.xhtml \+[0-9] -> offset"], [r"stale"]),
+    # The web reader's percent differs from ours by a few percent in short illustrated
+    # books ("Alice": 3.3% on the X4): the CFI still wins.
+    ("web reader CFI wins over a percent a few percent off",
+     {"_lastBook": "01. Frankenstein (1818).epub", "_fileId": 101,
+      "progress": [{"fileId": 101, "percentage": 32, "cfi": "epubcfi(/6/34!/4/2[pgepubid00016]/2/3:0)", "updatedAt": "NOW-50"}]},
+     None, "C" + SYNC,
+     [r"-> pull", r"-> page 153 of 402", r"\[Mem\] engine probe book opened: layout 50 KB ok, parse 46 KB ok, book 30/30 KB.*FITS"],
+     [r"stale"]),
     ("stale CFI (another reader moved on) falls back to the percentage",
      {"_lastBook": "01. Frankenstein (1818).epub", "_fileId": 101,
       "progress": [{"fileId": 101, "percentage": 60, "cfi": "epubcfi(/6/34!/4/2[pgepubid00016]/2/3:0)", "updatedAt": "NOW-50"}]},

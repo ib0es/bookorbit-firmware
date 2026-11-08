@@ -924,7 +924,11 @@ bool SimpleReader::setPageByXPath(const String& xpath, float fallbackPercent) {
 // ---------------------------------------------------------------------------
 // EPUB CFI
 // ---------------------------------------------------------------------------
-constexpr float CFI_TRUST_TOLERANCE = 0.03f;   // the web reader's percent scale differs by up to ~1%
+// The web reader's percent scale differs from ours (it counts images and markup):
+// ~1% in long novels, 3.3% in "Alice" (437 pages, illustrated; X4, Nov 8). The CFI
+// and the percent are written together, so only a gross mismatch means the CFI
+// belongs to another position (another reader moved on without a CFI).
+constexpr float CFI_TRUST_TOLERANCE = 0.10f;
 
 const EpubExtractor::CfiChapter* SimpleReader::cfiChapter(int spineIndex, int ordinal) {
     if (!EpubExtractor::isEpub(_originalFilePath)) return nullptr;

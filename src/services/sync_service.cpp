@@ -575,6 +575,7 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
 
     lib.scanLocalBooks(true);
     MemStats::log("sync: library rebuilt");   // the largest free block shows the fragmentation left
+    MemStats::probeEngine("after sync");
     if (lib.lastBook.filePath.length() == 0 && !lib.masterBooks.empty()) {
         lib.lastBook.filePath = lib.masterBooks[0].filePath;
         lib.lastBook.title = lib.masterBooks[0].title;

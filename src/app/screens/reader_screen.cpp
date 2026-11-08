@@ -103,6 +103,7 @@ bool openBook(AppContext& ctx, const String& path, const String& title, const St
         return false;
     }
     MemStats::log("book opened");
+    MemStats::probeEngine("book opened");
 
     // This device's position for the book if it was opened here before; otherwise
     // the position the caller got from the server (catalog snapshot).
