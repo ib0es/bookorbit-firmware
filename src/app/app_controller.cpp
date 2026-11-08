@@ -3,7 +3,6 @@
 #include <esp_sleep.h>
 #include <PowerManager.h>
 #include <BoardConfig.h>
-#include "pins.h"
 #include "config.h"
 #include "screens/screens.h"
 #include "touch_router.h"

@@ -28,7 +28,8 @@ bool EPDDisplay::begin() {
 
     // 2. Initialize FreeInk display facade
     if (!_eink) {
-        _eink = new freeink::FreeInkDisplay(EPD_SCK_PIN, EPD_MOSI_PIN, EPD_CS_PIN, EPD_DC_PIN, EPD_RST_PIN, EPD_BUSY_PIN);
+        // Legacy pin arguments are ignored by FreeInkDisplay; begin() uses BoardConfig::ACTIVE.display
+        _eink = new freeink::FreeInkDisplay(0, 0, 0, 0, 0, 0);
 #if defined(FREEINK_DEVICE_X3) && FREEINK_DEVICE_X3
         _eink->setDisplayX3();
 #endif

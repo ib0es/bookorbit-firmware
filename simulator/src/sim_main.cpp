@@ -8,7 +8,7 @@
 #include "../include/InputManager.h"
 #include "../include/EInkDisplay.h"
 #include "../include/SDCardManager.h"
-#include "../../include/pins.h"
+#include "hal/display.h"
 
 // Forward declarations from src/main.cpp
 void setup();

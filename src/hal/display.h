@@ -4,7 +4,18 @@
 #include <Adafruit_GFX.h>
 #include <XteinkDetect.h>
 #include <EInkDisplay.h>
-#include "pins.h"
+
+// Native (landscape) panel size. X3 (UC8253/UC8279, 3.7") shares the X4 pinout
+// but has a 792x528 panel; each device is its own build env, so this is fixed
+// at compile time and must match FreeInkDisplay's geometry after begin().
+#if defined(FREEINK_DEVICE_X3) && FREEINK_DEVICE_X3 && !(defined(FREEINK_DEVICE_X4) && FREEINK_DEVICE_X4)
+#define EPD_WIDTH            792
+#define EPD_HEIGHT           528
+#else
+#define EPD_WIDTH            800
+#define EPD_HEIGHT           480
+#endif
+#define EPD_BUFFER_SIZE      ((EPD_WIDTH * EPD_HEIGHT) / 8) // 48,000 bytes (X4), 52,272 (X3)
 
 enum EPDColor {
     EPD_BLACK = 0,

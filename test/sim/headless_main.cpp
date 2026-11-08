@@ -18,7 +18,7 @@
 #include "InputManager.h"
 #include "EInkDisplay.h"
 #include "SDCardManager.h"
-#include "pins.h"
+#include "hal/display.h"
 #include "esp_sleep.h"
 
 void setup();

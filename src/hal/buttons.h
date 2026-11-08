@@ -2,7 +2,6 @@
 
 #include <Arduino.h>
 #include <InputManager.h>
-#include "pins.h"
 
 enum ButtonId {
     BTN_NONE = 0,
