@@ -19,6 +19,10 @@ void drawSyncSettingsScreen(AppContext& ctx, bool fullRefresh = false);
 void updateSyncSettingsSelection(AppContext& ctx, int prevIndex, int newIndex);
 void updateSyncSettingsItem(AppContext& ctx, int index);
 
+void drawSleepCoverSettingsScreen(AppContext& ctx, bool fullRefresh = false);
+void updateSleepCoverSettingsSelection(AppContext& ctx, int prevIndex, int newIndex);
+void updateSleepCoverSettingsItem(AppContext& ctx, int index);
+
 void drawLanguageSettingsScreen(AppContext& ctx, bool fullRefresh = false);
 void updateLanguageSettingsSelection(AppContext& ctx, int prevIndex, int newIndex);
 void updateLanguageSettingsItem(AppContext& ctx, int index);
