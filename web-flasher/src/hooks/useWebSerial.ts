@@ -12,6 +12,7 @@ import {
   FlasherError, md5Hex, PARTITION_TABLE_OFFSET, parsePartitionTable, samePartitionTables, validateMergedImage,
 } from '../services/firmwareImage';
 import { buildConfigEntries, buildNvsPartition } from '../services/nvsConfig';
+import { readFlash } from '../services/flashRead';
 
 const ESPRESSIF_VID = 0x303a;
 
@@ -38,6 +39,23 @@ async function hardResetToApp(transport: Transport) {
   await sleep(50);
 }
 
+/**
+ * The port of the reader found by connect(). A reset re-enumerates native USB,
+ * so the SerialPort object may have been replaced: look it up again among the
+ * ports this page already has permission for (no chooser needed).
+ */
+async function findReaderPort(known: SerialPort): Promise<SerialPort> {
+  const info = known.getInfo();
+  const ports = await navigator.serial.getPorts();
+  if (ports.includes(known)) return known;
+  const same = ports.filter((p) => {
+    const i = p.getInfo();
+    return i.usbVendorId === info.usbVendorId && i.usbProductId === info.usbProductId;
+  });
+  if (same.length === 0) throw new Error('reader not found — check the cable and press Connect again');
+  return same[0];
+}
+
 export interface FlashRequest {
   image: Uint8Array;
   device: DeviceInfo;
@@ -55,6 +73,13 @@ export function useWebSerial() {
   const portRef = useRef<SerialPort | null>(null);
   const transportRef = useRef<Transport | null>(null);
   const loaderRef = useRef<ESPLoader | null>(null);
+  /**
+   * The reader found by connect(). It is not kept in download mode: after the
+   * detection it is reset back into its firmware (so unplugging it is harmless)
+   * and flash() opens it again through this port.
+   */
+  const knownPortRef = useRef<SerialPort | null>(null);
+  const detectionRef = useRef<DetectionResult>(EMPTY_DETECTION);
 
   const addLog = useCallback((msg: string) => {
     setLogs((prev) => [...prev, msg]);
@@ -102,6 +127,50 @@ export function useWebSerial() {
     return () => serial.removeEventListener('disconnect', onDisconnect);
   }, [addLog, markDisconnected]);
 
+  /** Opens `port`, enters the ROM bootloader, runs the stub and attaches the flash. */
+  const openLoader = useCallback(async (port: SerialPort) => {
+    portRef.current = port;
+    const nativeUsb = port.getInfo().usbVendorId === ESPRESSIF_VID;
+    // ?debug in the page URL: log every serial packet to the browser console.
+    const tracing = new URLSearchParams(window.location.search).has('debug');
+    const transport = new Transport(port, tracing);
+    transportRef.current = transport;
+
+    const terminal: IEspLoaderTerminal = {
+      clean: () => {},
+      writeLine: (data: string) => addLog(data),
+      write: (data: string) => addLog(data),
+    };
+    const loader = new ESPLoader({
+      transport,
+      baudrate: nativeUsb ? 115200 : 921600, // baud is irrelevant on native USB
+      romBaudrate: 115200,
+      // Web Serial's default receive buffer is 255 bytes. A stub flash read
+      // sends 4 KB packets in one burst; the overflow is dropped silently
+      // (esptool-js treats BufferOverrunError as recoverable), so reads came
+      // back short and the stub then waited forever for the right ack.
+      serialOptions: { bufferSize: 64 * 1024 },
+      terminal,
+    });
+    loaderRef.current = loader;
+
+    addLog('Connecting to ROM bootloader...');
+    const chipDesc = await loader.main();
+    addLog(`Detected chip: ${chipDesc}`);
+    // Attach the SPI flash before any flash read/write, as esptool does
+    // (esptool-js never sends SPI_ATTACH itself).
+    await loader.flashSpiAttach(0);
+    return { loader, transport, nativeUsb };
+  }, [addLog]);
+
+  /** Resets the reader into its firmware (if a session is open) and closes the port. */
+  const leaveDownloadMode = useCallback(async (transport: Transport | null) => {
+    if (transport) {
+      try { await hardResetToApp(transport); } catch { /* port already gone */ }
+    }
+    await releasePort();
+  }, [releasePort]);
+
   const connect = useCallback(async (filterUsbOnly: boolean): Promise<DetectionResult | null> => {
     const serial = navigator.serial;
     if (!serial) {
@@ -128,36 +197,8 @@ export function useWebSerial() {
     }
 
     try {
-      portRef.current = port;
-      const nativeUsb = port.getInfo().usbVendorId === ESPRESSIF_VID;
-      // ?debug in the page URL: log every serial packet to the browser console.
-      const tracing = new URLSearchParams(window.location.search).has('debug');
-      const transport = new Transport(port, tracing);
-      transportRef.current = transport;
-
-      const terminal: IEspLoaderTerminal = {
-        clean: () => {},
-        writeLine: (data: string) => addLog(data),
-        write: (data: string) => addLog(data),
-      };
-      const loader = new ESPLoader({
-        transport,
-        baudrate: nativeUsb ? 115200 : 921600, // baud is irrelevant on native USB
-        romBaudrate: 115200,
-        terminal,
-      });
-      loaderRef.current = loader;
-
-      addLog('Connecting to ROM bootloader...');
-      const chipDesc = await loader.main();
-      addLog(`Detected chip: ${chipDesc}`);
+      const { loader, transport, nativeUsb } = await openLoader(port);
       const chipFamily: string = loader.chip.CHIP_NAME;
-
-      // Attach the SPI flash before any flash read/write. The bundled stub
-      // (esptool stub_flasher 2) no longer does it on start, and esptool-js
-      // never sends SPI_ATTACH itself: without it the first readFlash() waits
-      // for data that never comes (the connection "hangs" here).
-      await loader.flashSpiAttach(0);
 
       // 1) What firmware is installed (exact build name, if it is Book Orbit)?
       const sig = await scanInstalledFirmware(loader, addLog);
@@ -197,25 +238,36 @@ export function useWebSerial() {
         isBookOrbitInstalled: sig.isBookOrbit,
         modelConflict,
       };
+      addLog(`Connected: ${chipFamily} (MAC: ${mac || 'unknown'})${exact ? ` · model: ${DEVICES[exact].name}` : ''}`);
+
+      // Hand the reader back to its firmware right away: nothing is written
+      // until Install is pressed, and a reader left in download mode would
+      // stay frozen after the cable is pulled.
+      await leaveDownloadMode(transport);
+      knownPortRef.current = port;
+      detectionRef.current = res;
+      addLog('Reader is back in its firmware; it switches to flashing mode when you press Install.');
       setDetection(res);
       setStatus('connected');
-      addLog(`Connected: ${chipFamily} (MAC: ${mac || 'unknown'})${exact ? ` · model: ${DEVICES[exact].name}` : ''}`);
       return res;
     } catch (err) {
       console.error(err);
       addLog(`Connection failed: ${errText(err)}`);
-      await releasePort();
+      await leaveDownloadMode(transportRef.current);
+      knownPortRef.current = null;
       setDetection(EMPTY_DETECTION);
       setStatus('error');
       return null;
     }
-  }, [addLog, releasePort]);
+  }, [addLog, openLoader, leaveDownloadMode]);
 
   const disconnect = useCallback(async () => {
-    await releasePort();
+    await leaveDownloadMode(transportRef.current);
+    knownPortRef.current = null;
+    detectionRef.current = EMPTY_DETECTION;
     markDisconnected();
     addLog('Reader disconnected.');
-  }, [addLog, releasePort, markDisconnected]);
+  }, [addLog, leaveDownloadMode, markDisconnected]);
 
   const resetDevice = useCallback(async () => {
     addLog('\n🔄 Restarting reader into firmware...');
@@ -228,26 +280,43 @@ export function useWebSerial() {
       }
     }
     await releasePort();
+    knownPortRef.current = null;
+    detectionRef.current = EMPTY_DETECTION;
     markDisconnected();
     addLog('Port released. The reader is booting.');
   }, [addLog, releasePort, markDisconnected]);
 
   const flash = useCallback(async ({ image, device, mode, config }: FlashRequest): Promise<void> => {
-    const loader = loaderRef.current;
-    if (!loader) throw new FlasherError('err_not_connected');
-
-    const connectedChip: string = loader.chip.CHIP_NAME;
-    if (connectedChip !== device.chip) {
-      throw new FlasherError('err_chip_mismatch', { MODEL: device.name, MODEL_CHIP: device.chip, CHIP: connectedChip });
+    const detected = detectionRef.current;
+    if (!knownPortRef.current || !detected.chipFamily) throw new FlasherError('err_not_connected');
+    if (detected.chipFamily !== device.chip) {
+      throw new FlasherError('err_chip_mismatch', { MODEL: device.name, MODEL_CHIP: device.chip, CHIP: detected.chipFamily });
     }
 
-    // Validate everything before touching the flash.
+    // Validate everything before touching the reader.
     const info = validateMergedImage(image, device.chip);
     const entries = buildConfigEntries(config);
 
     setStatus('flashing');
     setPhase('preparing');
     setProgress(0);
+
+    let loader: ESPLoader;
+    try {
+      addLog('\nSwitching the reader into flashing mode...');
+      loader = (await openLoader(await findReaderPort(knownPortRef.current))).loader;
+      const mac = await loader.chip.readMac(loader).catch(() => '');
+      if (detected.mac && mac && mac !== detected.mac) {
+        throw new Error(`a different reader is connected (MAC ${mac}, detected ${detected.mac}); press Connect again`);
+      }
+    } catch (err) {
+      console.error(err);
+      addLog(`\n❌ Could not reach the reader: ${errText(err)}`);
+      await leaveDownloadMode(transportRef.current);
+      setPhase('idle');
+      setStatus('connected');
+      throw err;
+    }
 
     try {
       addLog('\n========================================');
@@ -270,7 +339,7 @@ export function useWebSerial() {
       const { nvs } = info;
       let preserveNvs = mode === 'update';
       if (preserveNvs) {
-        const onDevice = parsePartitionTable(await loader.readFlash(PARTITION_TABLE_OFFSET, 0xc00));
+        const onDevice = parsePartitionTable(await readFlash(loader, PARTITION_TABLE_OFFSET, 0xc00));
         if (!samePartitionTables(onDevice, info.partitions)) {
           addLog('Partition layout on the reader differs from this build: settings in NVS will be reset.');
           preserveNvs = false;
@@ -287,7 +356,7 @@ export function useWebSerial() {
         if (image.length > tail) fileArray.push({ data: image.slice(tail), address: tail });
         if (entries.length > 0) {
           try {
-            existingNvs = decodeNVS(await loader.readFlash(nvs.offset, nvs.size));
+            existingNvs = decodeNVS(await readFlash(loader, nvs.offset, nvs.size));
           } catch (err) {
             addLog(`⚠ Existing NVS could not be read (${errText(err)}); it will contain only the new settings.`);
           }
@@ -331,6 +400,7 @@ export function useWebSerial() {
     } catch (err) {
       console.error(err);
       addLog(`\n❌ Flashing error: ${errText(err)}`);
+      await leaveDownloadMode(transportRef.current);
       setPhase('idle');
       setStatus('connected');
       throw err;
@@ -338,7 +408,7 @@ export function useWebSerial() {
 
     setPhase('restarting');
     await resetDevice();
-  }, [addLog, resetDevice]);
+  }, [addLog, resetDevice, openLoader, leaveDownloadMode]);
 
   return { status, phase, logs, progress, detection, connect, disconnect, resetDevice, flash, clearLogs };
 }

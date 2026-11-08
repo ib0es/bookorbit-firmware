@@ -1,4 +1,5 @@
 import type { ESPLoader } from 'esptool-js';
+import { readFlash } from './flashRead';
 import { detectFirmwareSignature, FirmwareSignature, PARTITION_TABLE_OFFSET, parsePartitionTable } from './firmwareImage';
 
 type Log = (msg: string) => void;
@@ -39,11 +40,12 @@ async function probeI2cBus(
 ): Promise<BusProbe> {
   const pins = [sda, scl];
   const mask = (1 << sda) | (1 << scl);
-  const saved = {
-    iomux: await Promise.all(pins.map((p) => loader.readReg(ioMuxReg(p)))),
-    outSel: await Promise.all(pins.map((p) => loader.readReg(gpioOutSelReg(p)))),
-    enable: await loader.readReg(GPIO_ENABLE),
-  };
+  // One command at a time: the serial protocol has no request ids, and two
+  // writes in flight fail with "WritableStream is locked".
+  const saved = { iomux: [] as number[], outSel: [] as number[], enable: 0 };
+  for (const p of pins) saved.iomux.push(await loader.readReg(ioMuxReg(p)));
+  for (const p of pins) saved.outSel.push(await loader.readReg(gpioOutSelReg(p)));
+  saved.enable = await loader.readReg(GPIO_ENABLE);
 
   const setIoMux = async (pullDown: boolean) => {
     for (let i = 0; i < pins.length; i++) {
@@ -114,21 +116,28 @@ async function probeI2cBus(
 }
 
 /**
- * ESP32-C3: X3 has I2C pull-ups on SDA=20/SCL=0 and a BQ27220 gauge at 0x55,
- * X4 has no pull-ups there. Returns null whenever the evidence is not clear.
+ * ESP32-C3: X3 has a BQ27220 fuel gauge at 0x55 on SDA=20/SCL=0; X4 has no I2C
+ * bus there. Both lines usually read high on an X4 too (GPIO20 senses USB
+ * VBUS, GPIO0 is the battery divider), so "lines high" alone proves nothing:
+ * the gauge's ACK decides. Asked three times, so one missed ACK is not enough
+ * to call an X3 an X4.
  * Only safe over native USB: GPIO20 is U0RXD, so never call this through a UART bridge.
  */
 export async function probeC3Board(loader: ESPLoader, log: Log): Promise<'x3' | 'x4' | null> {
   try {
     log('Probing I2C bus on ESP32-C3 (SDA=20, SCL=0)...');
-    const r = await probeI2cBus(loader, 'C3', 20, 0, [0x55], log);
+    const r = await probeI2cBus(loader, 'C3', 20, 0, [0x55, 0x55, 0x55], log);
+    if (r.ackAddr === 0x55) {
+      log('BQ27220 fuel gauge answered at 0x55 -> Xteink X3 hardware');
+      return 'x3';
+    }
     if (r.pullUps === false) {
       log('No I2C pull-ups on GPIO20/GPIO0 -> Xteink X4 hardware');
       return 'x4';
     }
-    if (r.ackAddr === 0x55) {
-      log('BQ27220 fuel gauge answered at 0x55 -> Xteink X3 hardware');
-      return 'x3';
+    if (r.pullUps === true) {
+      log('No fuel gauge at 0x55 (GPIO20/GPIO0 are USB/battery sense lines) -> Xteink X4 hardware');
+      return 'x4';
     }
     log('I2C probe inconclusive');
   } catch (err) {
@@ -158,22 +167,16 @@ export async function probeS3Board(loader: ESPLoader, log: Log): Promise<'picco'
 
 /** Reads the start of the first app partition and looks for Book Orbit / board markers. */
 export async function scanInstalledFirmware(loader: ESPLoader, log: Log): Promise<FirmwareSignature> {
-  // A detection read must not block the page for esptool-js's default 100 s.
-  const savedTimeout = loader.FLASH_READ_TIMEOUT;
-  loader.FLASH_READ_TIMEOUT = 5000;
   try {
-    const table = parsePartitionTable(await loader.readFlash(PARTITION_TABLE_OFFSET, 0xc00));
+    const table = parsePartitionTable(await readFlash(loader, PARTITION_TABLE_OFFSET, 0xc00));
     const app = table.find((p) => p.type === 0x00) ?? { offset: 0x10000 };
     log(`Reading firmware header at 0x${app.offset.toString(16)}...`);
-    const sig = detectFirmwareSignature(await loader.readFlash(app.offset, 8192));
+    const sig = detectFirmwareSignature(await readFlash(loader, app.offset, 8192));
     if (sig.isBookOrbit) log(`Book Orbit is installed${sig.board ? ` (build: ${sig.board})` : ''}`);
     else log('No Book Orbit firmware found (factory or other firmware)');
     return sig;
   } catch (err) {
     log(`Firmware scan skipped: ${err instanceof Error ? err.message : err}`);
     return { isBookOrbit: false, board: null };
-  } finally {
-    loader.FLASH_READ_TIMEOUT = savedTimeout;
   }
 }
-
