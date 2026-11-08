@@ -138,7 +138,8 @@ const char* deviceDisplayName();
 
 // ---- icons (DrawTarget primitives, so they follow the logical frame) --------------
 namespace icon {
-void logo(int16_t x, int16_t y, Color c);         // 18x20
+void book(int16_t x, int16_t y, Color c);         // 20x20
+void logo(int16_t x, int16_t y, Color c);         // legacy alias -> book
 void folder(int16_t x, int16_t y, Color c);       // 14x11
 void check(int16_t x, int16_t y, Color c);        // 10x10
 void cloud(int16_t x, int16_t y, Color c);        // 14x10
