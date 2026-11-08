@@ -56,7 +56,44 @@ You can flash and configure the firmware directly from any Chromium-based browse
 
 ---
 
-## 2. Configuration & Connection Setup
+## 2. Direct Firmware Downloads (Pre-compiled Binaries)
+
+Pre-compiled binaries for each supported device are available for both official tagged releases and continuous rolling builds from the `main` branch.
+
+| Device | MCU | Latest Release (Stable) | Latest Build (Master) | Web Flasher |
+|---|---|---|---|---|
+| **Xteink X4** | ESP32-C3 | [Merged (0x0)](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-x4-merged.bin) · [App (OTA)](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-x4-app.bin) | [Merged (0x0)](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-x4-merged.bin) · [App (OTA)](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-x4-app.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
+| **Xteink X3** | ESP32-C3 | [Merged (0x0)](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-x3-merged.bin) · [App (OTA)](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-x3-app.bin) | [Merged (0x0)](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-x3-merged.bin) · [App (OTA)](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-x3-app.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
+| **Xteink X4 Classic** | ESP32-S3 | [Merged (0x0)](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-x4c-merged.bin) · [App (OTA)](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-x4c-app.bin) | [Merged (0x0)](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-x4c-merged.bin) · [App (OTA)](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-x4c-app.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
+| **Xteink X4 Pro** | ESP32-S3 | [Merged (0x0)](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-x4pro-merged.bin) · [App (OTA)](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-x4pro-app.bin) | [Merged (0x0)](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-x4pro-merged.bin) · [App (OTA)](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-x4pro-app.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
+| **BOOX Picco** | ESP32-S3 | [Merged (0x0)](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-picco-merged.bin) · [App (OTA)](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-picco-app.bin) | [Merged (0x0)](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-picco-merged.bin) · [App (OTA)](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-picco-app.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
+
+### Binary Formats:
+* **`bookorbit-<device>-merged.bin`** (offset `0x0`): Monolithic all-in-one image including bootloader, partition table, `boot_app0` (otadata), and firmware. Intended for a clean installation:
+  ```bash
+  esptool.py write_flash 0x0 bookorbit-x4-merged.bin
+  ```
+* **`bookorbit-<device>-app.bin`** (offset `0x10000`): Application partition only. Intended for OTA updates or manual flashing without erasing settings:
+  ```bash
+  esptool.py write_flash 0x10000 bookorbit-x4-app.bin
+  ```
+
+### CLI Downloader:
+Download binaries directly to your local computer with:
+```bash
+# Download latest master build for X4:
+python3 tools/download_firmware.py x4
+
+# Download latest stable release for Picco:
+python3 tools/download_firmware.py picco --channel release
+
+# Download specific release tag:
+python3 tools/download_firmware.py x3 --tag v0.1.0
+```
+
+---
+
+## 3. Configuration & Connection Setup
 
 Settings can be configured using any of the following methods:
 
@@ -100,7 +137,7 @@ Copy `include/secrets.example.h` to `include/secrets.h` (this file is ignored by
 
 ---
 
-## 3. Building and Flashing via PlatformIO
+## 4. Building and Flashing via PlatformIO
 
 ### Clone repository with submodules:
 ```bash
@@ -128,7 +165,7 @@ pio device monitor -b 115200
 
 ---
 
-## 4. Hardware Pinout (Example: XTEINK X4 ESP32-C3)
+## 5. Hardware Pinout (Example: XTEINK X4 ESP32-C3)
 
 | Component | ESP32-C3 Pin | Description |
 |---|---|---|
@@ -149,7 +186,7 @@ pio device monitor -b 115200
 
 ---
 
-## 5. Controls and Navigation
+## 6. Controls and Navigation
 
 * **Power Button**:
   * Short press: wake up from sleep.
@@ -171,7 +208,7 @@ pio device monitor -b 115200
 
 ---
 
-## 6. Simulator and Automated Tests
+## 7. Simulator and Automated Tests
 
 ### Desktop Simulator (SDL2)
 You can run and test the UI locally on macOS or Linux without physical hardware:

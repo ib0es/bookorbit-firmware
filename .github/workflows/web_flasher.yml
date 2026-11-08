@@ -63,11 +63,41 @@ jobs:
       - name: Build and merge all firmware targets
         run: python3 tools/build_web_flasher.py
 
-      - name: Upload firmware artifacts
+      - name: Upload firmware artifacts (all)
         uses: actions/upload-artifact@v4
         with:
           name: book-orbit-firmware-all
           path: docs/builds/*/bookorbit-*.bin
+
+      - name: Upload firmware (Xteink X4)
+        uses: actions/upload-artifact@v4
+        with:
+          name: bookorbit-x4
+          path: docs/builds/x4/bookorbit-x4-*.bin
+
+      - name: Upload firmware (Xteink X3)
+        uses: actions/upload-artifact@v4
+        with:
+          name: bookorbit-x3
+          path: docs/builds/x3/bookorbit-x3-*.bin
+
+      - name: Upload firmware (Xteink X4 Classic)
+        uses: actions/upload-artifact@v4
+        with:
+          name: bookorbit-x4c
+          path: docs/builds/x4c/bookorbit-x4c-*.bin
+
+      - name: Upload firmware (Xteink X4 Pro)
+        uses: actions/upload-artifact@v4
+        with:
+          name: bookorbit-x4pro
+          path: docs/builds/x4pro/bookorbit-x4pro-*.bin
+
+      - name: Upload firmware (BOOX Picco)
+        uses: actions/upload-artifact@v4
+        with:
+          name: bookorbit-picco
+          path: docs/builds/picco/bookorbit-picco-*.bin
 
       # ---------- tag: publish release ----------
       - name: Publish GitHub release
@@ -83,6 +113,40 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run "${{ github.workflow }}" --repo "${{ github.repository }}" --ref "${{ github.event.repository.default_branch }}"
+
+      # ---------- main: publish / update rolling latest master release ----------
+      - name: Update latest master release on GitHub
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f latest "${{ github.sha }}"
+          git push origin latest --force
+
+          NOTES="### ⚡ Book Orbit Firmware — Latest Master Build
+          Automated rolling build from branch \`${{ github.ref_name }}\` (commit \`${{ github.sha }}\`).
+
+          #### 📦 Direct Downloads:
+          * **Xteink X4**: [Merged Image (0x0)](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-x4-merged.bin) · [App Partition (OTA)](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-x4-app.bin)
+          * **Xteink X3**: [Merged Image (0x0)](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-x3-merged.bin) · [App Partition (OTA)](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-x3-app.bin)
+          * **Xteink X4 Classic**: [Merged Image (0x0)](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-x4c-merged.bin) · [App Partition (OTA)](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-x4c-app.bin)
+          * **Xteink X4 Pro**: [Merged Image (0x0)](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-x4pro-merged.bin) · [App Partition (OTA)](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-x4pro-app.bin)
+          * **BOOX Picco**: [Merged Image (0x0)](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-picco-merged.bin) · [App Partition (OTA)](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-picco-app.bin)"
+
+          if gh release view latest --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release edit latest --repo "${{ github.repository }}" \
+              --title "Latest Master Build" \
+              --notes "$NOTES" \
+              --prerelease
+            gh release upload latest docs/builds/*/bookorbit-*.bin --repo "${{ github.repository }}" --clobber
+          else
+            gh release create latest docs/builds/*/bookorbit-*.bin --repo "${{ github.repository }}" \
+              --title "Latest Master Build" \
+              --notes "$NOTES" \
+              --prerelease
+          fi
 
       # ---------- main: mirror releases & upload Pages ----------
       - name: Mirror release binaries for the flasher

@@ -54,6 +54,9 @@ def main() -> int:
         if rel.get("draft") or len(out) >= args.max:
             continue
         tag = rel.get("tag_name", "")
+        # Skip rolling master release ('latest') so releases.json only mirrors versioned tags
+        if tag == "latest":
+            continue
         if not TAG_RE.match(tag):
             print(f"Skipping release with unsafe tag name: {tag!r}")
             continue
