@@ -128,12 +128,12 @@ jobs:
           NOTES="### ⚡ Book Orbit Firmware — Latest Master Build
           Automated rolling build from branch \`${{ github.ref_name }}\` (commit \`${{ github.sha }}\`).
 
-          #### 📦 Direct Downloads:
-          * **Xteink X4**: [Merged Image (0x0)](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-x4-merged.bin) · [App Partition (OTA)](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-x4-app.bin)
-          * **Xteink X3**: [Merged Image (0x0)](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-x3-merged.bin) · [App Partition (OTA)](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-x3-app.bin)
-          * **Xteink X4 Classic**: [Merged Image (0x0)](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-x4c-merged.bin) · [App Partition (OTA)](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-x4c-app.bin)
-          * **Xteink X4 Pro**: [Merged Image (0x0)](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-x4pro-merged.bin) · [App Partition (OTA)](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-x4pro-app.bin)
-          * **BOOX Picco**: [Merged Image (0x0)](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-picco-merged.bin) · [App Partition (OTA)](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-picco-app.bin)"
+          #### 📦 Direct Downloads (Ready to flash at offset 0x0):
+          * **Xteink X4**: [bookorbit-x4.bin](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-x4.bin)
+          * **Xteink X3**: [bookorbit-x3.bin](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-x3.bin)
+          * **Xteink X4 Classic**: [bookorbit-x4c.bin](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-x4c.bin)
+          * **Xteink X4 Pro**: [bookorbit-x4pro.bin](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-x4pro.bin)
+          * **BOOX Picco**: [bookorbit-picco.bin](https://github.com/${{ github.repository }}/releases/download/latest/bookorbit-picco.bin)"
 
           if gh release view latest --repo "${{ github.repository }}" >/dev/null 2>&1; then
             gh release edit latest --repo "${{ github.repository }}" \

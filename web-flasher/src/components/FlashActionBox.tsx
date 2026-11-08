@@ -158,7 +158,7 @@ export const FlashActionBox: React.FC<FlashActionBoxProps> = ({
         </div>
       )}
 
-      {/* Manual direct download links */}
+      {/* Manual direct download link */}
       {downloadUrls && (
         <div className="flex items-center gap-2 text-xs text-[#8a9fc2] mt-2">
           <Download className="w-3.5 h-3.5" />
@@ -168,18 +168,8 @@ export const FlashActionBox: React.FC<FlashActionBoxProps> = ({
             download
             className="text-slate-300 hover:text-cyan-400 underline font-mono transition-colors"
           >
-            merged.bin (0x0)
+            {selectedDevice ? `bookorbit-${selectedDevice}.bin` : 'firmware.bin'} (0x0)
           </a>
-          {downloadUrls.app && <span>·</span>}
-          {downloadUrls.app && (
-            <a
-              href={downloadUrls.app}
-              download
-              className="text-slate-300 hover:text-cyan-400 underline font-mono transition-colors"
-            >
-              app.bin (OTA)
-            </a>
-          )}
         </div>
       )}
     </div>

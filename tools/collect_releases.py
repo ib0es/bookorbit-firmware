@@ -25,7 +25,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DOCS_DIR = REPO_ROOT / "docs"
 OUT_DIR = DOCS_DIR / "builds" / "releases"
-ASSET_RE = re.compile(r"^bookorbit-[a-z0-9]+-(merged|app)\.bin$")
+ASSET_RE = re.compile(r"^bookorbit-[a-z0-9]+(-merged)?\.bin$")
 TAG_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 
 

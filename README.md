@@ -58,25 +58,21 @@ You can flash and configure the firmware directly from any Chromium-based browse
 
 ## 2. Direct Firmware Downloads (Pre-compiled Binaries)
 
-Pre-compiled binaries for each supported device are available for both official tagged releases and continuous rolling builds from the `main` branch.
+Ready-to-flash monolithic binaries (containing bootloader, partition table, otadata, and application) are available for each device for both official tagged releases and continuous rolling builds from the `main` branch.
 
 | Device | MCU | Latest Release (Stable) | Latest Build (Master) | Web Flasher |
 |---|---|---|---|---|
-| **Xteink X4** | ESP32-C3 | [Merged (0x0)](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-x4-merged.bin) · [App (OTA)](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-x4-app.bin) | [Merged (0x0)](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-x4-merged.bin) · [App (OTA)](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-x4-app.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
-| **Xteink X3** | ESP32-C3 | [Merged (0x0)](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-x3-merged.bin) · [App (OTA)](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-x3-app.bin) | [Merged (0x0)](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-x3-merged.bin) · [App (OTA)](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-x3-app.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
-| **Xteink X4 Classic** | ESP32-S3 | [Merged (0x0)](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-x4c-merged.bin) · [App (OTA)](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-x4c-app.bin) | [Merged (0x0)](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-x4c-merged.bin) · [App (OTA)](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-x4c-app.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
-| **Xteink X4 Pro** | ESP32-S3 | [Merged (0x0)](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-x4pro-merged.bin) · [App (OTA)](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-x4pro-app.bin) | [Merged (0x0)](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-x4pro-merged.bin) · [App (OTA)](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-x4pro-app.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
-| **BOOX Picco** | ESP32-S3 | [Merged (0x0)](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-picco-merged.bin) · [App (OTA)](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-picco-app.bin) | [Merged (0x0)](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-picco-merged.bin) · [App (OTA)](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-picco-app.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
+| **Xteink X4** | ESP32-C3 | [bookorbit-x4.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-x4.bin) | [bookorbit-x4.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-x4.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
+| **Xteink X3** | ESP32-C3 | [bookorbit-x3.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-x3.bin) | [bookorbit-x3.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-x3.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
+| **Xteink X4 Classic** | ESP32-S3 | [bookorbit-x4c.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-x4c.bin) | [bookorbit-x4c.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-x4c.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
+| **Xteink X4 Pro** | ESP32-S3 | [bookorbit-x4pro.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-x4pro.bin) | [bookorbit-x4pro.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-x4pro.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
+| **BOOX Picco** | ESP32-S3 | [bookorbit-picco.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-picco.bin) | [bookorbit-picco.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-picco.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
 
-### Binary Formats:
-* **`bookorbit-<device>-merged.bin`** (offset `0x0`): Monolithic all-in-one image including bootloader, partition table, `boot_app0` (otadata), and firmware. Intended for a clean installation:
-  ```bash
-  esptool.py write_flash 0x0 bookorbit-x4-merged.bin
-  ```
-* **`bookorbit-<device>-app.bin`** (offset `0x10000`): Application partition only. Intended for OTA updates or manual flashing without erasing settings:
-  ```bash
-  esptool.py write_flash 0x10000 bookorbit-x4-app.bin
-  ```
+### Flashing via `esptool.py`:
+Each binary is an all-in-one image and is flashed at offset `0x0`:
+```bash
+esptool.py write_flash 0x0 bookorbit-x4.bin
+```
 
 ### CLI Downloader:
 Download binaries directly to your local computer with:
