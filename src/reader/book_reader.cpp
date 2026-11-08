@@ -1,7 +1,9 @@
 #include "book_reader.h"
 
 #include <render/PageRenderer.h>
+#include <strings.h>
 #include <text/hyph_en_us.h>
+#include "engine/hyph_ru.h"
 
 #include "../hal/battery.h"
 #include "../hal/display.h"
@@ -75,7 +77,8 @@ String BookReader::cacheDirFor(const String& bookPath) {
 
 BookReader::BookReader() : _fontSize(FontEngine::kDefaultSize) {
     _fonts.add(&_font);
-    _hyph.init(k_hyph_en_us, k_hyph_en_us_size);
+    _hyphEn.init(k_hyph_en_us, k_hyph_en_us_size);
+    _hyphRu.init(k_hyph_ru, k_hyph_ru_size);
 }
 
 BookReader::~BookReader() { closeBook(); }
@@ -176,6 +179,33 @@ bool BookReader::openContainer() {
     return false;
 }
 
+const char* BookReader::bookLanguage() {
+    if (!_isTxt) {
+        const char* lang = _catalog.metadata().language;
+        return (lang && *lang) ? lang : "en";
+    }
+    // UTF-8 Cyrillic letters start with 0xD0/0xD1; a text that is mostly them is Russian.
+    uint8_t buf[2048];
+    const int32_t n = _src.readAt(0, buf, sizeof(buf));
+    int cyr = 0, latin = 0;
+    for (int32_t i = 0; i < n; i++) {
+        const uint8_t c = buf[i];
+        if (c == 0xD0 || c == 0xD1) cyr++;
+        else if ((c | 0x20) >= 'a' && (c | 0x20) <= 'z') latin++;
+    }
+    return cyr > latin ? "ru" : "en";
+}
+
+const freeink::book::Hyphenator* BookReader::hyphenatorFor(const char* language) const {
+    auto is = [language](const char* code) {
+        const size_t n = strlen(code);
+        return strncasecmp(language, code, n) == 0 && (language[n] == '\0' || language[n] == '-' || language[n] == '_');
+    };
+    if (is("ru") || is("rus")) return &_hyphRu;
+    if (is("en") || is("eng")) return &_hyphEn;
+    return nullptr;
+}
+
 void BookReader::setupLayout() {
     const BookPageGeometry geo = bookPageGeometry();
     LayoutParams p;
@@ -188,10 +218,8 @@ void BookReader::setupLayout() {
     p.baseSizePx = (uint16_t)FontEngine::sizePx(_fontSize);
     p.font = &_fonts;
     p.defaultAlign = freeink::book::TextAlign::Justify;
-    const char* lang = (!_isTxt && _catalog.metadata().language) ? _catalog.metadata().language : "";
-    p.language = *lang ? lang : "en";
-    // Only English patterns ship with the engine for now.
-    p.hyphenator = (strncmp(p.language, "en", 2) == 0) ? &_hyph : nullptr;
+    p.language = bookLanguage();
+    p.hyphenator = hyphenatorFor(p.language);
     p.stylesheet = _isTxt ? nullptr : _catalog.stylesheet();
     _params = p;
     _gen = layoutGenerationHash(_params, BitmapBookFont::kFingerprint);

@@ -38,6 +38,7 @@ build_fib() {   # name sources... (with the engine; its own warnings are not our
     mkdir -p "$OUT/$name"
     (cd "$OUT/$name" && $CXX $FLAGS -Wno-unused-parameter $FIB_INC "$@" $FIB_CORE "$OUT"/fib/*.o -o "$OUT/$name/test")
 }
+build_fib hyph "$ROOT/test/host/test_hyphenation.cpp"
 build_fib counter "$ROOT/test/host/test_engine_text_counter.cpp" "$ROOT/src/reader/engine/engine_text_counter.cpp" "$ROOT/src/reader/epub_cfi.cpp"
 
 if [ "$(uname)" = Linux ]; then   # needs GNU ld --wrap
@@ -53,6 +54,7 @@ echo "== BookFormats";       "$OUT/formats/test" || rc=1
 echo "== EpubCfi";          "$OUT/cfi/test" | tail -1 || rc=1
 echo "== ProgressSync";      "$OUT/progress/test" > "$OUT/progress.log" || rc=1; tail -1 "$OUT/progress.log"; [ $rc = 0 ] || cat "$OUT/progress.log"
 echo "== BookOrbitProtocol"; "$OUT/protocol/test" | grep -v "^[a-zA-Z/]* *$" || rc=1
+echo "== Hyphenation";      "$OUT/hyph/test" || rc=1
 echo "== EngineTextCounter"; "$OUT/counter/test" "$ROOT/simulator/sdcard/books/Alice in Wonderland.epub" \
     "$ROOT/simulator/sdcard/books/01. Frankenstein (1818).epub" "$ROOT/simulator/sdcard/books/Pride and Prejudice.epub" \
     | grep -v "^units" || rc=1

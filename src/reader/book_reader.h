@@ -145,7 +145,12 @@ private:
 
     BitmapBookFont _font;
     freeink::book::FontChain _fonts;
-    freeink::book::Hyphenator _hyph;
+    freeink::book::Hyphenator _hyphEn;
+    freeink::book::Hyphenator _hyphRu;
+    // Picks the patterns by the book's language ("ru", "ru-RU", "rus", "en"...); a
+    // plain-text file has none, so its first kilobytes are looked at instead.
+    const char* bookLanguage();
+    const freeink::book::Hyphenator* hyphenatorFor(const char* language) const;
     freeink::book::LayoutParams _params;
     uint32_t _gen = 0;
 
