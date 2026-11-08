@@ -73,6 +73,7 @@ public:
     String getCfi();
     bool goToPosition(const String& cfi, const String& xpath, float percent, int page);
     void renderCurrentPage();
+    int renderFailures() const { return _renderFailures; }   // pages that could not be drawn (tests, logs)
 
     int getFontSize() const { return _fontSize; }
     bool setFontSize(int size);
@@ -161,4 +162,5 @@ private:
     uint32_t _cfiChars = UINT32_MAX;
     String _cfi;
     int _renderedPages = 0;
+    int _renderFailures = 0;
 };

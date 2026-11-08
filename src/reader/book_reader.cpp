@@ -25,7 +25,7 @@ namespace {
 // fibcheck on 27 real books: layout <= 50 KB with the page index, parse 46 KB).
 constexpr size_t kLayoutBytes = 56 * 1024;
 constexpr size_t kParseBytes = 48 * 1024;
-constexpr size_t kRenderBytes = 8 * 1024;       // one page's runs and text
+constexpr size_t kRenderBytes = 12 * 1024;      // one page's runs and text (first try)
 constexpr size_t kImageBytes = 52 * 1024;       // inflate + decode of a page's images
 constexpr uint32_t kSpineFileMagic = 0x53424946;   // "FIBS"
 // Until a chapter is laid out: rough page and character yields of XHTML bytes.
@@ -159,7 +159,7 @@ void BookReader::setupLayout() {
     p.marginLeft = (int16_t)geo.left;
     p.marginRight = (int16_t)(Display.width() - geo.left - geo.width);
     p.marginTop = (int16_t)geo.top;
-    p.marginBottom = 48;   // the chapter line and progress bar below
+    p.marginBottom = 56;   // the chapter line and progress bar below (rule at height - 44)
     p.baseSizePx = (uint16_t)FontEngine::sizePx(_fontSize);
     p.font = &_fonts;
     p.defaultAlign = freeink::book::TextAlign::Justify;
@@ -792,29 +792,40 @@ void BookReader::renderCurrentPage() {
                   _page + 1, (unsigned)_pages.pageCount());
     Display.clear(EPD_WHITE);
     drawStatusBar();
-    {
-        Buffer mem(kRenderBytes);
-        if (mem.p) {
-            Arena arena(mem.p, kRenderBytes);
-            Page page{};
-            if (_pages.readPage((uint32_t)_page, arena, &page) == BookStatus::Ok) {
-                FrameTarget frame{Display.getBuffer(), (int16_t)EPD_WIDTH, (int16_t)EPD_HEIGHT, (int16_t)(EPD_WIDTH / 8),
-                                  FrameFormat::Mono1Sharp, FrameRotation::Portrait};
-                uint32_t firstMissing = 0;
-                const uint32_t missing = PageRenderer::renderText(page, _fonts, frame, &firstMissing);
-                if (missing) Serial.printf("[Reader] %u characters not in the font (first U+%04X)\n", (unsigned)missing,
-                                           (unsigned)firstMissing);
-                if (page.imageCount > 0 && !_isTxt) {
-                    Buffer img(kImageBytes);
-                    if (img.p) {
-                        Arena a(img.p, kImageBytes);
-                        PageRenderer::renderImages(page, _src, _catalog.zip(), a, frame);
-                    } else {
-                        Serial.println("[Reader] No memory for the page's images");
-                    }
-                }
+    // A page record: runs plus text; justified text is many runs. Retried larger
+    // when the page does not fit (dense pages need ~15 KB).
+    for (size_t cap = kRenderBytes; cap <= 64 * 1024; cap *= 2) {
+        Buffer mem(cap);
+        if (!mem.p) {
+            Serial.printf("[Reader] No memory to draw the page (%u B)\n", (unsigned)cap);
+            _renderFailures++;
+            break;
+        }
+        Arena arena(mem.p, cap);
+        Page page{};
+        const BookStatus st = _pages.readPage((uint32_t)_page, arena, &page);
+        if (st == BookStatus::OutOfMemory && cap < 64 * 1024) continue;
+        if (st != BookStatus::Ok) {
+            _renderFailures++;
+            Serial.printf("[Reader] Page %d of chapter %d unreadable: %s\n", _page + 1, _spine, bookStatusName(st));
+            break;
+        }
+        FrameTarget frame{Display.getBuffer(), (int16_t)EPD_WIDTH, (int16_t)EPD_HEIGHT, (int16_t)(EPD_WIDTH / 8),
+                          FrameFormat::Mono1Sharp, FrameRotation::Portrait};
+        uint32_t firstMissing = 0;
+        const uint32_t missing = PageRenderer::renderText(page, _fonts, frame, &firstMissing);
+        if (missing) Serial.printf("[Reader] %u characters not in the font (first U+%04X)\n", (unsigned)missing,
+                                   (unsigned)firstMissing);
+        if (page.imageCount > 0 && !_isTxt) {
+            Buffer img(kImageBytes);
+            if (img.p) {
+                Arena a(img.p, kImageBytes);
+                PageRenderer::renderImages(page, _src, _catalog.zip(), a, frame);
+            } else {
+                Serial.println("[Reader] No memory for the page's images");
             }
         }
+        break;
     }
     const bool full = (_renderedPages++ % FULL_REFRESH_EVERY_PAGES) == 0;
     Serial.printf("[Reader] Page drawn in %lu ms\n", (unsigned long)(millis() - t0));

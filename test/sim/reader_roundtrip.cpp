@@ -30,6 +30,10 @@ int main(int argc, char** argv) {
         Reader.layoutRemaining();   // exact page numbers
         const int n = Reader.getTotalPages();
         int failP = 0, failX = 0, failC = 0, checked = 0, shared = 0;
+        // Every page must draw (its record fits the render buffer, the chapter is readable).
+        const int drawFailsBefore = Reader.renderFailures();
+        for (int p = 1; p <= n; p++) { Reader.setPage(p); Reader.renderCurrentPage(); }
+        const int failD = Reader.renderFailures() - drawFailsBefore;
         const bool epub = String(argv[a]).endsWith(".epub");
         for (int p = 1; p <= n; p++) {
             Reader.setPage(p);
@@ -74,9 +78,9 @@ int main(int argc, char** argv) {
             printf("  web CFI 'Chapter 10' -> page %d (%s)%s\n", page, here.c_str(), ok && chapterStart ? "" : "  WRONG");
             if (!ok || !chapterStart) failC++;
         }
-        printf("%-40s pages=%d checked=%d (image pages sharing a position: %d)  percent-fail=%d  xpath-fail=%d  cfi-fail=%d\n",
-               argv[a], n, checked, shared, failP, failX, failC);
-        totalFail += failP + failX + failC;
+        printf("%-40s pages=%d checked=%d (image pages sharing a position: %d)  draw-fail=%d  percent-fail=%d  xpath-fail=%d  cfi-fail=%d\n",
+               argv[a], n, checked, shared, failD, failP, failX, failC);
+        totalFail += failD + failP + failX + failC;
         Reader.closeBook();
     }
     printf("%s\n", totalFail ? "ROUNDTRIP FAILED" : "ROUNDTRIP OK");
