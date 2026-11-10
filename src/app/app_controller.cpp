@@ -138,8 +138,13 @@ void AppController::setup() {
     _ctx.lastActivityTime = millis();
 }
 
-// A page turn redraws within ~50 ms; the next one usually comes seconds later.
-static constexpr uint32_t kPrelayoutIdleMs = 1000;
+// The background layout waits this long after a key: quick page turns run
+// without it. A slice (one engine step) blocks the keys for 0.1-0.35 s on the
+// X4, so after each one the loop rests as long as the slice took: a key
+// pressed meanwhile is answered at once, and one pressed during a slice
+// waits at most that slice.
+static constexpr uint32_t kPrelayoutIdleMs = 2500;
+static uint32_t s_restUntil = 0;
 
 void AppController::loop() {
     Buttons.update();
@@ -199,11 +204,13 @@ void AppController::loop() {
     const bool readerScreens = st == STATE_READING || st == STATE_TOC || st == STATE_READER_MENU || st == STATE_FONT_MENU;
     if (!readerScreens || SyncService::backgroundActive()) {
         if (Reader.backgroundActive()) Reader.stopBackground();
-    } else if (st == STATE_READING && !Modal.isActive() && millis() - _ctx.lastActivityTime > kPrelayoutIdleMs) {
+    } else if (st == STATE_READING && !Modal.isActive() && millis() - _ctx.lastActivityTime > kPrelayoutIdleMs &&
+               (int32_t)(millis() - s_restUntil) >= 0) {
         const uint32_t t0 = millis();
         const bool worked = Reader.tickBackground();
-        // Keys are not read during a slice: a long one makes the reader feel slow.
-        if (millis() - t0 > 80) Serial.printf("[Reader] Background slice took %lu ms\n", (unsigned long)(millis() - t0));
+        const uint32_t took = millis() - t0;
+        if (took > 400) Serial.printf("[Reader] Background slice took %lu ms\n", (unsigned long)took);
+        s_restUntil = millis() + took;
         if (worked) return;
     }
 
