@@ -187,7 +187,6 @@ private:
     bool _opened = false;
     bool _noMemory = false;
     uint8_t _convertProblem = 0;   // convert::ConvertProblem
-    bool _isTxt = false;
     String _path;
     String _title;
     int _fontSize;

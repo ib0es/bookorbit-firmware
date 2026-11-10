@@ -4,6 +4,7 @@
 #include "../reader/engine/sd_book_storage.h"
 #include "fb2_to_epub.h"
 #include "mobi_to_epub.h"
+#include "txt_to_epub.h"
 
 namespace convert {
 
@@ -157,7 +158,7 @@ String readSmall(const String& path) {
 bool needsConversion(const String& path) {
     String l = path;
     l.toLowerCase();
-    return l.endsWith(".fb2") || l.endsWith(".mobi") || l.endsWith(".azw") || l.endsWith(".azw3") || l.endsWith(".prc");
+    return l.endsWith(".fb2") || l.endsWith(".txt") || l.endsWith(".mobi") || l.endsWith(".azw") || l.endsWith(".azw3") || l.endsWith(".prc");
 }
 
 bool ensureConverted(const String& path, const String& cacheDir, String& epubPath, ProgressFn progress, void* user,
@@ -188,9 +189,17 @@ bool ensureConverted(const String& path, const String& cacheDir, String& epubPat
     TimedProgress timed{progress, user};
     String lower = path;
     lower.toLowerCase();
-    const ConvertResult r = lower.endsWith(".fb2")
-                                ? fb2ToEpub(in, out, toc, &TimedProgress::call, &timed, &stats)
-                                : mobiToEpub(in, out, toc, &TimedProgress::call, &timed, &stats);
+    ConvertResult r;
+    if (lower.endsWith(".fb2")) {
+        r = fb2ToEpub(in, out, toc, &TimedProgress::call, &timed, &stats);
+    } else if (lower.endsWith(".txt")) {
+        // a text file has no title of its own: its file name
+        String stem = path.substring(path.lastIndexOf('/') + 1);
+        stem = stem.substring(0, stem.length() - 4);
+        r = txtToEpub(in, out, stem.c_str(), &TimedProgress::call, &timed, &stats);
+    } else {
+        r = mobiToEpub(in, out, toc, &TimedProgress::call, &timed, &stats);
+    }
     const bool closed = out.close();
     if (r != ConvertResult::Ok || !closed || !Storage.replaceFile(tmpEpub.c_str(), epubPath.c_str())) {
         Serial.printf("[Convert] %s: %s %s\n", path.c_str(), resultName(r), stats.error.c_str());
@@ -210,9 +219,11 @@ bool ensureConverted(const String& path, const String& cacheDir, String& epubPat
         s.close();
     }
     Serial.printf("[Convert] %s -> EPUB in %lu ms (card reads %lu ms, writes %lu ms, progress window %lu ms): "
-                  "%u chapters, %u images, %u contents entries, %u ids\n", path.c_str(), (unsigned long)(millis() - t0),
-                  (unsigned long)(in.us / 1000), (unsigned long)(out.us / 1000), (unsigned long)(timed.us / 1000),
-                  (unsigned)stats.chapters, (unsigned)stats.images, (unsigned)stats.tocEntries, (unsigned)stats.ids);
+                  "%u chapters, %u images, %u contents entries, %u ids%s%s\n", path.c_str(),
+                  (unsigned long)(millis() - t0), (unsigned long)(in.us / 1000), (unsigned long)(out.us / 1000),
+                  (unsigned long)(timed.us / 1000), (unsigned)stats.chapters, (unsigned)stats.images,
+                  (unsigned)stats.tocEntries, (unsigned)stats.ids, lower.endsWith(".txt") ? "; " : "",
+                  lower.endsWith(".txt") ? stats.error.c_str() : "");
     return true;
 }
 

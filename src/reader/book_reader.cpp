@@ -181,7 +181,6 @@ bool BookReader::openBook(const String& filePath) {
     _path = filePath;
     String lower = filePath;
     lower.toLowerCase();
-    _isTxt = lower.endsWith(".txt");
     _title = stemOf(filePath);
     String readPath = filePath;
     _convertStep = -1;
@@ -205,10 +204,7 @@ bool BookReader::openBook(const String& filePath) {
     _cache.setDir(cacheDirFor(filePath));
     Storage.mkdir(_cache.dir().c_str());
 
-    if (_isTxt) {
-        _spines.assign(1, Spine());
-        _spines[0].bytes = (uint32_t)_src.size();
-    } else if (!openContainer()) {
+    if (!openContainer()) {
         closeBook();
         return false;
     }
@@ -269,20 +265,8 @@ bool BookReader::openContainer() {
 }
 
 const char* BookReader::bookLanguage() {
-    if (!_isTxt) {
-        const char* lang = _catalog.metadata().language;
-        return (lang && *lang) ? lang : "en";
-    }
-    // UTF-8 Cyrillic letters start with 0xD0/0xD1; a text that is mostly them is Russian.
-    uint8_t buf[2048];
-    const int32_t n = _src.readAt(0, buf, sizeof(buf));
-    int cyr = 0, latin = 0;
-    for (int32_t i = 0; i < n; i++) {
-        const uint8_t c = buf[i];
-        if (c == 0xD0 || c == 0xD1) cyr++;
-        else if ((c | 0x20) >= 'a' && (c | 0x20) <= 'z') latin++;
-    }
-    return cyr > latin ? "ru" : "en";
+    const char* lang = _catalog.metadata().language;
+    return (lang && *lang) ? lang : "en";
 }
 
 const freeink::book::Hyphenator* BookReader::hyphenatorFor(const char* language) const {
@@ -311,7 +295,7 @@ void BookReader::setupLayout() {
     p.defaultAlign = freeink::book::TextAlign::Justify;
     p.language = bookLanguage();
     p.hyphenator = hyphenatorFor(p.language);
-    p.stylesheet = _isTxt ? nullptr : _catalog.stylesheet();
+    p.stylesheet = _catalog.stylesheet();
     _params = p;
     _gen = layoutGenerationHash(_params, BitmapBookFont::kFingerprint);
 }
@@ -464,19 +448,17 @@ bool BookReader::layoutChapter(int spine) {
     stopBackground();   // the layout buffers need the memory a background job holds
     const uint32_t t0 = millis();
     const Spine& sp = _spines[spine];
-    if (sp.bytes > 60000 || _isTxt) {   // a big one: say why the screen waits
+    if (sp.bytes > 60000) {   // a big one: say why the screen waits
         drawStatusModal(tr(MsgId::READER_FORMAT_TITLE), _title.substring(0, 32).c_str(), tr(MsgId::READER_FORMAT_LINE),
                         tr(MsgId::READER_OPENING_WAIT));
     }
     ZipEntry entry;
     BookSource* chapter = &_src;
     char href[256] = "";
-    if (!_isTxt) {
-        if (!chapterSource(spine, entry, chapter, _chapterSrc) ||
-            _catalog.spineHref((size_t)spine, href, sizeof(href)) != BookStatus::Ok) {
-            Serial.printf("[Reader] Chapter %d cannot be read\n", spine);
-            return false;
-        }
+    if (!chapterSource(spine, entry, chapter, _chapterSrc) ||
+        _catalog.spineHref((size_t)spine, href, sizeof(href)) != BookStatus::Ok) {
+        Serial.printf("[Reader] Chapter %d cannot be read\n", spine);
+        return false;
     }
     // The page index grows ~1 KB per 128 pages inside the layout buffer: a whole
     // novel in one file needs more than the usual 54 KB, so a full buffer is
@@ -489,24 +471,22 @@ bool BookReader::layoutChapter(int spine) {
     PageCacheWriter writer;
     for (size_t cap = kLayoutBytes; st == BookStatus::OutOfMemory && cap <= kLayoutBytes + 32 * 1024; cap += 16 * 1024) {
         Buffer layoutMem(cap);
-        Buffer parseMem(_isTxt ? 0 : kStoredParseBytes);
-        if (!layoutMem.p || (!_isTxt && !parseMem.p)) {
+        Buffer parseMem(kStoredParseBytes);
+        if (!layoutMem.p || !parseMem.p) {
             const MemStats::Snapshot m = MemStats::now();
             Serial.printf("[Reader] Not enough memory to lay out chapter %d (%u KB): free %u KB, largest block %u KB\n",
                           spine, (unsigned)(cap / 1024), (unsigned)(m.freeBytes / 1024), (unsigned)(m.largestBlock / 1024));
             break;
         }
         Arena layout(layoutMem.p, cap);
-        Arena parse(parseMem.p, _isTxt ? 0 : kStoredParseBytes);
+        Arena parse(parseMem.p, kStoredParseBytes);
         writer = PageCacheWriter();
         if (!writer.begin(_cache, name, _gen, layout)) {
             Serial.printf("[Reader] Cannot write the page cache %s/%s\n", _cache.dir().c_str(), name);
             st = BookStatus::IoError;
             break;
         }
-        if (_isTxt) {
-            st = ChapterLayout::layoutPlainText(_src, _params, layout, writer, &pages, &chars);
-        } else {
+        {
             // The image pre-scan's transient inflate runs in the layout buffer before layout starts.
             ChapterLayoutSession session;
             st = session.begin(_src, &_catalog.zip(), *chapter, entry, href, _params, layout, writer, &parse, &layout);
@@ -553,7 +533,7 @@ bool BookReader::loadChapter(int spine) {
     if (!_cache.exists(name)) {
         // Shown while it is laid out: the first page comes up as soon as it is made,
         // the rest follows behind the reader (or when a page not made yet is asked for).
-        if (!_isTxt && !_spines[spine].bgFailed && buildIncrementally(spine)) return true;
+        if (!_spines[spine].bgFailed && buildIncrementally(spine)) return true;
         if (_bg && _bg->spine == spine) stopBackground();
         if (!_cache.exists(name)) {
             if (!layoutChapter(spine)) return false;
@@ -729,7 +709,7 @@ int BookReader::nextToPrelayout() const {
 }
 
 bool BookReader::tickBackground() {
-    if (!_opened || _isTxt) return false;
+    if (!_opened) return false;
     if (_bg) {
         stepBackground();
         return true;
@@ -1092,7 +1072,7 @@ bool BookReader::setPageByProgress(float percent) {
 
 bool BookReader::setPageByXPath(const String& xpath, float fallbackPercent) {
     const int at = xpath.indexOf("DocFragment[");
-    if (!_opened || _isTxt || at < 0) return false;
+    if (!_opened || at < 0) return false;
     const int spine = xpath.substring(at + 12).toInt() - 1;
     if (spine < 0 || spine >= (int)_spines.size()) return false;
     // The xpath names the chapter; the percent places it inside when it agrees.
@@ -1104,13 +1084,13 @@ bool BookReader::setPageByXPath(const String& xpath, float fallbackPercent) {
 }
 
 String BookReader::getXPath() const {
-    if (!_opened || _isTxt) return "";
+    if (!_opened) return "";
     return "/body/DocFragment[" + String(_spine + 1) + "]";
 }
 
 bool BookReader::goToPosition(const String& cfi, const String& xpath, float percent, int page) {
     if (!_opened) return false;
-    if (cfi.length() > 0 && !_isTxt && setPageByCfi(cfi, percent)) return true;
+    if (cfi.length() > 0 && setPageByCfi(cfi, percent)) return true;
     if (xpath.length() > 0 && setPageByXPath(xpath, percent)) return true;
     if (ProgressSync::hasProgress(percent)) return setPageByProgress(percent);
     if (page > 1) return setPage(page);
@@ -1142,7 +1122,7 @@ bool BookReader::walkChapter(int spine, EpubCfi::Walker& walker) {
 
 bool BookReader::cfiToChapterChar(const String& cfi, int& spine, uint32_t& chars) {
     EpubCfi::Location loc;
-    if (_isTxt || !EpubCfi::parse(cfi.c_str(), loc)) return false;
+    if (!EpubCfi::parse(cfi.c_str(), loc)) return false;
     spine = loc.ordinal - 1;
     if (spine < 0 || spine >= (int)_spines.size()) return false;
     EngineTextCounter counter;
@@ -1153,7 +1133,6 @@ bool BookReader::cfiToChapterChar(const String& cfi, int& spine, uint32_t& chars
 }
 
 bool BookReader::chapterCharToCfi(int spine, uint32_t chars, String& out) {
-    if (_isTxt) return false;
     EngineTextCounter counter;
     EpubCfi::Walker walker = EpubCfi::Walker::toLocation(counter, chars);
     if (!walkChapter(spine, walker) || !walker.reached()) return false;
@@ -1195,7 +1174,7 @@ bool BookReader::setPageByCfi(const String& cfi, float fallbackPercent) {
 }
 
 String BookReader::getCfi() {
-    if (!_opened || _isTxt) return "";
+    if (!_opened) return "";
     const Position p = position();
     if (p.spine == _cfiSpine && p.chars == _cfiChars) return _cfi;
     String cfi;
@@ -1216,7 +1195,6 @@ String BookReader::getCfi() {
 void BookReader::buildToc() {
     _toc.clear();
     _tocFragment.clear();
-    if (_isTxt) return;
     char title[96], frag[96];
     for (size_t i = 0; i < _catalog.tocCount(); i++) {
         BookCatalog::TocItem item;
@@ -1413,7 +1391,7 @@ void BookReader::renderCurrentPage() {
         imageCount = page.imageCount;
         if (missing) Serial.printf("[Reader] %u characters not in the font (first U+%04X)\n", (unsigned)missing,
                                    (unsigned)firstMissing);
-        if (page.imageCount > 0 && !_isTxt) {
+        if (page.imageCount > 0) {
             auto drawImages = [&](size_t size) {
                 Buffer img(size);
                 if (!img.p) return BookStatus::OutOfMemory;

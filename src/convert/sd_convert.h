@@ -10,7 +10,7 @@ namespace convert {
 // Bump to have every converted book made again (a converter fix).
 constexpr int kConverterVersion = 6;
 
-// True for the formats read through a converted EPUB (FB2 for now).
+// True for the formats read through a converted EPUB: FB2, TXT, MOBI/AZW/AZW3.
 bool needsConversion(const String& path);
 
 // The EPUB to read for `path`: converted into `cacheDir` on first use (and
