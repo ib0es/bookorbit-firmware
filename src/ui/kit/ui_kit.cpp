@@ -3,6 +3,7 @@
 
 #include <BoardConfig.h>  // FREEINK_CAP_TOUCH
 
+#include <algorithm>
 #include <new>
 #include <stdio.h>
 #include <string.h>
@@ -77,6 +78,59 @@ fi::Paint solid(Color c) { return fi::Paint::solid(c); }
 
 Color inverse(Color c) { return c == Color::Black ? Color::White : Color::Black; }
 
+// Bits x0..x1 (inclusive, MSB first) of a panel row set (white) or cleared (black).
+inline void paintSpan(uint8_t* row, int x0, int x1, bool white) {
+    const int b0 = x0 >> 3, b1 = x1 >> 3;
+    const uint8_t m0 = (uint8_t)(0xFF >> (x0 & 7));
+    const uint8_t m1 = (uint8_t)(0xFF << (7 - (x1 & 7)));
+    if (b0 == b1) {
+        const uint8_t m = m0 & m1;
+        row[b0] = white ? (uint8_t)(row[b0] | m) : (uint8_t)(row[b0] & ~m);
+        return;
+    }
+    row[b0] = white ? (uint8_t)(row[b0] | m0) : (uint8_t)(row[b0] & ~m0);
+    if (b1 - b0 > 1) memset(row + b0 + 1, white ? 0xFF : 0x00, (size_t)(b1 - b0 - 1));
+    row[b1] = white ? (uint8_t)(row[b1] | m1) : (uint8_t)(row[b1] & ~m1);
+}
+
+// A solid black or white rectangle straight into the framebuffer, a byte at a
+// time along the panel's rows: DisplayTarget::fill plots every pixel with its
+// rotation (384,000 calls for a cleared screen, ~0.2 s of every menu redraw on
+// the X4). The same pixels as plot(): the rectangle is clipped to the logical
+// screen and the target's clip, then turned into the panel's frame. False for
+// other colours (dithered grays), which go the slow way.
+bool fastFill(Rect r, Color c) {
+    if (c != Color::Black && c != Color::White) return false;
+    fi::DisplayTarget& t = target();
+    uint8_t* fb = Display.getBuffer();
+    if (!fb) return false;
+    const Rect clip = t.clipRect();
+    int32_t x0 = std::max<int32_t>({r.x, clip.x, 0});
+    int32_t y0 = std::max<int32_t>({r.y, clip.y, 0});
+    int32_t x1 = std::min<int32_t>({(int32_t)r.x + r.width, (int32_t)clip.x + clip.width, (int32_t)g_device.width}) - 1;
+    int32_t y1 = std::min<int32_t>({(int32_t)r.y + r.height, (int32_t)clip.y + clip.height, (int32_t)g_device.height}) - 1;
+    if (x1 < x0 || y1 < y0) return true;
+    const int32_t pw = Display.rawWidth(), ph = Display.rawHeight(), pwb = pw / 8;
+    // The two corners in the panel's frame (as DisplayTarget::plot turns them).
+    auto toPanel = [&](int32_t x, int32_t y, int32_t& px, int32_t& py) {
+        switch (t.orientation()) {
+            case fi::Orientation::Portrait: px = y; py = ph - 1 - x; break;
+            case fi::Orientation::PortraitInverted: px = pw - 1 - y; py = x; break;
+            case fi::Orientation::LandscapeClockwise: px = pw - 1 - x; py = ph - 1 - y; break;
+            default: px = x; py = y; break;
+        }
+    };
+    int32_t ax, ay, bx, by;
+    toPanel(x0, y0, ax, ay);
+    toPanel(x1, y1, bx, by);
+    const int32_t px0 = std::max<int32_t>(0, std::min(ax, bx)), px1 = std::min<int32_t>(pw - 1, std::max(ax, bx));
+    const int32_t py0 = std::max<int32_t>(0, std::min(ay, by)), py1 = std::min<int32_t>(ph - 1, std::max(ay, by));
+    if (px1 < px0 || py1 < py0) return true;
+    const bool white = c == Color::White;
+    for (int32_t py = py0; py <= py1; py++) paintSpan(fb + py * pwb, (int)px0, (int)px1, white);
+    return true;
+}
+
 }  // namespace
 
 // ---------------------------------------------------------------------------
@@ -123,7 +177,7 @@ int16_t width() { return device().width; }
 int16_t height() { return device().height; }
 Rect screen() { return device().screen(); }
 
-void clear(Color color) { target().fill(screen(), solid(color)); }
+void clear(Color color) { fill(screen(), color); }
 
 void present(bool fullRefresh) { Display.update(fullRefresh ? REFRESH_FULL : REFRESH_PARTIAL); }
 
@@ -209,9 +263,23 @@ Rect takeBottom(Rect& area, int16_t h) {
 Rect insetX(Rect r, int16_t dx) { return r.inset(fi::Insets{0, dx, 0, dx}); }
 Rect insetXY(Rect r, int16_t dx, int16_t dy) { return r.inset(fi::Insets{dy, dx, dy, dx}); }
 
-void fill(Rect r, Color color, uint8_t radius) { target().fill(r, solid(color), radius); }
+void fill(Rect r, Color color, uint8_t radius) {
+    if (r.empty()) return;
+    if (radius == 0 && fastFill(r, color)) return;
+    target().fill(r, solid(color), radius);
+}
 
-void frameRect(Rect r, Color color, uint8_t w, uint8_t radius) { target().stroke(r, solid(color), w, radius); }
+void frameRect(Rect r, Color color, uint8_t w, uint8_t radius) {
+    if (radius == 0 && w > 0 && r.width > 2 * w && r.height > 2 * w && (color == Color::Black || color == Color::White)) {
+        // Four solid bands: the same pixels as stroke() with square corners.
+        fill(Rect{r.x, r.y, r.width, w}, color);
+        fill(Rect{r.x, (int16_t)(r.bottom() - w), r.width, w}, color);
+        fill(Rect{r.x, (int16_t)(r.y + w), w, (int16_t)(r.height - 2 * w)}, color);
+        fill(Rect{(int16_t)(r.right() - w), (int16_t)(r.y + w), w, (int16_t)(r.height - 2 * w)}, color);
+        return;
+    }
+    target().stroke(r, solid(color), w, radius);
+}
 
 void hline(int16_t x0, int16_t x1, int16_t y, Color color, uint8_t w) {
     target().fill(Rect{x0, y, (int16_t)(x1 - x0), (int16_t)w}, solid(color));
