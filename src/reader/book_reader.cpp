@@ -2015,6 +2015,17 @@ struct TurnedUi {
 };
 }  // namespace
 
+// A page that could not be drawn says so (it was a blank page with only the status bar).
+static void drawPageProblem(const char* why) {
+    using namespace uikit;
+    Rect area = insetX(screen(), 30);
+    takeTop(area, (int16_t)(area.height / 3));
+    const char* title = tr(MsgId::READER_PAGE_ERR_TITLE);
+    text(takeTop(area, (int16_t)(wrappedHeight(title, FontTitle, area.width, 2) + 12)), title, FontTitle, Color::Black,
+         uikit::TextAlign::Center, 2);
+    text(takeTop(area, wrappedHeight(why, FontBody, area.width, 3)), why, FontBody, Color::Black, uikit::TextAlign::Center, 3);
+}
+
 void BookReader::renderCurrentPage() {
     if (!_opened) return;
     TurnedUi turned(frameRotation());
@@ -2023,6 +2034,8 @@ void BookReader::renderCurrentPage() {
         Serial.printf("[Reader] Chapter %d cannot be shown (layout failed or no memory)\n", _spine);
         Display.clear(EPD_WHITE);
         drawStatusBar();
+        drawPageProblem(tr(_noMemory || MemStats::now().largestBlock < kLayoutBytes ? MsgId::READER_PAGE_ERR_MEMORY
+                                                                                     : MsgId::READER_PAGE_ERR_BROKEN));
         Display.update(REFRESH_PARTIAL);
         return;
     }
@@ -2048,6 +2061,7 @@ void BookReader::renderCurrentPage() {
         if (!mem.p) {
             Serial.printf("[Reader] No memory to draw the page (%u B)\n", (unsigned)cap);
             _renderFailures++;
+            drawPageProblem(tr(MsgId::READER_PAGE_ERR_MEMORY));
             break;
         }
         Arena arena(mem.p, cap);
@@ -2058,6 +2072,7 @@ void BookReader::renderCurrentPage() {
         if (st != BookStatus::Ok) {
             _renderFailures++;
             Serial.printf("[Reader] Page %d of chapter %d unreadable: %s\n", _page + 1, _spine, bookStatusName(st));
+            drawPageProblem(tr(st == BookStatus::OutOfMemory ? MsgId::READER_PAGE_ERR_MEMORY : MsgId::READER_PAGE_ERR_BROKEN));
             break;
         }
         FrameTarget frame{Display.getBuffer(), (int16_t)EPD_WIDTH, (int16_t)EPD_HEIGHT, (int16_t)(EPD_WIDTH / 8),
