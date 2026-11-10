@@ -218,6 +218,10 @@ void AppController::loop() {
         }
         // From the key to the screen updated (drawing and the e-ink refresh included).
         Serial.printf("[Event] Handled in %lu ms\n", (unsigned long)(millis() - tEvent));
+        // The idle timer starts when the work is done: a sync or a download that
+        // took longer than the sleep timeout must not send the device to sleep
+        // the moment it ends.
+        _ctx.lastActivityTime = millis();
     }
 
     Modal.tick();
