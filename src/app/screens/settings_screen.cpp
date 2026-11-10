@@ -1,5 +1,6 @@
 #include "screens.h"
 #include "../orientation.h"
+#include "../app_controller.h"
 #include <WiFi.h>
 #include "../../hal/battery.h"
 #include "../../hal/mem_stats.h"
@@ -130,10 +131,9 @@ void executeSetting(AppContext& ctx, int index) {
             break;
         case 4:  // Reload from SD
             if (ctx.config.load()) {
-                I18n::setLanguage(ctx.config.language);
-                Reader.setFontSize(ctx.config.readerFontSize);
-                LibraryManager::getInstance().setHideCompleted(ctx.config.hideCompleted);
-                Frontlight.apply(ctx.config.frontlight, ctx.config.frontlightWarm);
+                // Everything in the file takes effect (an open book is laid out again once).
+                AppController::getInstance().applyConfig();
+                if (Reader.isOpened()) LibraryManager::getInstance().flushReaderPosition();
                 Modal.showMessage(tr(MsgId::SETTINGS_MODAL_SD_LOAD_OK_TITLE),
                                   tr(MsgId::SETTINGS_MODAL_SD_LOAD_OK_L1),
                                   tr(MsgId::SETTINGS_MODAL_SD_LOAD_OK_L2));

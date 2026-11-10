@@ -18,6 +18,11 @@ public:
 
     AppContext& getContext() { return _ctx; }
 
+    // Puts the loaded config into effect: language, frontlight, the reader's font,
+    // layout, refresh, pictures, orientation and status bar, the library filter.
+    // At boot and after "Reload from SD" (an open book is laid out again once).
+    void applyConfig();
+
     // Redraws the screen belonging to the current AppState.
     void redrawCurrentScreen(bool fullRefresh);
 
