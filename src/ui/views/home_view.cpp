@@ -27,7 +27,10 @@ void drawFeatured(Frame& f, Rect card, AppContext& ctx, const RecentBookInfo& bo
     frameRect(cover, Color::Black);
 
     bool coverDrawn = false;
-    String covPath = LibraryManager::resolveCoverPath(book.filePath, book.title, book.coverPath, true);
+    // The cover drawn last is in RAM (JpegViewer): no need to check its file again.
+    const bool inRam = book.coverPath.length() > 0 &&
+                       JpegViewer::hasCached(book.coverPath.c_str(), cover.width - 2, cover.height - 2, COVER_FIT_CROP);
+    String covPath = inRam ? book.coverPath : LibraryManager::resolveCoverPath(book.filePath, book.title, book.coverPath, true);
     if (covPath.length() > 0) {
         coverDrawn = JpegViewer::drawCover(covPath.c_str(), cover.x + 1, cover.y + 1, cover.width - 2, cover.height - 2,
                                            COVER_FIT_CROP);

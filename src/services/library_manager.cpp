@@ -303,6 +303,7 @@ void LibraryManager::cleanOrphanFiles() {
 }
 
 void LibraryManager::updateLastBookAfterDeletion(const String& deletedPath) {
+    touch();
     if (!lastBook.filePath.equalsIgnoreCase(deletedPath)) return;
     // The current book left the card: the most recent other book on the card
     // becomes current (or none), so the home card does not show a deleted book.
@@ -325,6 +326,7 @@ void LibraryManager::updateLastBookAfterDeletion(const String& deletedPath) {
 }
 
 std::vector<RecentBookInfo> LibraryManager::getRecentBooks() {
+    if (_recentGen == _gen && _recentLast == lastBook.filePath) return _recent;
     std::vector<RecentBookInfo> list;
     auto toInfo = [&](const BookItem& b) {
         RecentBookInfo r;
@@ -398,6 +400,9 @@ std::vector<RecentBookInfo> LibraryManager::getRecentBooks() {
         if (!b.formats.empty() && !BookFormats::readable((BookFormats::Kind)b.activeKind())) continue;   // not openable yet
         list.push_back(toInfo(b));
     }
+    _recent = list;
+    _recentGen = _gen;
+    _recentLast = lastBook.filePath;
     return list;
 }
 
@@ -681,6 +686,7 @@ static void collectAllLocalBooks(const String& dir, int depth, std::vector<BookI
 }
 
 void LibraryManager::buildMaster() {
+    touch();
     const uint32_t t0 = millis();
     masterBooks.clear();
     libraryNames.clear();
@@ -794,6 +800,7 @@ void LibraryManager::refreshProgress() {
 }
 
 void LibraryManager::refreshLocalFiles() {
+    touch();
     if (!Storage.isAvailable()) return;
     std::vector<BookItem> found;
     int folders = 0;
@@ -913,6 +920,7 @@ void LibraryManager::scanLocalBooks(bool forceMasterScan) {
 }
 
 void LibraryManager::rebuildRows() {
+    touch();
     rows.clear();
     folderRows.clear();
     auto addFolder = [&](const BookItem& f) {
@@ -1170,6 +1178,7 @@ void LibraryManager::initLastBook() {
 
 
 bool LibraryManager::saveLastBook() {
+    touch();
     _unsavedMoves = 0;
     bool ok = Storage.saveLastBook(lastBook);
     ProgressStore::instance().save();
@@ -1222,6 +1231,7 @@ static ProgressSync::Position readerPosition(bool withXPath, bool withCfi = fals
 }
 
 void LibraryManager::recordReaderMove(bool withXPath, bool persist) {
+    touch();
     if (!Reader.isOpened()) return;
     ProgressSync::Position pos = readerPosition(withXPath);
     lastBook.progress = pos.percent;
@@ -1252,6 +1262,7 @@ bool LibraryManager::persistIfDue() {
 }
 
 void LibraryManager::flushReaderPosition() {
+    touch();
     if (!Reader.isOpened()) return;
     ProgressSync::Position pos = readerPosition(true, true);
     lastBook.progress = pos.percent;
@@ -1276,6 +1287,7 @@ void LibraryManager::flushReaderPosition() {
 }
 
 void LibraryManager::applyRecordToLibrary(const BookProgressRecord& rec) {
+    touch();
     const ProgressSync::Position& pos = rec.state.local;
     if (lastBook.filePath.equalsIgnoreCase(rec.filePath) || (rec.fileId > 0 && lastBook.fileId == rec.fileId)) {
         lastBook.progress = pos.percent;
