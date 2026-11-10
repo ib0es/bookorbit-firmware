@@ -133,6 +133,7 @@ private:
     // The chapter on screen while it is still being laid out: its pages come from
     // the job's writer until the job ends, then from the cache file as usual.
     bool building() const;
+    void makeRoom();                          // frees the job's memory the cheaper way (drop or finish)
     bool buildIncrementally(int spine);       // starts (or adopts) the job, waits for the first page
     void buildUntilPages(uint32_t count);     // waits until `count` pages exist (or the chapter ends)
     void buildUntilChar(uint32_t chars);      // until the page holding `chars` is complete

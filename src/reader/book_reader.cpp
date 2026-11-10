@@ -1,6 +1,7 @@
 #include "book_reader.h"
 
 #include <render/PageRenderer.h>
+#include <algorithm>
 #include <new>
 #include <strings.h>
 #include <text/hyph_en_us.h>
@@ -871,6 +872,8 @@ bool BookReader::finishBackground() {
     if (!_bg) return false;
     const uint64_t total = _bg->bookEntry.uncompressedSize;
     const uint64_t left = _bg->session.active() ? total - _bg->session.bytesConsumed() : total;
+    Serial.printf("[Reader] Chapter %d: rest of the layout done now (%u KB of text left)\n", _bg->spine,
+                  (unsigned)(left / 1024));
     if (left > 60000) {
         drawStatusModal(tr(MsgId::READER_FORMAT_TITLE), _title.substring(0, 32).c_str(), tr(MsgId::READER_FORMAT_LINE),
                         tr(MsgId::READER_OPENING_WAIT));
@@ -880,6 +883,25 @@ bool BookReader::finishBackground() {
 }
 
 bool BookReader::building() const { return _bg && _bg->current; }
+
+void BookReader::makeRoom() {
+    if (!_bg) return;
+    if (!building()) {
+        stopBackground();
+        return;
+    }
+    // The chapter on screen: dropping the job costs laying it out again up to this
+    // page (on the next turn); finishing it costs the rest of the chapter now.
+    const int made = (int)_bg->writer.pageCount();
+    const int left = pagesOf(_bg->spine) - made;
+    if (_page + 1 < left) {
+        Serial.printf("[Reader] Chapter %d: layout dropped for the page's images (%d of ~%d pages made)\n", _bg->spine,
+                      made, made + left);
+        stopBackground();
+    } else {
+        finishBackground();
+    }
+}
 
 bool BookReader::buildIncrementally(int spine) {
     if (!_bg || _bg->spine != spine) {
@@ -1354,18 +1376,23 @@ void BookReader::renderCurrentPage() {
         if (missing) Serial.printf("[Reader] %u characters not in the font (first U+%04X)\n", (unsigned)missing,
                                    (unsigned)firstMissing);
         if (page.imageCount > 0 && !_isTxt) {
-            if (_bg && (g_liveTransient + kImageBytes > kTransientBudget ||
-                        MemStats::now().largestBlock < kImageBytes + 4096)) {
-                if (building()) finishBackground();   // the page record is in our buffer: still valid
-                else stopBackground();
+            auto drawImages = [&](size_t size) {
+                Buffer img(size);
+                if (!img.p) return BookStatus::OutOfMemory;
+                Arena a(img.p, size);
+                return PageRenderer::renderImages(page, _src, _catalog.zip(), a, frame);
+            };
+            BookStatus ist = BookStatus::OutOfMemory;
+            if (_bg) {
+                // A stored JPEG decodes in ~30 KB: first with what is left beside the job.
+                const size_t largest = MemStats::now().largestBlock;
+                size_t room = kTransientBudget > g_liveTransient ? kTransientBudget - g_liveTransient : 0;
+                room = std::min(room, std::min(kImageBytes, largest > 4096 ? largest - 4096 : 0));
+                if (room >= 16 * 1024) ist = drawImages(room);
+                if (ist == BookStatus::OutOfMemory) makeRoom();   // the page record is in our buffer: still valid
             }
-            Buffer img(kImageBytes);
-            if (img.p) {
-                Arena a(img.p, kImageBytes);
-                PageRenderer::renderImages(page, _src, _catalog.zip(), a, frame);
-            } else {
-                Serial.println("[Reader] No memory for the page's images");
-            }
+            if (ist == BookStatus::OutOfMemory) ist = drawImages(kImageBytes);
+            if (ist == BookStatus::OutOfMemory) Serial.println("[Reader] No memory for the page's images");
         }
         break;
     }
