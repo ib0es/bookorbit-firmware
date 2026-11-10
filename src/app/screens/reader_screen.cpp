@@ -21,8 +21,6 @@
 
 namespace {
 
-constexpr int TOC_ITEMS_PER_PAGE = 8;
-
 // The menus only change the settings; the book is laid out again once, when
 // they are left (not on every step through the sizes and spacings).
 void commitFontSize(AppContext& ctx) {
@@ -251,7 +249,8 @@ void handleTocEvent(AppContext& ctx, const ButtonEvent& event) {
         if (event.id == BTN_DOWN && ctx.selectedTocIndex + 1 < Reader.getChapterCount()) ctx.selectedTocIndex++;
         if (event.id == BTN_UP && ctx.selectedTocIndex > 0) ctx.selectedTocIndex--;
         if (prev != ctx.selectedTocIndex) {
-            bool pageChanged = (prev / TOC_ITEMS_PER_PAGE != ctx.selectedTocIndex / TOC_ITEMS_PER_PAGE);
+            const int perPage = tocRowsPerPage();   // as many rows as the last drawing fitted
+            const bool pageChanged = (prev / perPage != ctx.selectedTocIndex / perPage);
             drawTocScreen(ctx, pageChanged);
         }
     } else if (event.id == BTN_CONFIRM) {
