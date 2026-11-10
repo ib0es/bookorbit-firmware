@@ -69,6 +69,7 @@ bool translate(AppContext& ctx, const ButtonEvent& tap, ButtonEvent& out) {
         case STATE_TOC:               ctx.selectedTocIndex = value; break;
         case STATE_BOOK_MENU:         ctx.selectedBookMenuIndex = value; break;
         case STATE_FONT_MENU:         ctx.selectedFontIndex = value; break;
+        case STATE_TYPEFACE_MENU:     ctx.selectedTypefaceIndex = value; break;
         case STATE_SYNC_SETTINGS:     ctx.selectedSyncSettingIndex = value; break;
         case STATE_SLEEP_COVER_SETTINGS: ctx.selectedSleepCoverIndex = value; break;
         case STATE_FRONTLIGHT_SETTINGS:  // sliders handle the tap themselves

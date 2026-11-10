@@ -20,7 +20,8 @@ enum AppState {
     STATE_BOOK_MENU,
     STATE_FONT_MENU,
     STATE_SYNC_SETTINGS,
-    STATE_SLEEP_COVER_SETTINGS
+    STATE_SLEEP_COVER_SETTINGS,
+    STATE_TYPEFACE_MENU
 };
 
 struct AppConfig {
@@ -37,6 +38,7 @@ struct AppConfig {
     bool coverOnSleep = true;
     int sleepCoverFitMode = 0; // 0 = Scale / Fit (Keep aspect ratio), 1 = Crop / Fill (Fullscreen crop)
     int readerFontSize = 2;   // book font size index: 0 = 12 pt ... 18 = 48 pt (FontEngine)
+    String readerFont;        // book font family: "" = the built-in one, else one installed from /fonts
     int frontlight = 0;        // 0..100 %, 0 = off (boards with a frontlight)
     int frontlightWarm = 50;   // 0 = cool .. 100 = warm
     AppLanguage language = AppLanguage::EN;
@@ -54,7 +56,7 @@ const int NUM_WIFI_SETTINGS_ITEMS = 6;
 const int NUM_SERVER_SETTINGS_ITEMS = 4;
 const int NUM_SYNC_SETTINGS_ITEMS = 4;
 const int NUM_SLEEP_COVER_ITEMS = 3;
-const int NUM_READER_MENU_ITEMS = 5;
+const int NUM_READER_MENU_ITEMS = 6;
 
 struct AppContext {
     AppState currentState = STATE_HOME;
@@ -71,6 +73,7 @@ struct AppContext {
     int selectedFrontlightIndex = 0;
     int selectedBookMenuIndex = 0;
     int selectedFontIndex = 0;
+    int selectedTypefaceIndex = 0;
     int selectedSyncSettingIndex = 0;
     int selectedSleepCoverIndex = 0;
     uint32_t lastActivityTime = 0;

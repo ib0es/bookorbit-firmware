@@ -465,5 +465,16 @@
   "READER_CONVERT_TITLE": "CONVERTING",
   "READER_CONVERT_PROGRESS_FMT": "Preparing the book for reading: %d%%",
   "READER_OPEN_DRM": "The book is copy-protected (DRM)",
-  "READER_OPEN_VARIANT": "This variant of the format is not supported"
+  "READER_OPEN_VARIANT": "This variant of the format is not supported",
+  "READER_MENU_ITEM_TYPEFACE": "Typeface",
+  "READER_MENU_TYPEFACE_FMT": "Now: %s · choose a typeface",
+  "TYPEFACE_MENU_TITLE": "TYPEFACE",
+  "TYPEFACE_MENU_HINT": "[▲/▼] Select | [OK] Apply | [BACK] Back",
+  "TYPEFACE_BUILTIN": "built in",
+  "TYPEFACE_ON_CARD_FMT": "on the card · %u KB · OK installs it",
+  "TYPEFACE_INSTALLED": "on the card · installed",
+  "TYPEFACE_CARD_HINT": "More typefaces: TTF files in /fonts on the card",
+  "TYPEFACE_INSTALL_TITLE": "Installing the typeface",
+  "TYPEFACE_INSTALL_FMT": "Writing to flash: %d%%",
+  "TYPEFACE_INSTALL_FAILED": "Could not install the typeface"
 }

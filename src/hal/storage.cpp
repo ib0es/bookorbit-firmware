@@ -271,6 +271,8 @@ bool StorageManager::loadConfig(AppConfig& cfg) {
                     cfg.readerFontSize = FontEngine::kDefaultSize;
                 }
 
+                cfg.readerFont = doc["font_family"].is<const char*>() ? doc["font_family"].as<String>() : String();
+
                 if (doc["language"].is<const char*>()) {
                     cfg.language = I18n::languageFromCode(doc["language"].as<String>());
                 } else {
@@ -348,6 +350,7 @@ bool StorageManager::saveConfig(const AppConfig& cfg) {
     doc["hide_completed"] = cfg.hideCompleted;
     doc["cover_fit_mode"] = cfg.sleepCoverFitMode;
     doc["font_pt"] = FontEngine::sizePx(cfg.readerFontSize);
+    doc["font_family"] = cfg.readerFont;
     doc["language"] = I18n::getLanguageCode(cfg.language);
 
     String jsonStr;

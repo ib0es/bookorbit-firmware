@@ -57,6 +57,7 @@ public:
 
     // Faces by style (StyleBold | StyleItalic); a missing one is null.
     bool addFace(uint8_t style, const uint8_t* data, uint32_t len);
+    void clearFaces();   // for another family (the caches are emptied too)
     TtfFace* face(uint8_t style) { return _faces[style & 3].fontReady() ? &_faces[style & 3].face : nullptr; }
 
     // The caches: allocated on first use (or by reserve(), early, before big

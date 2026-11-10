@@ -26,7 +26,8 @@ HOME_SYNC = "T200,515;"
 READ_MIDDLE = "T240,400;"         # reading: middle third = book menu
 READ_RIGHT = "T400,400;"
 READ_LEFT = "T80,400;"
-RMENU_TOC, RMENU_FONT, RMENU_SYNC, RMENU_RESUME, RMENU_CLOSE = "T240,200;", "T240,280;", "T240,355;", "T240,430;", "T240,505;"
+RMENU_TOC, RMENU_FONT, RMENU_TYPEFACE = "T240,200;", "T240,278;", "T240,354;"
+RMENU_SYNC, RMENU_RESUME, RMENU_CLOSE = "T240,430;", "T240,506;", "T240,582;"
 SET_LANG, SET_WIFI, SET_SERVER, SET_SLEEP, SET_INFO, SET_LIGHT = "T240,90;", "T240,165;", "T240,240;", "T240,315;", "T240,520;", "T240,665;"
 SET_SYNC = "T240,593;"
 
@@ -50,12 +51,16 @@ CASES = [
     ("reader menu: font size submenu, tap 20 pt applies it and returns to the page",
      HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + "T240,236;",
      lambda log, sd: re.search(r"Chapter \d+( laid out|: first page)", log.split("TAP_240_236", 1)[1]) and config(sd)["font_pt"] == 20),
+    ("reader menu: typeface list, tap the built-in one returns to the page",
+     HOME_CARD + "w" + READ_MIDDLE + RMENU_TYPEFACE + "T240,85;",
+     lambda log, sd: "[Reader] Page" in log.split("TAP_240_85", 1)[1]
+     and config(sd).get("font_family", "") == ""),
     ("reader menu: table of contents, tap a chapter",
      HOME_CARD + "w" + READ_MIDDLE + RMENU_TOC + "T240,300;",
      lambda log, sd: len(pages(log)) >= 2 and pages(log)[-1][0] != pages(log)[-2][0]),
     ("reader menu: back by title tap, close book returns home",
      HOME_CARD + "w" + READ_MIDDLE + TITLE + READ_MIDDLE + RMENU_CLOSE,
-     lambda log, sd: "drawHomeScreen" in log.split("TAP_240_505")[-1]),
+     lambda log, sd: "drawHomeScreen" in log.split("TAP_240_582")[-1]),
     ("library: tap a book opens its menu, Read opens it, back to library by swipe",
      HOME_ALL_BOOKS + LIB_FRANKENSTEIN + "T240,180;w" + READ_MIDDLE + RMENU_CLOSE,
      lambda log, sd: "Opening book: /books/Frankenstein.epub" in log and pages(log)),

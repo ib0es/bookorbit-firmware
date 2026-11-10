@@ -11,6 +11,8 @@
 #include "../../ui/modal.h"
 #include "../../ui/views/home_view.h"
 #include "../../ui/views/reader_menu_view.h"
+#include "../../ui/views/status_modal.h"
+#include "../../reader/font_store.h"
 #include "../../ui/i18n.h"
 
 namespace {
@@ -68,14 +70,25 @@ void executeMenuAction(AppContext& ctx, int index) {
             ctx.currentState = STATE_FONT_MENU;
             drawFontMenuScreen(ctx, false);
             break;
-        case 2:  // Синхронизация
+        case 2:  // Шрифт: the families
+            typefaceFamilies(true);
+            ctx.selectedTypefaceIndex = 0;
+            if (!Reader.usingBuiltinFont()) {
+                const auto& fams = typefaceFamilies(false);
+                for (size_t i = 0; i < fams.size(); i++)
+                    if (fams[i].name == Reader.fontFamilyName()) ctx.selectedTypefaceIndex = (int)i + 1;
+            }
+            ctx.currentState = STATE_TYPEFACE_MENU;
+            drawTypefaceMenuScreen(ctx, false);
+            break;
+        case 3:  // Синхронизация
             commitFontSize(ctx);
             SyncService::syncWithBookOrbit(ctx);
             break;
-        case 3:  // Продолжить чтение
+        case 4:  // Продолжить чтение
             returnToReading(ctx);
             break;
-        case 4:  // Закрыть книгу
+        case 5:  // Закрыть книгу
             closeBookAndGoHome(ctx, true);
             break;
     }
@@ -287,6 +300,73 @@ void handleFontMenuEvent(AppContext& ctx, const ButtonEvent& event) {
             }
             returnToReading(ctx);
             break;
+        case BTN_BACK:
+        case BTN_LEFT:
+            ctx.currentState = STATE_READER_MENU;
+            drawReaderMenuScreen(ctx, false);
+            break;
+        default:
+            break;
+    }
+}
+
+static void drawInstallProgress(void* name, int permille) {
+    static int s_lastStep = -1;
+    static uint32_t s_lastAt = 0;
+    const int step = permille / 100;
+    // An e-ink refresh blocks ~0.5 s: at most every 3 s (and at the start).
+    if (permille < 1000 && (step == s_lastStep || (s_lastStep >= 0 && permille > 0 && millis() - s_lastAt < 3000))) return;
+    if (permille == 0) s_lastStep = -1;
+    s_lastStep = step;
+    s_lastAt = millis();
+    char line[64];
+    snprintf(line, sizeof(line), tr(MsgId::TYPEFACE_INSTALL_FMT), permille / 10);
+    drawStatusModal(tr(MsgId::TYPEFACE_INSTALL_TITLE), static_cast<const String*>(name)->c_str(), line);
+}
+
+void handleTypefaceMenuEvent(AppContext& ctx, const ButtonEvent& event) {
+    if (event.action != ACTION_CLICK) return;
+    const auto& fams = typefaceFamilies(false);
+    const int n = 1 + (int)fams.size();
+    int& sel = ctx.selectedTypefaceIndex;
+    switch (event.id) {
+        case BTN_DOWN:
+            sel = (sel + 1) % n;
+            drawTypefaceMenuScreen(ctx, false);
+            break;
+        case BTN_UP:
+            sel = (sel - 1 + n) % n;
+            drawTypefaceMenuScreen(ctx, false);
+            break;
+        case BTN_CONFIRM:
+        case BTN_RIGHT: {
+            String family;   // "" = built-in
+            if (sel > 0 && sel <= (int)fams.size()) {
+                const FontStore::Family& fam = fams[sel - 1];
+                if (FontStore::installedName() != fam.name) {
+                    // Into the flash partition first: the faces in use there are let go of.
+                    Reader.setFontFamily("");
+                    String name = fam.name;
+                    drawInstallProgress(&name, 0);
+                    if (!FontStore::install(fam, &drawInstallProgress, &name)) {
+                        Modal.showMessage(tr(MsgId::TYPEFACE_MENU_TITLE), tr(MsgId::TYPEFACE_INSTALL_FAILED), fam.name.c_str(),
+                                          "", "", 2500, true);
+                        typefaceFamilies(true);
+                        drawTypefaceMenuScreen(ctx, true);
+                        return;
+                    }
+                }
+                family = fam.name;
+            }
+            commitFontSize(ctx);
+            if (Reader.setFontFamily(family)) LibraryManager::getInstance().flushReaderPosition();
+            if (ctx.config.readerFont != family) {
+                ctx.config.readerFont = family;
+                ctx.config.save();
+            }
+            returnToReading(ctx);
+            break;
+        }
         case BTN_BACK:
         case BTN_LEFT:
             ctx.currentState = STATE_READER_MENU;

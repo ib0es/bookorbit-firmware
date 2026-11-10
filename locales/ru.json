@@ -465,5 +465,16 @@
   "READER_CONVERT_TITLE": "ПРЕОБРАЗОВАНИЕ",
   "READER_CONVERT_PROGRESS_FMT": "Подготовка книги к чтению: %d%%",
   "READER_OPEN_DRM": "Книга защищена от копирования (DRM)",
-  "READER_OPEN_VARIANT": "Этот вариант формата не поддерживается"
+  "READER_OPEN_VARIANT": "Этот вариант формата не поддерживается",
+  "READER_MENU_ITEM_TYPEFACE": "Шрифт",
+  "READER_MENU_TYPEFACE_FMT": "Сейчас: %s · выбрать шрифт",
+  "TYPEFACE_MENU_TITLE": "ШРИФТ",
+  "TYPEFACE_MENU_HINT": "[▲/▼] Выбор | [OK] Применить | [BACK] Назад",
+  "TYPEFACE_BUILTIN": "встроенный",
+  "TYPEFACE_ON_CARD_FMT": "на карте · %u КБ · OK — установить",
+  "TYPEFACE_INSTALLED": "на карте · установлен",
+  "TYPEFACE_CARD_HINT": "Ещё шрифты: файлы TTF в папке /fonts на карте",
+  "TYPEFACE_INSTALL_TITLE": "Установка шрифта",
+  "TYPEFACE_INSTALL_FMT": "Запись во flash: %d%%",
+  "TYPEFACE_INSTALL_FAILED": "Не удалось установить шрифт"
 }

@@ -1,5 +1,6 @@
 #include "book_reader.h"
 #include "fonts/builtin_font.h"
+#include "font_store.h"
 
 #include <render/PageRenderer.h>
 #include <algorithm>
@@ -158,14 +159,14 @@ String BookReader::cacheDirFor(const String& bookPath) {
 }
 
 BookReader::BookReader() : _fontSize(FontEngine::kDefaultSize) {
-    setupFonts();
+    setupFonts("");
     _hyphEn.init(k_hyph_en_us, k_hyph_en_us_size);
     _hyphRu.init(k_hyph_ru, k_hyph_ru_size);
 }
 
 BookReader::~BookReader() { closeBook(); }
 
-void BookReader::setupFonts() {
+void BookReader::setupFonts(const String& family) {
     // stb's working buffers while a glyph is rasterized (a few KB): a background
     // layout gives the room if the heap has none.
     _ttf.setNoMemoryHandler([](void* self) {
@@ -174,12 +175,102 @@ void BookReader::setupFonts() {
         r->makeRoom();
     }, this);
     _fonts = freeink::book::FontChain();
-    for (int style = 0; style < 4; style++) {
-        uint32_t len = 0;
-        const uint8_t* data = builtinfont::face(style, &len);
-        if (_ttf.addFace((uint8_t)style, data, len)) _fonts.add(_ttf.face((uint8_t)style), (uint8_t)style);
+    _ttf.clearFaces();
+    _family = "";
+    // An installed family when asked for, mapped from flash; else the built-in one.
+    if (family.length() && FontStore::installedName() == family && FontStore::map()) {
+        for (int style = 0; style < 4; style++) {
+            uint32_t len = 0;
+            const uint8_t* data = FontStore::face(style, &len);
+            if (data && _ttf.addFace((uint8_t)style, data, len)) _fonts.add(_ttf.face((uint8_t)style), (uint8_t)style);
+        }
+        if (_ttf.face(0)) _family = family;
+        else Serial.printf("[Fonts] %s: unreadable, the built-in family instead\n", family.c_str());
+    }
+    if (!_ttf.face(0)) {
+        _ttf.clearFaces();
+        _fonts = freeink::book::FontChain();
+        for (int style = 0; style < 4; style++) {
+            uint32_t len = 0;
+            const uint8_t* data = builtinfont::face(style, &len);
+            if (_ttf.addFace((uint8_t)style, data, len)) _fonts.add(_ttf.face((uint8_t)style), (uint8_t)style);
+        }
     }
     _fonts.add(&_font);   // anything the family lacks
+}
+
+const char* BookReader::builtinFontName() { return builtinfont::name(); }
+
+String BookReader::fontFamilyName() const { return _family.length() ? _family : String(builtinfont::name()); }
+
+bool BookReader::setFontFamily(const String& name) {
+    const String want = name == builtinfont::name() ? String() : name;
+    if (want == _family) return false;
+    const Position here = position();
+    stopBackground();   // its layout is in the old font
+    setupFonts(want);
+    if (_opened) {
+        releaseIndex();
+        setupLayout();
+        loadSpineTable();
+        goTo(here);
+    }
+    return true;
+}
+
+int BookReader::drawSample(int x, int y, int width, int height, const char* utf8, uint16_t sizePx) {
+    uint8_t* fb = Display.getBuffer();
+    if (!fb) return 0;
+    freeink::book::FrameTarget frame{fb, (int16_t)EPD_WIDTH, (int16_t)EPD_HEIGHT, (int16_t)(EPD_WIDTH / 8),
+                                     freeink::book::FrameFormat::Mono1Sharp, freeink::book::FrameRotation::Portrait};
+    const int lh = _fonts.lineHeight(sizePx), asc = _fonts.ascent(sizePx);
+    int top = y;
+    const char* p = utf8;
+    while (*p && top + lh <= y + height) {
+        // One line: as many whole words as fit (a word longer than the line is cut).
+        std::string line;
+        int w = 0, lastSpace = -1;
+        const char* lineEnd = p;
+        const char* q = p;
+        uint32_t prev = 0;
+        while (*q) {
+            const char* start = q;
+            uint32_t cp = (uint8_t)*q++;
+            if (cp >= 0xC0) {
+                const int extra = cp >= 0xF0 ? 3 : cp >= 0xE0 ? 2 : 1;
+                cp &= 0x3F >> extra;
+                for (int i = 0; i < extra && (*q & 0xC0) == 0x80; i++) cp = (cp << 6) | (*q++ & 0x3F);
+            }
+            w += (prev ? _fonts.kerning(prev, cp, sizePx, 0) : 0) + _fonts.advance(cp, sizePx, 0);
+            if (w > width && !line.empty()) {
+                if (lastSpace > 0) {
+                    line.resize((size_t)lastSpace);
+                    lineEnd = p + lastSpace + 1;
+                } else {
+                    lineEnd = start;
+                }
+                break;
+            }
+            if (cp == ' ') lastSpace = (int)line.size();
+            line.append(start, (size_t)(q - start));
+            lineEnd = q;
+            prev = cp;
+        }
+        freeink::book::PageTextRun run{};
+        run.x = (int16_t)x;
+        run.baselineY = (int16_t)(top + asc);
+        run.sizePx = sizePx;
+        run.text = line.c_str();
+        run.len = (uint16_t)line.size();
+        freeink::book::Page page{};
+        page.runs = &run;
+        page.runCount = 1;
+        PageRenderer::renderText(page, _fonts, frame);
+        top += lh;
+        p = lineEnd;
+        while (*p == ' ') p++;
+    }
+    return top - y;
 }
 
 const char* BookReader::getFontSizeName(int size) {

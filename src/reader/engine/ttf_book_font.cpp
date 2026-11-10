@@ -113,6 +113,18 @@ bool TtfFamily::addFace(uint8_t style, const uint8_t* data, uint32_t len) {
     return true;
 }
 
+void TtfFamily::clearFaces() {
+    for (Slot& s : _faces) s.ready = false;
+    _fingerprint = 0x7F0E0000u;
+    // Entries are keyed by face index: a new family must not find the old one's.
+    if (_mem) {
+        for (size_t i = 0; i < TTF_ADVANCE_SLOTS; i++) _advances[i].key = kEmpty;
+        for (size_t i = 0; i < TTF_KERN_SLOTS; i++) _kerns[i].key = kEmpty;
+        for (size_t i = 0; i < TTF_GLYPH_SLOTS; i++) _glyphs[i].key = kEmpty;
+        _bitsUsed = 0;
+    }
+}
+
 bool TtfFamily::ensureCaches() {
     if (_mem) return true;
     const size_t a = sizeof(AdvanceEntry) * TTF_ADVANCE_SLOTS, k = sizeof(KernEntry) * TTF_KERN_SLOTS,

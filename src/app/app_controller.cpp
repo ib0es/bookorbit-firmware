@@ -94,6 +94,7 @@ void AppController::setup() {
     if (Buttons.hasLightSwitch()) Frontlight.setEnabled(Buttons.lightSwitchOn());
     Frontlight.apply(_ctx.config.frontlight, _ctx.config.frontlightWarm);
     Reader.setFontSize(_ctx.config.readerFontSize);
+    Reader.setFontFamily(_ctx.config.readerFont);
     MemStats::mark("frontlight, reader");
 
     // 4. Per-book progress, scan local books on SD, 5. load last read book state
@@ -204,7 +205,8 @@ void AppController::loop() {
     // The reader's own menus keep it (paused): the chapter on screen may still be
     // coming from it, and dropping it would mean laying the chapter out again.
     const AppState st = _ctx.currentState;
-    const bool readerScreens = st == STATE_READING || st == STATE_TOC || st == STATE_READER_MENU || st == STATE_FONT_MENU;
+    const bool readerScreens = st == STATE_READING || st == STATE_TOC || st == STATE_READER_MENU || st == STATE_FONT_MENU ||
+                               st == STATE_TYPEFACE_MENU;
     if (!readerScreens || SyncService::backgroundActive()) {
         if (Reader.backgroundActive()) Reader.stopBackground();
     } else if (st == STATE_READING && !Modal.isActive() && millis() - _ctx.lastActivityTime > kPrelayoutIdleMs &&
@@ -235,6 +237,7 @@ void AppController::dispatch(const ButtonEvent& event) {
         case STATE_FRONTLIGHT_SETTINGS: SettingsScreen::handleFrontlightEvent(_ctx, event); break;
         case STATE_BOOK_MENU:         LibraryScreen::handleBookMenuEvent(_ctx, event); break;
         case STATE_FONT_MENU:         ReaderScreen::handleFontMenuEvent(_ctx, event); break;
+        case STATE_TYPEFACE_MENU:     ReaderScreen::handleTypefaceMenuEvent(_ctx, event); break;
         case STATE_SYNC_SETTINGS:     SettingsScreen::handleSyncSettingsEvent(_ctx, event); break;
         case STATE_SLEEP_COVER_SETTINGS: SettingsScreen::handleSleepCoverSettingsEvent(_ctx, event); break;
         case STATE_SYNCING:           break;
@@ -256,6 +259,7 @@ void AppController::redrawCurrentScreen(bool fullRefresh) {
         case STATE_FRONTLIGHT_SETTINGS: drawFrontlightScreen(_ctx, fullRefresh); break;
         case STATE_BOOK_MENU:         drawBookMenuScreen(_ctx, fullRefresh); break;
         case STATE_FONT_MENU:         drawFontMenuScreen(_ctx, fullRefresh); break;
+        case STATE_TYPEFACE_MENU:     drawTypefaceMenuScreen(_ctx, fullRefresh); break;
         case STATE_SYNC_SETTINGS:     drawSyncSettingsScreen(_ctx, fullRefresh); break;
         case STATE_SLEEP_COVER_SETTINGS: drawSleepCoverSettingsScreen(_ctx, fullRefresh); break;
         case STATE_SYNCING:           break;

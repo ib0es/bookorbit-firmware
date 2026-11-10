@@ -80,6 +80,17 @@ public:
     int renderFailures() const { return _renderFailures; }   // pages that could not be drawn (tests, logs)
 
     int getFontSize() const { return _fontSize; }
+    // The book font family: "" for the built-in one, else one installed from
+    // /fonts (FontStore); another name falls back to the built-in one. Lays the
+    // book out again at the same sentence. Returns false when nothing changed.
+    bool setFontFamily(const String& name);
+    String fontFamilyName() const;   // the family in use
+    static const char* builtinFontName();
+    bool usingBuiltinFont() const { return _family.length() == 0; }
+    // Draws text in the book font (menus' previews): wrapped at spaces in the box,
+    // the lines that fit. Returns the height used.
+    int drawSample(int x, int y, int width, int height, const char* utf8, uint16_t sizePx);
+    int sampleLineHeight(uint16_t sizePx) { return _fonts.lineHeight(sizePx); }
     bool setFontSize(int size);
     static const char* getFontSizeName(int size);
 
@@ -203,9 +214,10 @@ private:
     freeink::book::Arena _bookArena;
 
     BitmapBookFont _font;            // what the TrueType faces lack (and the font with none)
-    TtfFamily _ttf;                  // the built-in family
+    TtfFamily _ttf;                  // the family in use (built-in, or installed from the card)
+    String _family;                  // its name ("" = built-in)
     freeink::book::FontChain _fonts;
-    void setupFonts();
+    void setupFonts(const String& family);
     freeink::book::Hyphenator _hyphEn;
     freeink::book::Hyphenator _hyphRu;
     // Picks the patterns by the book's language ("ru", "ru-RU", "rus", "en"...); a

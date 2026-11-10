@@ -465,5 +465,16 @@
   "READER_CONVERT_TITLE": "CONVIRTIENDO",
   "READER_CONVERT_PROGRESS_FMT": "Preparando el libro para leer: %d%%",
   "READER_OPEN_DRM": "El libro está protegido (DRM)",
-  "READER_OPEN_VARIANT": "Esta variante del formato no es compatible"
+  "READER_OPEN_VARIANT": "Esta variante del formato no es compatible",
+  "READER_MENU_ITEM_TYPEFACE": "Tipo de letra",
+  "READER_MENU_TYPEFACE_FMT": "Ahora: %s · elegir tipo",
+  "TYPEFACE_MENU_TITLE": "TIPO DE LETRA",
+  "TYPEFACE_MENU_HINT": "[▲/▼] Seleccionar | [OK] Aplicar | [BACK] Atrás",
+  "TYPEFACE_BUILTIN": "integrado",
+  "TYPEFACE_ON_CARD_FMT": "en la tarjeta · %u KB · OK lo instala",
+  "TYPEFACE_INSTALLED": "en la tarjeta · instalado",
+  "TYPEFACE_CARD_HINT": "Más tipos: archivos TTF en /fonts de la tarjeta",
+  "TYPEFACE_INSTALL_TITLE": "Instalando el tipo de letra",
+  "TYPEFACE_INSTALL_FMT": "Escribiendo en flash: %d%%",
+  "TYPEFACE_INSTALL_FAILED": "No se pudo instalar el tipo de letra"
 }

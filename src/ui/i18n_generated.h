@@ -479,7 +479,18 @@ enum class MsgId : uint16_t {
     READER_CONVERT_PROGRESS_FMT = 464,
     READER_OPEN_DRM = 465,
     READER_OPEN_VARIANT = 466,
-    COUNT = 467
+    READER_MENU_ITEM_TYPEFACE = 467,
+    READER_MENU_TYPEFACE_FMT = 468,
+    TYPEFACE_MENU_TITLE = 469,
+    TYPEFACE_MENU_HINT = 470,
+    TYPEFACE_BUILTIN = 471,
+    TYPEFACE_ON_CARD_FMT = 472,
+    TYPEFACE_INSTALLED = 473,
+    TYPEFACE_CARD_HINT = 474,
+    TYPEFACE_INSTALL_TITLE = 475,
+    TYPEFACE_INSTALL_FMT = 476,
+    TYPEFACE_INSTALL_FAILED = 477,
+    COUNT = 478
 };
 
 // Language: English (en)
@@ -951,6 +962,17 @@ static const char* const STRINGS_EN[(size_t)MsgId::COUNT] PROGMEM = {
     /* READER_CONVERT_PROGRESS_FMT */ "Preparing the book for reading: %d%%",
     /* READER_OPEN_DRM */ "The book is copy-protected (DRM)",
     /* READER_OPEN_VARIANT */ "This variant of the format is not supported",
+    /* READER_MENU_ITEM_TYPEFACE */ "Typeface",
+    /* READER_MENU_TYPEFACE_FMT */ "Now: %s · choose a typeface",
+    /* TYPEFACE_MENU_TITLE */ "TYPEFACE",
+    /* TYPEFACE_MENU_HINT */ "[▲/▼] Select | [OK] Apply | [BACK] Back",
+    /* TYPEFACE_BUILTIN */ "built in",
+    /* TYPEFACE_ON_CARD_FMT */ "on the card · %u KB · OK installs it",
+    /* TYPEFACE_INSTALLED */ "on the card · installed",
+    /* TYPEFACE_CARD_HINT */ "More typefaces: TTF files in /fonts on the card",
+    /* TYPEFACE_INSTALL_TITLE */ "Installing the typeface",
+    /* TYPEFACE_INSTALL_FMT */ "Writing to flash: %d%%",
+    /* TYPEFACE_INSTALL_FAILED */ "Could not install the typeface",
 };
 
 // Language: Russian (ru)
@@ -1422,6 +1444,17 @@ static const char* const STRINGS_RU[(size_t)MsgId::COUNT] PROGMEM = {
     /* READER_CONVERT_PROGRESS_FMT */ "Подготовка книги к чтению: %d%%",
     /* READER_OPEN_DRM */ "Книга защищена от копирования (DRM)",
     /* READER_OPEN_VARIANT */ "Этот вариант формата не поддерживается",
+    /* READER_MENU_ITEM_TYPEFACE */ "Шрифт",
+    /* READER_MENU_TYPEFACE_FMT */ "Сейчас: %s · выбрать шрифт",
+    /* TYPEFACE_MENU_TITLE */ "ШРИФТ",
+    /* TYPEFACE_MENU_HINT */ "[▲/▼] Выбор | [OK] Применить | [BACK] Назад",
+    /* TYPEFACE_BUILTIN */ "встроенный",
+    /* TYPEFACE_ON_CARD_FMT */ "на карте · %u КБ · OK — установить",
+    /* TYPEFACE_INSTALLED */ "на карте · установлен",
+    /* TYPEFACE_CARD_HINT */ "Ещё шрифты: файлы TTF в папке /fonts на карте",
+    /* TYPEFACE_INSTALL_TITLE */ "Установка шрифта",
+    /* TYPEFACE_INSTALL_FMT */ "Запись во flash: %d%%",
+    /* TYPEFACE_INSTALL_FAILED */ "Не удалось установить шрифт",
 };
 
 // Language: Spanish (es)
@@ -1893,6 +1926,17 @@ static const char* const STRINGS_ES[(size_t)MsgId::COUNT] PROGMEM = {
     /* READER_CONVERT_PROGRESS_FMT */ "Preparando el libro para leer: %d%%",
     /* READER_OPEN_DRM */ "El libro está protegido (DRM)",
     /* READER_OPEN_VARIANT */ "Esta variante del formato no es compatible",
+    /* READER_MENU_ITEM_TYPEFACE */ "Tipo de letra",
+    /* READER_MENU_TYPEFACE_FMT */ "Ahora: %s · elegir tipo",
+    /* TYPEFACE_MENU_TITLE */ "TIPO DE LETRA",
+    /* TYPEFACE_MENU_HINT */ "[▲/▼] Seleccionar | [OK] Aplicar | [BACK] Atrás",
+    /* TYPEFACE_BUILTIN */ "integrado",
+    /* TYPEFACE_ON_CARD_FMT */ "en la tarjeta · %u KB · OK lo instala",
+    /* TYPEFACE_INSTALLED */ "en la tarjeta · instalado",
+    /* TYPEFACE_CARD_HINT */ "Más tipos: archivos TTF en /fonts de la tarjeta",
+    /* TYPEFACE_INSTALL_TITLE */ "Instalando el tipo de letra",
+    /* TYPEFACE_INSTALL_FMT */ "Escribiendo en flash: %d%%",
+    /* TYPEFACE_INSTALL_FAILED */ "No se pudo instalar el tipo de letra",
 };
 
 static const char* const* const I18N_ALL_TABLES[(size_t)AppLanguage::COUNT] = {

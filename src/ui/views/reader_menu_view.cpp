@@ -2,6 +2,7 @@
 #include "../../hal/display.h"
 #include "../../ui/font.h"
 #include "../../reader/reader.h"
+#include "../../reader/font_store.h"
 #include "../i18n.h"
 #include "../kit/ui_kit.h"
 
@@ -11,7 +12,7 @@ static int s_tocRowsPerPage = 1;
 int tocRowsPerPage() { return s_tocRowsPerPage; }
 
 namespace {
-enum ReaderMenuAction : fi::ActionId { ActionChapter = 1, ActionMenuItem, ActionFontSize };
+enum ReaderMenuAction : fi::ActionId { ActionChapter = 1, ActionMenuItem, ActionFontSize, ActionTypeface };
 }
 
 void drawTocScreen(AppContext& ctx, bool fullRefresh) {
@@ -126,10 +127,14 @@ void drawReaderMenuScreen(AppContext& ctx, bool fullRefresh) {
     snprintf(fontVal, sizeof(fontVal), tr(MsgId::READER_MENU_FONT_FMT),
              BookReader::getFontSizeName(ctx.config.readerFontSize));
 
+    char faceVal[96];
+    snprintf(faceVal, sizeof(faceVal), tr(MsgId::READER_MENU_TYPEFACE_FMT), Reader.fontFamilyName().c_str());
+
     struct Item { const char* title; const char* value; const char* tag; };
     const Item items[NUM_READER_MENU_ITEMS] = {
         { tr(MsgId::READER_MENU_ITEM_TOC), chDesc, tr(MsgId::READER_MENU_TAG_CHAPTERS) },
         { tr(MsgId::READER_MENU_ITEM_FONT), fontVal, tr(MsgId::READER_MENU_TAG_FONT) },
+        { tr(MsgId::READER_MENU_ITEM_TYPEFACE), faceVal, tr(MsgId::READER_MENU_TAG_FONT) },
         { tr(MsgId::READER_MENU_ITEM_SYNC), tr(MsgId::READER_MENU_SYNC_SUB), tr(MsgId::READER_MENU_TAG_WIFI) },
         { tr(MsgId::READER_MENU_ITEM_RESUME), tr(MsgId::READER_MENU_RESUME_SUB), tr(MsgId::READER_MENU_TAG_READ) },
         { tr(MsgId::READER_MENU_ITEM_CLOSE), tr(MsgId::READER_MENU_CLOSE_SUB), tr(MsgId::READER_MENU_TAG_EXIT) },
@@ -153,8 +158,8 @@ void drawReaderMenuScreen(AppContext& ctx, bool fullRefresh) {
         snprintf(previewTitle, sizeof(previewTitle), tr(MsgId::READER_MENU_PREVIEW_TITLE_FMT),
                  BookReader::getFontSizeName(ctx.config.readerFontSize));
         text(insetX(band, 8), previewTitle, FontSmall, Color::White);
-        Font.drawString(box.x + 8, box.y + 8, tr(MsgId::READER_MENU_SAMPLE_TEXT), EPD_BLACK, ctx.config.readerFontSize,
-                        box.width - 16, box.bottom() - 4);
+        Reader.drawSample(box.x + 8, box.y + 6, box.width - 16, box.height - 10, tr(MsgId::READER_MENU_SAMPLE_TEXT),
+                          (uint16_t)FontEngine::sizePx(ctx.config.readerFontSize));
     }
 
     present(fullRefresh);
@@ -206,16 +211,68 @@ void drawFontMenuScreen(AppContext& ctx, bool fullRefresh) {
         char label[16];
         snprintf(label, sizeof(label), cur ? "%s \xE2\x9C\x93" : "%s", BookReader::getFontSizeName(i));  // U+2713
         text(Rect{(int16_t)(row.x + 10), row.y, labelW, row.height}, label, FontBody, isSel ? Color::White : Color::Black);
-        // The sample in the book font itself, vertically centred.
+        // The sample in the book font itself, vertically centred (black on a white
+        // inset, the selected row's frame staying black around it).
         const int sx = row.x + 10 + labelW;
-        const int sy = row.y + (h - Font.getFontHeight(i)) / 2 + 2;
-        Font.drawString(sx, sy, tr(MsgId::FONT_MENU_SAMPLE), isSel ? EPD_WHITE : EPD_BLACK, i,
-                        row.right() - 8 - sx, sy + Font.getFontHeight(i));
+        const uint16_t px = (uint16_t)FontEngine::sizePx(i);
+        const int lh = Reader.sampleLineHeight(px);
+        if (isSel) fill(Rect{(int16_t)(sx - 4), (int16_t)(row.y + 3), (int16_t)(row.right() - sx), (int16_t)(h - 6)}, Color::White, 3);
+        Reader.drawSample(sx, row.y + (h - lh) / 2, row.right() - 8 - sx, lh, tr(MsgId::FONT_MENU_SAMPLE), px);
         f.hit(row, ActionFontSize, (int16_t)i);
         y = (int16_t)(y + h + gap);
     }
     // More sizes above / below: small arrows at the right edge of the gap rows.
     if (start > 0) text(Rect{(int16_t)(area.right() - 24), (int16_t)(area.y - 8), 24, 10}, "\xE2\x96\xB2", FontSmall);
     if (end < n - 1) text(Rect{(int16_t)(area.right() - 24), (int16_t)(y - 2), 24, 12}, "\xE2\x96\xBC", FontSmall);
+    present(fullRefresh);
+}
+
+// ------------------------------------------------------------- typefaces
+
+static std::vector<FontStore::Family> s_families;
+static String s_installed;
+
+const std::vector<FontStore::Family>& typefaceFamilies(bool rescan) {
+    if (rescan) {
+        s_families = FontStore::scanCard();
+        s_installed = FontStore::installedName();
+    }
+    return s_families;
+}
+
+void drawTypefaceMenuScreen(AppContext& ctx, bool fullRefresh) {
+    Pass pass;
+    Frame& f = pass.frame();
+    clear();
+    const auto& fams = s_families;
+    const int n = 1 + (int)fams.size();
+    int& sel = ctx.selectedTypefaceIndex;
+    if (sel < 0) sel = 0;
+    if (sel >= n) sel = n - 1;
+    Rect area = topBar(f, tr(MsgId::TYPEFACE_MENU_TITLE));
+    area = footerHints(f, area, tr(MsgId::TYPEFACE_MENU_HINT));
+    area = insetXY(area, kMargin, 8);
+    const String current = Reader.fontFamilyName();
+    const int16_t rowH = (int16_t)(lineHeight(FontBody) + lineHeight(FontSmall) + 18);
+    const int perPage = std::max(1, (int)((area.height - lineHeight(FontSmall) * 2) / (rowH + 6)));
+    const int first = (sel / perPage) * perPage;
+    for (int i = first; i < n && i < first + perPage; i++) {
+        const bool builtin = i == 0;
+        const String name = builtin ? String(Reader.builtinFontName()) : fams[i - 1].name;
+        char note[96];
+        if (builtin) snprintf(note, sizeof(note), "%s", tr(MsgId::TYPEFACE_BUILTIN));
+        else if (fams[i - 1].name == s_installed) snprintf(note, sizeof(note), "%s", tr(MsgId::TYPEFACE_INSTALLED));
+        else snprintf(note, sizeof(note), tr(MsgId::TYPEFACE_ON_CARD_FMT), (unsigned)(fams[i - 1].bytes / 1024));
+        const bool cur = builtin ? Reader.usingBuiltinFont() : !Reader.usingBuiltinFont() && current == name;
+        char title[96];
+        snprintf(title, sizeof(title), cur ? "%s \xE2\x9C\x93" : "%s", name.c_str());   // U+2713
+        card(f, takeTop(area, rowH), title, note, nullptr, i == sel, ActionTypeface, (int16_t)i);
+        takeTop(area, 6);
+    }
+    if (fams.empty()) {
+        takeTop(area, 10);
+        text(takeTop(area, (int16_t)(lineHeight(FontSmall) * 2 + 4)), tr(MsgId::TYPEFACE_CARD_HINT), FontSmall,
+             Color::Black, TextAlign::Center, 2);
+    }
     present(fullRefresh);
 }
