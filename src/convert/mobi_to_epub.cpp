@@ -388,6 +388,8 @@ private:
     // <font size>, the size goes on the block. The engine spaces a paragraph's
     // lines by the paragraph's size, so a big <font> inside a normal <p> (how
     // MOBI headings are made) would overprint its own lines.
+    Tag _pTag[kMaxStack];
+    uint32_t _pBytes = 0;          // text written into the open p (pass 2)          // the start tag of each open p (pass 2): re-opened after a <br>
     bool _pending = false;
     Tag _pendingTag;
     const ElemInfo* _pendingInfo = nullptr;
@@ -916,6 +918,19 @@ void MobiConverter::onTag(const std::string& raw, uint32_t offset) {
         }
         return;
     }
+    // Many MOBI books (royallib, ...) put a whole chapter in one <p>, with <br>
+    // between its paragraphs: tens of KB that the engine would have to cut
+    // mid-word. A <br> straight inside a p (no inline element open, no size
+    // moved onto it) closes it and starts the next one, without the space above.
+    if (t.name == "br" && _pass == 2 && _depth > 0 && _stack[_depth - 1] == "p" && _em[_depth - 1] == 0) {
+        Tag next = _pTag[_depth - 1];
+        for (auto it = next.attrs.begin(); it != next.attrs.end();)
+            it = (it->first == "height" || it->first == "id") ? next.attrs.erase(it) : it + 1;
+        emit("</p>\n");
+        openTag(next, *elemInfo("p"));
+        _pBytes = 0;
+        return;
+    }
     std::string extra;
     if (t.name == "font") {
         const float em = fontEm(t), base = blockEm();
@@ -957,6 +972,8 @@ void MobiConverter::flushPending(float em) {
         if (em / base > 1.01f || em / base < 0.99f) extra = emStyle(em / base);
         if (d >= 0) _em[d] = em;
     }
+    if (d >= 0 && _pendingTag.name == "p") _pTag[d] = _pendingTag;
+    _pBytes = 0;
     openTag(_pendingTag, *_pendingInfo, extra);
 }
 
@@ -985,6 +1002,31 @@ void MobiConverter::onText(const char* s, uint32_t n, uint32_t offset) {
             appendCollapsed(l, s, n, 96);
         }
     }
+    // The engine holds ~3 KB of a paragraph and cuts a longer one wherever it
+    // is full, mid-word or mid-character: a long p goes on in a new one at a
+    // space (no indent: it reads as one paragraph).
+    constexpr uint32_t kParLimit = 2400;
+    while (_pass == 2 && _depth > 0 && _stack[_depth - 1] == "p" && _em[_depth - 1] == 0 && _pBytes + n > kParLimit) {
+        const uint32_t room = _pBytes < kParLimit ? kParLimit - _pBytes : 0;
+        uint32_t cut = room < n ? room : n;
+        while (cut > 0 && s[cut - 1] != ' ') cut--;
+        if (cut == 0) {   // no space within the room: the first one after it
+            cut = room;
+            while (cut < n && s[cut] != ' ') cut++;
+            if (cut >= n) break;
+            cut++;
+        }
+        emitText(s, cut);
+        Tag next = _pTag[_depth - 1];
+        for (auto it = next.attrs.begin(); it != next.attrs.end();)
+            it = (it->first == "height" || it->first == "id" || it->first == "width") ? next.attrs.erase(it) : it + 1;
+        emit("</p>\n");
+        openTag(next, *elemInfo("p"), "text-indent:0;");
+        _pBytes = 0;
+        s += cut;
+        n -= cut;
+    }
+    _pBytes += n;
     emitText(s, n);
 }
 

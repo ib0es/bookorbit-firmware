@@ -227,6 +227,16 @@ static void testCp1252AndRefusals() {
     CHECK(!convertMobi(buildMobi("<p>x</p>", {}, 65001, 2, 0, 8), epub, st, &r) && r == convert::ConvertResult::Unsupported);
     CHECK(!convertMobi("not a palm database at all, just text that is long enough to have a header......", epub, st, &r) &&
           r == convert::ConvertResult::NotThisFormat);
+    // <br> straight inside a p starts the next p (without the space above); a
+    // long p goes on in another at a space.
+    std::string brs = "<html><body><p height=\"1em\" width=\"2em\">one<br>two<br></br><b>x<br>y</b></p><p>";
+    for (int i = 0; i < 400; i++) brs += "word" + std::to_string(i) + " ";
+    brs += "</p></body></html>";
+    CHECK(convertMobi(buildMobi(brs, {}, 65001), epub, st));
+    o = openEpub(epub);
+    CHECK(o.ok && contains(o.chapters, "<p style=\"text-indent:2em;margin-top:1em;\">one</p>\n<p style=\"text-indent:2em;\">two</p>\n"
+                                       "<p style=\"text-indent:2em;\"><b>x<br/>y</b></p>"));
+    CHECK(contains(o.chapters, "</p>\n<p style=\"text-indent:0;\">word") && contains(o.chapters, "word399 </p>"));
     // A book with no page breaks and no contents: split by size, one entry per file.
     std::string big = "<html><body>";
     for (int i = 0; i < 3000; i++) big += "<p>Paragraph " + std::to_string(i) + " of one long run.</p>";

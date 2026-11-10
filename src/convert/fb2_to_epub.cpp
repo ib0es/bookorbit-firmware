@@ -181,6 +181,7 @@ const char* const kCss =
     "h1{font-size:1.5em}h2{font-size:1.3em}h3{font-size:1.15em}h4,h5,h6{font-size:1em}\n"
     "p.subtitle{text-align:center;text-indent:0;font-weight:bold;margin:0.7em 0 0.3em 0}\n"
     "p.empty{text-indent:0}\n"
+    "p.cont{text-indent:0}\n"
     "blockquote{margin:0.5em 0 0.5em 2em}\n"
     "blockquote.epigraph p{font-style:italic;text-indent:0}\n"
     "p.text-author{text-align:right;text-indent:0;font-style:italic}\n"
@@ -306,6 +307,7 @@ private:
     std::vector<std::string> _fileLabels;   // first words of each file (pass 2): contents of last resort   // "CHAPTER I." waiting for the line that names it
     bool _collectFirstPara = false;
     int _pendingEmpty = 0;
+    uint32_t _pBytes = 0;   // text written into the open p (pass 2)
     bool _spacerEmptyLines = false;   // empty-line used as paragraph spacing (calibre output)
     uint32_t _pCount = 0, _emptyCount = 0;
     std::string _pendingAnchor;
@@ -1073,6 +1075,7 @@ void Fb2Converter::start(const char* name, const char** atts) {
             anchorSpan();
             _close[_depth - 1] = C_P;
             _textDepth++;
+            _pBytes = 0;
             if (e == E_P && _collectFirstPara) _firstParaText.clear();
             return;
         }
@@ -1261,6 +1264,26 @@ void Fb2Converter::text(const char* s, int len) {
         std::string& l = _fileLabels[_file - 1];
         if (l.size() < 96) appendCollapsed(l, s, len, 96);
     }
+    // The engine holds ~3 KB of a paragraph and cuts a longer one wherever it is
+    // full, mid-word or mid-character: a long p goes on in a new one at a space.
+    constexpr int kParLimit = 2400;
+    while (_pass == 2 && _stack[_depth - 1] == E_P && _close[_depth - 1] == C_P && _pBytes + len > kParLimit) {
+        const int room = (int)_pBytes < kParLimit ? kParLimit - (int)_pBytes : 0;
+        int cut = room < len ? room : len;
+        while (cut > 0 && s[cut - 1] != ' ') cut--;
+        if (cut == 0) {
+            cut = room;
+            while (cut < len && s[cut] != ' ') cut++;
+            if (cut >= len) break;
+            cut++;
+        }
+        emitText(s, cut);
+        emit("</p>\n<p class=\"cont\">");
+        _pBytes = 0;
+        s += cut;
+        len -= cut;
+    }
+    _pBytes += (uint32_t)len;
     if (_pass == 2) emitText(s, len);
 }
 

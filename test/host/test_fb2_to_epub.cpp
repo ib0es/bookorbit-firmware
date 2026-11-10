@@ -205,6 +205,18 @@ static void testEdges() {
     size_t blanks = 0;
     for (size_t at = 0; (at = o.chapters[0].find("class=\"empty\"", at)) != std::string::npos; at++) blanks++;
     CHECK(blanks == 1);
+    // A paragraph past ~2.4 KB goes on in another, cut at a space.
+    std::string lp = "<FictionBook><body><section><p>";
+    for (int i = 0; i < 400; i++) lp += "word" + std::to_string(i) + " ";
+    lp += "</p></section></body></FictionBook>";
+    CHECK(convertString(lp, epub, st));
+    o = openEpub(epub);
+    CHECK(o.ok && contains(o.chapters, "<p class=\"cont\">") && contains(o.chapters, "word399 </p>"));
+    if (!o.chapters.empty()) {
+        const std::string& c = o.chapters[0];
+        const size_t at = c.find("</p>\n<p class=\"cont\">");
+        CHECK(at != std::string::npos && at > 0 && c[at - 1] == ' ');
+    }
 }
 
 static void testRealBooks(const char* dir) {
