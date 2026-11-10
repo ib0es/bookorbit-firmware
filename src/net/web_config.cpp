@@ -113,7 +113,7 @@ static void drawPortalScreen() {
     Frame& f = pass.frame();
     clear();
     Rect area = topBar(f, tr(MsgId::WEB_TITLE));
-    area = footerHints(f, area, tr(MsgId::WEB_FOOTER_EXIT));
+    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_DONE), "", "", ""}, tr(MsgId::WEB_FOOTER_EXIT));
     area = insetXY(area, kMargin, 12);
     frameRect(area, Color::Black, 2);
     Rect in = insetXY(area, 14, 18);

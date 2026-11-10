@@ -61,7 +61,7 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
         Frame& f = pass.frame();
         clear();
         Rect area = topBar(f, title.c_str());
-        area = footerHints(f, area, tr(MsgId::KEYBOARD_HINT_NAV), tr(MsgId::KEYBOARD_HINT_BACK));
+        area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_ERASE), tr(MsgId::KEY_TYPE), "\xE2\x97\x80", "\xE2\x96\xB6"});
         area = insetXY(area, 8, 10);
 
         // 1. Context hint

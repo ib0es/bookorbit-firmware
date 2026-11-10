@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-#include <rom/tjpgd.h>
+#include "tjpgd_compat.h"
 #include "../hal/display.h"
 #include "../hal/storage.h"
 

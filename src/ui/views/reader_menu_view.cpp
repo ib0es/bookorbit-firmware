@@ -1,7 +1,12 @@
+#include <algorithm>
 #include "reader_menu_view.h"
 #include "../../hal/display.h"
 #include "../../ui/font.h"
-#include "../../reader/simple_reader.h"
+#include "../../reader/reader.h"
+#include "../../reader/font_store.h"
+#include "../../app/screens/appearance.h"
+#include "../../app/screens/status_bar_menu.h"
+#include "../../services/bookmarks.h"
 #include "../i18n.h"
 #include "../kit/ui_kit.h"
 
@@ -11,7 +16,7 @@ static int s_tocRowsPerPage = 1;
 int tocRowsPerPage() { return s_tocRowsPerPage; }
 
 namespace {
-enum ReaderMenuAction : fi::ActionId { ActionChapter = 1, ActionMenuItem, ActionFontSize };
+enum ReaderMenuAction : fi::ActionId { ActionChapter = 1, ActionMenuItem, ActionFontSize, ActionTypeface, ActionAppearance, ActionBookmark, ActionStatusBar };
 }
 
 void drawTocScreen(AppContext& ctx, bool fullRefresh) {
@@ -24,7 +29,7 @@ void drawTocScreen(AppContext& ctx, bool fullRefresh) {
     const auto& chapters = Reader.getChapters();
     const int total = (int)chapters.size();
     if (total == 0) {
-        area = footerHints(f, area, tr(MsgId::READER_TOC_HINT_BACK));
+        area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), "", "", ""});
         area = insetXY(area, kMargin, 20);
         takeTop(area, area.height / 4);
         text(takeTop(area, (int16_t)(lineHeight(FontBody) * 2)), tr(MsgId::READER_TOC_EMPTY), FontBody, Color::Black,
@@ -48,7 +53,7 @@ void drawTocScreen(AppContext& ctx, bool fullRefresh) {
     char navHints[160];
     snprintf(navHints, sizeof(navHints), tr(MsgId::READER_TOC_NAV_HINT_FMT), ctx.selectedTocIndex + 1, total,
              ctx.selectedTocIndex / perPage + 1, (total + perPage - 1) / perPage);
-    area = footerHints(f, area, navHints);
+    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_GO), "", ""}, navHints);
     area = insetXY(area, kMargin, 10);
 
     const int currentChapterIdx = Reader.getCurrentChapterIndex();
@@ -93,7 +98,7 @@ void drawReaderMenuScreen(AppContext& ctx, bool fullRefresh) {
     Frame& f = pass.frame();
     clear();
     Rect area = topBar(f, tr(MsgId::READER_MENU_TITLE));
-    area = footerHints(f, area, tr(MsgId::READER_MENU_HINT_NAV), tr(MsgId::READER_MENU_HINT_BACK));
+    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_TO_BOOK), tr(MsgId::KEY_SELECT), tr(MsgId::KEY_TO_BOOK), tr(MsgId::KEY_SELECT)});
     area = insetXY(area, kMargin, 8);
 
     // Book status card.
@@ -122,23 +127,36 @@ void drawReaderMenuScreen(AppContext& ctx, bool fullRefresh) {
     char chDesc[128];
     if (chCount > 0) snprintf(chDesc, sizeof(chDesc), tr(MsgId::READER_MENU_TOC_SUB_FMT), chCount);
     else snprintf(chDesc, sizeof(chDesc), "%s", tr(MsgId::READER_MENU_TOC_NONE));
-    char fontVal[64];
-    snprintf(fontVal, sizeof(fontVal), tr(MsgId::READER_MENU_FONT_FMT),
-             SimpleReader::getFontSizeName(ctx.config.readerFontSize));
+    char fontVal[128];
+    snprintf(fontVal, sizeof(fontVal), tr(MsgId::READER_MENU_APPEARANCE_FMT), Reader.fontFamilyName().c_str(),
+             BookReader::getFontSizeName(ctx.config.readerFontSize));
+
+    char marksVal[96];
+    snprintf(marksVal, sizeof(marksVal), tr(MsgId::READER_MENU_BOOKMARKS_FMT), Bookmarks.count());
 
     struct Item { const char* title; const char* value; const char* tag; };
     const Item items[NUM_READER_MENU_ITEMS] = {
         { tr(MsgId::READER_MENU_ITEM_TOC), chDesc, tr(MsgId::READER_MENU_TAG_CHAPTERS) },
-        { tr(MsgId::READER_MENU_ITEM_FONT), fontVal, tr(MsgId::READER_MENU_TAG_FONT) },
+        { tr(MsgId::READER_MENU_ITEM_APPEARANCE), fontVal, tr(MsgId::READER_MENU_TAG_FONT) },
+        { tr(MsgId::READER_MENU_ITEM_BOOKMARKS), marksVal, tr(MsgId::READER_MENU_TAG_MARKS) },
         { tr(MsgId::READER_MENU_ITEM_SYNC), tr(MsgId::READER_MENU_SYNC_SUB), tr(MsgId::READER_MENU_TAG_WIFI) },
         { tr(MsgId::READER_MENU_ITEM_RESUME), tr(MsgId::READER_MENU_RESUME_SUB), tr(MsgId::READER_MENU_TAG_READ) },
         { tr(MsgId::READER_MENU_ITEM_CLOSE), tr(MsgId::READER_MENU_CLOSE_SUB), tr(MsgId::READER_MENU_TAG_EXIT) },
     };
-    const int16_t cardH = (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 22);
-    for (int i = 0; i < NUM_READER_MENU_ITEMS; i++) {
-        card(f, takeTop(area, cardH), items[i].title, items[i].value, items[i].tag, i == ctx.selectedReaderMenuIndex,
-             ActionMenuItem, (int16_t)i);
-        takeTop(area, kGap);
+    int16_t cardH = (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 22);
+    int16_t gap = kGap;
+    const int n = NUM_READER_MENU_ITEMS;
+    if (n * (cardH + gap) > area.height) {   // a landscape screen: tighter, then a page at a time
+        gap = 4;
+        cardH = std::max<int16_t>((int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 6),
+                                  (int16_t)(area.height / n - gap));
+    }
+    const int perPage = std::max(1, (int)((area.height + gap) / (cardH + gap)));
+    const int sel = ctx.selectedReaderMenuIndex;
+    const int first = n > perPage ? (sel / perPage) * perPage : 0;
+    for (int i = first; i < n && i < first + perPage; i++) {
+        card(f, takeTop(area, cardH), items[i].title, items[i].value, items[i].tag, i == sel, ActionMenuItem, (int16_t)i);
+        takeTop(area, gap);
     }
 
     // Live preview of the book font (drawn with the reader's own font,
@@ -151,10 +169,10 @@ void drawReaderMenuScreen(AppContext& ctx, bool fullRefresh) {
         fill(band, Color::Black);
         char previewTitle[64];
         snprintf(previewTitle, sizeof(previewTitle), tr(MsgId::READER_MENU_PREVIEW_TITLE_FMT),
-                 SimpleReader::getFontSizeName(ctx.config.readerFontSize));
+                 BookReader::getFontSizeName(ctx.config.readerFontSize));
         text(insetX(band, 8), previewTitle, FontSmall, Color::White);
-        Font.drawString(box.x + 8, box.y + 8, tr(MsgId::READER_MENU_SAMPLE_TEXT), EPD_BLACK, ctx.config.readerFontSize,
-                        box.width - 16, box.bottom() - 4);
+        Reader.drawSample(box.x + 8, box.y + 6, box.width - 16, box.height - 10, tr(MsgId::READER_MENU_SAMPLE_TEXT),
+                          (uint16_t)FontEngine::sizePx(ctx.config.readerFontSize));
     }
 
     present(fullRefresh);
@@ -172,7 +190,7 @@ void drawFontMenuScreen(AppContext& ctx, bool fullRefresh) {
     const int n = FontEngine::kSizeCount;
     const int sel = ctx.selectedFontIndex < 0 ? 0 : (ctx.selectedFontIndex >= n ? n - 1 : ctx.selectedFontIndex);
     Rect area = topBar(f, tr(MsgId::FONT_MENU_TITLE));
-    area = footerHints(f, area, tr(MsgId::FONT_MENU_HINT));
+    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_APPLY), tr(MsgId::KEY_BACK), tr(MsgId::KEY_APPLY)});
     area = insetXY(area, kMargin, 8);
 
     // Rows grow with their font, so not all sizes fit: show a window of
@@ -204,18 +222,197 @@ void drawFontMenuScreen(AppContext& ctx, bool fullRefresh) {
         if (isSel) fill(row, Color::Black, 4);
         else frameRect(row, Color::Black, 1, 4);
         char label[16];
-        snprintf(label, sizeof(label), cur ? "%s \xE2\x9C\x93" : "%s", SimpleReader::getFontSizeName(i));  // U+2713
+        snprintf(label, sizeof(label), cur ? "%s \xE2\x9C\x93" : "%s", BookReader::getFontSizeName(i));  // U+2713
         text(Rect{(int16_t)(row.x + 10), row.y, labelW, row.height}, label, FontBody, isSel ? Color::White : Color::Black);
-        // The sample in the book font itself, vertically centred.
+        // The sample in the book font itself, vertically centred (black on a white
+        // inset, the selected row's frame staying black around it).
         const int sx = row.x + 10 + labelW;
-        const int sy = row.y + (h - Font.getFontHeight(i)) / 2 + 2;
-        Font.drawString(sx, sy, tr(MsgId::FONT_MENU_SAMPLE), isSel ? EPD_WHITE : EPD_BLACK, i,
-                        row.right() - 8 - sx, sy + Font.getFontHeight(i));
+        const uint16_t px = (uint16_t)FontEngine::sizePx(i);
+        const int lh = Reader.sampleLineHeight(px);
+        if (isSel) fill(Rect{(int16_t)(sx - 4), (int16_t)(row.y + 3), (int16_t)(row.right() - sx), (int16_t)(h - 6)}, Color::White, 3);
+        Reader.drawSample(sx, row.y + (h - lh) / 2, row.right() - 8 - sx, lh, tr(MsgId::FONT_MENU_SAMPLE), px);
         f.hit(row, ActionFontSize, (int16_t)i);
         y = (int16_t)(y + h + gap);
     }
     // More sizes above / below: small arrows at the right edge of the gap rows.
     if (start > 0) text(Rect{(int16_t)(area.right() - 24), (int16_t)(area.y - 8), 24, 10}, "\xE2\x96\xB2", FontSmall);
     if (end < n - 1) text(Rect{(int16_t)(area.right() - 24), (int16_t)(y - 2), 24, 12}, "\xE2\x96\xBC", FontSmall);
+    present(fullRefresh);
+}
+
+// ------------------------------------------------------------- typefaces
+
+static std::vector<FontStore::Family> s_families;
+static String s_installed;
+
+const std::vector<FontStore::Family>& typefaceFamilies(bool rescan) {
+    if (rescan) {
+        s_families = FontStore::scanCard();
+        s_installed = FontStore::installedName();
+    }
+    return s_families;
+}
+
+void drawTypefaceMenuScreen(AppContext& ctx, bool fullRefresh) {
+    Pass pass;
+    Frame& f = pass.frame();
+    clear();
+    const auto& fams = s_families;
+    const int n = 1 + (int)fams.size();
+    int& sel = ctx.selectedTypefaceIndex;
+    if (sel < 0) sel = 0;
+    if (sel >= n) sel = n - 1;
+    Rect area = topBar(f, tr(MsgId::TYPEFACE_MENU_TITLE));
+    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_APPLY), tr(MsgId::KEY_BACK), tr(MsgId::KEY_APPLY)});
+    area = insetXY(area, kMargin, 8);
+    const String current = Reader.fontFamilyName();
+    const int16_t rowH = (int16_t)(lineHeight(FontBody) + lineHeight(FontSmall) + 18);
+    const int perPage = std::max(1, (int)((area.height - lineHeight(FontSmall) * 2) / (rowH + 6)));
+    const int first = (sel / perPage) * perPage;
+    for (int i = first; i < n && i < first + perPage; i++) {
+        const bool builtin = i == 0;
+        const String name = builtin ? String(Reader.builtinFontName()) : fams[i - 1].name;
+        char note[96];
+        if (builtin) snprintf(note, sizeof(note), "%s", tr(MsgId::TYPEFACE_BUILTIN));
+        else if (fams[i - 1].name == s_installed) snprintf(note, sizeof(note), "%s", tr(MsgId::TYPEFACE_INSTALLED));
+        else snprintf(note, sizeof(note), tr(MsgId::TYPEFACE_ON_CARD_FMT), (unsigned)(fams[i - 1].bytes / 1024));
+        const bool cur = builtin ? Reader.usingBuiltinFont() : !Reader.usingBuiltinFont() && current == name;
+        char title[96];
+        snprintf(title, sizeof(title), cur ? "%s \xE2\x9C\x93" : "%s", name.c_str());   // U+2713
+        card(f, takeTop(area, rowH), title, note, nullptr, i == sel, ActionTypeface, (int16_t)i);
+        takeTop(area, 6);
+    }
+    if (fams.empty()) {
+        takeTop(area, 10);
+        text(takeTop(area, (int16_t)(lineHeight(FontSmall) * 2 + 4)), tr(MsgId::TYPEFACE_CARD_HINT), FontSmall,
+             Color::Black, TextAlign::Center, 2);
+    }
+    present(fullRefresh);
+}
+
+// ------------------------------------------------------------- appearance
+
+void drawAppearanceScreen(AppContext& ctx, bool fullRefresh) {
+    Pass pass;
+    Frame& f = pass.frame();
+    clear();
+    int& sel = ctx.selectedAppearanceIndex;
+    if (sel < 0) sel = 0;
+    if (sel >= Appearance::COUNT) sel = Appearance::COUNT - 1;
+    Rect area = topBar(f, tr(MsgId::APPEAR_TITLE));
+    {
+        const bool list = sel == Appearance::TYPEFACE || sel == Appearance::SIZE;   // OK opens a list there
+        area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_DONE), tr(list ? MsgId::KEY_OPEN : MsgId::KEY_CHANGE),
+                                           "\xE2\x97\x80", "\xE2\x96\xB6"});
+    }
+    area = insetXY(area, kMargin, 6);
+    const int16_t rowH = (int16_t)(lineHeight(FontBody) + 12);
+    char val[64];
+    // All the rows when they fit (with room for the preview below), else the
+    // page of rows the selection is on (a landscape screen).
+    const int perPage = std::max(1, (int)(area.height / (rowH + 2)));
+    const int first = Appearance::COUNT > perPage ? (sel / perPage) * perPage : 0;
+    for (int i = first; i < Appearance::COUNT && i < first + perPage; i++) {
+        Rect row = takeTop(area, rowH);
+        const bool isSel = i == sel;
+        if (isSel) fill(row, Color::Black, 4);
+        const Color ink = isSel ? Color::White : Color::Black;
+        Rect in = insetX(row, 10);
+        Appearance::value(ctx.config, i, val, sizeof(val));
+        const int16_t vw = (int16_t)(textWidth(FontBody, val) + 4);
+        text(Rect{(int16_t)(in.right() - vw), in.y, vw, in.height}, val, FontBody, ink, TextAlign::Right);
+        text(Rect{in.x, in.y, (int16_t)(in.width - vw - 8), in.height}, Appearance::label(i), FontBody, ink);
+        if (!isSel) hline((int16_t)(row.x + 6), (int16_t)(row.right() - 6), (int16_t)(row.bottom() - 1));
+        f.hit(row, ActionAppearance, (int16_t)i);
+        takeTop(area, 2);
+    }
+    // The settings as they will look: size, typeface, line spacing, margins.
+    takeTop(area, 6);
+    if (area.height > 40) {
+        hline(0, width(), area.y);
+        Reader.drawPreview(area.y + 6, area.height - 8, tr(MsgId::APPEAR_SAMPLE), Appearance::layoutOptions(ctx.config),
+                           ctx.config.readerFontSize);
+    }
+    present(fullRefresh);
+}
+
+// ------------------------------------------------------------- status bar
+
+void drawStatusBarScreen(AppContext& ctx, bool fullRefresh) {
+    Pass pass;
+    Frame& f = pass.frame();
+    clear();
+    int& sel = ctx.selectedStatusBarIndex;
+    if (sel < 0) sel = 0;
+    if (sel >= StatusBarMenu::COUNT) sel = StatusBarMenu::COUNT - 1;
+    Rect area = topBar(f, tr(MsgId::SB_TITLE));
+    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_CHANGE), "\xE2\x97\x80", "\xE2\x96\xB6"});
+    area = insetXY(area, kMargin, 6);
+    const int16_t rowH = (int16_t)(lineHeight(FontBody) + 12);
+    char val[64];
+    for (int i = 0; i < StatusBarMenu::COUNT; i++) {
+        Rect row = takeTop(area, rowH);
+        const bool isSel = i == sel;
+        if (isSel) fill(row, Color::Black, 4);
+        const Color ink = isSel ? Color::White : Color::Black;
+        Rect in = insetX(row, 10);
+        StatusBarMenu::value(ctx.config, i, val, sizeof(val));
+        const int16_t vw = (int16_t)(textWidth(FontBody, val) + 4);
+        text(Rect{(int16_t)(in.right() - vw), in.y, vw, in.height}, val, FontBody, ink, TextAlign::Right);
+        text(Rect{in.x, in.y, (int16_t)(in.width - vw - 8), in.height}, StatusBarMenu::label(i), FontBody, ink);
+        if (!isSel) hline((int16_t)(row.x + 6), (int16_t)(row.right() - 6), (int16_t)(row.bottom() - 1));
+        f.hit(row, ActionStatusBar, (int16_t)i);
+        takeTop(area, 2);
+    }
+    present(fullRefresh);
+}
+
+// ------------------------------------------------------------- bookmarks
+
+// Whether the page on screen has a bookmark: the index, -1 if not.
+int bookmarkOnPage() {
+    int spine;
+    uint32_t from, to;
+    return Reader.pageRange(spine, from, to) ? Bookmarks.findIn(spine, from, to) : -1;
+}
+
+void drawBookmarksScreen(AppContext& ctx, bool fullRefresh) {
+    Pass pass;
+    Frame& f = pass.frame();
+    clear();
+    const int n = 1 + Bookmarks.count();
+    int& sel = ctx.selectedBookmarkIndex;
+    if (sel < 0) sel = 0;
+    if (sel >= n) sel = n - 1;
+    Rect area = topBar(f, tr(MsgId::BOOKMARKS_TITLE));
+    const int here = bookmarkOnPage();
+    KeyLabels keys{tr(MsgId::KEY_BACK), tr(sel == 0 ? (here >= 0 ? MsgId::KEY_REMOVE : MsgId::KEY_ADD) : MsgId::KEY_GO),
+                   sel > 0 ? tr(MsgId::KEY_DELETE) : "", tr(sel == 0 ? (here >= 0 ? MsgId::KEY_REMOVE : MsgId::KEY_ADD) : MsgId::KEY_GO)};
+    area = keyHints(f, area, keys);
+    area = insetXY(area, kMargin, 10);
+    const int16_t rowH = (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 22);
+    const int perPage = std::max(1, (int)(area.height / (rowH + kGap)));
+    const int first = (sel / perPage) * perPage;
+    char title[160];
+    for (int i = first; i < n && i < first + perPage; i++) {
+        if (i == 0) {
+            card(f, takeTop(area, rowH), tr(here >= 0 ? MsgId::BOOKMARKS_REMOVE : MsgId::BOOKMARKS_ADD),
+                 tr(MsgId::BOOKMARKS_ADD_SUB), nullptr, sel == 0, ActionBookmark, 0);
+        } else {
+            const Bookmark& b = Bookmarks.items()[i - 1];
+            if (b.placed()) {
+                snprintf(title, sizeof(title), tr(MsgId::BOOKMARKS_ITEM_FMT), (int)(b.percent * 100.0f + 0.5f), b.chapter.c_str());
+            } else {   // from the server, its place not worked out yet: no percent
+                snprintf(title, sizeof(title), "%s", b.chapter.c_str());
+            }
+            card(f, takeTop(area, rowH), title, b.snippet.c_str(), nullptr, sel == i, ActionBookmark, (int16_t)i);
+        }
+        takeTop(area, kGap);
+    }
+    if (n == 1) {
+        takeTop(area, 20);
+        text(takeTop(area, (int16_t)(lineHeight(FontBody) * 2 + 4)), tr(MsgId::BOOKMARKS_NONE), FontBody, Color::Black,
+             TextAlign::Center, 2);
+    }
     present(fullRefresh);
 }

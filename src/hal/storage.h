@@ -51,6 +51,9 @@ public:
     bool rename(const char* path, const char* newPath);
     bool replaceFile(const char* tmpPath, const char* path);
     bool mkdir(const char* path);
+    bool removeDir(const char* path);   // with everything in it
+    // Names of the sub-directories of a directory, unsorted.
+    std::vector<String> listSubdirs(const String& path);
 
     // Scan for available books on SD card
     std::vector<String> listBooks();

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "settings_view.h"
 #include "../i18n.h"
 #include "../kit/ui_kit.h"
@@ -29,7 +30,9 @@ void drawCardScreen(const AppContext& ctx, const char* title, ItemDefFn def, int
     Frame& f = pass.frame();
     clear();
     Rect area = topBar(f, title);
-    area = footerHints(f, area, hintNav, hintBack);
+    (void)hintNav;
+    (void)hintBack;
+    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_SELECT), tr(MsgId::KEY_BACK), tr(MsgId::KEY_SELECT)});
     area = insetXY(area, kMargin, 10);
     int16_t cardH = (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 22);
     int16_t gap = kGap;
@@ -41,7 +44,10 @@ void drawCardScreen(const AppContext& ctx, const char* title, ItemDefFn def, int
         cardH = (int16_t)(area.height / count - gap);
         if (cardH < minCardH) cardH = minCardH;
     }
-    for (int i = 0; i < count; i++) {
+    // Still too many (a landscape screen): the page of the list the selection is on.
+    const int perPage = std::max(1, (int)((area.height + gap) / (cardH + gap)));
+    const int first = count > perPage ? (selected / perPage) * perPage : 0;
+    for (int i = first; i < count && i < first + perPage; i++) {
         SettingItemDef item = def(ctx, i);
         card(f, takeTop(area, cardH), item.title, item.value.c_str(), item.tag, i == selected, 1, (int16_t)i);
         takeTop(area, gap);
@@ -51,6 +57,11 @@ void drawCardScreen(const AppContext& ctx, const char* title, ItemDefFn def, int
 }
 
 SettingItemDef getSettingItemDef(const AppContext& ctx, int index) {
+    if (index == orientationSettingIndex()) {   // the interface (a book turns on top of it: Appearance)
+        static const MsgId k[] = {MsgId::APPEAR_ORIENT_PORTRAIT, MsgId::APPEAR_ORIENT_LANDSCAPE,
+                                  MsgId::APPEAR_ORIENT_PORTRAIT_FLIPPED, MsgId::APPEAR_ORIENT_LANDSCAPE_FLIPPED};
+        return { tr(MsgId::SETTINGS_ITEM_ORIENTATION), tr(k[ctx.config.uiOrientation & 3]), tr(MsgId::SETTINGS_TAG_SCREEN) };
+    }
     switch (index) {
         case 0:
             return { tr(MsgId::SETTINGS_ITEM_LANGUAGE), I18n::getLanguageName(ctx.config.language), tr(MsgId::SETTINGS_TAG_LANG) };
@@ -255,7 +266,7 @@ void drawFrontlightScreen(AppContext& ctx, bool fullRefresh) {
     Frame& f = pass.frame();
     clear();
     Rect area = topBar(f, tr(MsgId::FRONTLIGHT_TITLE));
-    area = footerHints(f, area, tr(MsgId::FRONTLIGHT_HINT_NAV), tr(MsgId::FRONTLIGHT_HINT_BACK));
+    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_DONE), tr(MsgId::KEY_ON_OFF), "-", "+"});
     area = insetXY(area, kMargin, 14);
 
     const int rows = Frontlight.hasWarmth() ? 2 : 1;

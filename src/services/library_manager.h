@@ -6,13 +6,24 @@
 #include "progress_store.h"
 
 struct BookMetadata;
+struct BookFormatEntry;
+
+// One format (file) of a book: "/books/<name>.epub", "/books/<name>.fb2"... next
+// to each other, each with its own server file id and reading position.
+struct BookFormatSlot {
+    int fileId = 0;       // server file id, 0 for a file only on the card
+    uint8_t kind = 0;     // BookFormats::Kind
+    bool onCard = false;
+    String url;           // download address, "" = canonical (BookFormats::compactUrl)
+};
 
 // Library item tracking (local files + remote catalog)
 struct BookItem {
     String title;
     String author;
+    // The active format (formats[activeFormat]): filePath, fileId and isDownloaded
+    // are its own, so opening, syncing and deleting work on one file.
     String filePath;     // Local path e.g. "/books/Frankenstein.epub" or folder path "/books/Фантастика"
-    String downloadUrl;  // Book Orbit OPDS download URL (empty if purely local)
     String coverUrl;     // Remote cover thumbnail URL
     String coverPath;    // Local cached cover path e.g. "/covers/Frankenstein.jpg"
     int fileId = 0;      // Server file id (progress uploads)
@@ -27,6 +38,16 @@ struct BookItem {
     int subItemCount = 0;// Child count for virtual folder (for badge)
     bool isDownloaded = false;   // true if file exists on SD card
     bool isDirectory = false;    // true if item is a folder
+    std::vector<BookFormatSlot> formats;   // every format; empty for folders
+    int8_t activeFormat = -1;
+    int8_t formatRow = -1;       // a row of the format list: index into the book's formats
+
+    // Book Orbit download address of the active format ("" = only on the card).
+    String downloadUrl() const;
+    String downloadUrlOf(const BookFormatSlot& f) const;
+    bool inCatalog() const;      // some format is on the server
+    bool anyOnCard() const;      // some format is on the card
+    uint8_t activeKind() const { return activeFormat >= 0 && activeFormat < (int)formats.size() ? formats[activeFormat].kind : 0; }
 };
 
 enum LibraryFilter {
@@ -78,7 +99,10 @@ public:
     int savedAuthorIndex = 0;
     int savedSeriesIndex = 0;
     int savedLibraryIndex = 0;
-    String currentFolder = "/books";
+    String currentFolder = "/books";   // also "@formats": the formats of masterBooks[formatsBook]
+    int formatsBook = -1;
+    String formatsReturnFolder;
+    int formatsReturnIndex = 0;
     LibraryFilter currentFilter = FILTER_ALL;
     String searchQuery = "";
     int recentBookIndex = 0;
@@ -140,9 +164,28 @@ public:
     // and into the matching library item.
     void applyRecordToLibrary(const BookProgressRecord& rec);
 
+    // ---- formats of a book ----
+    // Path of a format: the book's path with that format's extension.
+    static String formatPath(const BookItem& b, const BookFormatSlot& f);
+    // Makes formats[i] the active one (filePath, fileId, isDownloaded follow).
+    static void selectFormat(BookItem& b, int i);
+    // The format read last on this device (on the card, with a position), -1 if none.
+    static int lastReadFormat(const BookItem& b);
+    // Picks the active format: the one read last, else a readable one on the card,
+    // else the best readable one on the server, else anything on the card.
+    static void chooseFormat(BookItem& b);
+    // Position of the active format from progress.json (after switching formats).
+    void refreshProgressOf(BookItem& b);
+    // Opens the list of the formats of the book at master index `idx`.
+    void openFormats(int idx);
+    // Leaves it (back to the list it was opened from).
+    void closeFormats();
+
     // File name used for a catalog book on the SD card ("/books/<safe title>.epub").
     static String safeFileName(const String& title, const String& fallbackId);
+    // Path of the preferred format of a catalog book, and of one of its formats.
     static String catalogBookPath(const BookMetadata& b);
+    static String catalogFormatPath(const BookMetadata& b, const BookFormatEntry& f);
     // Server ids of a catalog entry: book id (from the OPDS id) and file id.
     static int catalogBookId(const BookMetadata& b);
 

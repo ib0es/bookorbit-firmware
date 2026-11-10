@@ -20,6 +20,8 @@ namespace LibraryScreen {
 void handleEvent(AppContext& ctx, const ButtonEvent& event);
 // Opens the menu of the selected book (LEFT key, or a long press on the book).
 void openBookMenu(AppContext& ctx);
+// Lists the formats of the selected book (book menu "Format"); false if it has one.
+bool openFormatsOfSelected(AppContext& ctx);
 void handleBookMenuEvent(AppContext& ctx, const ButtonEvent& event);
 }
 
@@ -28,6 +30,10 @@ void handleReadingEvent(AppContext& ctx, const ButtonEvent& event);
 void handleTocEvent(AppContext& ctx, const ButtonEvent& event);
 void handleMenuEvent(AppContext& ctx, const ButtonEvent& event);
 void handleFontMenuEvent(AppContext& ctx, const ButtonEvent& event);
+void handleTypefaceMenuEvent(AppContext& ctx, const ButtonEvent& event);
+void handleAppearanceEvent(AppContext& ctx, const ButtonEvent& event);
+void handleBookmarksEvent(AppContext& ctx, const ButtonEvent& event);
+void handleStatusBarEvent(AppContext& ctx, const ButtonEvent& event);
 
 // Opens a book, restores the position (xpath > progress > page), records it as
 // lastBook and switches to STATE_READING. On failure shows a message and

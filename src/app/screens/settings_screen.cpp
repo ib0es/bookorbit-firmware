@@ -1,4 +1,5 @@
 #include "screens.h"
+#include "../orientation.h"
 #include <WiFi.h>
 #include "../../hal/battery.h"
 #include "../../hal/mem_stats.h"
@@ -7,7 +8,7 @@
 #include "../../hal/display.h"
 #include "../../net/bookorbit_client.h"
 #include "../../net/web_config.h"
-#include "../../reader/simple_reader.h"
+#include "../../reader/reader.h"
 #include "../../services/sync_service.h"
 #include "../../ui/keyboard_ui.h"
 #include "../../ui/modal.h"
@@ -82,6 +83,14 @@ bool cancelledDuringTest(AppContext& ctx, AppState returnState) {
 
 // ---------------------------------------------------------------- main settings
 void executeSetting(AppContext& ctx, int index) {
+    if (index == orientationSettingIndex()) {
+        // The screen a quarter turn on; an open book is laid out again for it.
+        ctx.config.uiOrientation = (ctx.config.uiOrientation + 1) & 3;
+        ctx.config.save();
+        applyOrientation(ctx.config.uiOrientation, ctx.config.orientation);   // the book's pages turn with it
+        drawSettingsScreen(ctx, true);
+        return;
+    }
     switch (index) {
         case 0:  // Language screen
             ctx.currentState = STATE_LANGUAGE_SETTINGS;

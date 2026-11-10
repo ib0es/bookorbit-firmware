@@ -12,7 +12,7 @@
 #include "../ui/i18n.h"
 #include "library_manager.h"
 #include "sync_service.h"
-#include "../reader/simple_reader.h"
+#include "../reader/reader.h"
 #include "../net/bookorbit_client.h"
 #include "../app/app_controller.h"
 #include "../hal/buttons.h"
@@ -98,7 +98,8 @@ void PowerService::enterDeepSleep(AppContext& ctx) {
 
     auto& lib = LibraryManager::getInstance();
 
-    // Ensure reading state is flushed to SD
+    // Ensure reading state is flushed to SD (a background layout is dropped: its file is not finished)
+    Reader.stopBackground();
     if (Reader.isOpened()) {
         lib.flushReaderPosition();
     }

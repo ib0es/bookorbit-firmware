@@ -15,6 +15,8 @@
 #include <string>
 #include <vector>
 
+#include "book_formats.h"
+
 struct OpdsBookEntry {
     std::string id;          // "urn:bookorbit:book:123" -> "123"
     std::string title;
@@ -24,6 +26,10 @@ struct OpdsBookEntry {
     std::string series;      // from rel="http://opds-spec.org/sort/series"
     int seriesIndex = 0;     // parsed from series title e.g. "Series #1"
     int fileId = 0;          // from "fileId=" in downloadUrl, else numeric id
+    // Every acquisition link (one per format). downloadUrl / fileId above are
+    // the preferred one (BookFormats::preferred). A canonical download address
+    // is stored empty (BookFormats::compactUrl).
+    std::vector<BookFormats::Ref> formats;
 };
 
 struct OpdsNavEntry {

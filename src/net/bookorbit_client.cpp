@@ -405,11 +405,19 @@ bool BookOrbitClient::fetchCatalogFromUrl(const String& serverHost, const String
             b.author = e.author.c_str();
             b.series = e.series.c_str();
             b.seriesIndex = e.seriesIndex;
-            b.downloadUrl = e.downloadUrl.c_str();
+            b.formats.reserve(e.formats.size());
+            for (const auto& f : e.formats) {
+                BookFormatEntry fe;
+                fe.fileId = f.fileId;
+                fe.kind = (uint8_t)f.kind;
+                fe.url = f.url.c_str();
+                b.formats.push_back(fe);
+            }
             b.coverUrl = e.coverUrl.c_str();
             b.library = libraryName;
             outBooks.push_back(b);
-            Serial.printf("[OPDS] Found book: %s (id=%s, fileId=%d, lib=%s)\n", b.title.c_str(), b.id.c_str(), b.fileId, b.library.c_str());
+            Serial.printf("[OPDS] Found book: %s (id=%s, fileId=%d, %u formats, lib=%s)\n", b.title.c_str(), b.id.c_str(),
+                          b.fileId, (unsigned)b.formats.size(), b.library.c_str());
             return true;
         }, 8 * 1024);   // entries are ~1-3 KB; the heap can be ~15 KB here
         OpdsParserSink sink(parser);
@@ -603,7 +611,7 @@ bool BookOrbitClient::downloadCover(const String& serverHost, const String& cove
     return downloadFile(serverHost, coverUrl, destSdPath, username, password, token, nullptr, checkCancel);
 }
 
-bool BookOrbitClient::fetchBookProgress(const String& serverHost, const String& username, const String& password, String& token, int bookId, ServerProgress& out) {
+bool BookOrbitClient::fetchBookProgress(const String& serverHost, const String& username, const String& password, String& token, int bookId, int fileId, ServerProgress& out) {
     if (!isConnected() || bookId <= 0) return false;
 
     // Login if token is missing
@@ -647,7 +655,7 @@ bool BookOrbitClient::fetchBookProgress(const String& serverHost, const String& 
     http.end();
 
     BookOrbitProtocol::Progress parsed;
-    if (!BookOrbitProtocol::parseBookProgress(json.c_str(), parsed)) {
+    if (!BookOrbitProtocol::parseBookProgress(json.c_str(), parsed, fileId)) {
         Serial.printf("[BookOrbit] Book %d progress: malformed response: %s\n", bookId, json.c_str());
         return false;
     }
@@ -658,10 +666,10 @@ bool BookOrbitClient::fetchBookProgress(const String& serverHost, const String& 
         out.page = parsed.page;
         out.cfi = parsed.cfi.c_str();
         out.updatedAt = parsed.updatedAt;
-        Serial.printf("[BookOrbit] Book %d progress from server: %.1f%% (page %d, cfi='%s', updated=%lu) raw: %s\n",
-                      bookId, out.percent * 100.0f, out.page, out.cfi.c_str(), (unsigned long)out.updatedAt, json.c_str());
+        Serial.printf("[BookOrbit] Book %d file %d progress from server: %.1f%% (page %d, cfi='%s', updated=%lu) raw: %s\n",
+                      bookId, fileId, out.percent * 100.0f, out.page, out.cfi.c_str(), (unsigned long)out.updatedAt, json.c_str());
     } else {
-        Serial.printf("[BookOrbit] Book %d has no progress on the server.\n", bookId);
+        Serial.printf("[BookOrbit] Book %d file %d has no progress on the server.\n", bookId, fileId);
     }
     return true;
 }
@@ -717,3 +725,67 @@ bool BookOrbitClient::updateBookProgress(const String& serverHost, const String&
     return (code == 200);
 }
 
+
+int BookOrbitClient::authedRequest(const String& serverHost, const String& username, const String& password,
+                                   String& token, const char* method, const String& path, const String& body,
+                                   String* response) {
+    if (!isConnected()) return -1;
+    if (token.length() == 0 && username.length() > 0 && password.length() > 0) login(serverHost, username, password, token);
+    if (token.length() == 0) return 401;
+    const String url = buildUrl(serverHost, path);
+    int code = 0;
+    for (int attempt = 0; attempt < 2; attempt++) {
+        HTTPClient http;
+        http.begin(url);
+        http.setTimeout(10000);
+        http.addHeader("Connection", "close");
+        http.addHeader("Authorization", "Bearer " + token);
+        if (body.length() > 0) http.addHeader("Content-Type", "application/json");
+        collectDate(http);
+        code = http.sendRequest(method, body);
+        takeServerTime(http);
+        if (code >= 200 && code < 300 && response) *response = http.getString();
+        http.end();
+        if (code != 401 || attempt > 0 || username.length() == 0 || password.length() == 0) break;
+        Serial.printf("[BookOrbit] %s %s returned 401, refreshing token...\n", method, path.c_str());
+        if (!login(serverHost, username, password, token)) break;
+    }
+    if (code < 200 || code >= 300) Serial.printf("[BookOrbit] %s %s failed: HTTP %d\n", method, path.c_str(), code);
+    return code;
+}
+
+bool BookOrbitClient::fetchBookmarks(const String& serverHost, const String& username, const String& password,
+                                     String& token, int bookId, int fileId,
+                                     std::vector<BookOrbitProtocol::Bookmark>& out) {
+    out.clear();
+    if (bookId <= 0) return false;
+    String path = "/api/v1/books/" + String(bookId) + "/bookmarks";
+    if (fileId > 0) path += "?readerFileId=" + String(fileId);
+    String json;
+    const int code = authedRequest(serverHost, username, password, token, "GET", path, "", &json);
+    if (code != 200) return false;
+    if (!BookOrbitProtocol::parseBookmarks(json.c_str(), out)) {
+        Serial.printf("[BookOrbit] Book %d bookmarks: malformed response\n", bookId);
+        return false;
+    }
+    return true;
+}
+
+int BookOrbitClient::createBookmark(const String& serverHost, const String& username, const String& password,
+                                    String& token, int bookId, int fileId, const String& cfi, const String& title) {
+    if (bookId <= 0 || cfi.length() == 0) return 0;
+    const String body = BookOrbitProtocol::buildBookmarkCreate(fileId, cfi.c_str(), title.c_str()).c_str();
+    String json;
+    const int code = authedRequest(serverHost, username, password, token, "POST",
+                                   "/api/v1/books/" + String(bookId) + "/bookmarks", body, &json);
+    if (code < 200 || code >= 300) return 0;
+    return BookOrbitProtocol::parseCreatedBookmarkId(json.c_str());
+}
+
+bool BookOrbitClient::deleteBookmark(const String& serverHost, const String& username, const String& password,
+                                     String& token, int bookId, int bookmarkId) {
+    if (bookId <= 0 || bookmarkId <= 0) return false;
+    const int code = authedRequest(serverHost, username, password, token, "DELETE",
+                                   "/api/v1/books/" + String(bookId) + "/bookmarks/" + String(bookmarkId), "", nullptr);
+    return (code >= 200 && code < 300) || code == 404;   // 404: already gone
+}

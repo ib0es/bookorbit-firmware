@@ -245,6 +245,57 @@ static void testLibrariesFeedParsing() {
     }
 }
 
+// A real Book Orbit entry (opds_alice.xml): one book, four formats, each its own file.
+static const char* ALICE =
+    "<feed xmlns=\"http://www.w3.org/2005/Atom\"><entry>\n"
+    "  <title>Alice&apos;s Adventures in Wonderland</title>\n"
+    "  <id>urn:bookorbit:book:4</id>\n"
+    "  <author><name>Lewis Carroll</name></author>\n"
+    "  <link rel=\"http://opds-spec.org/image\" href=\"/api/v1/opds/4/cover?t=1.d4\" type=\"image/jpeg\"/>\n"
+    "  <link rel=\"http://opds-spec.org/image/thumbnail\" href=\"/api/v1/opds/4/thumbnail?t=1.d4\" type=\"image/jpeg\"/>\n"
+    "  <link rel=\"http://opds-spec.org/acquisition\" href=\"/api/v1/opds/4/download?fileId=7&amp;selection=WzEsIm9w.LBO\" type=\"application/epub+zip\" title=\"EPUB\"/>\n"
+    "  <link rel=\"http://opds-spec.org/acquisition\" href=\"/api/v1/opds/4/download?fileId=6\" type=\"application/x-mobipocket-ebook\" title=\"MOBI\"/>\n"
+    "  <link rel=\"http://opds-spec.org/acquisition\" href=\"/api/v1/opds/4/download?fileId=4\" type=\"application/vnd.amazon.ebook\" title=\"AZW3\"/>\n"
+    "  <link rel=\"http://opds-spec.org/acquisition\" href=\"/api/v1/opds/4/download?fileId=5\" type=\"application/x-fictionbook+xml\" title=\"FB2\"/>\n"
+    "</entry></feed>\n";
+
+static void testFormats() {
+    printf("testFormats\n");
+    auto books = parseInChunks(ALICE, 7);
+    CHECK(books.size() == 1);
+    if (books.empty()) return;
+    const OpdsBookEntry& b = books[0];
+    CHECK_EQ(b.title, "Alice's Adventures in Wonderland");
+    // The EPUB is the one to open, not the last link (FB2): it was saved as ".epub" before.
+    CHECK(b.fileId == 7);
+    CHECK_EQ(b.downloadUrl, "/api/v1/opds/4/download?fileId=7&selection=WzEsIm9w.LBO");
+    CHECK(b.formats.size() == 4);
+    if (b.formats.size() < 4) return;
+    CHECK(b.formats[0].kind == BookFormats::Epub && b.formats[0].fileId == 7);
+    CHECK(b.formats[1].kind == BookFormats::Mobi && b.formats[1].fileId == 6);
+    CHECK(b.formats[2].kind == BookFormats::Azw3 && b.formats[2].fileId == 4);
+    CHECK(b.formats[3].kind == BookFormats::Fb2 && b.formats[3].fileId == 5);
+    // Canonical addresses are not kept; the EPUB's signed selection is.
+    CHECK_EQ(b.formats[0].url, "/api/v1/opds/4/download?fileId=7&selection=WzEsIm9w.LBO");
+    CHECK(b.formats[1].url.empty() && b.formats[2].url.empty() && b.formats[3].url.empty());
+    CHECK_EQ(BookFormats::urlFor(b.formats[3], b.id), "/api/v1/opds/4/download?fileId=5");
+
+    // Only FB2 and MOBI: both are read through a conversion, FB2 ranks first.
+    OpdsBookEntry e;
+    CHECK(OpdsStreamParser::parseEntry(
+        "<entry><title>T</title><id>urn:b:8</id>"
+        "<link rel=\"http://opds-spec.org/acquisition\" href=\"/api/v1/opds/8/download?fileId=3\" type=\"application/x-mobipocket-ebook\"/>"
+        "<link rel=\"http://opds-spec.org/acquisition\" href=\"/api/v1/opds/8/download?fileId=2\" type=\"application/x-fictionbook+xml\"/>"
+        "<link rel=\"http://opds-spec.org/acquisition\" href=\"/api/v1/opds/8/download?fileId=2\" type=\"application/x-fictionbook+xml\"/>"
+        "</entry>", e));
+    CHECK(e.fileId == 2 && e.formats.size() == 2);   // the repeated link once
+    // Links that are not downloads (a "related" page) are not formats.
+    CHECK(OpdsStreamParser::parseEntry(
+        "<entry><title>T</title><id>9</id><link rel=\"related\" href=\"/download/other\"/>"
+        "<link rel=\"http://opds-spec.org/acquisition/open-access\" href=\"/x.txt\" type=\"text/plain\"/></entry>", e));
+    CHECK(e.formats.size() == 1 && e.formats[0].kind == BookFormats::Txt && e.fileId == 9);
+}
+
 int main() {
     testBasicFeed();
     testSeriesParsing();
@@ -254,6 +305,7 @@ int main() {
     testStopFromCallback();
     testBufferStaysBounded();
     testEntitiesAndAttributes();
+    testFormats();
     printf("%s: %d/%d checks passed\n", g_failed ? "FAILED" : "OK", g_checks - g_failed, g_checks);
     return g_failed ? 1 : 0;
 }

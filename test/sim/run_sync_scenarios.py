@@ -15,7 +15,7 @@ if not os.path.isabs(BIN): BIN = os.path.join(ROOT, BIN)
 SD_TEMPLATE = os.path.join(ROOT, "simulator/sdcard")
 TEST_CONFIG = os.path.join(ROOT, "test/sim/config.json")   # replaces a local simulator/sdcard/config.json
 BOOK = "Alice in Wonderland"
-SYNC = "CDDCw"           # in the reader: menu -> "Синхронизация" -> wait
+SYNC = "CDDDCw"          # in the reader: menu -> "Синхронизация" (4th) -> wait
 HOME_SYNC = "UCww"       # on the home screen: "Синхронизация сейчас" -> wait
 
 def srv(pct=None, upd="NOW-100", fail=False, **extra):
@@ -57,6 +57,12 @@ SCENARIOS = [
      srv(0.30), srv(0.30, failPut=True), "C" + SYNC + "RRRS" + SYNC, ["pull", "push"], 31.7, True),
     ("server has no record: local reading is uploaded",
      {}, None, "CRRR" + SYNC, ["push"], None, False),
+    # One book, several formats: each has its own position. The FB2 read on another
+    # device later does not move the EPUB open here.
+    ("another format's newer position does not move this one",
+     {"progress": [{"fileId": 101, "percentage": 30, "updatedAt": "NOW-100"},
+                   {"fileId": 111, "percentage": 80, "updatedAt": "NOW-10"}]},
+     None, "C" + SYNC, ["pull"], 30.0, False),
 ]
 
 def run(sd, script):
@@ -127,7 +133,8 @@ def run_one(scenario):
         problems.append("no progress record")
     else:
         pct = rec["local"]["p"] * 100
-        if want_pct is not None and abs(pct - want_pct) > 0.25:   # a few page turns: their size depends on the screen and font
+        # Positions land on page starts and a page is ~0.75% of the sample book: within one page.
+        if want_pct is not None and abs(pct - want_pct) > 0.8:
             problems.append("final %.1f%%, expected %.1f%%" % (pct, want_pct))
         if bool(rec.get("dirty", False)) != want_dirty:
             problems.append("dirty=%s, expected %s" % (rec.get("dirty", False), want_dirty))
@@ -137,6 +144,9 @@ def run_one(scenario):
     return True, "ok    " + name + "  " + " ".join(actions)
 
 CLOUD = "B" + "DC" + "DC" + "UC"  # after a home sync: Home -> Catalog -> All Books -> wrap up to cloud book ("Moby Dick")
+# After a home sync: Home -> Catalog -> All Books -> "Alice in Wonderland" -> book menu -> Formats.
+# The fake server has Alice as EPUB (101), TXT (131), AZW3 (121) and FB2 (111), in that order.
+FORMATS = "B" + "DC" + "DC" + "D" + "L" + "DC"
 P40 = [{"fileId": f, "percentage": 40, "updatedAt": "NOW-50"} for f in (101, 102, 103)]
 
 # name, server state, server after 'S', script, log must match (all), log must not match (any)
@@ -206,7 +216,16 @@ LOG_SCENARIOS = [
      {"_lastBook": "01. Frankenstein (1818).epub", "_fileId": 101,
       "progress": [{"fileId": 101, "percentage": 37.2, "cfi": "epubcfi(/6/34!/4/2[pgepubid00016]/2/3:0)", "updatedAt": "NOW-50"}]},
      None, "C" + SYNC,
-     [r"-> pull", r"\[CFI\] 'epubcfi\(/6/34!/4/2\[pgepubid00016\]/2/3:0\)' -> OEBPS/\d+_84-h-15\.htm\.xhtml \+[0-9] -> offset"], [r"stale"]),
+     [r"-> pull", r"\[CFI\] 'epubcfi\(/6/34!/4/2\[pgepubid00016\]/2/3:0\)' -> spine 16, char \d+"], [r"stale"]),
+    # The web reader's percent differs from ours by a few percent in short illustrated
+    # books ("Alice": 3.3% on the X4): the CFI still wins.
+    ("web reader CFI wins over a percent a few percent off",
+     {"_lastBook": "01. Frankenstein (1818).epub", "_fileId": 101,
+      "progress": [{"fileId": 101, "percentage": 32, "cfi": "epubcfi(/6/34!/4/2[pgepubid00016]/2/3:0)", "updatedAt": "NOW-50"}]},
+     None, "C" + SYNC,
+     [r"-> pull", r"\[CFI\] 'epubcfi\(/6/34!/4/2\[pgepubid00016\]/2/3:0\)' -> spine 16, char \d+",
+      r"\[Mem\] engine probe book opened: layout 50 KB ok, parse 46 KB ok, book 30/30 KB.*FITS"],
+     [r"stale"]),
     ("stale CFI (another reader moved on) falls back to the percentage",
      {"_lastBook": "01. Frankenstein (1818).epub", "_fileId": 101,
       "progress": [{"fileId": 101, "percentage": 60, "cfi": "epubcfi(/6/34!/4/2[pgepubid00016]/2/3:0)", "updatedAt": "NOW-50"}]},
@@ -230,6 +249,52 @@ LOG_SCENARIOS = [
     ("corrupt progress.json is ignored",
      {"_progressJson": "{not json"}, None, "w",
      [r"progress.json is corrupt"], []),
+    ("catalog: one book in four formats, EPUB preferred over the last link",
+     {}, None, HOME_SYNC,
+     [r"Found book: Alice in Wonderland \(id=1, fileId=101, 4 formats", r"Catalog metadata saved \(3 books\)"],
+     [r"format FB2", r"download\?fileId=111"]),
+    ("saved catalog of older firmware: its address still downloads",
+     {}, None, "DC" + "DC" + "UC" + "w",
+     [r"GET /api/v1/download/103 -> 200", r"Book /books/Moby Dick.epub downloaded successfully"], []),
+    # Every format the server lists is readable now (FB2, MOBI and AZW3 through a
+    # conversion): choosing one downloads it. The fake file is no real AZW3: the
+    # conversion refuses it and the book's format stays.
+    ("formats list: an AZW3 is downloaded and converted; a file that is no book is refused",
+     {}, None, HOME_SYNC + FORMATS + "DDC" + "w",
+     [r"Formats of 'Alice in Wonderland': 4", r"download\?fileId=121", r"\[Convert\] .*Alice in Wonderland\.azw3"],
+     [r"cannot be opened yet"]),
+    ("formats list: another format is downloaded and opened at its own position",
+     {"progress": [{"fileId": 101, "percentage": 40, "updatedAt": "NOW-50"},
+                   {"fileId": 131, "percentage": 10, "updatedAt": "NOW-50"}]}, None, HOME_SYNC + FORMATS + "DC" + "w",
+     [r"'Alice in Wonderland': format TXT \(/books/Alice in Wonderland.txt\)",
+      r"GET /api/v1/opds/1/download\?fileId=131 -> 200",
+      r"Book /books/Alice in Wonderland.txt downloaded successfully",
+      r"\[Sync\] 'Alice in Wonderland': local 0\.0% .* server 10\.0% .* -> pull",
+      r"Restoring position: .*10\.0%"],
+     [r"server 40\.0% .* -> pull.*\n.*Alice in Wonderland.txt"]),
+    ("the format read last opens from the list; BACK leaves the formats list",
+     {}, None, HOME_SYNC + FORMATS + "DCw" + "B" + "C" + "DC" + "D" + "C" + "w" + "B" + "C" + "DC" + "D" + "LDC" + "B",
+     [r"Book /books/Alice in Wonderland.txt downloaded successfully",
+      r"Formats of 'Alice in Wonderland': 4(.|\n)*Formats of 'Alice in Wonderland': 4",
+      r"Opening book: /books/Alice in Wonderland.txt(.|\n)*Opening book: /books/Alice in Wonderland.txt",
+      r"Formats of 'Alice in Wonderland': 4(.|\n)*List /books: 7 rows"], []),
+    # Book menu -> "Sync" (Read, Formats, Sync): only that book, only its active format.
+    ("book menu: sync one book",
+     {"progress": P40}, None, HOME_SYNC + "B" + "DC" + "DC" + "D" + "L" + "DDC",
+     [r"GET /api/v1/books/1/progress", r"Book menu sync of 'Alice in Wonderland': result 0"], []),
+    ("book menu: sync fails when the server is down",
+     {"progress": P40}, {"fail": True}, HOME_SYNC + "S" + "B" + "DC" + "DC" + "D" + "L" + "DDC",
+     [r"Book menu sync of 'Alice in Wonderland': result 1"], []),
+    ("book menu: sync without Wi-Fi settings",
+     {"_config": {"wifi_ssid": ""}}, None, "DC" + "DC" + "D" + "L" + "DC",   # one format: no "Formats" row
+     [r"Book menu sync of 'Alice in Wonderland': result 2"], [r"\[WiFi\] Initializing"]),
+    # A record from before the book had server ids, and no saved catalog: the ids
+    # come from the fresh catalog, by the path the EPUB is downloaded to.
+    ("record without server ids gets them from the fresh catalog",
+     {"_noSavedCatalog": True, "progress": P40,
+      "_progressJson": json.dumps({"version": 1, "books": [{"path": "/books/" + BOOK + ".epub", "title": BOOK,
+                                                            "local": {"p": 0}}]})}, None, HOME_SYNC,
+     [r"\[Sync\] '" + BOOK + r"': local 0\.0% .* server 40\.0% .* -> pull"], []),
     ("book without a server id is not synced by file id",
      {"_lastBook": "Frankenstein.epub", "progress": P40}, None, "CRB",
      [r"book id unknown yet"], [r"GET /api/v1/books/101/progress"]),
@@ -246,6 +311,53 @@ def run_log(scenario):
         return False, "FAIL  " + name + ": " + "; ".join(problems)
     return True, "ok    " + name
 
+# Bookmarks synced with the web reader's: (name, server state, bookmarks file on the
+# card before (None: none), script, check(server bookmarks, local file dict, log)).
+MARK7 = {"id": 7, "bookId": 1, "fileId": 101, "cfi": "epubcfi(/6/8!/4/2/1:0)", "title": "Down the Rabbit-Hole"}
+LOCAL7 = {"spine": 3, "chars": 0, "percent": 0.09, "chapter": "Down the Rabbit-Hole", "snippet": "",
+          "cfi": "epubcfi(/6/8!/4/2/1:0)", "sid": 7}
+OPEN_MARKS = "CDDwC"   # in the reader: menu -> "Закладки"
+BOOKMARK_SCENARIOS = [
+    ("bookmark made here goes up with its CFI and chapter",
+     {"progress": []}, None, "CwRRw" + OPEN_MARKS + "wC" + SYNC + "ww",
+     lambda srv, loc, log: len(srv) == 1 and srv[0]["cfi"].startswith("epubcfi(/6/4!") and srv[0]["fileId"] == 101
+     and srv[0]["title"] and loc["bookmarks"][0].get("sid") == srv[0]["id"]),
+    ("bookmark made in the web reader comes down, is placed and opens its page",
+     {"progress": [], "bookmarks": [MARK7]}, None, "Cw" + SYNC + "ww" + OPEN_MARKS + "DC",
+     lambda srv, loc, log: loc["bookmarks"][0]["sid"] == 7 and loc["bookmarks"][0]["spine"] == 3
+     and re.findall(r"\[Reader\] Page \d+/\d+ \(chapter (\d+)", log)[-1] == "3"),
+    ("bookmark deleted here is deleted on the server",
+     {"progress": [], "bookmarks": [MARK7]}, {"bookmarks": [LOCAL7]}, "Cw" + OPEN_MARKS + "DLBBw" + SYNC + "ww",
+     lambda srv, loc, log: srv == [] and loc is None),
+    ("bookmark deleted on the server goes here; an old one without a CFI gets one and goes up",
+     {"progress": []}, {"bookmarks": [LOCAL7, {"spine": 1, "chars": 836, "percent": 0.02, "chapter": "Old", "snippet": "x"}]},
+     "Cw" + SYNC + "ww",
+     lambda srv, loc, log: [m["title"] for m in srv] == ["Old"] and [b["chapter"] for b in loc["bookmarks"]] == ["Old"]),
+    ("deletes wait for the server; nothing is re-added meanwhile",
+     {"progress": [], "bookmarks": [MARK7], "failDelete": True}, {"bookmarks": [LOCAL7]}, "Cw" + OPEN_MARKS + "DLBBw" + SYNC + "ww",
+     lambda srv, loc, log: len(srv) == 1 and loc["bookmarks"] == [] and loc["deleted"] == [7]),
+]
+
+def run_bookmarks(scenario):
+    name, server, local, script, check = scenario
+    sd = prepare(dict(server), None)
+    marks = os.path.join(sd, "bookmarks", BOOK + ".epub.json")
+    if local is not None:
+        os.makedirs(os.path.dirname(marks), exist_ok=True)
+        with open(marks, "w") as f: json.dump(local, f, ensure_ascii=False)
+    _, log = run(sd, script)
+    srv = json.load(open(os.path.join(sd, "server.json"))).get("bookmarks", [])
+    loc = json.load(open(marks)) if os.path.exists(marks) else None
+    try:
+        ok = check(srv, loc, log)
+    except Exception as e:
+        ok = False
+        name += " (%r)" % e
+    shutil.rmtree(sd, ignore_errors=True)
+    if not ok:
+        return False, "FAIL  " + name + ": server %s, card %s" % (srv, loc)
+    return True, "ok    " + name
+
 def main():
     if not os.path.exists(BIN):
         sys.exit("build first: make -f test/sim/Makefile")
@@ -256,12 +368,13 @@ def main():
                 return
     from concurrent.futures import ThreadPoolExecutor
     with ThreadPoolExecutor(max_workers=os.cpu_count() or 4) as pool:
-        results = list(pool.map(run_one, SCENARIOS)) + list(pool.map(run_log, LOG_SCENARIOS))
+        results = (list(pool.map(run_one, SCENARIOS)) + list(pool.map(run_log, LOG_SCENARIOS)) +
+                   list(pool.map(run_bookmarks, BOOKMARK_SCENARIOS)))
     failed = 0
     for ok, line in results:
         print(line)
         failed += 0 if ok else 1
-    total = len(SCENARIOS) + len(LOG_SCENARIOS)
+    total = len(SCENARIOS) + len(LOG_SCENARIOS) + len(BOOKMARK_SCENARIOS)
     print("%s: %d/%d scenarios passed" % ("FAILED" if failed else "OK", total - failed, total))
     sys.exit(1 if failed else 0)
 

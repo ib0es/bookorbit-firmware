@@ -14,7 +14,10 @@
 //    "backOnWifi":true,      -> BACK is pressed while Wi-Fi connects (once)
 //    "backOn":"/download",   -> BACK is pressed when a request path contains this (once)
 //    "failPut":true,         -> progress uploads answer HTTP 500
-//    "brokenCatalog":true}   -> OPDS entries without acquisition links
+//    "brokenCatalog":true,   -> OPDS entries without acquisition links
+//    "bookmarks":[{"id":1,"bookId":1,"fileId":101,"cfi":"epubcfi(...)","title":"..."}]}
+//                            -> web-reader bookmarks (GET/POST/DELETE /api/v1/books/:id/bookmarks)
+//    "failDelete":true       -> bookmark deletes answer HTTP 500
 //   Any request to the KOSync API answers 404: the firmware must not use it.
 //   Legacy shorthand: {"percent":0.3,"page":0,"xpath":"","updatedAt":"NOW-100"} (file 101).
 //   "NOW+/-N" = now +/- N seconds; written back as ISO 8601 with milliseconds.
@@ -24,6 +27,7 @@
 #include "SDCardManager.h"
 #include "net/web_config.h"
 #include <ArduinoJson.h>
+#include <algorithm>
 #include <cstdio>
 #include <ctime>
 #include <fstream>
@@ -48,13 +52,20 @@ namespace {
 using FakeNet::Request;
 using FakeNet::Response;
 
-struct Book { int id; int fileId; const char* title; const char* author; };
+// Extra formats of a book, besides its EPUB (fileId): each its own file, like
+// Book Orbit's OPDS (opds_alice.xml). Listed after the EPUB, FB2 last: the
+// firmware once downloaded the last link and saved it as ".epub".
+struct Format { int fileId; const char* mime; const char* title; };
+struct Book { int id; int fileId; const char* title; const char* author; Format extra[3]; };
 // Newest first, like the real server's catalog.
 const Book kBooks[] = {
-    {3, 103, "Moby Dick", "Herman Melville"},
-    {2, 102, "The Time Machine", "H. G. Wells"},
-    {1, 101, "Alice in Wonderland", "Lewis Carroll"},
+    {3, 103, "Moby Dick", "Herman Melville", {}},
+    {2, 102, "The Time Machine", "H. G. Wells", {}},
+    {1, 101, "Alice in Wonderland", "Lewis Carroll",
+     {{131, "text/plain", "TXT"}, {121, "application/vnd.amazon.ebook", "AZW3"}, {111, "application/x-fictionbook+xml", "FB2"}}},
 };
+const char* kTxtBody = "Alice was beginning to get very tired of sitting by her sister on the bank.\n";
+const char* kFb2Body = "<?xml version=\"1.0\"?><FictionBook><body><p>Alice</p></body></FictionBook>\n";
 const char* kUser = nullptr;   // from config.json (any user/password accepted)
 int g_tokenSerial = 0;
 
@@ -116,7 +127,18 @@ void saveState(const JsonDocument& st) {
 }
 
 const Book* bookById(int id) { for (const auto& b : kBooks) if (b.id == id) return &b; return nullptr; }
-const Book* bookByFile(int f) { for (const auto& b : kBooks) if (b.fileId == f) return &b; return nullptr; }
+const Book* bookByFile(int f) {
+    for (const auto& b : kBooks) {
+        if (b.fileId == f) return &b;
+        for (const auto& x : b.extra) if (x.fileId && x.fileId == f) return &b;
+    }
+    return nullptr;
+}
+bool fileOfBook(const Book& b, int f) {
+    if (b.fileId == f) return true;
+    for (const auto& x : b.extra) if (x.fileId && x.fileId == f) return true;
+    return false;
+}
 
 std::string path(const std::string& url) {
     size_t p = url.find("://");
@@ -145,7 +167,13 @@ std::string opdsFeed(int page) {
              "  <content type=\"text\">Описание &amp; аннотация</content>\n"
              "  <link rel=\"http://opds-spec.org/image/thumbnail\" href=\"/api/v1/opds/" + id + "/thumbnail\" type=\"image/jpeg\"/>\n"
              "  <link rel=\"http://opds-spec.org/acquisition\" href=\"/api/v1/opds/" + id + "/download?fileId=" + f +
-             "&amp;selection=abc\" type=\"application/epub+zip\"/>\n</entry>\n";
+             "&amp;selection=abc\" type=\"application/epub+zip\" title=\"EPUB\"/>\n";
+        for (const auto& fm : b.extra) {
+            if (!fm.fileId) continue;
+            x += "  <link rel=\"http://opds-spec.org/acquisition\" href=\"/api/v1/opds/" + id + "/download?fileId=" +
+                 std::to_string(fm.fileId) + "\" type=\"" + fm.mime + "\" title=\"" + fm.title + "\"/>\n";
+        }
+        x += "</entry>\n";
     }
     return x + "</feed>\n";
 }
@@ -202,22 +230,29 @@ Response route(const Request& rq, JsonDocument& st, bool& dirty) {
     if (p.find("/download") != std::string::npos) {
         std::string f = query(p, "fileId");
         if (f.empty()) f = p.substr(p.rfind('/') + 1);   // /api/v1/download/102
-        if (!bookByFile(atoi(f.c_str()))) { r.code = 404; return r; }
-        r.body = readFile(sdPath("/books/Pride and Prejudice.epub")); return r;
+        const int fid = atoi(f.c_str());
+        const Book* b = bookByFile(fid);
+        if (!b) { r.code = 404; return r; }
+        r.body = readFile(sdPath("/books/Pride and Prejudice.epub"));
+        for (const auto& x : b->extra) {
+            if (x.fileId == fid) r.body = strcmp(x.title, "TXT") == 0 ? kTxtBody : kFb2Body;
+        }
+        return r;
     }
 
     if (!bearer) { r.code = 401; r.body = "{\"error\":\"no token\"}"; return r; }
 
     int bookId = 0;
-    if (sscanf(p.c_str(), "/api/v1/books/%d/progress", &bookId) == 1 && rq.method == "GET") {
+    if (sscanf(p.c_str(), "/api/v1/books/%d/progress", &bookId) == 1 && p.find("/progress") != std::string::npos &&
+        rq.method == "GET") {
         const Book* b = bookById(bookId);
         if (!b) { r.code = 404; return r; }
         JsonDocument out;   // a bare array with web-reader fields, like the real server
         JsonArray items = out.to<JsonArray>();
-        for (JsonObject rec : st["progress"].as<JsonArray>()) {
-            if ((rec["fileId"] | 0) != b->fileId) continue;
+        for (JsonObject rec : st["progress"].as<JsonArray>()) {   // every file (format) of the book
+            if (!fileOfBook(*b, rec["fileId"] | 0)) continue;
             JsonObject it = items.add<JsonObject>();
-            it["fileId"] = b->fileId;
+            it["fileId"] = rec["fileId"];
             it["positionSeconds"] = nullptr;
             it["percentage"] = rec["percentage"];
             if ((rec["pageNumber"] | 0) > 0) it["pageNumber"] = rec["pageNumber"];
@@ -229,6 +264,77 @@ Response route(const Request& rq, JsonDocument& st, bool& dirty) {
         }
         r.body = toStdString(out);
         return r;
+    }
+    int markId = 0;
+    if (sscanf(p.c_str(), "/api/v1/books/%d/bookmarks/%d", &bookId, &markId) == 2 && rq.method == "DELETE") {
+        if (st["failDelete"] | false) { r.code = 500; return r; }
+        JsonArray marks = st["bookmarks"].as<JsonArray>();
+        for (size_t i = 0; i < marks.size(); i++) {
+            if ((marks[i]["id"] | 0) == markId && (marks[i]["bookId"] | 0) == bookId) {
+                marks.remove(i);
+                dirty = true;
+                r.code = 204;
+                return r;
+            }
+        }
+        r.code = 404;
+        return r;
+    }
+    if (sscanf(p.c_str(), "/api/v1/books/%d/bookmarks", &bookId) == 1 && p.find("/bookmarks/") == std::string::npos) {
+        if (!bookById(bookId)) { r.code = 404; return r; }
+        if (st["bookmarks"].isNull()) st["bookmarks"].to<JsonArray>();
+        JsonArray marks = st["bookmarks"].as<JsonArray>();
+        if (rq.method == "GET") {
+            const int reader = atoi(query(p, "readerFileId").c_str());
+            JsonDocument out;   // a bare array, like the real server
+            JsonArray items = out.to<JsonArray>();
+            for (JsonObject m : marks) {
+                if ((m["bookId"] | 0) != bookId) continue;
+                JsonObject it = items.add<JsonObject>();
+                it["id"] = m["id"];
+                it["bookId"] = bookId;
+                // Like the server: a CFI made in another file is converted; here it cannot be.
+                const int f = m["fileId"] | 0;
+                if (reader > 0 && f > 0 && f != reader) it["cfi"] = nullptr; else it["cfi"] = m["cfi"];
+                it["title"] = m["title"];
+                it["positionSeconds"] = nullptr;
+                it["note"] = nullptr;
+            }
+            r.body = toStdString(out);
+            return r;
+        }
+        if (rq.method == "POST") {
+            JsonDocument in;
+            if (deserializeJson(in, rq.body.data(), rq.body.size())) { r.code = 400; return r; }
+            for (JsonPair kv : in.as<JsonObject>()) {   // the DTO rejects unknown fields
+                const char* k = kv.key().c_str();
+                if (strcmp(k, "bookFileId") && strcmp(k, "cfi") && strcmp(k, "title")) { r.code = 400; return r; }
+            }
+            const char* cfi = in["cfi"] | "";
+            const char* title = in["title"] | "";
+            if (!*cfi || !*title) { r.code = 400; return r; }
+            JsonObject m;
+            for (JsonObject e : marks) if ((e["bookId"] | 0) == bookId && strcmp(e["cfi"] | "", cfi) == 0) m = e;
+            if (m.isNull()) {   // the server keeps one bookmark per place
+                int next = 1;
+                for (JsonObject e : marks) next = std::max(next, (e["id"] | 0) + 1);
+                m = marks.add<JsonObject>();
+                m["id"] = next;
+                m["bookId"] = bookId;
+                m["fileId"] = in["bookFileId"] | 0;
+                m["cfi"] = cfi;
+                m["title"] = title;
+                dirty = true;
+                r.code = 201;
+            }
+            JsonDocument out;
+            out["id"] = m["id"];
+            out["bookId"] = bookId;
+            out["cfi"] = m["cfi"];
+            out["title"] = m["title"];
+            r.body = toStdString(out);
+            return r;
+        }
     }
     if (p == "/api/v1/reading-progress" && rq.method == "PUT" && (st["failPut"] | false)) {
         r.code = 500; r.body = "{\"error\":\"boom\"}"; return r;

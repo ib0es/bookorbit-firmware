@@ -8,6 +8,7 @@
 #include "ui/font.h"
 #include "ui/keyboard_ui.h"
 #include "ui/i18n.h"
+#include "reader/reader.h"
 #include "ui/kit/ui_kit.h"
 #include "ui/views/status_modal.h"
 #include "net/bookorbit_client.h"
@@ -39,7 +40,7 @@ static void drawNetworkList(const std::vector<ScannedNet>& list, int selectedInd
     char titleBuf[64];
     snprintf(titleBuf, sizeof(titleBuf), tr(MsgId::WIFI_SCAN_TITLE_FMT), selectedIndex + 1, (int)list.size());
     Rect area = topBar(f, titleBuf);
-    area = footerHints(f, area, tr(MsgId::WIFI_SCAN_HINT_NAV), tr(MsgId::WIFI_SCAN_HINT_RESCAN));
+    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_CONNECT), tr(MsgId::KEY_RESCAN), tr(MsgId::KEY_CONNECT)});
     area = insetXY(area, kMargin, 10);
 
     const int16_t rowH = (int16_t)(lineHeight(FontBody) + lineHeight(FontSmall) + 20);
@@ -91,6 +92,8 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
         Serial.println("[WifiUI] Starting Wi-Fi network scan...");
         drawModal(tr(MsgId::WIFI_SCAN_MODAL_TITLE), tr(MsgId::WIFI_SCAN_MODAL_SCANNING), tr(MsgId::WIFI_SCAN_MODAL_WAIT));
 
+        Reader.stopBackground();      // Wi-Fi needs the memory
+        Reader.releaseFontCaches();
         WiFi.mode(WIFI_STA);
         WiFi.disconnect();
         delay(150);

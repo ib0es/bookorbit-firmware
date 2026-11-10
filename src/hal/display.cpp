@@ -107,6 +107,20 @@ void EPDDisplay::update(RefreshMode mode) {
     Serial.printf("[EPD] Display update dispatched/completed in %lu ms.\n", millis() - t0);
 }
 
+static void (*s_refreshPoll)() = nullptr;
+
+void EPDDisplay::setRefreshPoll(void (*poll)()) {
+    s_refreshPoll = poll;
+    if (!_eink) return;
+    // The slice hook runs once a busy wait proved long (20 ms); returning false
+    // keeps the driver's own delay between polls of the BUSY pin.
+    bool (*hook)(int8_t, uint8_t) = [](int8_t, uint8_t) {
+        if (s_refreshPoll) s_refreshPoll();
+        return false;
+    };
+    _eink->setBusyWaitSliceHook(poll ? hook : nullptr);
+}
+
 void EPDDisplay::waitSync() {
     if (_eink && _eink->isRefreshPending()) {
         _eink->finishDisplayAsync();

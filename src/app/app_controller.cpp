@@ -5,6 +5,10 @@
 #include <BoardConfig.h>
 #include "config.h"
 #include "screens/screens.h"
+#include "screens/appearance.h"
+#include "orientation.h"
+#include "screens/status_bar_menu.h"
+#include "../services/bookmarks.h"
 #include "touch_router.h"
 #include "../hal/display.h"
 #include "../hal/buttons.h"
@@ -15,7 +19,7 @@
 #include "../ui/modal.h"
 #include "../ui/kit/ui_kit.h"
 #include "../net/bookorbit_client.h"
-#include "../reader/simple_reader.h"
+#include "../reader/reader.h"
 #include "../services/library_manager.h"
 #include "../services/power_service.h"
 #include "../services/sync_service.h"
@@ -26,6 +30,15 @@
 #include "../ui/views/settings_view.h"
 #include "../ui/views/reader_menu_view.h"
 #include "../ui/views/book_menu_view.h"
+
+namespace {
+AppContext* g_ctxForKeys = nullptr;
+bool keysUpsideDown() {
+    if (!g_ctxForKeys || uikit::touchOnly()) return false;
+    const int o = g_ctxForKeys->currentState == STATE_READING ? Reader.orientation() : g_ctxForKeys->config.uiOrientation;
+    return (o & 3) == 2;
+}
+}  // namespace
 
 void AppController::setup() {
     // 0. Disable any surviving deep-sleep pin holds from previous sleep cycle
@@ -48,9 +61,11 @@ void AppController::setup() {
     // Accidental wake-up protection
     PowerService::handleAccidentalWakeup();
 
+    MemStats::mark("setup start");   // what the core and its tasks hold before our code
     // Ensure Wi-Fi radio is completely shut down at boot for zero background lag
     WiFi.mode(WIFI_OFF);
     BookOrbit.disconnectWiFi();
+    MemStats::mark("Wi-Fi off");
 
     // 2. Initialize HAL components
     // Board power rails first. Picco: GPIO4 latch and the active-low GPIO0 rail
@@ -60,6 +75,7 @@ void AppController::setup() {
     BoardConfig::holdPowerRails();
     Battery.begin();
     Buttons.begin();
+    MemStats::mark("battery, buttons");
     // FreeInk's bring-up order for boards whose SD card shares the display SPI
     // bus (X4/X3): board/controller detection, then the SD card, then the
     // panel. Arduino-ESP32 maps the bus pins on the first SPI.begin() only:
@@ -69,9 +85,16 @@ void AppController::setup() {
     // pins, so it goes before the SD card takes the bus.
     Display.detectBoard();
     Storage.begin();
+    MemStats::mark("SD card");
     Display.begin();
+    // A key pressed while the panel refreshes (a full refresh blocks ~3.8 s) is
+    // caught then and answered right after, not lost.
+    Display.setRefreshPoll([] { Buttons.update(); });
+    MemStats::mark("display");
     uikit::begin();      // FreeInkUI target over the same framebuffer
+    MemStats::mark("FreeInkUI");
     Font.begin(Display); // book fonts (src/ui/book_fonts.h)
+    MemStats::mark("book fonts");
 
     // After a modal closes, the screen of the current state is redrawn.
     Modal.setRedrawHook([this](bool full) { redrawCurrentScreen(full); });
@@ -79,17 +102,29 @@ void AppController::setup() {
     // 3. Load configuration from SD card if present
     _ctx.config.load();
     I18n::setLanguage(_ctx.config.language);
+    MemStats::mark("config, language");
     Frontlight.begin();
     if (Buttons.hasLightSwitch()) Frontlight.setEnabled(Buttons.lightSwitchOn());
     Frontlight.apply(_ctx.config.frontlight, _ctx.config.frontlightWarm);
     Reader.setFontSize(_ctx.config.readerFontSize);
+    Reader.setFontFamily(_ctx.config.readerFont);
+    Reader.setLayoutOptions(Appearance::layoutOptions(_ctx.config));
+    Reader.setFullRefreshEvery(_ctx.config.fullRefreshEvery);
+    Reader.setSharpImages(_ctx.config.sharpImages);
+    g_ctxForKeys = &_ctx;
+    applyOrientation(_ctx.config.uiOrientation, _ctx.config.orientation);
+    Reader.setStatusBar(StatusBarMenu::options(_ctx.config));
+    Reader.setBookmarkProbe([](int spine, uint32_t from, uint32_t to) { return Bookmarks.findIn(spine, from, to) >= 0; });
+    MemStats::mark("frontlight, reader");
 
     // 4. Per-book progress, scan local books on SD, 5. load last read book state
     ProgressStore::instance().load();
+    MemStats::mark("progress.json");
     auto& lib = LibraryManager::getInstance();
     lib.setHideCompleted(_ctx.config.hideCompleted);
     lib.scanLocalBooks();
     lib.initLastBook();
+    MemStats::mark("library");
 
     // 6. Fast wake-up: if we went to sleep while reading, resume that book immediately.
     // After sleep (Settings > Synchronization > After sleep): the current book is
@@ -101,6 +136,8 @@ void AppController::setup() {
         }
     };
     if (isWakeFromSleep && PowerService::getSavedRtcState() == STATE_READING && ReaderScreen::resumeLastBook(_ctx)) {
+        MemStats::mark("book resumed");
+        MemStats::printMarks();
         Buttons.clearEvents();
         _ctx.lastActivityTime = millis();
         syncAfterWake();
@@ -114,13 +151,24 @@ void AppController::setup() {
     }
 
     // 8. Open Main / Home screen with last book cover
+    MemStats::mark("boot done");
+    MemStats::printMarks();
     MemStats::log("boot done");
+    MemStats::logMap("boot done");
     _ctx.currentState = STATE_HOME;
     drawHomeScreen(_ctx, true); // Full refresh on boot
     syncAfterWake();
     Buttons.clearEvents();
     _ctx.lastActivityTime = millis();
 }
+
+// The background layout waits this long after a key: quick page turns run
+// without it. A slice (one engine step) blocks the keys for 0.1-0.35 s on the
+// X4, so after each one the loop rests as long as the slice took: a key
+// pressed meanwhile is answered at once, and one pressed during a slice
+// waits at most that slice.
+static constexpr uint32_t kPrelayoutIdleMs = 2500;
+static uint32_t s_restUntil = 0;
 
 void AppController::loop() {
     Buttons.update();
@@ -141,8 +189,10 @@ void AppController::loop() {
 
     ButtonEvent event;
     if (Buttons.getEvent(event)) {
-        _ctx.lastActivityTime = millis();
-        Serial.printf("[Event] Button: %s | Action: %d\n", Buttons.getName(event.id), event.action);
+        const uint32_t tEvent = millis();
+        _ctx.lastActivityTime = tEvent;
+        Serial.printf("[Event] Button: %s | Action: %d at %lu ms\n", Buttons.getName(event.id), event.action,
+                      (unsigned long)tEvent);
 
         if (event.id == BTN_POWER) {
             // Power key: manual sleep (also while a dialog is open)
@@ -156,16 +206,45 @@ void AppController::loop() {
             } else if (event.id >= BTN_SWIPE_LEFT && event.id <= BTN_SWIPE_DOWN) {
                 ButtonEvent translated;
                 if (TouchRouter::translateSwipe(_ctx, event, translated)) dispatch(translated);
+            } else if (keysUpsideDown() && (event.id == BTN_LEFT || event.id == BTN_RIGHT)) {
+                // The screen upside down: the front keys are at the top, in the other order
+                // (reading: as the book is turned; elsewhere as the interface is).
+                ButtonEvent turned = event;
+                turned.id = event.id == BTN_LEFT ? BTN_RIGHT : BTN_LEFT;
+                dispatch(turned);
             } else {
                 dispatch(event);
             }
         }
+        // From the key to the screen updated (drawing and the e-ink refresh included).
+        Serial.printf("[Event] Handled in %lu ms\n", (unsigned long)(millis() - tEvent));
     }
 
     Modal.tick();
 
     // Auto deep sleep on inactivity (only when on battery, never while plugged into USB)
     PowerService::sleepIfIdle(_ctx);
+
+    // While a page is being read, the chapters ahead are laid out in slices of a
+    // few tens of milliseconds (buttons are polled between them). Leaving the page
+    // or a radio coming up stops it: both need its memory.
+    // The reader's own menus keep it (paused): the chapter on screen may still be
+    // coming from it, and dropping it would mean laying the chapter out again.
+    const AppState st = _ctx.currentState;
+    const bool readerScreens = st == STATE_READING || st == STATE_TOC || st == STATE_READER_MENU || st == STATE_FONT_MENU ||
+                               st == STATE_TYPEFACE_MENU || st == STATE_APPEARANCE_MENU || st == STATE_BOOKMARKS ||
+                               st == STATE_STATUSBAR_MENU;
+    if (!readerScreens || SyncService::backgroundActive()) {
+        if (Reader.backgroundActive()) Reader.stopBackground();
+    } else if (st == STATE_READING && !Modal.isActive() && millis() - _ctx.lastActivityTime > kPrelayoutIdleMs &&
+               (int32_t)(millis() - s_restUntil) >= 0) {
+        const uint32_t t0 = millis();
+        const bool worked = Reader.tickBackground();
+        const uint32_t took = millis() - t0;
+        if (took > 400) Serial.printf("[Reader] Background slice took %lu ms\n", (unsigned long)took);
+        s_restUntil = millis() + took;
+        if (worked) return;
+    }
 
     delay(10);
 }
@@ -185,6 +264,10 @@ void AppController::dispatch(const ButtonEvent& event) {
         case STATE_FRONTLIGHT_SETTINGS: SettingsScreen::handleFrontlightEvent(_ctx, event); break;
         case STATE_BOOK_MENU:         LibraryScreen::handleBookMenuEvent(_ctx, event); break;
         case STATE_FONT_MENU:         ReaderScreen::handleFontMenuEvent(_ctx, event); break;
+        case STATE_TYPEFACE_MENU:     ReaderScreen::handleTypefaceMenuEvent(_ctx, event); break;
+        case STATE_APPEARANCE_MENU:   ReaderScreen::handleAppearanceEvent(_ctx, event); break;
+        case STATE_BOOKMARKS:         ReaderScreen::handleBookmarksEvent(_ctx, event); break;
+        case STATE_STATUSBAR_MENU:    ReaderScreen::handleStatusBarEvent(_ctx, event); break;
         case STATE_SYNC_SETTINGS:     SettingsScreen::handleSyncSettingsEvent(_ctx, event); break;
         case STATE_SLEEP_COVER_SETTINGS: SettingsScreen::handleSleepCoverSettingsEvent(_ctx, event); break;
         case STATE_SYNCING:           break;
@@ -206,6 +289,10 @@ void AppController::redrawCurrentScreen(bool fullRefresh) {
         case STATE_FRONTLIGHT_SETTINGS: drawFrontlightScreen(_ctx, fullRefresh); break;
         case STATE_BOOK_MENU:         drawBookMenuScreen(_ctx, fullRefresh); break;
         case STATE_FONT_MENU:         drawFontMenuScreen(_ctx, fullRefresh); break;
+        case STATE_TYPEFACE_MENU:     drawTypefaceMenuScreen(_ctx, fullRefresh); break;
+        case STATE_APPEARANCE_MENU:   drawAppearanceScreen(_ctx, fullRefresh); break;
+        case STATE_BOOKMARKS:         drawBookmarksScreen(_ctx, fullRefresh); break;
+        case STATE_STATUSBAR_MENU:    drawStatusBarScreen(_ctx, fullRefresh); break;
         case STATE_SYNC_SETTINGS:     drawSyncSettingsScreen(_ctx, fullRefresh); break;
         case STATE_SLEEP_COVER_SETTINGS: drawSleepCoverSettingsScreen(_ctx, fullRefresh); break;
         case STATE_SYNCING:           break;

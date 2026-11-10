@@ -64,6 +64,7 @@ public:
     int GET() { return send("GET", ""); }
     int POST(const String& body) { return send("POST", body.c_str()); }
     int PUT(const String& body) { return send("PUT", body.c_str()); }
+    int sendRequest(const char* type, const String& body = "") { return send(type, body.c_str()); }
     String getString() { return String(_resp.body.c_str()); }
     int getSize() { return (int)_resp.body.size(); }
     WiFiClient* getStreamPtr() { return &_stream; }

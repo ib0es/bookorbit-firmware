@@ -46,6 +46,12 @@ using fi::TextAlign;
 
 // Binds the framebuffer and fonts. Call after Display.begin().
 void begin();
+// The drawing orientation (the reader's pages and status bar may be turned;
+// everything else is drawn in Portrait). The logical size follows it.
+void setOrientation(fi::Orientation orientation);
+// With the screen upside down the front keys are at the top in the other
+// order: LEFT and RIGHT are swapped for the screens (and their tabs).
+bool keysReversed();
 bool ready();
 
 fi::DisplayTarget& target();
@@ -117,6 +123,17 @@ Rect topBar(Frame& f, const char* title);
 Rect appHeader(Frame& f);
 // Divider plus up to two hint lines at the bottom of `area`. Returns the area above.
 Rect footerHints(Frame& f, Rect area, const char* line1, const char* line2 = nullptr);
+// What the four keys under the screen do here (X4: BACK, OK, LEFT, RIGHT from
+// left to right): a tab with its label above each key, as the device shows
+// them. "" leaves a key's tab empty. `info` (optional) is a line of text above
+// the tabs. Touch-only boards get the touch hints instead. Returns the area above.
+struct KeyLabels {
+    const char* back = "";
+    const char* ok = "";
+    const char* left = "";
+    const char* right = "";
+};
+Rect keyHints(Frame& f, Rect area, const KeyLabels& keys, const char* info = nullptr);
 // Small rounded label. dark = black fill/white text; otherwise outlined.
 // onInverted: drawn on a black row (colors swap).
 void pill(Rect r, const char* label, bool dark, bool onInverted);

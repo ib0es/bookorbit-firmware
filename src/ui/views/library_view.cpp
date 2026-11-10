@@ -3,6 +3,9 @@
 #include "../../services/library_manager.h"
 #include "../i18n.h"
 #include "../kit/ui_kit.h"
+#include "../../net/book_formats.h"
+#include <string>
+#include <vector>
 
 using namespace uikit;
 
@@ -61,17 +64,42 @@ void drawRow(Frame& f, Rect r, const BookItem& item, bool selected, int index) {
         }
     }
 
+    // A format the reader cannot open yet (format list).
+    if (item.formatRow >= 0 && !BookFormats::readable((BookFormats::Kind)item.activeKind())) {
+        badge = tr(MsgId::LIB_BADGE_UNSUPPORTED);
+        badgeDark = false;
+    }
+
     const int16_t badgeW = pillWidth(badge);
     const int16_t badgeH = (int16_t)(lineHeight(FontSmall) + 6);
     pill(Rect{(int16_t)(inner.right() - badgeW), (int16_t)(r.y + (r.height - badgeH) / 2), badgeW, badgeH}, badge,
          badgeDark, selected);
+    int16_t pillsW = badgeW;
+
+    // A book in several formats: their labels ("EPUB · FB2"), shortened to
+    // "EPUB +3" when they would take too much of the row.
+    if (!item.isDirectory && item.formatRow < 0 && item.formats.size() > 1) {
+        std::vector<BookFormats::Kind> kinds;
+        for (const auto& fm : item.formats) kinds.push_back((BookFormats::Kind)fm.kind);
+        std::string labels = BookFormats::labels(kinds);
+        if (pillWidth(labels.c_str()) > inner.width / 3) {
+            const size_t sep = labels.find(' ');
+            char shortBuf[24];
+            snprintf(shortBuf, sizeof(shortBuf), "%s +%d", labels.substr(0, sep).c_str(), (int)item.formats.size() - 1);
+            labels = shortBuf;
+        }
+        const int16_t w = pillWidth(labels.c_str());
+        pill(Rect{(int16_t)(inner.right() - badgeW - kGap - w), (int16_t)(r.y + (r.height - badgeH) / 2), w, badgeH},
+             labels.c_str(), false, selected);
+        pillsW = (int16_t)(pillsW + kGap + w);
+    }
 
     String displayTitle = item.title;
     if (!item.isDirectory && item.seriesIndex > 0) {
         displayTitle = "#" + String(item.seriesIndex) + " " + item.title;
     }
 
-    Rect title{(int16_t)(inner.x + 24), r.y, (int16_t)(inner.width - 24 - badgeW - kGap), r.height};
+    Rect title{(int16_t)(inner.x + 24), r.y, (int16_t)(inner.width - 24 - pillsW - kGap), r.height};
     text(title, displayTitle.c_str(), FontBody, ink);
 }
 
@@ -100,7 +128,9 @@ void drawLibraryScreen(AppContext& ctx, bool fullRefresh) {
     // Virtual lists: "<name> (<entries>)"; the ".." row is not counted.
     const int entries = total > 0 && lib.rowAt(0).title.startsWith("..") ? total - 1 : total;
     const String& folder = lib.currentFolder;
-    if (folder.equalsIgnoreCase("@libraries")) {
+    if (folder.equals("@formats") && lib.formatsBook >= 0 && lib.formatsBook < (int)lib.masterBooks.size()) {
+        snprintf(titleBuf, sizeof(titleBuf), tr(MsgId::LIB_FORMATS_HEADER_FMT), lib.masterBooks[lib.formatsBook].title.c_str());
+    } else if (folder.equalsIgnoreCase("@libraries")) {
         snprintf(titleBuf, sizeof(titleBuf), tr(MsgId::LIB_LIBRARIES_HEADER_FMT), entries);
     } else if (folder.startsWith("@library:")) {
         String l = folder.substring(9);
@@ -138,10 +168,12 @@ void drawLibraryScreen(AppContext& ctx, bool fullRefresh) {
     const bool curIsDir = total > 0 && lib.rowAt(lib.selectedBookIndex).isDirectory;
     const bool curDownloaded = total > 0 && lib.rowAt(lib.selectedBookIndex).isDownloaded;
     if (curIsDir) {
-        area = footerHints(f, area, tr(MsgId::LIB_HINT_OPEN_FOLDER), tr(MsgId::LIB_HINT_BACK_SLEEP));
+        area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_OPEN), "", tr(MsgId::KEY_OPEN)});
+    } else if (folder.equals("@formats")) {   // format rows have no book menu
+        area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_READ), "", tr(MsgId::KEY_READ)});
     } else {
         (void)curDownloaded;
-        area = footerHints(f, area, tr(MsgId::LIB_HINT_READ_DOWNLOAD), tr(MsgId::LIB_HINT_BOOK_MENU));
+        area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_READ), tr(MsgId::KEY_MENU), tr(MsgId::KEY_READ)});
     }
     area = insetXY(area, kMargin, 10);
 

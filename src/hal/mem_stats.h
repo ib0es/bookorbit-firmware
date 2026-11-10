@@ -19,6 +19,26 @@ Snapshot now();
 // "[Mem] <where>: free 48 KB, largest block 30 KB, min since boot 12 KB"
 void log(const char* where);
 
+// Whether the new book engine (FreeInkBook, FREEINK_BOOK_SMALL) would fit now:
+// tries to allocate its two buffers for laying out a chapter (layout 50 KB, parse
+// 46 KB, each in one piece) and the open book (30 KB in 2 KB pieces), frees them
+// and logs "[Mem] engine probe <where>: layout 50 KB ok, parse 46 KB ok, book 30 KB ok".
+// Returns true if all fit.
+bool probeEngine(const char* where);
+
+// The heap's biggest pieces: "[Mem] map <where>: free blocks 63 11 7 4 KB (+N smaller),
+// used blocks 47 23 12 KB (+N smaller)". Shows what fragments the heap and who
+// holds the large allocations (diagnostics for the move to the new engine).
+void logMap(const char* where);
+
+// Who holds the big blocks: mark("step") after each boot step remembers the used
+// blocks of 2 KB and more; the next mark lists the ones that appeared or went
+// ("Display.begin: +48.0 KB"). Task stacks are named ("stack loopTask"). The
+// lines are kept in RAM (the serial monitor attaches after the first seconds)
+// and printed by printMarks() at "boot done".
+void mark(const char* step);
+void printMarks();
+
 // One line for the device info screen.
 String summary();
 

@@ -93,6 +93,11 @@ std::string attribute(const std::string& tag, const char* name) {
     return "";
 }
 
+int fileIdOf(const std::string& href) {
+    const size_t fid = href.find("fileId=");
+    return fid == std::string::npos ? 0 : atoi(href.c_str() + fid + 7);
+}
+
 }  // namespace
 
 OpdsStreamParser::OpdsStreamParser(EntryCallback onEntry, size_t maxEntryBytes)
@@ -162,10 +167,21 @@ bool OpdsStreamParser::parseEntry(const std::string& xml, OpdsBookEntry& out) {
             out.coverUrl = href;
         }
 
-        bool isAcquisition = tag.find("acquisition") != std::string::npos ||
-                             tag.find("application/epub") != std::string::npos ||
-                             tag.find("download") != std::string::npos;
-        if (isAcquisition) out.downloadUrl = href;
+        // One acquisition link per format (EPUB, MOBI, AZW3, FB2...), each its own file.
+        const std::string linkRel = attribute(tag, "rel");
+        const std::string type = attribute(tag, "type");
+        const bool isAcquisition = linkRel.find("acquisition") != std::string::npos ||
+                                   (linkRel.empty() && (type.find("application/epub") != std::string::npos ||
+                                                        href.find("download") != std::string::npos));
+        if (isAcquisition) {
+            BookFormats::Ref ref;
+            ref.kind = BookFormats::fromMime(type, attribute(tag, "title"), href);
+            ref.fileId = fileIdOf(href);
+            ref.url = href;
+            bool dup = false;
+            for (const auto& f : out.formats) dup = dup || (f.url == href);
+            if (!dup) out.formats.push_back(ref);
+        }
 
         // Series: only the link the server marks as such (rel ".../sort/series" or
         // a rel naming "series"), not any link whose address mentions a series.
@@ -185,14 +201,17 @@ bool OpdsStreamParser::parseEntry(const std::string& xml, OpdsBookEntry& out) {
         }
     }
 
-    if (out.title.empty() || out.downloadUrl.empty()) return false;
+    if (out.title.empty() || out.formats.empty()) return false;
 
-    size_t fid = out.downloadUrl.find("fileId=");
-    if (fid != std::string::npos) {
-        out.fileId = atoi(out.downloadUrl.c_str() + fid + 7);
-    } else if (!out.id.empty()) {
-        out.fileId = atoi(out.id.c_str());
+    // An address without "fileId=" (other OPDS servers): the book id stands in
+    // for the only file, as before.
+    for (auto& f : out.formats) {
+        if (f.fileId <= 0 && out.formats.size() == 1 && !out.id.empty()) f.fileId = atoi(out.id.c_str());
     }
+    const BookFormats::Ref& best = out.formats[BookFormats::preferred(out.formats)];
+    out.downloadUrl = best.url;
+    out.fileId = best.fileId;
+    for (auto& f : out.formats) f.url = BookFormats::compactUrl(f.url, out.id, f.fileId);
     return true;
 }
 

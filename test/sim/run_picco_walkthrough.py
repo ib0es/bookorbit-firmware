@@ -26,9 +26,17 @@ HOME_SYNC = "T200,515;"
 READ_MIDDLE = "T240,400;"         # reading: middle third = book menu
 READ_RIGHT = "T400,400;"
 READ_LEFT = "T80,400;"
-RMENU_TOC, RMENU_FONT, RMENU_SYNC, RMENU_RESUME, RMENU_CLOSE = "T240,200;", "T240,280;", "T240,355;", "T240,430;", "T240,505;"
-SET_LANG, SET_WIFI, SET_SERVER, SET_SLEEP, SET_INFO, SET_LIGHT = "T240,90;", "T240,165;", "T240,240;", "T240,315;", "T240,520;", "T240,665;"
-SET_SYNC = "T240,593;"
+RMENU_TOC, RMENU_FONT, RMENU_MARKS = "T240,200;", "T240,278;", "T240,354;"
+RMENU_SYNC, RMENU_RESUME, RMENU_CLOSE = "T240,430;", "T240,506;", "T240,582;"
+MARKS_THIS_PAGE = "T240,90;"   # first row of the Bookmarks screen
+APPEAR_TYPEFACE, APPEAR_SIZE = "T240,67;", "T240,103;"   # rows of the Appearance screen
+APPEAR_ORIENTATION = "T240,463;"
+APPEAR_STATUS_BAR = "T240,535;"
+SB_BOTTOM = "T240,211;"   # the last row of the status bar menu
+# Settings rows (ten of them with the screen orientation, 65 px apart)
+SET_LANG, SET_WIFI, SET_SERVER, SET_SLEEP, SET_INFO, SET_LIGHT = "T240,85;", "T240,150;", "T240,215;", "T240,280;", "T240,475;", "T240,605;"
+SET_SYNC = "T240,540;"
+SET_ORIENTATION = "T240,670;"
 
 def pages(log):
     return [tuple(map(int, m)) for m in re.findall(r"\[Reader\] Page (\d+)/(\d+)", log)]
@@ -44,18 +52,35 @@ CASES = [
     ("reader: tap zones, swipes and UP/DOWN keys turn pages",
      HOME_CARD + "w" + READ_RIGHT + "W400,400,80,400;" + "D" + "U" + READ_LEFT + "W80,400,400,400;",
      lambda log, sd: [p for p, _ in pages(log)][-7:] == [1, 2, 3, 4, 3, 2, 1]),
-    ("reader menu: font size submenu, tap 20 pt applies it and returns to the page",
-     HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + "T240,236;",
-     lambda log, sd: log.split("TAP_240_236", 1)[1].count("Paginating complete") == 1 and config(sd)["font_pt"] == 20),
+    ("reader: while the page is read, the next chapters are laid out in the background",
+     HOME_CARD + "w" + "w" + "w",
+     lambda log, sd: "laid out in the background: ok" in log and "gave up" not in log),
+    ("reader menu: appearance, font size list, tap 20 pt, back lays the book out",
+     HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + APPEAR_SIZE + "T240,236;" + TITLE,
+     lambda log, sd: re.search(r"Chapter \d+( laid out|: first page)", log.split("TAP_240_236", 1)[1]) and config(sd)["font_pt"] == 20),
+    ("reader menu: appearance, typeface list, tap the built-in one, back to the page",
+     HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + APPEAR_TYPEFACE + "T240,85;" + TITLE,
+     lambda log, sd: "[Reader] Page" in log.split("TAP_240_85", 1)[1]
+     and config(sd).get("font_family", "") == ""),
+    ("reader menu: landscape pages, the tap zones turn with them",
+     HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + APPEAR_ORIENTATION + TITLE + "w" + "T264,700;T264,700;T264,100;",
+     lambda log, sd: config(sd)["orientation"] == 1 and [p for p, _ in pages(log)][-3:] == [2, 3, 2]),
+    ("reader menu: status bar menu, the bottom line off gives the text its room",
+     HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + APPEAR_STATUS_BAR + SB_BOTTOM + SB_BOTTOM + TITLE + TITLE + "w",
+     lambda log, sd: config(sd)["sb_bottom"] == 2 and "[Reader] Page" in log.split("TAP_240_211")[-1]),
     ("reader menu: table of contents, tap a chapter",
      HOME_CARD + "w" + READ_MIDDLE + RMENU_TOC + "T240,300;",
      lambda log, sd: len(pages(log)) >= 2 and pages(log)[-1][0] != pages(log)[-2][0]),
+    ("reader menu: bookmarks, tap 'this page' adds a bookmark shown on the page",
+     HOME_CARD + "w" + READ_RIGHT + READ_MIDDLE + RMENU_MARKS + MARKS_THIS_PAGE,
+     lambda log, sd: "[Bookmarks] added" in log and "[Reader] Page" in log.split("[Bookmarks] added", 1)[1]
+     and os.path.isdir(os.path.join(sd, "bookmarks"))),
     ("reader menu: back by title tap, close book returns home",
      HOME_CARD + "w" + READ_MIDDLE + TITLE + READ_MIDDLE + RMENU_CLOSE,
-     lambda log, sd: "drawHomeScreen" in log.split("TAP_240_505")[-1]),
+     lambda log, sd: "drawHomeScreen" in log.split("TAP_240_582")[-1]),
     ("library: tap a book opens its menu, Read opens it, back to library by swipe",
      HOME_ALL_BOOKS + LIB_FRANKENSTEIN + "T240,180;w" + READ_MIDDLE + RMENU_CLOSE,
-     lambda log, sd: "Frankenstein.txt" in log and pages(log)),
+     lambda log, sd: "Opening book: /books/Frankenstein.epub" in log and pages(log)),
     ("library: delete a book with the dialog's Delete button",
      HOME_ALL_BOOKS + LIB_FRANKENSTEIN + "T240,256;" + "T340,475;",
      lambda log, sd: "Deleting downloaded book file: /books/Frankenstein.epub" in log
@@ -63,15 +88,19 @@ CASES = [
     ("library: Cancel in the delete dialog keeps the book",
      HOME_ALL_BOOKS + LIB_FRANKENSTEIN + "T240,256;" + "T140,475;",
      lambda log, sd: "Deleting" not in log and os.path.exists(os.path.join(sd, "books/Frankenstein.epub"))),
+    ("catalog: a book's formats list, tap a format in the cloud downloads and opens it",
+     HOME_SYNC + "ww" + HOME_CATALOG + CATALOG_ALL_BOOKS + "T200,123;" + "T240,275;" + "T200,267;" + "w",
+     lambda log, sd: "Alice in Wonderland.fb2 downloaded successfully" in log.split("TAP_200_267", 1)[1]
+     and "Opening book: /books/Alice in Wonderland.fb2" in log),
     ("library: book menu Back and title tap return",
      HOME_ALL_BOOKS + LIB_FRANKENSTEIN + TITLE + LIB_FRANKENSTEIN + BACK + TITLE + TITLE,
      lambda log, sd: log.rstrip().endswith("frames") and "drawHomeScreen" in log.split("TAP_240_20")[-1]),
     ("settings: language by tap",
      HOME_SETTINGS + SET_LANG + "T240,165;w",
      lambda log, sd: config(sd)["language"] in ("ru", 1, "RU")),
-    ("settings: sleep cover toggles by tap",
-     HOME_SETTINGS + SET_SLEEP,
-     lambda log, sd: "Config saved" in log),
+    ("settings: sleep cover submenu, tap 'Crop to fill'",
+     HOME_SETTINGS + SET_SLEEP + "T240,165;",
+     lambda log, sd: "Config saved" in log.split("TAP_240_165", 1)[-1]),
     ("settings: device info opens and a tap closes it",
      HOME_SETTINGS + SET_INFO + "T240,400;" + BACK,
      lambda log, sd: "device info" in log and "drawHomeScreen" in log.split("TAP_240_400")[-1]),
@@ -82,6 +111,10 @@ CASES = [
     ("power: after sleep, the book syncs in the background",
      HOME_SETTINGS + SET_SYNC + "T240,240;" + BACK + BACK + "P" + "Z" + "ww",
      lambda log, sd: "Background sync queued" in log and re.search(r"Background sync (done|failed) in", log)),
+    ("settings: screen orientation turns the whole interface, a quarter turn a tap",
+     HOME_SETTINGS + SET_ORIENTATION + SET_ORIENTATION,
+     lambda log, sd: config(sd)["ui_orientation"] == 2 and config(sd).get("orientation", 0) == 0
+                     and "drawSettingsScreen" in log.split("TAP_240_670")[-1]),
     ("settings: frontlight + button",
      HOME_SETTINGS + SET_LIGHT + "T442,124;" + BACK,
      lambda log, sd: "[Light] brightness 10%" in log and config(sd)["frontlight"] == 10),

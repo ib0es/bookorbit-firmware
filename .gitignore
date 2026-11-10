@@ -70,3 +70,9 @@ gutenberg/
 
 # PlatformIO device monitor logs (log2file filter)
 logs/
+
+# Test books (not ours to publish): kept locally, tests skip them when absent
+test/books/
+
+# Original font files (2 MB+): the cut copies in fonts/sd and src/reader/fonts are what is kept
+fonts/src/

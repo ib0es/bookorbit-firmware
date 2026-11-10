@@ -1,8 +1,12 @@
 #include "screens.h"
+#include "appearance.h"
+#include "../orientation.h"
+#include "status_bar_menu.h"
+#include "../../services/bookmarks.h"
 #include "../../ui/font.h"
 #include "../../hal/mem_stats.h"
-#include "../../reader/epub_extractor.h"
-#include "../../reader/simple_reader.h"
+#include "../../convert/sd_convert.h"
+#include "../../reader/reader.h"
 #include "../../hal/storage.h"
 #include "../../services/library_manager.h"
 #include "../../services/progress_store.h"
@@ -11,16 +15,27 @@
 #include "../../ui/modal.h"
 #include "../../ui/views/home_view.h"
 #include "../../ui/views/reader_menu_view.h"
+#include "../../ui/views/status_modal.h"
+#include "../../reader/font_store.h"
 #include "../../ui/i18n.h"
 
 namespace {
 
 constexpr int TOC_ITEMS_PER_PAGE = 8;
 
-// The menu only changes the font setting; the book is re-paginated once,
-// when the menu is left (not on every step through the sizes).
+// The menus only change the settings; the book is laid out again once, when
+// they are left (not on every step through the sizes and spacings).
 void commitFontSize(AppContext& ctx) {
-    if (Reader.getFontSize() == ctx.config.readerFontSize) return;
+    Reader.setFullRefreshEvery(ctx.config.fullRefreshEvery);
+    Reader.setSharpImages(ctx.config.sharpImages);
+    const bool size = Reader.getFontSize() != ctx.config.readerFontSize;
+    const bool layout = !(Reader.layoutOptions() == Appearance::layoutOptions(ctx.config));
+    const bool turned = Reader.orientation() != ctx.config.orientation;
+    const bool bar = !(Reader.statusBar() == StatusBarMenu::options(ctx.config));
+    if (!size && !layout && !turned && !bar) return;
+    Reader.setStatusBar(StatusBarMenu::options(ctx.config));
+    applyOrientation(ctx.config.uiOrientation, ctx.config.orientation);
+    Reader.setLayoutOptions(Appearance::layoutOptions(ctx.config));
     Reader.setFontSize(ctx.config.readerFontSize);  // shows a status screen if it has to paginate
     LibraryManager::getInstance().flushReaderPosition();   // same place, new page numbers
 }
@@ -44,6 +59,7 @@ void closeBookAndGoHome(AppContext& ctx, bool fullRefresh) {
     const int fileId = lib.lastBook.fileId;
     const String path = lib.lastBook.filePath;
     Reader.closeBook();
+    Bookmarks.clear();
     Reader.setFontSize(ctx.config.readerFontSize);  // closed: no pagination, used by the next open
     ctx.currentState = STATE_HOME;
     drawHomeScreen(ctx, fullRefresh);
@@ -63,19 +79,26 @@ void executeMenuAction(AppContext& ctx, int index) {
                                   1500, /*fullRedraw=*/true);
             }
             break;
-        case 1:  // Шрифт: submenu of sizes
-            ctx.selectedFontIndex = ctx.config.readerFontSize;
-            ctx.currentState = STATE_FONT_MENU;
-            drawFontMenuScreen(ctx, false);
+        case 1:  // Оформление
+            Reader.stopBackground();   // its memory lays out the preview
+            ctx.currentState = STATE_APPEARANCE_MENU;
+            drawAppearanceScreen(ctx, false);
             break;
-        case 2:  // Синхронизация
+        case 2:  // Закладки
+            commitFontSize(ctx);   // pages as they will be read
+            ctx.selectedBookmarkIndex = 0;
+            placeBookmarks(Bookmarks);
+            ctx.currentState = STATE_BOOKMARKS;
+            drawBookmarksScreen(ctx, false);
+            break;
+        case 3:  // Синхронизация
             commitFontSize(ctx);
             SyncService::syncWithBookOrbit(ctx);
             break;
-        case 3:  // Продолжить чтение
+        case 4:  // Продолжить чтение
             returnToReading(ctx);
             break;
-        case 4:  // Закрыть книгу
+        case 5:  // Закрыть книгу
             closeBookAndGoHome(ctx, true);
             break;
     }
@@ -91,8 +114,14 @@ bool openBook(AppContext& ctx, const String& path, const String& title, const St
     auto& lib = LibraryManager::getInstance();
     auto& store = ProgressStore::instance();
     Buttons.clearEvents();
+    Serial.printf("[Reader] Opening book: %s (file %d)\n", path.c_str(), fileId);
     if (!Reader.openBook(path)) {
-        if (EpubExtractor::lastFailedForMemory()) {
+        const auto why = (convert::ConvertProblem)Reader.lastConvertProblem();
+        if (why == convert::ConvertProblem::Drm || why == convert::ConvertProblem::Unsupported) {
+            Modal.showMessage(tr(MsgId::READER_OPEN_ERR_TITLE), tr(MsgId::READER_OPEN_ERR_L1),
+                              tr(why == convert::ConvertProblem::Drm ? MsgId::READER_OPEN_DRM : MsgId::READER_OPEN_VARIANT),
+                              "", "", 4000, false, tr(MsgId::READER_OPEN_ERR_FOOTER));
+        } else if (Reader.lastFailedForMemory()) {
             Modal.showMessage(tr(MsgId::COMMON_ERROR), tr(MsgId::READER_OPEN_ERR_L1),
                               tr(MsgId::READER_OPEN_ERR_L2), "", "", 4000, false, tr(MsgId::READER_OPEN_ERR_FOOTER));
         } else {
@@ -101,7 +130,11 @@ bool openBook(AppContext& ctx, const String& path, const String& title, const St
         }
         return false;
     }
+    Bookmarks.load(path);
+    placeBookmarks(Bookmarks);
     MemStats::log("book opened");
+    MemStats::probeEngine("book opened");
+    MemStats::logMap("book opened");
 
     // This device's position for the book if it was opened here before; otherwise
     // the position the caller got from the server (catalog snapshot).
@@ -150,6 +183,8 @@ bool resumeLastBook(AppContext& ctx) {
     if (lib.lastBook.filePath.length() == 0 || !Storage.exists(lib.lastBook.filePath.c_str())) return false;
     Serial.printf("[Power] Instant resume book: %s (page %d)\n", lib.lastBook.title.c_str(), lib.lastBook.page);
     if (!Reader.openBook(lib.lastBook.filePath)) return false;
+    Bookmarks.load(lib.lastBook.filePath);
+    placeBookmarks(Bookmarks);
 
     // The book's record has the most exact position (a CFI after a pull from the web reader).
     const ProgressSync::Position& pos = lib.currentRecord().state.local;
@@ -272,15 +307,227 @@ void handleFontMenuEvent(AppContext& ctx, const ButtonEvent& event) {
             break;
         case BTN_CONFIRM:
         case BTN_RIGHT:
-            // Apply and go back to the page (re-paginates once, with a status screen if needed).
+            // Chosen: back to Appearance (laid out once, when it is left).
             if (sel != ctx.config.readerFontSize) {
                 ctx.config.readerFontSize = sel;
                 ctx.config.save();
             }
-            returnToReading(ctx);
+            ctx.currentState = STATE_APPEARANCE_MENU;
+            drawAppearanceScreen(ctx, false);
             break;
         case BTN_BACK:
         case BTN_LEFT:
+            ctx.currentState = STATE_APPEARANCE_MENU;
+            drawAppearanceScreen(ctx, false);
+            break;
+        default:
+            break;
+    }
+}
+
+static void drawInstallProgress(void* name, int permille) {
+    static int s_lastStep = -1;
+    static uint32_t s_lastAt = 0;
+    const int step = permille / 100;
+    // An e-ink refresh blocks ~0.5 s: at most every 3 s (and at the start).
+    if (permille < 1000 && (step == s_lastStep || (s_lastStep >= 0 && permille > 0 && millis() - s_lastAt < 3000))) return;
+    if (permille == 0) s_lastStep = -1;
+    s_lastStep = step;
+    s_lastAt = millis();
+    char line[64];
+    snprintf(line, sizeof(line), tr(MsgId::TYPEFACE_INSTALL_FMT), permille / 10);
+    drawStatusModal(tr(MsgId::TYPEFACE_INSTALL_TITLE), static_cast<const String*>(name)->c_str(), line);
+}
+
+void handleTypefaceMenuEvent(AppContext& ctx, const ButtonEvent& event) {
+    if (event.action != ACTION_CLICK) return;
+    const auto& fams = typefaceFamilies(false);
+    const int n = 1 + (int)fams.size();
+    int& sel = ctx.selectedTypefaceIndex;
+    switch (event.id) {
+        case BTN_DOWN:
+            sel = (sel + 1) % n;
+            drawTypefaceMenuScreen(ctx, false);
+            break;
+        case BTN_UP:
+            sel = (sel - 1 + n) % n;
+            drawTypefaceMenuScreen(ctx, false);
+            break;
+        case BTN_CONFIRM:
+        case BTN_RIGHT: {
+            String family;   // "" = built-in
+            if (sel > 0 && sel <= (int)fams.size()) {
+                const FontStore::Family& fam = fams[sel - 1];
+                if (FontStore::installedName() != fam.name) {
+                    // Into the flash partition first: the faces in use there are let go of.
+                    Reader.setFontFamily("");
+                    String name = fam.name;
+                    drawInstallProgress(&name, 0);
+                    if (!FontStore::install(fam, &drawInstallProgress, &name)) {
+                        Modal.showMessage(tr(MsgId::TYPEFACE_MENU_TITLE), tr(MsgId::TYPEFACE_INSTALL_FAILED), fam.name.c_str(),
+                                          "", "", 2500, true);
+                        typefaceFamilies(true);
+                        drawTypefaceMenuScreen(ctx, true);
+                        return;
+                    }
+                }
+                family = fam.name;
+            }
+            if (Reader.setFontFamily(family)) LibraryManager::getInstance().flushReaderPosition();
+            if (ctx.config.readerFont != family) {
+                ctx.config.readerFont = family;
+                ctx.config.save();
+            }
+            ctx.currentState = STATE_APPEARANCE_MENU;
+            drawAppearanceScreen(ctx, false);
+            break;
+        }
+        case BTN_BACK:
+        case BTN_LEFT:
+            ctx.currentState = STATE_APPEARANCE_MENU;
+            drawAppearanceScreen(ctx, false);
+            break;
+        default:
+            break;
+    }
+}
+
+static void openTypefaces(AppContext& ctx) {
+    typefaceFamilies(true);
+    ctx.selectedTypefaceIndex = 0;
+    if (!Reader.usingBuiltinFont()) {
+        const auto& fams = typefaceFamilies(false);
+        for (size_t i = 0; i < fams.size(); i++)
+            if (fams[i].name == Reader.fontFamilyName()) ctx.selectedTypefaceIndex = (int)i + 1;
+    }
+    ctx.currentState = STATE_TYPEFACE_MENU;
+    drawTypefaceMenuScreen(ctx, false);
+}
+
+void handleAppearanceEvent(AppContext& ctx, const ButtonEvent& event) {
+    if (event.action != ACTION_CLICK) return;
+    int& sel = ctx.selectedAppearanceIndex;
+    switch (event.id) {
+        case BTN_DOWN:
+            sel = (sel + 1) % Appearance::COUNT;
+            drawAppearanceScreen(ctx, false);
+            break;
+        case BTN_UP:
+            sel = (sel - 1 + Appearance::COUNT) % Appearance::COUNT;
+            drawAppearanceScreen(ctx, false);
+            break;
+        case BTN_LEFT:
+        case BTN_RIGHT:
+        case BTN_CONFIRM:
+            if (sel == Appearance::TYPEFACE && event.id != BTN_LEFT) {
+                openTypefaces(ctx);
+            } else if (sel == Appearance::STATUS_BAR && event.id != BTN_LEFT) {
+                ctx.selectedStatusBarIndex = 0;
+                ctx.currentState = STATE_STATUSBAR_MENU;
+                drawStatusBarScreen(ctx, false);
+            } else if (sel == Appearance::SIZE && event.id == BTN_CONFIRM) {
+                ctx.selectedFontIndex = ctx.config.readerFontSize;
+                ctx.currentState = STATE_FONT_MENU;
+                drawFontMenuScreen(ctx, false);
+            } else if (Appearance::step(ctx.config, sel, event.id == BTN_LEFT ? -1 : 1)) {
+                ctx.config.save();
+                drawAppearanceScreen(ctx, false);   // (the book turns when the menus are left)
+            }
+            break;
+        case BTN_BACK:
+            returnToReading(ctx);   // laid out once, with everything changed here
+            break;
+        default:
+            break;
+    }
+}
+
+void handleStatusBarEvent(AppContext& ctx, const ButtonEvent& event) {
+    if (event.action != ACTION_CLICK) return;
+    int& sel = ctx.selectedStatusBarIndex;
+    switch (event.id) {
+        case BTN_DOWN:
+            sel = (sel + 1) % StatusBarMenu::COUNT;
+            drawStatusBarScreen(ctx, false);
+            break;
+        case BTN_UP:
+            sel = (sel - 1 + StatusBarMenu::COUNT) % StatusBarMenu::COUNT;
+            drawStatusBarScreen(ctx, false);
+            break;
+        case BTN_LEFT:
+        case BTN_RIGHT:
+        case BTN_CONFIRM:
+            StatusBarMenu::step(ctx.config, sel, event.id == BTN_LEFT ? -1 : 1);
+            ctx.config.save();
+            drawStatusBarScreen(ctx, false);
+            break;
+        case BTN_BACK:
+            ctx.currentState = STATE_APPEARANCE_MENU;
+            drawAppearanceScreen(ctx, false);
+            break;
+        default:
+            break;
+    }
+}
+
+void handleBookmarksEvent(AppContext& ctx, const ButtonEvent& event) {
+    if (event.action != ACTION_CLICK) return;
+    const int n = 1 + Bookmarks.count();
+    int& sel = ctx.selectedBookmarkIndex;
+    switch (event.id) {
+        case BTN_DOWN:
+            sel = (sel + 1) % n;
+            drawBookmarksScreen(ctx, false);
+            break;
+        case BTN_UP:
+            sel = (sel - 1 + n) % n;
+            drawBookmarksScreen(ctx, false);
+            break;
+        case BTN_CONFIRM:
+        case BTN_RIGHT:
+            if (sel == 0) {
+                // This page's: removed if there is one, else added.
+                const int here = bookmarkOnPage();
+                if (here >= 0) {
+                    Bookmarks.remove(here);
+                } else {
+                    const BookReader::Position pos = Reader.position();
+                    Bookmark b;
+                    b.spine = pos.spine;
+                    b.chars = pos.chars;
+                    b.percent = Reader.getProgress();
+                    b.chapter = Reader.getCurrentChapterTitle();
+                    b.snippet = Reader.pageSnippet();
+                    b.cfi = Reader.getCfi();   // for the web reader (uploaded at the next sync)
+                    Bookmarks.add(b);
+                    Serial.printf("[Bookmarks] added at %d:%u (%.1f%%)\n", b.spine, (unsigned)b.chars, b.percent * 100.0f);
+                }
+                Bookmarks.save();
+                returnToReading(ctx);   // the ribbon shows on the page
+            } else if (sel <= Bookmarks.count()) {
+                const Bookmark& b = Bookmarks.items()[sel - 1];
+                if (!b.placed()) {
+                    // From the server and not placed yet (its chapter could not be read).
+                    if (!Reader.setPageByCfi(b.cfi, 0.0f)) break;
+                } else {
+                    BookReader::Position pos;
+                    pos.spine = b.spine;
+                    pos.chars = b.chars;
+                    Reader.goTo(pos);
+                }
+                LibraryManager::getInstance().recordReaderMove(true, true);
+                returnToReading(ctx);
+            }
+            break;
+        case BTN_LEFT:
+            if (sel > 0 && sel <= Bookmarks.count()) {
+                Bookmarks.remove(sel - 1);
+                Bookmarks.save();
+                if (sel > Bookmarks.count()) sel = Bookmarks.count();
+                drawBookmarksScreen(ctx, false);
+            }
+            break;
+        case BTN_BACK:
             ctx.currentState = STATE_READER_MENU;
             drawReaderMenuScreen(ctx, false);
             break;

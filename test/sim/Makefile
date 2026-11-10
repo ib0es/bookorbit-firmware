@@ -38,6 +38,12 @@ CXXFLAGS := -std=c++17 $(OPT) -g -DARDUINO=100 -w -MMD -MP -include test/sim/pre
             -Isimulator/lib_arduinojson/src -Ifreeink-sdk/libs/book/FreeInkBook/third_party/tjpgd \
             -Ifreeink-sdk/libs/ui/FreeInkUI/include
 CFLAGS   := $(OPT) -w -Ifreeink-sdk/libs/book/FreeInkBook/third_party/tjpgd
+FIB := freeink-sdk/libs/book/FreeInkBook
+FIB_INCLUDES := -DFREEINK_BOOK_SMALL=1 -I$(FIB)/include -I$(FIB)/third_party/expat -I$(FIB)/third_party/miniz \
+    -I$(FIB)/third_party/libunibreak -I$(FIB)/third_party/pngle -I$(FIB)/third_party/stb \
+    -Ifreeink-sdk/libs/font/FreeInkFont/include -Ifreeink-sdk/libs/font/FreeInkFont/third_party/stb
+CXXFLAGS += $(FIB_INCLUDES)
+CFLAGS += $(FIB_INCLUDES)
 ifeq ($(UNAME),Darwin)
 CXXFLAGS += -I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1
 else
@@ -47,13 +53,16 @@ endif
 NET_CXX  := src/net/bookorbit_client.cpp src/net/bookorbit_protocol.cpp src/net/opds_stream_parser.cpp test/sim/fake_bookorbit.cpp
 APP_OBJS := $(patsubst %.cpp,$(BUILD)/%.o,$(SIM_CXX) $(NET_CXX)) $(patsubst %.c,$(BUILD)/%.o,$(SIM_C))
 
-all: $(BUILD)/x4_headless $(BUILD)/reader_roundtrip
+all: $(BUILD)/x4_headless $(BUILD)/reader_roundtrip $(BUILD)/engine_shots
 
 $(BUILD)/x4_headless: $(APP_OBJS) $(BUILD)/test/sim/headless_main.o
 	$(CXX) $(LDEXTRA) $^ -o $@ -lpthread
 
 # The round-trip tool has its own main(): leave src/main.cpp out.
 $(BUILD)/reader_roundtrip: $(filter-out $(BUILD)/src/main.o,$(APP_OBJS)) $(BUILD)/test/sim/reader_roundtrip.o
+	$(CXX) $(LDEXTRA) $^ -o $@ -lpthread
+
+$(BUILD)/engine_shots: $(filter-out $(BUILD)/src/main.o,$(APP_OBJS)) $(BUILD)/test/sim/engine_shots.o
 	$(CXX) $(LDEXTRA) $^ -o $@ -lpthread
 
 $(BUILD)/%.o: %.cpp
@@ -67,7 +76,7 @@ $(BUILD)/%.o: %.c
 test: all
 	X4_HEADLESS=$(BUILD)/x4_headless python3 test/sim/run_sync_scenarios.py
 	@tmp=$$(mktemp -d) && cp -R simulator/sdcard/. $$tmp/ && cp test/sim/config.json $$tmp/config.json && \
-	  $(BUILD)/reader_roundtrip $$tmp "/books/Alice in Wonderland.epub" "/books/01. Frankenstein (1818).epub" "/books/Тестовая книга.txt" | grep -v '^\['; \
+	  $(BUILD)/reader_roundtrip $$tmp  "/books/Alice in Wonderland.epub" "/books/01. Frankenstein (1818).epub" "/books/Тестовая книга.txt" "/books/Pride and Prejudice.epub" | grep -v '^\['; \
 	  rc=$${PIPESTATUS[0]}; rm -rf $$tmp; exit $$rc
 
 # Picco: the walkthrough with touch + UP/DOWN/POWER only (the sync scenarios

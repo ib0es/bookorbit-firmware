@@ -55,7 +55,8 @@ bool BookOrbitClient::fetchCatalog(const String& serverHost, const String& usern
     b1.fileId = 101;
     b1.title = "Alice in Wonderland";
     b1.author = "Lewis Carroll";
-    b1.downloadUrl = "/api/v1/download/101";
+    b1.formats.push_back(BookFormatEntry{101, 1 /* EPUB */, "/api/v1/download/101"});
+    b1.formats.push_back(BookFormatEntry{111, 2 /* FB2 */, "/api/v1/download/111"});
     b1.coverUrl = "/api/v1/covers/101.jpg";
     b1.lastProgress = 0.42f;
     b1.lastPage = 145;
@@ -66,7 +67,7 @@ bool BookOrbitClient::fetchCatalog(const String& serverHost, const String& usern
     b2.fileId = 102;
     b2.title = "The Time Machine";
     b2.author = "H. G. Wells";
-    b2.downloadUrl = "/api/v1/download/102";
+    b2.formats.push_back(BookFormatEntry{102, 1 /* EPUB */, "/api/v1/download/102"});
     b2.coverUrl = "/api/v1/covers/102.jpg";
     b2.lastProgress = 0.15f;
     b2.lastPage = 32;
@@ -77,7 +78,7 @@ bool BookOrbitClient::fetchCatalog(const String& serverHost, const String& usern
     b3.fileId = 103;
     b3.title = "Moby Dick";
     b3.author = "Herman Melville";
-    b3.downloadUrl = "/api/v1/download/103";
+    b3.formats.push_back(BookFormatEntry{103, 1 /* EPUB */, "/api/v1/download/103"});
     b3.coverUrl = "/api/v1/covers/103.jpg";
     b3.lastProgress = 0.90f;
     b3.lastPage = 280;
@@ -174,7 +175,7 @@ bool BookOrbitClient::downloadCover(const String& serverHost, const String& cove
     return true;
 }
 
-bool BookOrbitClient::fetchBookProgress(const String& serverHost, const String& username, const String& password, String& token, int bookId, ServerProgress& out) {
+bool BookOrbitClient::fetchBookProgress(const String& serverHost, const String& username, const String& password, String& token, int bookId, int fileId, ServerProgress& out) {
     out.exists = true;
     out.percent = 0.42f;
     out.page = 145;

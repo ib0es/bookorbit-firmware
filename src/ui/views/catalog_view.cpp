@@ -48,7 +48,7 @@ void drawCatalogScreen(AppContext& ctx, bool fullRefresh) {
     clear();
 
     Rect area = topBar(f, tr(MsgId::CATALOG_TITLE));
-    area = footerHints(f, area, tr(MsgId::SETTINGS_HINT_NAV), tr(MsgId::SETTINGS_HINT_BACK));
+    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_OPEN), tr(MsgId::KEY_BACK), tr(MsgId::KEY_OPEN)});
     area = insetXY(area, kMargin, 8);
 
     const int count = NUM_CATALOG_ITEMS;

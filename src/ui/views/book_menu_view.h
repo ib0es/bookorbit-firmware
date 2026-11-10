@@ -4,10 +4,11 @@
 #include "../../services/library_manager.h"
 
 // Actions of the per-book menu (library: LEFT key, or a long press on a book).
-enum BookMenuAction { BOOK_MENU_READ, BOOK_MENU_DOWNLOAD, BOOK_MENU_SYNC, BOOK_MENU_DELETE, BOOK_MENU_BACK };
+enum BookMenuAction { BOOK_MENU_READ, BOOK_MENU_DOWNLOAD, BOOK_MENU_FORMATS, BOOK_MENU_SYNC, BOOK_MENU_DELETE, BOOK_MENU_BACK };
+constexpr int BOOK_MENU_MAX = 6;
 
-// The menu rows for `book`, in display order. Returns their count (<= 5).
-int bookMenuItems(const BookItem& book, BookMenuAction out[5]);
+// The menu rows for `book`, in display order. Returns their count (<= BOOK_MENU_MAX).
+int bookMenuItems(const BookItem& book, BookMenuAction out[BOOK_MENU_MAX]);
 
 // The book the menu is about: the library's current selection (nullptr if none).
 BookItem* bookMenuBook();

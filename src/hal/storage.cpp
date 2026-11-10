@@ -4,6 +4,7 @@
 #include <ArduinoJson.h>
 #include <algorithm>
 #include "../net/bookorbit_client.h"
+#include "../net/book_formats.h"
 #include <Preferences.h>
 
 StorageManager Storage;
@@ -95,6 +96,31 @@ bool StorageManager::mkdir(const char* path) {
     return SDCardManager::getInstance().mkdir(path);
 }
 
+bool StorageManager::removeDir(const char* path) {
+    return SDCardManager::getInstance().removeDir(path);
+}
+
+std::vector<String> StorageManager::listSubdirs(const String& path) {
+    std::vector<String> result;
+    if (!isAvailable()) return result;
+    FsFile dir = open(path.c_str(), O_RDONLY);
+    if (!dir || !dir.isDirectory()) {
+        if (dir) dir.close();
+        return result;
+    }
+    char nameBuf[256];
+    FsFile entry;
+    while (entry.openNext(&dir, O_RDONLY)) {
+        if (entry.isDirectory()) {
+            entry.getName(nameBuf, sizeof(nameBuf));
+            result.push_back(String(nameBuf));
+        }
+        entry.close();
+    }
+    dir.close();
+    return result;
+}
+
 std::vector<String> StorageManager::listBooks() {
     std::vector<String> books;
     if (!isAvailable()) return books;
@@ -178,10 +204,8 @@ std::vector<DirEntry> StorageManager::listDirectory(const String& path) {
         if (isDir) {
             result.push_back({ name, fullPath, true, 0 });
         } else {
-            String lower = name;
-            lower.toLowerCase();
-            if (lower.endsWith(".epub") || lower.endsWith(".epu") || 
-                lower.endsWith(".txt") || lower.endsWith(".fb2")) {
+            // Every book format the library lists (EPUB, FB2, MOBI, AZW3, AZW, TXT).
+            if (BookFormats::fromPath(name.c_str()) != BookFormats::Unknown) {
                 result.push_back({ name, fullPath, false, sz });
             }
         }
@@ -246,6 +270,31 @@ bool StorageManager::loadConfig(AppConfig& cfg) {
                 } else {
                     cfg.readerFontSize = FontEngine::kDefaultSize;
                 }
+
+                cfg.readerFont = doc["font_family"].is<const char*>() ? doc["font_family"].as<String>() : String();
+                auto intIn = [&](const char* key, int& v, int lo, int hi) {
+                    if (doc[key].is<int>()) v = constrain(doc[key].as<int>(), lo, hi);
+                };
+                auto boolIn = [&](const char* key, bool& v) {
+                    if (doc[key].is<bool>()) v = doc[key].as<bool>();
+                };
+                intIn("line_spacing", cfg.lineSpacing, 80, 200);
+                intIn("paragraph_spacing", cfg.paragraphSpacing, 0, 200);
+                intIn("margin_px", cfg.marginPx, 4, 60);
+                intIn("full_refresh_every", cfg.fullRefreshEvery, 0, 50);
+                boolIn("justify", cfg.justify);
+                boolIn("hyphenation", cfg.hyphenation);
+                boolIn("keep_lines", cfg.keepLines);
+                boolIn("book_styles", cfg.bookStyles);
+                boolIn("focus_reading", cfg.focusReading);
+                boolIn("sharp_images", cfg.sharpImages);
+                intIn("orientation", cfg.orientation, 0, 3);
+                intIn("ui_orientation", cfg.uiOrientation, 0, 3);
+                intIn("sb_top", cfg.sbTop, 0, 2);
+                intIn("sb_pages", cfg.sbPages, 0, 2);
+                intIn("sb_bottom", cfg.sbBottom, 0, 2);
+                boolIn("sb_percent", cfg.sbPercent);
+                boolIn("sb_battery", cfg.sbBattery);
 
                 if (doc["language"].is<const char*>()) {
                     cfg.language = I18n::languageFromCode(doc["language"].as<String>());
@@ -324,6 +373,24 @@ bool StorageManager::saveConfig(const AppConfig& cfg) {
     doc["hide_completed"] = cfg.hideCompleted;
     doc["cover_fit_mode"] = cfg.sleepCoverFitMode;
     doc["font_pt"] = FontEngine::sizePx(cfg.readerFontSize);
+    doc["font_family"] = cfg.readerFont;
+    doc["line_spacing"] = cfg.lineSpacing;
+    doc["paragraph_spacing"] = cfg.paragraphSpacing;
+    doc["margin_px"] = cfg.marginPx;
+    doc["justify"] = cfg.justify;
+    doc["hyphenation"] = cfg.hyphenation;
+    doc["keep_lines"] = cfg.keepLines;
+    doc["book_styles"] = cfg.bookStyles;
+    doc["focus_reading"] = cfg.focusReading;
+    doc["sharp_images"] = cfg.sharpImages;
+    doc["orientation"] = cfg.orientation;
+    doc["ui_orientation"] = cfg.uiOrientation;
+    doc["sb_top"] = cfg.sbTop;
+    doc["sb_pages"] = cfg.sbPages;
+    doc["sb_bottom"] = cfg.sbBottom;
+    doc["sb_percent"] = cfg.sbPercent;
+    doc["sb_battery"] = cfg.sbBattery;
+    doc["full_refresh_every"] = cfg.fullRefreshEvery;
     doc["language"] = I18n::getLanguageCode(cfg.language);
 
     String jsonStr;
@@ -353,7 +420,14 @@ bool StorageManager::saveCatalog(const std::vector<BookMetadata>& catalog) {
         if (b.series.length() > 0) obj["series"] = b.series;
         if (b.seriesIndex > 0) obj["seriesIdx"] = b.seriesIndex;
         if (b.library.length() > 0) obj["library"] = b.library;
-        obj["url"] = b.downloadUrl;
+        // Formats: [{"f":fileId,"k":kind,"u":url}], "u" only when not canonical.
+        JsonArray fa = obj["formats"].to<JsonArray>();
+        for (const auto& f : b.formats) {
+            JsonObject fo = fa.add<JsonObject>();
+            fo["f"] = f.fileId;
+            fo["k"] = f.kind;
+            if (f.url.length() > 0) fo["u"] = f.url;
+        }
         obj["cover"] = b.coverUrl;
         obj["progress"] = b.lastProgress;
         obj["page"] = b.lastPage;
@@ -395,7 +469,22 @@ bool StorageManager::loadCatalog(std::vector<BookMetadata>& outCatalog) {
         if (obj["series"].is<const char*>()) b.series = obj["series"].as<String>();
         if (obj["seriesIdx"].is<int>()) b.seriesIndex = obj["seriesIdx"].as<int>();
         if (obj["library"].is<const char*>()) b.library = obj["library"].as<String>();
-        if (obj["url"].is<const char*>()) b.downloadUrl = obj["url"].as<String>();
+        if (obj["formats"].is<JsonArray>()) {
+            for (JsonObject fo : obj["formats"].as<JsonArray>()) {
+                BookFormatEntry f;
+                f.fileId = fo["f"] | 0;
+                f.kind = fo["k"] | 0;
+                if (fo["u"].is<const char*>()) f.url = fo["u"].as<String>();
+                if (f.fileId > 0 || f.url.length() > 0) b.formats.push_back(f);
+            }
+        } else if (obj["url"].is<const char*>()) {
+            // Catalog of older firmware: one address per book (EPUB, or TXT by its name).
+            BookFormatEntry f;
+            f.fileId = b.fileId;
+            f.url = obj["url"].as<String>();
+            f.kind = (uint8_t)(f.url.indexOf(".txt") > 0 ? BookFormats::Txt : BookFormats::Epub);
+            b.formats.push_back(f);
+        }
         if (obj["cover"].is<const char*>()) b.coverUrl = obj["cover"].as<String>();
         if (obj["progress"].is<float>()) b.lastProgress = obj["progress"].as<float>();
         if (obj["page"].is<int>()) b.lastPage = obj["page"].as<int>();

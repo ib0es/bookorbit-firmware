@@ -9,6 +9,7 @@
 #include "../../ui/views/book_menu_view.h"
 #include "../../ui/i18n.h"
 #include "../../ui/kit/ui_kit.h"
+#include "../../net/book_formats.h"
 
 namespace {
 
@@ -19,10 +20,74 @@ BookItem* selectedBook(LibraryManager& lib, int* masterIdxOut = nullptr) {
     return &lib.rowAt(lib.selectedBookIndex);
 }
 
+void goBack(AppContext& ctx);
+
+// "FB2 is not supported yet": the reader opens EPUB and TXT for now.
+void showUnsupported(const BookItem& book) {
+    // A row of the format list is titled by its format: name the book.
+    auto& lib = LibraryManager::getInstance();
+    const String& title = (book.formatRow >= 0 && lib.formatsBook >= 0 && lib.formatsBook < (int)lib.masterBooks.size())
+                              ? lib.masterBooks[lib.formatsBook].title : book.title;
+    Serial.printf("[Library] '%s': %s cannot be opened yet\n", title.c_str(),
+                  BookFormats::label((BookFormats::Kind)book.activeKind()));
+    char line[64];
+    snprintf(line, sizeof(line), tr(MsgId::LIB_FORMAT_UNSUPPORTED_FMT),
+             BookFormats::label((BookFormats::Kind)book.activeKind()));
+    Modal.showMessage(tr(MsgId::LIB_FORMAT_UNSUPPORTED_TITLE), title.substring(0, 32), line,
+                      tr(MsgId::LIB_FORMAT_UNSUPPORTED_L2), "", 2200, false, tr(MsgId::COMMON_BACK));
+}
+
+// Downloads the active format of a book if needed, then opens it.
+void openBookFormat(AppContext& ctx, BookItem& book) {
+    if (!BookFormats::readable((BookFormats::Kind)book.activeKind()) && !book.formats.empty()) {
+        drawLibraryScreen(ctx);
+        showUnsupported(book);
+        return;
+    }
+    if (!book.isDownloaded || !Storage.exists(book.filePath.c_str())) {
+        if (!SyncService::downloadBook(ctx, book, STATE_LIBRARY)) {
+            drawLibraryScreen(ctx);
+            return;
+        }
+    }
+    ReaderScreen::openBook(ctx, book.filePath, book.title, book.author, book.coverPath,
+                           book.progress, book.page, book.xpath, book.docId, book.fileId);
+}
+
 void openSelected(AppContext& ctx) {
     auto& lib = LibraryManager::getInstance();
-    BookItem* book = selectedBook(lib);
+    int masterIdx = -1;
+    BookItem* book = selectedBook(lib, &masterIdx);
     if (!book) return;
+
+    // A row of the format list: that format of the book becomes the active one.
+    if (book->formatRow >= 0 && lib.formatsBook >= 0 && lib.formatsBook < (int)lib.masterBooks.size()) {
+        BookItem& master = lib.masterBooks[lib.formatsBook];
+        if (!BookFormats::readable((BookFormats::Kind)book->activeKind())) {   // the book keeps its format
+            showUnsupported(*book);
+            return;
+        }
+        LibraryManager::selectFormat(master, book->formatRow);
+        lib.refreshProgressOf(master);
+        openBookFormat(ctx, master);
+        return;
+    }
+    if (book->isDirectory && book->filePath == "@formats-up") {
+        goBack(ctx);
+        return;
+    }
+    // A book in several formats opens in the one read last; never read here,
+    // the formats are listed to choose from.
+    if (!book->isDirectory && book->formats.size() > 1 && masterIdx >= 0) {
+        const int last = LibraryManager::lastReadFormat(*book);
+        if (last < 0) {
+            lib.openFormats(masterIdx);
+            drawLibraryScreen(ctx, uikit::periodicFullRefresh());
+            return;
+        }
+        LibraryManager::selectFormat(*book, last);
+        lib.refreshProgressOf(*book);
+    }
 
     if (book->isDirectory) {
         if (book->filePath == "@catalog") {
@@ -82,15 +147,7 @@ void openSelected(AppContext& ctx) {
         return;
     }
 
-    if (!book->isDownloaded || !Storage.exists(book->filePath.c_str())) {
-        if (!SyncService::downloadBook(ctx, *book, STATE_LIBRARY)) {
-            drawLibraryScreen(ctx);
-            return;
-        }
-    }
-
-    ReaderScreen::openBook(ctx, book->filePath, book->title, book->author, book->coverPath,
-                           book->progress, book->page, book->xpath, book->docId, book->fileId);
+    openBookFormat(ctx, *book);
 }
 
 // Runs after the user confirmed deletion. `masterIdx`/`path` identify the book
@@ -104,15 +161,21 @@ void deleteBookFile(int masterIdx, const String& path) {
         for (auto& r : lib.folderRows) if (!r.isDirectory && r.filePath == path) { book = &r; break; }
     }
     if (!book) return;
-    const bool keepInCatalog = book->downloadUrl.length() > 0;
+    // Only the active format goes; the book stays while another format is on
+    // the card or the server has it.
+    if (book->activeFormat >= 0 && book->activeFormat < (int)book->formats.size()) book->formats[book->activeFormat].onCard = false;
+    bool otherOnCard = false;
+    for (const auto& f : book->formats) otherOnCard = otherOnCard || f.onCard;
+    const bool keepInCatalog = book->inCatalog() || otherOnCard;
 
     Serial.printf("[Library] Deleting downloaded book file: %s\n", path.c_str());
-    // Covers go too: a book that stays in the catalog gets its cover again
-    // when it is downloaded (SyncService::downloadBook).
-    LibraryManager::deleteBookArtifacts(*book, /*removeCover=*/true);
+    // Covers go too (unless another format stays): a book that stays in the
+    // catalog gets its cover again when it is downloaded (SyncService::downloadBook).
+    LibraryManager::deleteBookArtifacts(*book, /*removeCover=*/!otherOnCard);
 
     if (keepInCatalog) {
         book->isDownloaded = false;   // the master entry itself
+        if (otherOnCard) LibraryManager::chooseFormat(*book);
         lib.updateLastBookAfterDeletion(path);   // off the home carousel too
         lib.rebuildFilteredIndices();
         Modal.showMessage(tr(MsgId::LIB_DELETE_SUCCESS_TITLE), tr(MsgId::LIB_DELETE_SUCCESS_L1), tr(MsgId::LIB_DELETE_SUCCESS_L2),
@@ -133,7 +196,7 @@ void askDeleteSelected() {
     if (!book || book->isDirectory) return;
 
     if (book->isDownloaded && Storage.exists(book->filePath.c_str())) {
-        const char* noteLine = (book->downloadUrl.length() > 0)
+        const char* noteLine = book->inCatalog()
             ? tr(MsgId::LIB_DELETE_LINE3)
             : tr(MsgId::LIB_DELETE_LINE2);
         const String path = book->filePath;
@@ -150,7 +213,10 @@ void askDeleteSelected() {
 
 void goBack(AppContext& ctx) {
     auto& lib = LibraryManager::getInstance();
-    if (lib.currentFolder.startsWith("@library:")) {
+    if (lib.currentFolder.equals("@formats")) {
+        lib.closeFormats();
+        drawLibraryScreen(ctx, uikit::periodicFullRefresh());
+    } else if (lib.currentFolder.startsWith("@library:")) {
         lib.currentFolder = "@libraries";
         lib.selectedBookIndex = lib.savedLibraryIndex;
         lib.scanLocalBooks();
@@ -228,6 +294,17 @@ void handleEvent(AppContext& ctx, const ButtonEvent& event) {
     }
 }
 
+bool openFormatsOfSelected(AppContext& ctx) {
+    auto& lib = LibraryManager::getInstance();
+    int masterIdx = -1;
+    BookItem* book = selectedBook(lib, &masterIdx);
+    if (!book || book->isDirectory || masterIdx < 0 || book->formats.size() < 2) return false;
+    lib.openFormats(masterIdx);
+    ctx.currentState = STATE_LIBRARY;
+    drawLibraryScreen(ctx, uikit::periodicFullRefresh());
+    return true;
+}
+
 void openBookMenu(AppContext& ctx) {
     if (!bookMenuBook()) return;  // folders have no menu
     ctx.selectedBookMenuIndex = 0;
@@ -243,7 +320,7 @@ void handleBookMenuEvent(AppContext& ctx, const ButtonEvent& event) {
         drawLibraryScreen(ctx);
         return;
     }
-    BookMenuAction items[5];
+    BookMenuAction items[BOOK_MENU_MAX];
     const int n = bookMenuItems(*book, items);
     int& sel = ctx.selectedBookMenuIndex;
     if (sel >= n) sel = n - 1;
@@ -285,6 +362,9 @@ void handleBookMenuEvent(AppContext& ctx, const ButtonEvent& event) {
             drawBookMenuScreen(ctx, true);  // clears the status screen
             SyncService::showBookSyncResult(r, *book);
         }
+            break;
+        case BOOK_MENU_FORMATS:
+            openFormatsOfSelected(ctx);
             break;
         case BOOK_MENU_DELETE:
             drawLibraryScreen(ctx);

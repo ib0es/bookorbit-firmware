@@ -2,7 +2,9 @@
 #include "../services/library_manager.h"
 #include "../ui/kit/ui_kit.h"
 #include "screens/screens.h"
-#include "../reader/simple_reader.h"
+#include "../reader/reader.h"
+#include "orientation.h"
+#include "../hal/display.h"
 #include "../ui/views/library_view.h"
 #include "../ui/views/reader_menu_view.h"
 #include "../ui/font.h"
@@ -16,11 +18,14 @@ ButtonEvent make(ButtonId id) {
     return e;
 }
 
-// Reading: three vertical zones.
-ButtonEvent readingZone(const ButtonEvent& tap) {
-    const int16_t w = uikit::width();
-    if (tap.x < w / 3) return make(BTN_LEFT);
-    if (tap.x >= w - w / 3) return make(BTN_RIGHT);
+// Reading: three vertical zones of the page (taps come in the interface's
+// terms; the book may be turned on top of it).
+ButtonEvent readingZone(const AppContext& ctx, const ButtonEvent& tap) {
+    int16_t x, y;
+    interfaceToPage(ctx.config.uiOrientation, Reader.orientation(), tap.x, tap.y, x, y);
+    const int16_t w = (int16_t)(Reader.landscape() ? EPD_WIDTH : EPD_HEIGHT);
+    if (x < w / 3) return make(BTN_LEFT);
+    if (x >= w - w / 3) return make(BTN_RIGHT);
     return make(BTN_CONFIRM);
 }
 
@@ -28,7 +33,7 @@ ButtonEvent readingZone(const ButtonEvent& tap) {
 
 bool translate(AppContext& ctx, const ButtonEvent& tap, ButtonEvent& out) {
     if (ctx.currentState == STATE_READING) {
-        out = readingZone(tap);
+        out = readingZone(ctx, tap);
         return true;
     }
 
@@ -54,8 +59,9 @@ bool translate(AppContext& ctx, const ButtonEvent& tap, ButtonEvent& out) {
             auto& lib = LibraryManager::getInstance();
             if (value < 0 || value >= lib.rowCount()) return false;
             lib.selectedBookIndex = value;
-            // A tap on a book opens its menu (Read first); folders open directly.
-            if (!lib.rowAt(value).isDirectory) {
+            // A tap on a book opens its menu (Read first); folders and format rows
+            // (a book's list of formats: they have no menu) open directly.
+            if (!lib.rowAt(value).isDirectory && lib.rowAt(value).formatRow < 0) {
                 LibraryScreen::openBookMenu(ctx);
                 return false;
             }
@@ -69,6 +75,10 @@ bool translate(AppContext& ctx, const ButtonEvent& tap, ButtonEvent& out) {
         case STATE_TOC:               ctx.selectedTocIndex = value; break;
         case STATE_BOOK_MENU:         ctx.selectedBookMenuIndex = value; break;
         case STATE_FONT_MENU:         ctx.selectedFontIndex = value; break;
+        case STATE_TYPEFACE_MENU:     ctx.selectedTypefaceIndex = value; break;
+        case STATE_APPEARANCE_MENU:   ctx.selectedAppearanceIndex = value; break;
+        case STATE_BOOKMARKS:         ctx.selectedBookmarkIndex = value; break;
+        case STATE_STATUSBAR_MENU:    ctx.selectedStatusBarIndex = value; break;
         case STATE_SYNC_SETTINGS:     ctx.selectedSyncSettingIndex = value; break;
         case STATE_SLEEP_COVER_SETTINGS: ctx.selectedSleepCoverIndex = value; break;
         case STATE_FRONTLIGHT_SETTINGS:  // sliders handle the tap themselves
@@ -102,8 +112,15 @@ bool translateSwipe(AppContext& ctx, const ButtonEvent& swipe, ButtonEvent& out)
     const bool forward = swipe.id == BTN_SWIPE_UP;  // finger up = further down the list
 
     if (ctx.currentState == STATE_READING) {
-        if (vertical) return false;
-        out = make(swipe.id == BTN_SWIPE_LEFT ? BTN_RIGHT : BTN_LEFT);
+        // The swipe in the page's terms: a finger moving left turns to the next page.
+        const int sx = swipe.id == BTN_SWIPE_LEFT ? -1 : swipe.id == BTN_SWIPE_RIGHT ? 1 : 0;
+        const int sy = swipe.id == BTN_SWIPE_UP ? -1 : swipe.id == BTN_SWIPE_DOWN ? 1 : 0;
+        int16_t ax, ay, bx, by;
+        interfaceToPage(ctx.config.uiOrientation, Reader.orientation(), 200, 200, ax, ay);
+        interfaceToPage(ctx.config.uiOrientation, Reader.orientation(), (int16_t)(200 + sx), (int16_t)(200 + sy), bx, by);
+        (void)vertical;
+        if (bx == ax) return false;   // along the page's height
+        out = make(bx < ax ? BTN_RIGHT : BTN_LEFT);
         return true;
     }
 

@@ -1,10 +1,12 @@
 #include "library_manager.h"
 #include "progress_sync.h"
 #include "sync_clock.h"
-#include "../reader/simple_reader.h"
-#include "../reader/epub_extractor.h"
+#include "../reader/reader.h"
+#include "../convert/sd_convert.h"
+#include "../reader/book_reader.h"
 #include "../ui/jpeg_viewer.h"
 #include "../net/bookorbit_client.h"
+#include "../net/book_formats.h"
 #include "../ui/i18n.h"
 #include <algorithm>
 #include <functional>
@@ -60,6 +62,21 @@ bool LibraryManager::isProgressiveJpeg(const String& path) {
     return progressive;
 }
 
+// Where an EPUB's own cover goes: /covers/<file name without extension>.jpg
+static String epubCoverPath(const String& filePath) {
+    const int slash = filePath.lastIndexOf('/');
+    String base = slash >= 0 ? filePath.substring(slash + 1) : filePath;
+    const int dot = base.lastIndexOf('.');
+    if (dot > 0) base = base.substring(0, dot);
+    return "/covers/" + base + ".jpg";
+}
+
+static bool isEpubPath(const String& filePath) {
+    String lower = filePath;
+    lower.toLowerCase();
+    return lower.endsWith(".epub");
+}
+
 String LibraryManager::resolveCoverPath(const String& filePath, const String& title, const String& explicitCoverPath, bool allowExtract) {
     if (isValidCoverFile(explicitCoverPath)) {
         return explicitCoverPath;
@@ -110,7 +127,7 @@ String LibraryManager::resolveCoverPath(const String& filePath, const String& ti
 
     // 3. Check EPUB extracted cache cover in /covers/<basename>.jpg
     if (filePath.length() > 0) {
-        String cPath = EpubExtractor::getCoverPath(filePath);
+        String cPath = epubCoverPath(filePath);
         if (isValidCoverFile(cPath)) return cPath;
 
         String cPathJpeg = cPath;
@@ -125,9 +142,16 @@ String LibraryManager::resolveCoverPath(const String& filePath, const String& ti
         static std::vector<String> s_unusableEpubCovers;
         bool knownBad = false;
         for (const auto& p : s_unusableEpubCovers) if (p == cPath) { knownBad = true; break; }
-        if (allowExtract && !knownBad && EpubExtractor::isEpub(filePath) && Storage.exists(filePath.c_str())) {
-            if (EpubExtractor::extractCoverOnly(filePath, cPath) && isValidCoverFile(cPath)) return cPath;
-            s_unusableEpubCovers.push_back(cPath);
+        // A converted book (FB2) has its EPUB in its cache directory once it was opened.
+        String epub = filePath, indexDir;
+        if (convert::needsConversion(filePath)) {
+            indexDir = BookReader::cacheDirFor(filePath);
+            epub = indexDir + "/book.epub";
+        }
+        if (allowExtract && !knownBad && (isEpubPath(filePath) || indexDir.length()) && Storage.exists(epub.c_str())) {
+            bool noMemory = false;
+            if (BookReader::extractCover(epub, cPath, &noMemory, indexDir) && isValidCoverFile(cPath)) return cPath;
+            if (!noMemory) s_unusableEpubCovers.push_back(cPath);   // short of memory now: tried again later
         }
     }
 
@@ -166,10 +190,13 @@ void LibraryManager::deleteBookArtifacts(const BookItem& book, bool removeCover)
     removeIfExists(book.filePath + ".idx");
     for (int f = 0; f < 4; f++) removeIfExists(book.filePath + "_f" + String(f) + ".idx");
 
-    // /cache/<stem>.*: text, TOC, spine, CFI map, temp files and every page
-    // index (all font sizes and screen geometries, so one SD card shared by
-    // several devices is cleaned too). Matched by exact suffix so that a book
-    // whose name starts the same ("Name" vs "Name (2020)") is left alone.
+    // The layout engine's cache directory (container index, page caches of every
+    // font size and screen, so one SD card shared by several devices is cleaned too).
+    const String fib = BookReader::cacheDirFor(book.filePath);
+    if (Storage.exists(fib.c_str())) Storage.removeDir(fib.c_str());
+
+    // Caches of the old text converter: /cache/<stem>.*. Matched by exact suffix
+    // so that a book whose name starts the same ("Name" vs "Name (2020)") is left alone.
     const String stem = stemOf(book.filePath);
     if (stem.length() > 0) {
         const String txt = stem + ".txt";
@@ -193,13 +220,15 @@ void LibraryManager::deleteBookArtifacts(const BookItem& book, bool removeCover)
 namespace {
 
 // Stems (file name without extension) of every book file under `dir`.
-void collectBookStems(const String& dir, int depth, std::vector<String>& out, int& files) {
+void collectBookStems(const String& dir, int depth, std::vector<String>& out, int& files,
+                      std::vector<String>* names = nullptr) {
     if (depth > 4) return;
     for (const DirEntry& e : Storage.listDirectory(dir)) {  // books and folders only
         if (e.isDirectory) {
-            collectBookStems(e.fullPath, depth + 1, out, files);
+            collectBookStems(e.fullPath, depth + 1, out, files, names);
         } else {
             out.push_back(stemOf(e.name));
+            if (names) names->push_back(e.name);
             files++;
         }
     }
@@ -208,17 +237,6 @@ void collectBookStems(const String& dir, int depth, std::vector<String>& out, in
 bool contains(const std::vector<String>& v, const String& s) {
     for (const String& x : v) if (x == s) return true;
     return false;
-}
-
-// The book stem a /cache file belongs to, "" if the name is not one we write.
-String cacheOwner(const String& n) {
-    const char* exact[] = { ".toc.tmp", ".toc", ".spine", ".cfimap" };
-    for (const char* sfx : exact) {
-        if (n.endsWith(sfx)) return n.substring(0, n.length() - strlen(sfx));
-    }
-    const int t = n.lastIndexOf(".txt");  // .txt, .txt.idx, .txt_f1[_WxH].idx, .txt.tmp
-    if (t > 0) return n.substring(0, t);
-    return "";
 }
 
 // The cover stem a /covers file belongs to, "" if the name is not one we write.
@@ -236,9 +254,9 @@ void LibraryManager::cleanOrphanFiles() {
     if (!Storage.isAvailable()) return;
     const uint32_t t0 = millis();
 
-    std::vector<String> books;
+    std::vector<String> books, bookNames;
     int bookFiles = 0;
-    collectBookStems("/", 0, books, bookFiles);
+    collectBookStems("/", 0, books, bookFiles, &bookNames);
     if (bookFiles == 0) {
         // An empty or unreadable card would make every cache file look orphaned.
         Serial.println("[Library] Cleanup skipped: no book files found.");
@@ -255,14 +273,18 @@ void LibraryManager::cleanOrphanFiles() {
     }
 
     int removed = 0;
+    // Plain files in /cache are the old text converter's (text, TOC, spine, page
+    // indices): the layout engine keeps everything in per-book directories.
     for (const String& n : Storage.listFileNames("/cache")) {
-        // Leftover scratch files of an interrupted EPUB conversion.
-        const bool scratch = (n.startsWith(".") && n.endsWith(".tmp")) ||
-                             // page indices of the old U8g2 fonts (<stem>.txt_f<0..3>[_WxH].idx)
-                             (n.indexOf(".txt_f") > 0 && n.endsWith(".idx"));
-        const String owner = scratch ? String() : cacheOwner(n);
-        if (scratch || (owner.length() > 0 && !contains(books, owner))) {
-            removeIfExists("/cache/" + n);
+        removeIfExists("/cache/" + n);
+        removed++;
+    }
+    // "<file name>.fib": the layout cache of a book that is no longer on the card.
+    for (const String& d : Storage.listSubdirs("/cache")) {
+        if (!d.endsWith(".fib")) continue;
+        const String file = d.substring(0, d.length() - 4);
+        if (!contains(bookNames, file)) {
+            Storage.removeDir(("/cache/" + d).c_str());
             removed++;
         }
     }
@@ -308,7 +330,7 @@ std::vector<RecentBookInfo> LibraryManager::getRecentBooks() {
         r.author = b.author;
         r.filePath = b.filePath;
         r.coverPath = resolveCoverPath(b.filePath, b.title, b.coverPath, true);
-        r.downloadUrl = b.downloadUrl;
+        r.downloadUrl = b.downloadUrl();
         r.fileId = b.fileId;
         r.progress = b.progress;
         r.page = b.page;
@@ -371,6 +393,7 @@ std::vector<RecentBookInfo> LibraryManager::getRecentBooks() {
     for (const auto& b : masterBooks) {
         if (list.size() >= 4) break;
         if (!b.isDownloaded || b.isDirectory || listed(b.filePath)) continue;
+        if (!b.formats.empty() && !BookFormats::readable((BookFormats::Kind)b.activeKind())) continue;   // not openable yet
         list.push_back(toInfo(b));
     }
     return list;
@@ -485,27 +508,167 @@ void LibraryManager::setHideCompleted(bool hide) {
     refreshCounts();
 }
 
-static void collectAllLocalBooks(const String& dir, int depth, std::vector<BookItem>& out, int* topFolders) {
+// ---------------------------------------------------------------- formats
+
+String BookItem::downloadUrlOf(const BookFormatSlot& f) const {
+    if (f.url.length() > 0) return f.url;
+    if (bookId <= 0 || f.fileId <= 0) return String();
+    return String("/api/v1/opds/") + String(bookId) + "/download?fileId=" + String(f.fileId);
+}
+
+String BookItem::downloadUrl() const {
+    if (activeFormat < 0 || activeFormat >= (int)formats.size()) return String();
+    return downloadUrlOf(formats[activeFormat]);
+}
+
+bool BookItem::inCatalog() const {
+    for (const auto& f : formats) if (f.fileId > 0 || f.url.length() > 0) return true;
+    return false;
+}
+
+bool BookItem::anyOnCard() const {
+    for (const auto& f : formats) if (f.onCard) return true;
+    return isDownloaded;
+}
+
+namespace {
+
+// "/books/Name.epub" -> "/books/Name" (the part shared by all formats of a book).
+String withoutExtension(const String& path) {
+    const int slash = path.lastIndexOf('/');
+    const int dot = path.lastIndexOf('.');
+    return dot > slash + 1 ? path.substring(0, dot) : path;
+}
+
+// Folded "<dir>/<stem>": formats of one book share it.
+std::string bookKey(const String& path) { return std::string(foldString(withoutExtension(path)).c_str()); }
+
+bool isBookFile(const String& name) {
+    return BookFormats::fromPath(name.c_str()) != BookFormats::Unknown;
+}
+
+}  // namespace
+
+String LibraryManager::formatPath(const BookItem& b, const BookFormatSlot& f) {
+    // The path as found on the card keeps its spelling ("Name.EPUB").
+    if (BookFormats::fromPath(b.filePath.c_str()) == (BookFormats::Kind)f.kind) return b.filePath;
+    return withoutExtension(b.filePath) + BookFormats::extension((BookFormats::Kind)f.kind);
+}
+
+void LibraryManager::selectFormat(BookItem& b, int i) {
+    if (i < 0 || i >= (int)b.formats.size()) return;
+    const String path = formatPath(b, b.formats[i]);
+    if (b.activeFormat != i) {
+        Serial.printf("[Library] '%s': format %s (%s)\n", b.title.c_str(),
+                      BookFormats::label((BookFormats::Kind)b.formats[i].kind), path.c_str());
+    }
+    b.activeFormat = (int8_t)i;
+    b.filePath = path;
+    b.fileId = b.formats[i].fileId;
+    b.isDownloaded = b.formats[i].onCard;
+}
+
+int LibraryManager::lastReadFormat(const BookItem& b) {
+    ProgressStore& store = ProgressStore::instance();
+    int best = -1;
+    uint32_t bestAt = 0;
+    for (int i = 0; i < (int)b.formats.size(); i++) {
+        const BookFormatSlot& f = b.formats[i];
+        if (!f.onCard) continue;
+        const BookProgressRecord* rec = store.find(f.fileId, formatPath(b, f));
+        if (!rec) continue;
+        const bool read = ProgressSync::hasProgress(rec->state.local.percent) || rec->state.local.page > 1;
+        if (!read) continue;
+        if (best < 0 || rec->state.localChangedAt > bestAt) { best = i; bestAt = rec->state.localChangedAt; }
+    }
+    // The book open last is the current one, whatever the change times say.
+    const LastBookInfo& last = getInstance().lastBook;
+    for (int i = 0; i < (int)b.formats.size(); i++) {
+        if (b.formats[i].onCard && last.filePath.equalsIgnoreCase(formatPath(b, b.formats[i]))) return i;
+    }
+    return best;
+}
+
+void LibraryManager::chooseFormat(BookItem& b) {
+    if (b.formats.empty()) return;
+    int pick = lastReadFormat(b);
+    auto best = [&](auto ok) {
+        int idx = -1;
+        for (int i = 0; i < (int)b.formats.size(); i++) {
+            if (!ok(b.formats[i])) continue;
+            if (idx < 0 || BookFormats::rank((BookFormats::Kind)b.formats[i].kind) <
+                           BookFormats::rank((BookFormats::Kind)b.formats[idx].kind)) idx = i;
+        }
+        return idx;
+    };
+    auto readable = [](const BookFormatSlot& f) { return BookFormats::readable((BookFormats::Kind)f.kind); };
+    if (pick < 0) pick = best([&](const BookFormatSlot& f) { return f.onCard && readable(f); });
+    if (pick < 0) pick = best([&](const BookFormatSlot& f) { return readable(f) && (f.fileId > 0 || f.url.length() > 0); });
+    if (pick < 0) pick = best([](const BookFormatSlot& f) { return f.onCard; });
+    if (pick < 0) pick = 0;
+    selectFormat(b, pick);
+}
+
+void LibraryManager::openFormats(int idx) {
+    if (idx < 0 || idx >= (int)masterBooks.size()) return;
+    if (!currentFolder.equals("@formats")) {
+        formatsReturnFolder = currentFolder;
+        formatsReturnIndex = selectedBookIndex;
+    }
+    formatsBook = idx;
+    currentFolder = "@formats";
+    Serial.printf("[Library] Formats of '%s': %u\n", masterBooks[idx].title.c_str(), (unsigned)masterBooks[idx].formats.size());
+    // Start on the active format (row 0 is "..").
+    selectedBookIndex = masterBooks[idx].activeFormat >= 0 ? masterBooks[idx].activeFormat + 1 : 1;
+    rebuildRows();
+}
+
+void LibraryManager::closeFormats() {
+    if (!currentFolder.equals("@formats")) return;
+    currentFolder = formatsReturnFolder.length() > 0 ? formatsReturnFolder : String("/books");
+    selectedBookIndex = formatsReturnIndex;
+    formatsBook = -1;
+    rebuildRows();
+}
+
+static void collectAllLocalBooks(const String& dir, int depth, std::vector<BookItem>& out, int* topFolders,
+                                 std::unordered_map<std::string, int>* byKey = nullptr) {
     if (depth > 3) return;
+    std::unordered_map<std::string, int> ownKeys;
+    if (!byKey) byKey = &ownKeys;
     for (const DirEntry& entry : Storage.listDirectory(dir)) {   // folders and book files only
         if (entry.name.startsWith(".")) continue;
         if (entry.isDirectory) {
             if (depth == 0 && topFolders) (*topFolders)++;
-            collectAllLocalBooks(entry.fullPath, depth + 1, out, nullptr);
+            collectAllLocalBooks(entry.fullPath, depth + 1, out, nullptr, byKey);
             continue;
         }
-        String lower = entry.name;
-        lower.toLowerCase();
-        if (!lower.endsWith(".epub") && !lower.endsWith(".txt")) continue;   // what the reader opens
+        const BookFormats::Kind kind = BookFormats::fromPath(entry.name.c_str());
+        if (kind == BookFormats::Unknown) continue;
+
+        BookFormatSlot slot;
+        slot.kind = (uint8_t)kind;
+        slot.onCard = true;
+        // "Name.epub" and "Name.fb2" in one folder are one book in two formats.
+        const std::string key = bookKey(entry.fullPath);
+        auto it = byKey->find(key);
+        if (it != byKey->end()) {
+            out[it->second].formats.push_back(slot);
+            continue;
+        }
 
         BookItem item;
         const int dot = entry.name.lastIndexOf('.');
         item.title = (dot > 0) ? entry.name.substring(0, dot) : entry.name;
         item.filePath = entry.fullPath;
-        item.coverPath = EpubExtractor::getCoverPath(entry.fullPath);
+        item.coverPath = epubCoverPath(entry.fullPath);
         item.isDownloaded = true;
+        item.formats.push_back(slot);
+        item.activeFormat = 0;
         const LastBookInfo& last = LibraryManager::getInstance().lastBook;
-        if (last.filePath.equalsIgnoreCase(entry.fullPath) && last.author.length() > 0) item.author = last.author;
+        if (withoutExtension(last.filePath).equalsIgnoreCase(withoutExtension(entry.fullPath)) && last.author.length() > 0)
+            item.author = last.author;
+        byKey->emplace(key, (int)out.size());
         out.push_back(item);
     }
 }
@@ -515,28 +678,38 @@ void LibraryManager::buildMaster() {
     masterBooks.clear();
     libraryNames.clear();
     int folders = 0;
+    std::vector<BookMetadata> catalog;
+    Storage.loadCatalog(catalog);
+    // One allocation for the list (it lives until the next sync), made before the
+    // per-book strings so it does not end up between them.
+    masterBooks.reserve(catalog.size() + 16);
     collectAllLocalBooks("/books", 0, masterBooks, &folders);
     counts.folders = folders;
 
     // Lookup tables for merging the catalog (was a pairwise scan of both lists).
-    std::unordered_map<std::string, int> byPath, byTitle, byFileId;
+    // A local book is found by a server file id, by its path without extension
+    // (any of its formats) or by its title.
+    std::unordered_map<std::string, int> byKey, byTitle, byFileId;
     auto key = [](const String& s) { return std::string(foldString(s).c_str()); };
     for (int i = 0; i < (int)masterBooks.size(); i++) {
-        byPath.emplace(key(masterBooks[i].filePath), i);
+        byKey.emplace(bookKey(masterBooks[i].filePath), i);
         byTitle.emplace(key(masterBooks[i].title), i);
     }
 
-    std::vector<BookMetadata> catalog;
-    Storage.loadCatalog(catalog);
-    for (const auto& b : catalog) {
+    for (auto& b : catalog) {
         const String destPath = catalogBookPath(b);
         const int bookId = catalogBookId(b);
         int idx = -1;
-        if (b.fileId > 0) {
+        for (const auto& f : b.formats) {
+            if (idx >= 0 || f.fileId <= 0) continue;
+            auto it = byFileId.find(std::to_string(f.fileId));
+            if (it != byFileId.end()) idx = it->second;
+        }
+        if (idx < 0 && b.fileId > 0) {
             auto it = byFileId.find(std::to_string(b.fileId));
             if (it != byFileId.end()) idx = it->second;
         }
-        if (idx < 0) { auto it = byPath.find(key(destPath)); if (it != byPath.end()) idx = it->second; }
+        if (idx < 0) { auto it = byKey.find(bookKey(destPath)); if (it != byKey.end()) idx = it->second; }
         if (idx < 0) { auto it = byTitle.find(key(b.title)); if (it != byTitle.end()) idx = it->second; }
         if (idx < 0) {
             masterBooks.push_back(BookItem());
@@ -545,24 +718,41 @@ void LibraryManager::buildMaster() {
             n.title = b.title;
             n.filePath = destPath;
             n.isDownloaded = false;   // a downloaded copy would have matched a file of the scan
-            byPath.emplace(key(destPath), idx);
+            byKey.emplace(bookKey(destPath), idx);
             byTitle.emplace(key(b.title), idx);
         }
         BookItem& item = masterBooks[idx];
+        // The server formats join the files found on the card (same extension).
+        for (auto& f : b.formats) {
+            BookFormatSlot* slot = nullptr;
+            for (auto& sl : item.formats) {
+                if ((f.fileId > 0 && sl.fileId == f.fileId) || (sl.fileId <= 0 && sl.kind == f.kind)) { slot = &sl; break; }
+            }
+            if (!slot) {
+                item.formats.push_back(BookFormatSlot());
+                slot = &item.formats.back();
+                slot->kind = f.kind;
+            }
+            slot->fileId = f.fileId;
+            slot->url = std::move(f.url);   // the catalog copy is dropped below
+            if (f.fileId > 0) byFileId.emplace(std::to_string(f.fileId), idx);
+        }
         // The cover is resolved when it is drawn (home card); the server one lands here.
         if (!item.isDownloaded || item.coverPath.length() == 0) item.coverPath = "/covers/" + safeFileName(b.title, b.id) + ".jpg";
-        item.downloadUrl = b.downloadUrl;
-        item.coverUrl = b.coverUrl;
-        if (b.fileId > 0) { item.fileId = b.fileId; byFileId.emplace(std::to_string(b.fileId), idx); }
+        item.coverUrl = std::move(b.coverUrl);
         if (bookId > 0) item.bookId = bookId;
-        if (item.author.length() == 0) item.author = b.author;
-        if (b.series.length() > 0) { item.series = b.series; item.seriesIndex = b.seriesIndex; }
+        if (item.author.length() == 0) item.author = std::move(b.author);
+        if (b.series.length() > 0) { item.series = std::move(b.series); item.seriesIndex = b.seriesIndex; }
         if (b.library.length() > 0) item.libraryIdx = (int16_t)internLibrary(b.library);
-        // Server snapshot; this device's own position (if any) wins in refreshProgress().
+        // Server snapshot (of the preferred format); this device's own position
+        // (if any) wins in refreshProgress().
         item.progress = b.lastProgress;
         item.page = b.lastPage > 0 ? b.lastPage : 1;
-        item.xpath = b.xpath;
+        item.xpath = std::move(b.xpath);
     }
+    const size_t catalogSize = catalog.size();
+    std::vector<BookMetadata>().swap(catalog);   // before the per-book work below
+    for (auto& item : masterBooks) chooseFormat(item);
     refreshProgress();
     for (const auto& item : masterBooks) {
         if (lastBook.fileId <= 0 && item.fileId > 0 && lastBook.filePath.equalsIgnoreCase(item.filePath)) {
@@ -570,20 +760,29 @@ void LibraryManager::buildMaster() {
         }
     }
     Serial.printf("[Library] Master list: %d books (%d in the catalog, %d libraries) in %lu ms\n",
-                  (int)masterBooks.size(), (int)catalog.size(), (int)libraryNames.size(),
+                  (int)masterBooks.size(), (int)catalogSize, (int)libraryNames.size(),
                   (unsigned long)(millis() - t0));
+}
+
+void LibraryManager::refreshProgressOf(BookItem& item) {
+    if (const BookProgressRecord* rec = ProgressStore::instance().find(item.fileId, item.filePath)) {
+        item.progress = rec->state.local.percent;
+        item.page = rec->state.local.page > 0 ? rec->state.local.page : 1;
+        item.xpath = rec->state.local.xpath.c_str();
+        if (item.fileId <= 0 && rec->fileId > 0) item.fileId = rec->fileId;
+        if (item.bookId <= 0 && rec->bookId > 0) item.bookId = rec->bookId;
+    } else if (item.formats.size() > 1) {
+        // A format never opened here starts at the beginning (formats are read separately).
+        item.progress = 0.0f;
+        item.page = 1;
+        item.xpath = "";
+    }
 }
 
 void LibraryManager::refreshProgress() {
     ProgressStore& store = ProgressStore::instance();
     for (auto& item : masterBooks) {
-        if (const BookProgressRecord* rec = store.find(item.fileId, item.filePath)) {
-            item.progress = rec->state.local.percent;
-            item.page = rec->state.local.page > 0 ? rec->state.local.page : 1;
-            item.xpath = rec->state.local.xpath.c_str();
-            if (item.fileId <= 0 && rec->fileId > 0) item.fileId = rec->fileId;
-            if (item.bookId <= 0 && rec->bookId > 0) item.bookId = rec->bookId;
-        }
+        if (store.find(item.fileId, item.filePath)) refreshProgressOf(item);
     }
 }
 
@@ -594,28 +793,56 @@ void LibraryManager::refreshLocalFiles() {
     collectAllLocalBooks("/books", 0, found, &folders);
     counts.folders = folders;
 
-    std::unordered_map<std::string, int> foundByPath;
-    for (int i = 0; i < (int)found.size(); i++) foundByPath.emplace(foldString(found[i].filePath).c_str(), i);
+    // Every file on the card, by path, and the books found, by path without extension.
+    std::unordered_map<std::string, int> foundByPath, foundByKey;
+    for (int i = 0; i < (int)found.size(); i++) {
+        foundByKey.emplace(bookKey(found[i].filePath), i);
+        for (const auto& f : found[i].formats) foundByPath.emplace(foldString(formatPath(found[i], f)).c_str(), i);
+    }
     std::vector<bool> matched(found.size(), false);
 
     int added = 0, gone = 0;
     for (size_t i = 0; i < masterBooks.size();) {
         BookItem& b = masterBooks[i];
-        auto it = foundByPath.find(foldString(b.filePath).c_str());
-        const bool onCard = it != foundByPath.end();
-        if (onCard) matched[it->second] = true;
-        if (onCard != b.isDownloaded) {
-            if (!onCard && b.downloadUrl.length() == 0) {   // a local-only book removed from the card
+        bool changed = false;
+        for (auto& f : b.formats) {
+            auto it = foundByPath.find(foldString(formatPath(b, f)).c_str());
+            const bool onCard = it != foundByPath.end();
+            if (onCard) matched[it->second] = true;
+            if (onCard != f.onCard) { f.onCard = onCard; changed = true; }
+        }
+        if (b.formats.empty()) {   // not expected for a book, kept as before
+            auto it = foundByPath.find(foldString(b.filePath).c_str());
+            const bool onCard = it != foundByPath.end();
+            if (onCard) matched[it->second] = true;
+            if (onCard != b.isDownloaded) { b.isDownloaded = onCard; changed = true; }
+        }
+        // A new format of a book already in the list ("Name.fb2" next to "Name.epub").
+        auto kt = foundByKey.find(bookKey(b.filePath));
+        if (kt != foundByKey.end()) {
+            for (const auto& nf : found[kt->second].formats) {
+                bool known = false;
+                for (const auto& f : b.formats) known = known || f.kind == nf.kind;
+                if (!known) { b.formats.push_back(nf); changed = true; }
+            }
+            matched[kt->second] = true;
+        }
+        if (changed) {
+            bool anyCard = false;
+            for (const auto& f : b.formats) anyCard = anyCard || f.onCard;
+            if (!anyCard && !b.inCatalog() && !b.formats.empty()) {   // a local-only book removed from the card
                 masterBooks.erase(masterBooks.begin() + i);
                 gone++;
                 continue;
             }
-            b.isDownloaded = onCard;
+            const int8_t keep = b.activeFormat;
+            if (keep >= 0 && keep < (int)b.formats.size() && b.formats[keep].onCard) selectFormat(b, keep);
+            else chooseFormat(b);
         }
         i++;
     }
     for (size_t i = 0; i < found.size(); i++) {
-        if (!matched[i]) { masterBooks.push_back(found[i]); added++; }
+        if (!matched[i]) { masterBooks.push_back(found[i]); chooseFormat(masterBooks.back()); added++; }
     }
     if (added) refreshProgress();
     refreshCounts();
@@ -633,7 +860,7 @@ void LibraryManager::refreshCounts() {
         if (hideCompleted && isCompleted(b)) continue;
         visible.push_back(i);
         c.total++;
-        if (b.isDownloaded) c.downloaded++;
+        if (b.anyOnCard()) c.downloaded++;
     }
     // Distinct authors / series: sort by the folded name, count the changes.
     auto distinct = [&](auto field, bool skipEmpty) {
@@ -736,7 +963,40 @@ void LibraryManager::rebuildRows() {
     };
 
     const String& f = currentFolder;
-    if (f.equalsIgnoreCase("@libraries")) {
+    if (f.equals("@formats")) {
+        // The formats of one book: a row each, with its own place on the card and position.
+        if (formatsBook < 0 || formatsBook >= (int)masterBooks.size()) {
+            currentFolder = formatsReturnFolder.length() > 0 ? formatsReturnFolder : String("/books");
+            formatsBook = -1;
+            rebuildRows();
+            return;
+        }
+        const BookItem& book = masterBooks[formatsBook];
+        BookItem up = folderItem(".. (" + String(tr(MsgId::BOOK_MENU_BACK)) + ")", "@formats-up", 0);
+        up.author = book.title;
+        addFolder(up);
+        ProgressStore& store = ProgressStore::instance();
+        for (int i = 0; i < (int)book.formats.size(); i++) {
+            const BookFormatSlot& slot = book.formats[i];
+            BookItem it;
+            it.title = BookFormats::label((BookFormats::Kind)slot.kind);
+            it.author = book.author;
+            it.filePath = formatPath(book, slot);
+            it.fileId = slot.fileId;
+            it.bookId = book.bookId;
+            it.isDownloaded = slot.onCard;
+            it.formats.push_back(slot);
+            it.activeFormat = 0;
+            it.formatRow = (int8_t)i;
+            if (const BookProgressRecord* rec = store.find(slot.fileId, it.filePath)) {
+                it.progress = rec->state.local.percent;
+                it.page = rec->state.local.page > 0 ? rec->state.local.page : 1;
+            } else if (slot.fileId > 0 && slot.fileId == book.fileId) {
+                it.progress = book.progress;   // the server's position of this format
+            }
+            addFolder(it);
+        }
+    } else if (f.equalsIgnoreCase("@libraries")) {
         upItem("@catalog", tr(MsgId::HOME_CAT_CATALOG));
         // Only a mix of library / no library gets the "[no library]" group.
         bool anyLib = false;
@@ -815,21 +1075,26 @@ void LibraryManager::rebuildRows() {
                 continue;
             }
             if (top) continue;
-            String lower = e.name;
-            lower.toLowerCase();
-            if (!lower.endsWith(".epub") && !lower.endsWith(".txt")) continue;
+            if (!isBookFile(e.name)) continue;
+            // The formats of a book ("Name.epub", "Name.fb2") are one row.
+            const std::string k = bookKey(e.fullPath);
             int idx = -1;
             for (int i = 0; i < (int)masterBooks.size(); i++) {
-                if (masterBooks[i].filePath.equalsIgnoreCase(e.fullPath)) { idx = i; break; }
+                if (bookKey(masterBooks[i].filePath) == k) { idx = i; break; }
             }
             if (idx >= 0) {
-                if (visible(masterBooks[idx])) files.push_back(idx);
+                if (visible(masterBooks[idx]) && std::find(files.begin(), files.end(), idx) == files.end()) files.push_back(idx);
             } else {
                 BookItem it;
                 const int dot = e.name.lastIndexOf('.');
                 it.title = dot > 0 ? e.name.substring(0, dot) : e.name;
                 it.filePath = e.fullPath;
                 it.isDownloaded = true;
+                BookFormatSlot slot;
+                slot.kind = (uint8_t)BookFormats::fromPath(e.name.c_str());
+                slot.onCard = true;
+                it.formats.push_back(slot);
+                it.activeFormat = 0;
                 looseFiles.push_back(it);
             }
         }
@@ -842,7 +1107,7 @@ void LibraryManager::rebuildRows() {
         // "/books": all books, downloaded or completed (master order: SD first, then the catalog).
         for (int i = 0; i < (int)masterBooks.size(); i++) {
             const BookItem& b = masterBooks[i];
-            if (currentFilter == FILTER_DOWNLOADED && !b.isDownloaded) continue;
+            if (currentFilter == FILTER_DOWNLOADED && !b.anyOnCard()) continue;
             if (currentFilter == FILTER_COMPLETED ? !isCompleted(b) : !visible(b)) continue;
             rows.push_back(i);
         }
@@ -914,9 +1179,15 @@ String LibraryManager::safeFileName(const String& title, const String& fallbackI
     return safe;
 }
 
+String LibraryManager::catalogFormatPath(const BookMetadata& b, const BookFormatEntry& f) {
+    const char* ext = BookFormats::extension((BookFormats::Kind)f.kind);
+    return "/books/" + safeFileName(b.title, b.id) + (*ext ? ext : ".epub");
+}
+
 String LibraryManager::catalogBookPath(const BookMetadata& b) {
-    String ext = (b.downloadUrl.indexOf(".txt") > 0) ? ".txt" : ".epub";
-    return "/books/" + safeFileName(b.title, b.id) + ext;
+    const BookFormatEntry* f = b.preferredFormat();
+    if (f) return catalogFormatPath(b, *f);
+    return "/books/" + safeFileName(b.title, b.id) + ".epub";
 }
 
 int LibraryManager::catalogBookId(const BookMetadata& b) {

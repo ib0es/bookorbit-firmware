@@ -65,6 +65,24 @@ static const bookfonts::Glyph* glyphOrFallback(const bookfonts::Font& f, uint32_
     return g ? g : findGlyph(f, '?');
 }
 
+int FontEngine::fontIndexForPx(int px) { return clampSize((px - 12 + 1) / 2); }
+int FontEngine::fontPx(int index) { return bookfonts::kFonts[clampSize(index)].pixelSize; }
+int FontEngine::fontAscent(int index) { return bookfonts::kFonts[clampSize(index)].ascent; }
+int FontEngine::fontDescent(int index) { return bookfonts::kFonts[clampSize(index)].descent; }
+
+bool FontEngine::glyph(int index, uint32_t cp, GlyphInfo& out) {
+    const bookfonts::Font& f = bookfonts::kFonts[clampSize(index)];
+    const bookfonts::Glyph* g = findGlyph(f, cp);
+    if (!g) return false;
+    out.bits = f.bitmaps + g->offset;
+    out.width = g->width;
+    out.height = g->height;
+    out.xOffset = g->xOffset;
+    out.yOffset = g->yOffset;
+    out.advance = g->advance;
+    return true;
+}
+
 int FontEngine::measure(const char* text) const {
     const bookfonts::Font& f = (*_font);
     const uint8_t* p = (const uint8_t*)text;

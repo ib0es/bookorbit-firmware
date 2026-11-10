@@ -2,6 +2,7 @@
 #include "../hal/mem_stats.h"
 #include "../ui/modal.h"
 #include "../net/bookorbit_client.h"
+#include "../net/book_formats.h"
 #include "../hal/buttons.h"
 #include "../hal/storage.h"
 #include "../ui/views/status_modal.h"
@@ -9,8 +10,10 @@
 #include "../ui/views/library_view.h"
 #include "../ui/views/settings_view.h"
 #include "../ui/i18n.h"
-#include "../reader/simple_reader.h"
+#include "../reader/reader.h"
 #include "progress_sync.h"
+#include "../convert/sd_convert.h"
+#include "bookmarks.h"
 #include "sync_clock.h"
 
 bool SyncService::s_syncCancelled = false;
@@ -50,13 +53,15 @@ void SyncService::showState(AppContext& ctx, AppState state) {
         state = Reader.isOpened() ? STATE_READING : STATE_HOME;
     }
     ctx.currentState = state;
+    if (Reader.isOpened()) placeBookmarks(Bookmarks);   // ones that came from the server
     Modal.redrawScreen(false);
 }
 
 void SyncService::reportDownloadProgress(int percent) {
     uint32_t now = millis();
-    // Only update display every 20% or at least 2 seconds apart, preventing E-ink flicker
-    if ((percent - s_lastProgressPercent >= 20 || (now - s_lastProgressTime >= 2000 && percent > s_lastProgressPercent)) && percent < 100) {
+    // An e-ink refresh blocks ~0.45 s, the download with it: at most every 5 s
+    // (every 2 s it took a fifth of a 10 s download on the X4).
+    if (now - s_lastProgressTime >= 5000 && percent > s_lastProgressPercent && percent < 100) {
         s_lastProgressPercent = percent;
         s_lastProgressTime = now;
 
@@ -109,18 +114,93 @@ void resolveServerIds(BookProgressRecord& rec) {
     std::vector<BookMetadata> catalog;
     if (!Storage.loadCatalog(catalog)) return;
     for (const auto& c : catalog) {
-        if ((rec.fileId > 0 && c.fileId == rec.fileId) ||
-            LibraryManager::catalogBookPath(c).equalsIgnoreCase(rec.filePath) ||
-            (rec.title.length() > 0 && c.title.equalsIgnoreCase(rec.title))) {
-            if (rec.fileId <= 0) rec.fileId = c.fileId;
+        // The format of the record: its file id, or the path it is downloaded to.
+        const BookFormatEntry* fmt = nullptr;
+        for (const auto& f : c.formats) {
+            if ((rec.fileId > 0 && f.fileId == rec.fileId) ||
+                LibraryManager::catalogFormatPath(c, f).equalsIgnoreCase(rec.filePath)) { fmt = &f; break; }
+        }
+        const bool byTitle = !fmt && rec.title.length() > 0 && c.title.equalsIgnoreCase(rec.title) &&
+                             BookFormats::fromPath(rec.filePath.c_str()) ==
+                                 (BookFormats::Kind)(c.preferredFormat() ? c.preferredFormat()->kind : 0);
+        if (fmt || byTitle) {
+            if (rec.fileId <= 0) rec.fileId = fmt ? fmt->fileId : c.fileId;
             if (rec.bookId <= 0) rec.bookId = LibraryManager::catalogBookId(c);
             break;
         }
     }
 }
 
+// A CFI means the same thing to the web reader for an EPUB file, and for an FB2
+// or AZW3 once converted here (its CFI map carries them over; reader/cfi_map.h).
+// Other formats (old MOBI, TXT) are read through an EPUB made from them whose
+// CFIs stay local.
+static bool cfiApplies(const BookProgressRecord& rec) {
+    if (rec.filePath.length() == 0) return true;
+    const auto kind = BookFormats::fromPath(rec.filePath.c_str());
+    if (kind == BookFormats::Epub) return true;
+    const String map = BookReader::cacheDirFor(rec.filePath) + "/" + convert::kCfiMapName;
+    return Storage.exists(map.c_str());
+}
+
 bool isOpenInReader(const BookProgressRecord& rec) {
     return Reader.isOpened() && Reader.getOriginalFilePath().equalsIgnoreCase(rec.filePath);
+}
+
+// Two-way exchange of the book's bookmarks with the web reader's (EPUB only:
+// a CFI of the EPUB made here from another format means nothing to the server).
+// Deletions made here go first, then the server's list is taken (deleted there,
+// new there), then the bookmarks made here go up.
+void syncBookmarks(AppContext& ctx, const BookProgressRecord& rec) {
+    if (rec.bookId <= 0 || rec.fileId <= 0 || rec.filePath.length() == 0 || !cfiApplies(rec)) return;
+    const bool open = Bookmarks.bookPath().length() > 0 && Bookmarks.bookPath().equalsIgnoreCase(rec.filePath);
+    BookmarkList other;
+    BookmarkList& list = open ? Bookmarks : other;
+    if (!open) list.load(rec.filePath);
+    auto& cfg = ctx.config;
+    bool changed = false;
+
+    const std::vector<int> deleted = list.deletedOnDevice();
+    for (int id : deleted) {
+        if (!BookOrbit.deleteBookmark(cfg.serverHost, cfg.bookOrbitUser, cfg.bookOrbitPass, cfg.authToken, rec.bookId, id))
+            continue;   // tried again next time
+        list.forgetDeleted(id);
+        changed = true;
+    }
+
+    std::vector<BookOrbitProtocol::Bookmark> server;
+    if (!BookOrbit.fetchBookmarks(cfg.serverHost, cfg.bookOrbitUser, cfg.bookOrbitPass, cfg.authToken, rec.bookId,
+                                  rec.fileId, server)) {
+        if (changed) list.save();
+        return;
+    }
+    std::vector<RemoteBookmark> remote;
+    remote.reserve(server.size());
+    for (const auto& b : server) {
+        RemoteBookmark r;
+        r.id = b.id;
+        r.cfi = b.cfi.c_str();
+        r.title = b.title.c_str();
+        remote.push_back(r);
+    }
+    std::vector<BookOrbitProtocol::Bookmark>().swap(server);
+    if (list.mergeRemote(remote)) changed = true;
+
+    int uploaded = 0;
+    for (int i = 0; i < list.count(); i++) {
+        const Bookmark& b = list.items()[i];
+        if (b.serverId > 0 || b.cfi.length() == 0) continue;   // on the server, or no CFI worked out yet
+        const String title = b.chapter.length() ? b.chapter : b.snippet.substring(0, 80);
+        const int id = BookOrbit.createBookmark(cfg.serverHost, cfg.bookOrbitUser, cfg.bookOrbitPass, cfg.authToken,
+                                                rec.bookId, rec.fileId, b.cfi, title);
+        if (id <= 0) continue;
+        list.setServerId(i, id);
+        uploaded++;
+        changed = true;
+    }
+    Serial.printf("[Bookmarks] '%s': %d on the server, %d here, %d uploaded, %d deletes pending\n", rec.title.c_str(),
+                  (int)remote.size(), list.count(), uploaded, (int)list.deletedOnDevice().size());
+    if (changed) list.save();
 }
 
 }  // namespace
@@ -146,7 +226,7 @@ bool SyncService::syncBookProgress(AppContext& ctx, BookProgressRecord& rec, Ser
     // 1. Ask the server.
     ServerProgress srv;
     if (!BookOrbit.fetchBookProgress(ctx.config.serverHost, ctx.config.bookOrbitUser, ctx.config.bookOrbitPass,
-                                     ctx.config.authToken, fetchId, srv)) {
+                                     ctx.config.authToken, fetchId, rec.fileId, srv)) {
         Serial.printf("[Sync] '%s': could not read server progress.\n", rec.title.c_str());
         return false;
     }
@@ -178,6 +258,12 @@ bool SyncService::syncBookProgress(AppContext& ctx, BookProgressRecord& rec, Ser
     switch (d.action) {
         case Action::Pull:
             ProgressSync::applyPull(rec.state, remote);
+            if (!cfiApplies(rec)) {
+                // The web reader's locator for an FB2 (or other non-EPUB) file is not a
+                // CFI of the EPUB the reader made from it: only the percent carries over.
+                rec.state.local.cfi.clear();
+                rec.state.local.xpath.clear();
+            }
             if (isOpenInReader(rec)) {
                 Reader.goToPosition(rec.state.local.cfi.c_str(), rec.state.local.xpath.c_str(),
                                     rec.state.local.percent, rec.state.local.page);
@@ -196,7 +282,8 @@ bool SyncService::syncBookProgress(AppContext& ctx, BookProgressRecord& rec, Ser
             uint32_t serverTs = 0;
             ok = BookOrbit.updateBookProgress(ctx.config.serverHost, ctx.config.bookOrbitUser, ctx.config.bookOrbitPass,
                                               ctx.config.authToken, rec.fileId, rec.state.local.percent,
-                                              rec.state.local.page, rec.state.local.cfi.c_str(), &serverTs);
+                                              rec.state.local.page,
+                                              cfiApplies(rec) ? rec.state.local.cfi.c_str() : "", &serverTs);
             if (ok) ProgressSync::applyPush(rec.state, serverTs ? serverTs : SyncClock::nowUtc());
             break;
         }
@@ -209,6 +296,7 @@ bool SyncService::syncBookProgress(AppContext& ctx, BookProgressRecord& rec, Ser
     store.touch();
     lib.applyRecordToLibrary(rec);
     lib.saveLastBook();   // writes last_book.json and progress.json
+    syncBookmarks(ctx, rec);
     return ok;
 }
 
@@ -216,7 +304,10 @@ bool SyncService::syncBookProgress(AppContext& ctx, BookProgressRecord& rec, Ser
 // Download
 // ============================================================================
 bool SyncService::downloadBook(AppContext& ctx, BookItem& book, AppState returnState) {
-    if (book.downloadUrl.length() == 0) {
+    Reader.stopBackground();   // Wi-Fi needs the memory a background layout holds
+    Reader.releaseFontCaches();   // ...and the font caches (~25 KB, filled again as pages are drawn)
+    const String url = book.downloadUrl();
+    if (url.length() == 0) {
         drawStatusModal(tr(MsgId::COMMON_ERROR), tr(MsgId::SYNC_ERR_FILE_NOT_FOUND), "");
         delay(2000);
         return false;
@@ -248,11 +339,12 @@ bool SyncService::downloadBook(AppContext& ctx, BookItem& book, AppState returnS
     s_lastProgressPercent = 0;
     s_downloadingBookTitle = book.title.substring(0, 32);
 
-    bool ok = BookOrbit.downloadBook(ctx.config.serverHost, book.downloadUrl, book.filePath, ctx.config.bookOrbitUser,
+    bool ok = BookOrbit.downloadBook(ctx.config.serverHost, url, book.filePath, ctx.config.bookOrbitUser,
                                      ctx.config.bookOrbitPass, ctx.config.authToken, reportDownloadProgress, checkSyncCancel);
 
     if (ok) {
         book.isDownloaded = true;
+        if (book.activeFormat >= 0 && book.activeFormat < (int)book.formats.size()) book.formats[book.activeFormat].onCard = true;
         Serial.printf("[Sync] Book %s downloaded successfully!\n", book.filePath.c_str());
         if (book.coverPath.length() == 0) {
             book.coverPath = LibraryManager::resolveCoverPath(book.filePath, book.title);
@@ -300,18 +392,25 @@ void showConfigError(AppContext& ctx, AppState prevState, const char* what, cons
     SyncService::showState(ctx, prevState);
 }
 
-// Record for a catalog entry: by file id or the path it is downloaded to, then by
-// exact title for books sideloaded before they had a server id.
-BookProgressRecord* recordForCatalogBook(const BookMetadata& b) {
+// Record for a format of a catalog entry: by file id or the path it is downloaded
+// to, then (preferred format only) by exact title for books sideloaded before they
+// had a server id.
+BookProgressRecord* recordForCatalogFormat(const BookMetadata& b, const BookFormatEntry& f) {
     ProgressStore& store = ProgressStore::instance();
-    BookProgressRecord* rec = store.find(b.fileId, LibraryManager::catalogBookPath(b));
-    if (!rec) {
+    const String path = LibraryManager::catalogFormatPath(b, f);
+    BookProgressRecord* rec = store.find(f.fileId, path);
+    if (!rec && f.fileId == b.fileId) {
         for (auto& r : store.records()) {
-            if (r.fileId <= 0 && r.title.equalsIgnoreCase(b.title)) { rec = &r; break; }
+            if (r.fileId <= 0 && r.title.equalsIgnoreCase(b.title) && r.filePath.equalsIgnoreCase(path)) { rec = &r; break; }
+        }
+        for (auto& r : store.records()) {
+            if (rec) break;
+            if (r.fileId <= 0 && r.title.equalsIgnoreCase(b.title) &&
+                BookFormats::fromPath(r.filePath.c_str()) == (BookFormats::Kind)f.kind) rec = &r;
         }
     }
     if (rec) {
-        if (b.fileId > 0) rec->fileId = b.fileId;
+        if (f.fileId > 0) rec->fileId = f.fileId;
         const int bookId = LibraryManager::catalogBookId(b);
         if (bookId > 0) rec->bookId = bookId;
     }
@@ -325,9 +424,10 @@ struct SyncedBook {
     ServerProgress server;
 };
 
-const SyncedBook* findSynced(const std::vector<SyncedBook>& synced, int fileId, int bookId) {
+// By file id: each format of a book is synced on its own.
+const SyncedBook* findSynced(const std::vector<SyncedBook>& synced, int fileId) {
     for (const auto& s : synced) {
-        if ((fileId > 0 && s.fileId == fileId) || (bookId > 0 && s.bookId == bookId)) return &s;
+        if (fileId > 0 && s.fileId == fileId) return &s;
     }
     return nullptr;
 }
@@ -390,6 +490,8 @@ void downloadCovers(AppContext& ctx, const std::vector<BookMetadata>& catalog) {
 }  // namespace
 
 void SyncService::syncWithBookOrbit(AppContext& ctx) {
+    Reader.stopBackground();   // Wi-Fi needs the memory a background layout holds
+    Reader.releaseFontCaches();   // ...and the font caches (~25 KB, filled again as pages are drawn)
     AppState prevState = ctx.currentState;
     s_syncCancelled = false;
     ctx.currentState = STATE_SYNCING;
@@ -490,29 +592,42 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
         // 3. Server progress for the catalog: from step 1 for opened books; books
         //    downloaded here but never opened get a record (first sync = pull);
         //    for the rest a snapshot, only to show it in the library.
+        //    Each format separately: a book read here as FB2 and on the web as EPUB
+        //    has two positions. The snapshot shown is the preferred format's.
         for (auto& b : catalog) {
             if (s_syncCancelled || checkSyncCancel()) break;
-            ServerProgress srv;
+            ServerProgress snapshot;
             const int bookId = LibraryManager::catalogBookId(b);
-            const SyncedBook* done = findSynced(synced, b.fileId, bookId);
-            if (done) {
-                srv = done->server;
-            } else {
-                BookProgressRecord* rec = recordForCatalogBook(b);
-                const String path = LibraryManager::catalogBookPath(b);
-                if (!rec && (Storage.exists(path.c_str()) || lib.lastBook.filePath.equalsIgnoreCase(path))) {
-                    rec = &ProgressStore::instance().getOrCreate(b.fileId, bookId, path, b.title);
+            for (const auto& f : b.formats) {
+                if (s_syncCancelled || checkSyncCancel()) break;
+                const bool preferred = f.fileId == b.fileId;
+                ServerProgress srv;
+                const SyncedBook* done = findSynced(synced, f.fileId);
+                if (done) {
+                    srv = done->server;
+                } else {
+                    BookProgressRecord* rec = recordForCatalogFormat(b, f);
+                    const String path = LibraryManager::catalogFormatPath(b, f);
+                    if (!rec && (Storage.exists(path.c_str()) || lib.lastBook.filePath.equalsIgnoreCase(path))) {
+                        rec = &ProgressStore::instance().getOrCreate(f.fileId, bookId, path, b.title);
+                    }
+                    if (rec) {
+                        syncBookProgress(ctx, *rec, &srv);
+                        SyncedBook s;
+                        s.fileId = f.fileId;
+                        s.bookId = bookId;
+                        s.server = srv;
+                        synced.push_back(s);
+                    } else if (preferred && bookId > 0) {
+                        BookOrbit.fetchBookProgress(ctx.config.serverHost, ctx.config.bookOrbitUser, ctx.config.bookOrbitPass,
+                                                    ctx.config.authToken, bookId, f.fileId, srv);
+                    }
                 }
-                if (rec) {
-                    syncBookProgress(ctx, *rec, &srv);
-                } else if (bookId > 0) {
-                    BookOrbit.fetchBookProgress(ctx.config.serverHost, ctx.config.bookOrbitUser, ctx.config.bookOrbitPass,
-                                                ctx.config.authToken, bookId, srv);
-                }
+                if (preferred) snapshot = srv;
             }
-            b.lastProgress = srv.exists ? srv.percent : 0.0f;
-            b.lastPage = srv.page;
-            b.serverUpdatedAt = srv.updatedAt;
+            b.lastProgress = snapshot.exists ? snapshot.percent : 0.0f;
+            b.lastPage = snapshot.page;
+            b.serverUpdatedAt = snapshot.updatedAt;
         }
         Storage.saveCatalog(catalog);
         ProgressStore::instance().save();
@@ -533,10 +648,19 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
         delay(1800);
     }
 
+    // The fetched catalog is on the card now: free it (and the per-book results)
+    // before the book list is rebuilt, so the list's long-lived strings are not
+    // allocated between short-lived ones (a fragmented heap after a sync had
+    // only ~50 KB in one piece of ~110 KB free).
+    std::vector<BookMetadata>().swap(catalog);
+    std::vector<SyncedBook>().swap(synced);
     BookOrbit.disconnectWiFi();
     MemStats::log("sync: done, Wi-Fi off");
 
     lib.scanLocalBooks(true);
+    MemStats::log("sync: library rebuilt");   // the largest free block shows the fragmentation left
+    MemStats::probeEngine("after sync");
+    MemStats::logMap("after sync");
     if (lib.lastBook.filePath.length() == 0 && !lib.masterBooks.empty()) {
         lib.lastBook.filePath = lib.masterBooks[0].filePath;
         lib.lastBook.title = lib.masterBooks[0].title;
@@ -556,6 +680,8 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
 // Current book only (closing the book, sleep, boot)
 // ============================================================================
 void SyncService::syncCurrentBookProgress(AppContext& ctx, bool autoConnectWiFi) {
+    Reader.stopBackground();   // Wi-Fi needs the memory a background layout holds
+    Reader.releaseFontCaches();   // ...and the font caches (~25 KB, filled again as pages are drawn)
     auto& lib = LibraryManager::getInstance();
     if (lib.lastBook.filePath.length() == 0) return;
     if (Reader.isOpened()) lib.flushReaderPosition();
@@ -600,6 +726,8 @@ void SyncService::cancelBackground() {
 }
 
 void SyncService::startBackgroundUpload(AppContext& ctx, int fileId, const String& filePath, bool onlyIfDirty) {
+    Reader.stopBackground();   // Wi-Fi needs the memory a background layout holds
+    Reader.releaseFontCaches();   // ...and the font caches (~25 KB, filled again as pages are drawn)
     if (ctx.config.wifiSsid.length() == 0 || ctx.config.serverHost.length() == 0) return;
     if (s_bgState != BgState::Idle) cancelBackground();
     s_bgFileId = fileId;
@@ -643,6 +771,8 @@ void SyncService::tickBackground(AppContext& ctx) {
 }
 
 SyncService::BookSyncResult SyncService::syncBookItem(AppContext& ctx, BookItem& book) {
+    Reader.stopBackground();   // Wi-Fi needs the memory a background layout holds
+    Reader.releaseFontCaches();   // ...and the font caches (~25 KB, filled again as pages are drawn)
     if (ctx.config.wifiSsid.length() == 0 || ctx.config.serverHost.length() == 0) return BookSyncResult::NotConfigured;
     auto& lib = LibraryManager::getInstance();
     const bool isCurrent = lib.lastBook.filePath.equalsIgnoreCase(book.filePath);
@@ -677,6 +807,7 @@ SyncService::BookSyncResult SyncService::syncBookItem(AppContext& ctx, BookItem&
 }
 
 void SyncService::showBookSyncResult(BookSyncResult r, const BookItem& book) {
+    Serial.printf("[Sync] Book menu sync of '%s': result %d\n", book.title.c_str(), (int)r);
     switch (r) {
         case BookSyncResult::Synced: {
             char line[48];
@@ -696,6 +827,8 @@ void SyncService::showBookSyncResult(BookSyncResult r, const BookItem& book) {
 }
 
 void SyncService::syncOnBootProgress(AppContext& ctx) {
+    Reader.stopBackground();   // Wi-Fi needs the memory a background layout holds
+    Reader.releaseFontCaches();   // ...and the font caches (~25 KB, filled again as pages are drawn)
     auto& lib = LibraryManager::getInstance();
     if (!ctx.config.syncOnBoot || ctx.config.wifiSsid.length() == 0 || ctx.config.serverHost.length() == 0 || lib.lastBook.filePath.length() == 0) {
         return;
