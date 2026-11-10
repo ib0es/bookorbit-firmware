@@ -280,7 +280,7 @@ static void testFormats() {
     CHECK(b.formats[1].url.empty() && b.formats[2].url.empty() && b.formats[3].url.empty());
     CHECK_EQ(BookFormats::urlFor(b.formats[3], b.id), "/api/v1/opds/4/download?fileId=5");
 
-    // Only FB2 and MOBI: neither is readable yet, FB2 ranks first.
+    // Only FB2 and MOBI: both are read through a conversion, FB2 ranks first.
     OpdsBookEntry e;
     CHECK(OpdsStreamParser::parseEntry(
         "<entry><title>T</title><id>urn:b:8</id>"

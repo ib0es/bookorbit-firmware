@@ -20,6 +20,7 @@ const char* resultName(ConvertResult r) {
         case ConvertResult::ParseError: return "parse error";
         case ConvertResult::IoError: return "card read/write error";
         case ConvertResult::NoMemory: return "no memory";
+        case ConvertResult::Unsupported: return "not supported";
     }
     return "?";
 }

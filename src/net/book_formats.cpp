@@ -25,9 +25,9 @@ const Info kInfo[] = {
     { Unknown, "",      "?",    99, false },
     { Epub,    ".epub", "EPUB", 0,  true  },
     { Fb2,     ".fb2",  "FB2",  2,  true  },   // converted to EPUB on first open
-    { Mobi,    ".mobi", "MOBI", 3,  false },
+    { Mobi,    ".mobi", "MOBI", 3,  true  },   // converted to EPUB on first open
     { Azw3,    ".azw3", "AZW3", 1,  false },
-    { Azw,     ".azw",  "AZW",  4,  false },
+    { Azw,     ".azw",  "AZW",  4,  true  },   // old Kindle: MOBI 6 (refused if DRM-protected)
     { Txt,     ".txt",  "TXT",  5,  true  },
 };
 

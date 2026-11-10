@@ -68,6 +68,7 @@ SRCS_CXX = \
     src/reader/engine/sd_book_storage.cpp \
     src/convert/zip_writer.cpp \
     src/convert/fb2_to_epub.cpp \
+    src/convert/mobi_to_epub.cpp \
     src/convert/sd_convert.cpp \
     src/reader/engine/engine_text_counter.cpp \
     src/reader/epub_cfi.cpp \

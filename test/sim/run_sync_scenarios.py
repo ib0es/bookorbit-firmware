@@ -145,7 +145,7 @@ def run_one(scenario):
 
 CLOUD = "B" + "DC" + "DC" + "UC"  # after a home sync: Home -> Catalog -> All Books -> wrap up to cloud book ("Moby Dick")
 # After a home sync: Home -> Catalog -> All Books -> "Alice in Wonderland" -> book menu -> Formats.
-# The fake server has Alice as EPUB (101), TXT (131), MOBI (121) and FB2 (111), in that order.
+# The fake server has Alice as EPUB (101), TXT (131), AZW3 (121) and FB2 (111), in that order.
 FORMATS = "B" + "DC" + "DC" + "D" + "L" + "DC"
 P40 = [{"fileId": f, "percentage": 40, "updatedAt": "NOW-50"} for f in (101, 102, 103)]
 
@@ -258,8 +258,8 @@ LOG_SCENARIOS = [
      [r"GET /api/v1/download/103 -> 200", r"Book /books/Moby Dick.epub downloaded successfully"], []),
     ("formats list: a format the reader cannot open keeps the book's format",
      {}, None, HOME_SYNC + FORMATS + "DDC",
-     [r"Formats of 'Alice in Wonderland': 4", r"'Alice in Wonderland': MOBI cannot be opened yet"],
-     [r"format MOBI", r"download\?fileId=121"]),
+     [r"Formats of 'Alice in Wonderland': 4", r"'Alice in Wonderland': AZW3 cannot be opened yet"],
+     [r"format AZW3", r"download\?fileId=121"]),
     ("formats list: another format is downloaded and opened at its own position",
      {"progress": [{"fileId": 101, "percentage": 40, "updatedAt": "NOW-50"},
                    {"fileId": 131, "percentage": 10, "updatedAt": "NOW-50"}]}, None, HOME_SYNC + FORMATS + "DC" + "w",

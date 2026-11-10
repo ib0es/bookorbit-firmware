@@ -40,6 +40,7 @@ build_fib() {   # name sources... (with the engine; its own warnings are not our
 }
 build_fib hyph "$ROOT/test/host/test_hyphenation.cpp"
 build_fib fb2 "$ROOT/test/host/test_fb2_to_epub.cpp" "$ROOT/src/convert/fb2_to_epub.cpp" "$ROOT/src/convert/zip_writer.cpp"
+build_fib mobi "$ROOT/test/host/test_mobi_to_epub.cpp" "$ROOT/src/convert/mobi_to_epub.cpp" "$ROOT/src/convert/fb2_to_epub.cpp" "$ROOT/src/convert/zip_writer.cpp"
 build_fib counter "$ROOT/test/host/test_engine_text_counter.cpp" "$ROOT/src/reader/engine/engine_text_counter.cpp" "$ROOT/src/reader/epub_cfi.cpp"
 
 rc=0
@@ -50,6 +51,7 @@ echo "== EpubCfi";          "$OUT/cfi/test" | tail -1 || rc=1
 echo "== ProgressSync";      "$OUT/progress/test" > "$OUT/progress.log" || rc=1; tail -1 "$OUT/progress.log"; [ $rc = 0 ] || cat "$OUT/progress.log"
 echo "== BookOrbitProtocol"; "$OUT/protocol/test" | grep -v "^[a-zA-Z/]* *$" || rc=1
 echo "== FB2 to EPUB";       "$OUT/fb2/test" "$ROOT/test/books" || rc=1
+echo "== MOBI to EPUB";      "$OUT/mobi/test" "$ROOT/test/books" || rc=1
 echo "== Hyphenation";      "$OUT/hyph/test" || rc=1
 echo "== EngineTextCounter"; "$OUT/counter/test" "$ROOT/simulator/sdcard/books/Alice in Wonderland.epub" \
     "$ROOT/simulator/sdcard/books/01. Frankenstein (1818).epub" "$ROOT/simulator/sdcard/books/Pride and Prejudice.epub" \

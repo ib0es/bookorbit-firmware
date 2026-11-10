@@ -3,6 +3,7 @@
 #include "../hal/storage.h"
 #include "../reader/engine/sd_book_storage.h"
 #include "fb2_to_epub.h"
+#include "mobi_to_epub.h"
 
 namespace convert {
 
@@ -156,7 +157,7 @@ String readSmall(const String& path) {
 bool needsConversion(const String& path) {
     String l = path;
     l.toLowerCase();
-    return l.endsWith(".fb2");
+    return l.endsWith(".fb2") || l.endsWith(".mobi") || l.endsWith(".azw") || l.endsWith(".prc");
 }
 
 bool ensureConverted(const String& path, const String& cacheDir, String& epubPath, ProgressFn progress, void* user,
@@ -184,7 +185,11 @@ bool ensureConverted(const String& path, const String& cacheDir, String& epubPat
     SdTemp toc(cacheDir + "/toc.tmp");
     ConvertStats stats;
     TimedProgress timed{progress, user};
-    const ConvertResult r = fb2ToEpub(in, out, toc, &TimedProgress::call, &timed, &stats);
+    String lower = path;
+    lower.toLowerCase();
+    const ConvertResult r = lower.endsWith(".fb2")
+                                ? fb2ToEpub(in, out, toc, &TimedProgress::call, &timed, &stats)
+                                : mobiToEpub(in, out, toc, &TimedProgress::call, &timed, &stats);
     const bool closed = out.close();
     if (r != ConvertResult::Ok || !closed || !Storage.replaceFile(tmpEpub.c_str(), epubPath.c_str())) {
         Serial.printf("[Convert] %s: %s %s\n", path.c_str(), resultName(r), stats.error.c_str());

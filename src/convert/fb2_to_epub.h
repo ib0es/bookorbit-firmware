@@ -12,7 +12,7 @@
 
 namespace convert {
 
-enum class ConvertResult : uint8_t { Ok, NotThisFormat, ParseError, IoError, NoMemory };
+enum class ConvertResult : uint8_t { Ok, NotThisFormat, ParseError, IoError, NoMemory, Unsupported };
 const char* resultName(ConvertResult r);
 
 struct ConvertStats {

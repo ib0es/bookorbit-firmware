@@ -45,7 +45,8 @@ static void testPaths() {
     CHECK(fromPath("") == Unknown);
     CHECK(std::string(extension(Fb2)) == ".fb2" && std::string(extension(Unknown)).empty());
     CHECK(std::string(label(Azw3)) == "AZW3" && std::string(label((Kind)200)) == "?");
-    CHECK(readable(Epub) && readable(Txt) && readable(Fb2) && !readable(Mobi) && !readable(Unknown));
+    CHECK(readable(Epub) && readable(Txt) && readable(Fb2) && readable(Mobi) && readable(Azw) && !readable(Azw3) &&
+          !readable(Unknown));
     CHECK(rank(Epub) < rank(Azw3) && rank(Azw3) < rank(Fb2) && rank(Fb2) < rank(Mobi) && rank(Mobi) < rank(Azw));
 }
 
@@ -76,11 +77,12 @@ static void testPreferred() {
     Ref mobi; mobi.kind = Mobi;
     Ref epub; epub.kind = Epub;
     Ref txt; txt.kind = Txt;
-    Ref azw; azw.kind = Azw;
-    refs = {azw, mobi};
+    Ref azw3; azw3.kind = Azw3;
+    Ref unknown; unknown.kind = Unknown;
+    refs = {unknown, azw3};
     CHECK(preferred(refs) == 1);          // nothing readable: best ranked
-    refs = {mobi, txt, azw};
-    CHECK(preferred(refs) == 1);          // readable beats rank
+    refs = {azw3, txt, mobi};
+    CHECK(preferred(refs) == 2);          // readable beats rank (AZW3 ranks first)
     refs = {txt, fb2};
     CHECK(preferred(refs) == 1);
     refs = {txt, fb2, epub, mobi};

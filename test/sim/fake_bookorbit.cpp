@@ -58,7 +58,7 @@ const Book kBooks[] = {
     {3, 103, "Moby Dick", "Herman Melville", {}},
     {2, 102, "The Time Machine", "H. G. Wells", {}},
     {1, 101, "Alice in Wonderland", "Lewis Carroll",
-     {{131, "text/plain", "TXT"}, {121, "application/x-mobipocket-ebook", "MOBI"}, {111, "application/x-fictionbook+xml", "FB2"}}},
+     {{131, "text/plain", "TXT"}, {121, "application/vnd.amazon.ebook", "AZW3"}, {111, "application/x-fictionbook+xml", "FB2"}}},
 };
 const char* kTxtBody = "Alice was beginning to get very tired of sitting by her sister on the bank.\n";
 const char* kFb2Body = "<?xml version=\"1.0\"?><FictionBook><body><p>Alice</p></body></FictionBook>\n";
