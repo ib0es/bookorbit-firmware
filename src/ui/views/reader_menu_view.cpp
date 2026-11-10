@@ -34,7 +34,7 @@ void drawTocScreen(AppContext& ctx, bool fullRefresh) {
         takeTop(area, area.height / 4);
         text(takeTop(area, (int16_t)(lineHeight(FontBody) * 2)), tr(MsgId::READER_TOC_EMPTY), FontBody, Color::Black,
              TextAlign::Center, 2);
-        present(true);
+        present(false);
         return;
     }
 

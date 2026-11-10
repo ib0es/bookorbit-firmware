@@ -18,6 +18,7 @@
 #include "../../ui/views/status_modal.h"
 #include "../../reader/font_store.h"
 #include "../../ui/i18n.h"
+#include "../../ui/kit/ui_kit.h"
 
 namespace {
 
@@ -72,7 +73,7 @@ void executeMenuAction(AppContext& ctx, int index) {
             if (Reader.hasChapters()) {
                 ctx.currentState = STATE_TOC;
                 ctx.selectedTocIndex = Reader.getCurrentChapterIndex();
-                drawTocScreen(ctx, true);
+                drawTocScreen(ctx, uikit::periodicFullRefresh());
             } else {
                 Modal.showMessage(tr(MsgId::READER_TOC_TITLE), tr(MsgId::READER_TOC_NOT_FOUND_L1), tr(MsgId::READER_TOC_NOT_FOUND_L2), "", "",
                                   1500, /*fullRedraw=*/true);
@@ -98,7 +99,7 @@ void executeMenuAction(AppContext& ctx, int index) {
             returnToReading(ctx);
             break;
         case 5:  // Закрыть книгу
-            closeBookAndGoHome(ctx, true);
+            closeBookAndGoHome(ctx, uikit::periodicFullRefresh());
             break;
     }
 }
@@ -192,6 +193,7 @@ bool resumeLastBook(AppContext& ctx) {
     } else {
         Reader.goToPosition(pos.cfi.c_str(), pos.xpath.c_str(), pos.percent, pos.page);
     }
+    Reader.requestFullRefresh();   // the sleep cover is on the screen
     returnToReading(ctx);
     return true;
 }
@@ -230,7 +232,8 @@ void handleReadingEvent(AppContext& ctx, const ButtonEvent& event) {
         case BTN_CONFIRM:
             ctx.currentState = STATE_READER_MENU;
             ctx.selectedReaderMenuIndex = 0;
-            drawReaderMenuScreen(ctx, true);
+            // A fast refresh (0.5 s instead of 3.8 s); every 8th screen change is a full one.
+            drawReaderMenuScreen(ctx, uikit::periodicFullRefresh());
             break;
         case BTN_BACK:
             closeBookAndGoHome(ctx, false);
@@ -251,7 +254,7 @@ void handleTocEvent(AppContext& ctx, const ButtonEvent& event) {
         if (prev != ctx.selectedTocIndex) {
             const int perPage = tocRowsPerPage();   // as many rows as the last drawing fitted
             const bool pageChanged = (prev / perPage != ctx.selectedTocIndex / perPage);
-            drawTocScreen(ctx, pageChanged);
+            drawTocScreen(ctx, pageChanged && uikit::periodicFullRefresh());
         }
     } else if (event.id == BTN_CONFIRM) {
         if (Reader.getChapterCount() > 0) {
@@ -261,7 +264,7 @@ void handleTocEvent(AppContext& ctx, const ButtonEvent& event) {
         returnToReading(ctx);
     } else if (event.id == BTN_BACK) {
         ctx.currentState = STATE_READER_MENU;
-        drawReaderMenuScreen(ctx, true);
+        drawReaderMenuScreen(ctx, uikit::periodicFullRefresh());
     }
 }
 
@@ -374,7 +377,7 @@ void handleTypefaceMenuEvent(AppContext& ctx, const ButtonEvent& event) {
                         Modal.showMessage(tr(MsgId::TYPEFACE_MENU_TITLE), tr(MsgId::TYPEFACE_INSTALL_FAILED), fam.name.c_str(),
                                           "", "", 2500, true);
                         typefaceFamilies(true);
-                        drawTypefaceMenuScreen(ctx, true);
+                        drawTypefaceMenuScreen(ctx, false);
                         return;
                     }
                 }

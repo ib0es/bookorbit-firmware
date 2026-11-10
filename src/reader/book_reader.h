@@ -120,6 +120,9 @@ public:
     const LayoutOptions& layoutOptions() const { return _opts; }
     // A full e-ink refresh every this many pages (0: never; ghosting stays until one).
     void setFullRefreshEvery(int pages) { _fullEvery = pages; }
+    // The next page with a full refresh (over a sleep cover: a fast one would leave
+    // the picture showing through).
+    void requestFullRefresh() { _forceFull = true; }
     // Pictures in black and white: dithered (tones as dots, for photos) or sharp
     // (each pixel black or white at mid-gray, for line art and scans).
     void setSharpImages(bool sharp) { _sharpImages = sharp; }
@@ -346,5 +349,6 @@ private:
     uint32_t _cfiChars = UINT32_MAX;
     String _cfi;
     int _renderedPages = 0;
+    bool _forceFull = false;
     int _renderFailures = 0;
 };

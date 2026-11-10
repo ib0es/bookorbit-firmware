@@ -2144,7 +2144,11 @@ void BookReader::renderCurrentPage() {
         }
         break;
     }
-    const bool full = _fullEvery > 0 ? (_renderedPages++ % (uint32_t)_fullEvery) == 0 : _renderedPages++ == 0;
+    // A full refresh every _fullEvery pages, counted from the first one: opening a
+    // book from the (light) menus no longer costs a 3.8 s full refresh.
+    _renderedPages++;
+    const bool full = _forceFull || (_fullEvery > 0 && _renderedPages % _fullEvery == 0);
+    _forceFull = false;
     const uint32_t tEnd = millis();
     // Where the time goes: finding the page (layout, cache), its record, the text, the images.
     const TtfFamily::Stats fs = _ttf.takeStats();

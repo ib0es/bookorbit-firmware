@@ -161,7 +161,7 @@ bool translateSwipe(AppContext& ctx, const ButtonEvent& swipe, ButtonEvent& out)
         int idx = ctx.selectedTocIndex;
         if (pageSelection(idx, Reader.getChapterCount(), tocRowsPerPage(), forward)) {
             ctx.selectedTocIndex = idx;
-            drawTocScreen(ctx, true);
+            drawTocScreen(ctx, uikit::periodicFullRefresh());
         }
         return false;
     }
