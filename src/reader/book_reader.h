@@ -182,6 +182,11 @@ public:
 
     // The book's layout cache directory on the card ("/cache/<file name>.fib").
     static String cacheDirFor(const String& bookPath);
+    // What names a book's files kept elsewhere (layout cache, bookmarks, extracted
+    // cover): its file name for a book in /books (or the card's root), else its
+    // folders and name joined by '#' ("books#Fantasy#Name.epub"), so that two
+    // books of the same name in different folders do not share them.
+    static String cacheKeyFor(const String& bookPath);
 
     // Position as the engine keeps it.
     struct Position {

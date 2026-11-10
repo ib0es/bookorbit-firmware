@@ -169,9 +169,19 @@ size_t BookReader::peakTransientBytes(bool reset) {
     return peak;
 }
 
-String BookReader::cacheDirFor(const String& bookPath) {
+String BookReader::cacheKeyFor(const String& bookPath) {
     // The file name with its extension: "Name.epub" and "Name.fb2" are different books to lay out.
-    return "/cache/" + bookPath.substring(bookPath.lastIndexOf('/') + 1) + ".fib";
+    const int slash = bookPath.lastIndexOf('/');
+    const String name = bookPath.substring(slash + 1);
+    const String dir = slash > 0 ? bookPath.substring(0, slash) : String();
+    if (dir.length() == 0 || dir.equalsIgnoreCase("/books")) return name;   // as before: existing caches stay valid
+    String key = dir.substring(dir.startsWith("/") ? 1 : 0);
+    key.replace("/", "#");
+    return key + "#" + name;
+}
+
+String BookReader::cacheDirFor(const String& bookPath) {
+    return "/cache/" + cacheKeyFor(bookPath) + ".fib";
 }
 
 BookReader::BookReader() : _fontSize(FontEngine::kDefaultSize) {

@@ -62,10 +62,10 @@ bool LibraryManager::isProgressiveJpeg(const String& path) {
     return progressive;
 }
 
-// Where an EPUB's own cover goes: /covers/<file name without extension>.jpg
+// Where an EPUB's own cover goes: /covers/<file name without extension>.jpg (with
+// its folders for a book outside /books, BookReader::cacheKeyFor).
 static String epubCoverPath(const String& filePath) {
-    const int slash = filePath.lastIndexOf('/');
-    String base = slash >= 0 ? filePath.substring(slash + 1) : filePath;
+    String base = BookReader::cacheKeyFor(filePath);
     const int dot = base.lastIndexOf('.');
     if (dot > 0) base = base.substring(0, dot);
     return "/covers/" + base + ".jpg";
@@ -209,7 +209,7 @@ void LibraryManager::deleteBookArtifacts(const BookItem& book, bool removeCover)
     }
 
     if (removeCover) {
-        removeCoverStem(stem);                                           // extracted from the EPUB
+        removeCoverStem(stemOf(BookReader::cacheKeyFor(book.filePath)));   // extracted from the EPUB
         removeCoverStem(safeFileName(book.title, String(book.fileId)));  // downloaded from the server
         // An explicit cover in /covers/ (never a cover.jpg in the book's folder).
         if (book.coverPath.startsWith("/covers/")) removeCoverStem(stemOf(book.coverPath));
@@ -227,8 +227,9 @@ void collectBookStems(const String& dir, int depth, std::vector<String>& out, in
         if (e.isDirectory) {
             collectBookStems(e.fullPath, depth + 1, out, files, names);
         } else {
-            out.push_back(stemOf(e.name));
-            if (names) names->push_back(e.name);
+            const String key = BookReader::cacheKeyFor(e.fullPath);   // how its cache and cover are named
+            out.push_back(stemOf(key));
+            if (names) names->push_back(key);
             files++;
         }
     }
@@ -280,7 +281,7 @@ void LibraryManager::cleanOrphanFiles() {
         removeIfExists("/cache/" + n);
         removed++;
     }
-    // "<file name>.fib": the layout cache of a book that is no longer on the card.
+    // "<cache key>.fib": the layout cache of a book that is no longer on the card.
     for (const String& d : Storage.listSubdirs("/cache")) {
         if (!d.endsWith(".fib")) continue;
         const String file = d.substring(0, d.length() - 4);

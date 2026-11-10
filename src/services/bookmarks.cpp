@@ -15,7 +15,7 @@ constexpr const char* kDir = "/bookmarks";
 }
 
 String BookmarkList::fileFor() const {
-    return String(kDir) + "/" + _path.substring(_path.lastIndexOf('/') + 1) + ".json";
+    return String(kDir) + "/" + BookReader::cacheKeyFor(_path) + ".json";
 }
 
 void BookmarkList::load(const String& bookPath) {
