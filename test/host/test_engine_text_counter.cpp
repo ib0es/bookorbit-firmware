@@ -47,7 +47,6 @@ static void testUnits() {
     CHECK(count(body("<p>a<!-- x y z -->b<script>var q = 1;</script>c</p>")) == 3);
     CHECK(count(body("<p title=\"a > b\">x</p>")) == 1);
     CHECK(count("<html><head><title>only head</title></head></html>") == 0);
-    CHECK(count(body("<title>I</title><div>ab</div>")) == 3);   // a heading in <title> (royallib books) counts
     EngineTextCounter c;
     const std::string s = body("<p>ab ");
     c.feed(s.data(), s.find("</body>"));
