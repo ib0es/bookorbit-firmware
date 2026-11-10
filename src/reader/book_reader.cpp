@@ -1350,6 +1350,8 @@ void BookReader::renderCurrentPage() {
     // when the page does not fit (dense pages need ~15 KB).
     for (size_t cap = kRenderBytes; cap <= 64 * 1024; cap *= 2) {
         if (_bg && (g_liveTransient + cap > kTransientBudget || MemStats::now().largestBlock < cap + 4096)) {
+            Serial.printf("[Reader] Page record of %u B does not fit beside the layout job (held %u B, largest block %u B)\n",
+                          (unsigned)cap, (unsigned)g_liveTransient, (unsigned)MemStats::now().largestBlock);
             if (building()) finishBackground();   // the page on screen comes from it: finished, not dropped
             else stopBackground();
         }
