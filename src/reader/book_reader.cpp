@@ -352,7 +352,7 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
     // X4 (with a book's stylesheet): a bigger arena when it runs out.
     stopBackground();
     struct Lines : PageSink {
-        const char* firstWord = nullptr;   // of the second paragraph
+        const char* firstWord = nullptr;   // of the last paragraph
         size_t wordLen = 0;
         int base[64];                      // the first page's line baselines
         int count = 0, found = -1;         // the second paragraph's first line
@@ -371,7 +371,10 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
             return true;
         }
     };
-    const char* second = strstr(text, "\n\n");
+    // The last paragraph is the one cut at the page's foot: the gaps between the
+    // others stay in view (the paragraph spacing setting).
+    const char* second = nullptr;
+    for (const char* q = strstr(text, "\n\n"); q; q = strstr(q + 2, "\n\n")) second = q;
     for (size_t cap : {(size_t)40 * 1024, (size_t)52 * 1024, (size_t)64 * 1024}) {
         Buffer mem(cap);
         if (!mem.p) {
@@ -401,10 +404,10 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
             const int asc = _fonts.ascent(p.baseSizePx);
             auto endsAfter = [&](int k) { return lines.base[k + 1] - asc; };
             if (lines.found > 0 && lines.found + 1 < lines.count && endsAfter(lines.found) < height) {
-                // the second paragraph's first line alone at the foot (an orphan)
+                // the last paragraph's first line alone at the foot (an orphan)
                 q.pageHeight = (int16_t)endsAfter(lines.found);
             } else if (lines.found > 1 && endsAfter(lines.found - 2) < height) {
-                // too big a size for that: the first paragraph's last line alone on
+                // too big a size for that: the paragraph before's last line alone on
                 // the next page (a widow), which "no lone lines" takes one more with.
                 // (Bigger still, the box ends inside the first paragraph: the sample
                 // is always shown from its start, and the setting cannot show.)
