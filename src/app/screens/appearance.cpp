@@ -44,6 +44,7 @@ const char* label(int row) {
         case BOOK_STYLES: return tr(MsgId::APPEAR_BOOK_STYLES);
         case FOCUS_READING: return tr(MsgId::APPEAR_FOCUS_READING);
         case IMAGES: return tr(MsgId::APPEAR_IMAGES);
+        case ORIENTATION: return tr(MsgId::APPEAR_ORIENTATION);
         case FULL_REFRESH: return tr(MsgId::APPEAR_FULL_REFRESH);
     }
     return "";
@@ -66,6 +67,12 @@ const char* value(const AppConfig& cfg, int row, char* buf, size_t len) {
         case IMAGES:
             snprintf(buf, len, "%s", tr(cfg.sharpImages ? MsgId::APPEAR_IMAGES_SHARP : MsgId::APPEAR_IMAGES_DITHERED));
             break;
+        case ORIENTATION: {
+            static const MsgId k[] = {MsgId::APPEAR_ORIENT_PORTRAIT, MsgId::APPEAR_ORIENT_LANDSCAPE,
+                                      MsgId::APPEAR_ORIENT_PORTRAIT_FLIPPED, MsgId::APPEAR_ORIENT_LANDSCAPE_FLIPPED};
+            snprintf(buf, len, "%s", tr(k[cfg.orientation & 3]));
+            break;
+        }
         case FULL_REFRESH:
             if (cfg.fullRefreshEvery <= 0) snprintf(buf, len, "%s", tr(MsgId::APPEAR_REFRESH_NEVER));
             else snprintf(buf, len, tr(MsgId::APPEAR_REFRESH_FMT), cfg.fullRefreshEvery);
@@ -89,6 +96,7 @@ bool step(AppConfig& cfg, int row, int dir) {
         case BOOK_STYLES: cfg.bookStyles = !cfg.bookStyles; return true;
         case FOCUS_READING: cfg.focusReading = !cfg.focusReading; return true;
         case IMAGES: cfg.sharpImages = !cfg.sharpImages; return true;
+        case ORIENTATION: cfg.orientation = (cfg.orientation + (dir > 0 ? 1 : 3)) & 3; return true;
         case FULL_REFRESH: {
             // "never" sits after the largest
             const int cur = cfg.fullRefreshEvery <= 0 ? 0 : cfg.fullRefreshEvery;

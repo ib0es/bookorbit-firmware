@@ -16,11 +16,13 @@ ButtonEvent make(ButtonId id) {
     return e;
 }
 
-// Reading: three vertical zones.
+// Reading: three vertical zones of the page (turned as the page is).
 ButtonEvent readingZone(const ButtonEvent& tap) {
-    const int16_t w = uikit::width();
-    if (tap.x < w / 3) return make(BTN_LEFT);
-    if (tap.x >= w - w / 3) return make(BTN_RIGHT);
+    int16_t x, y;
+    Reader.portraitToPage(tap.x, tap.y, x, y);
+    const int16_t w = Reader.pageWidth();
+    if (x < w / 3) return make(BTN_LEFT);
+    if (x >= w - w / 3) return make(BTN_RIGHT);
     return make(BTN_CONFIRM);
 }
 
@@ -106,8 +108,15 @@ bool translateSwipe(AppContext& ctx, const ButtonEvent& swipe, ButtonEvent& out)
     const bool forward = swipe.id == BTN_SWIPE_UP;  // finger up = further down the list
 
     if (ctx.currentState == STATE_READING) {
-        if (vertical) return false;
-        out = make(swipe.id == BTN_SWIPE_LEFT ? BTN_RIGHT : BTN_LEFT);
+        // The swipe in the page's terms: a finger moving left turns to the next page.
+        int sx = swipe.id == BTN_SWIPE_LEFT ? -1 : swipe.id == BTN_SWIPE_RIGHT ? 1 : 0;
+        int sy = swipe.id == BTN_SWIPE_UP ? -1 : swipe.id == BTN_SWIPE_DOWN ? 1 : 0;
+        int16_t ax, ay, bx, by;
+        Reader.portraitToPage(100, 100, ax, ay);
+        Reader.portraitToPage((int16_t)(100 + sx), (int16_t)(100 + sy), bx, by);
+        const int dx = bx - ax;
+        if (dx == 0) return false;   // along the page's height
+        out = make(dx < 0 ? BTN_RIGHT : BTN_LEFT);
         return true;
     }
 

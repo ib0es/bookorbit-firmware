@@ -28,7 +28,9 @@ void commitFontSize(AppContext& ctx) {
     Reader.setSharpImages(ctx.config.sharpImages);
     const bool size = Reader.getFontSize() != ctx.config.readerFontSize;
     const bool layout = !(Reader.layoutOptions() == Appearance::layoutOptions(ctx.config));
-    if (!size && !layout) return;
+    const bool turned = Reader.orientation() != ctx.config.orientation;
+    if (!size && !layout && !turned) return;
+    Reader.setOrientation(ctx.config.orientation);
     Reader.setLayoutOptions(Appearance::layoutOptions(ctx.config));
     Reader.setFontSize(ctx.config.readerFontSize);  // shows a status screen if it has to paginate
     LibraryManager::getInstance().flushReaderPosition();   // same place, new page numbers

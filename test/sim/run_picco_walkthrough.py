@@ -30,6 +30,7 @@ RMENU_TOC, RMENU_FONT, RMENU_MARKS = "T240,200;", "T240,278;", "T240,354;"
 RMENU_SYNC, RMENU_RESUME, RMENU_CLOSE = "T240,430;", "T240,506;", "T240,582;"
 MARKS_THIS_PAGE = "T240,90;"   # first row of the Bookmarks screen
 APPEAR_TYPEFACE, APPEAR_SIZE = "T240,67;", "T240,103;"   # rows of the Appearance screen
+APPEAR_ORIENTATION = "T240,463;"
 SET_LANG, SET_WIFI, SET_SERVER, SET_SLEEP, SET_INFO, SET_LIGHT = "T240,90;", "T240,165;", "T240,240;", "T240,315;", "T240,520;", "T240,665;"
 SET_SYNC = "T240,593;"
 
@@ -57,6 +58,9 @@ CASES = [
      HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + APPEAR_TYPEFACE + "T240,85;" + TITLE,
      lambda log, sd: "[Reader] Page" in log.split("TAP_240_85", 1)[1]
      and config(sd).get("font_family", "") == ""),
+    ("reader menu: landscape pages, the tap zones turn with them",
+     HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + APPEAR_ORIENTATION + TITLE + "w" + "T264,700;T264,700;T264,100;",
+     lambda log, sd: config(sd)["orientation"] == 1 and [p for p, _ in pages(log)][-3:] == [2, 3, 2]),
     ("reader menu: table of contents, tap a chapter",
      HOME_CARD + "w" + READ_MIDDLE + RMENU_TOC + "T240,300;",
      lambda log, sd: len(pages(log)) >= 2 and pages(log)[-1][0] != pages(log)[-2][0]),

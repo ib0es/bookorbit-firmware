@@ -23,6 +23,7 @@
 #include <BookCatalog.h>
 #include <cache/PageCache.h>
 #include <layout/ChapterLayout.h>
+#include <render/PageRenderer.h>
 #include <render/TtfFont.h>
 #include <text/Hyphenator.h>
 
@@ -122,6 +123,16 @@ public:
     // Pictures in black and white: dithered (tones as dots, for photos) or sharp
     // (each pixel black or white at mid-gray, for line art and scans).
     void setSharpImages(bool sharp) { _sharpImages = sharp; }
+    // Which way the pages are drawn: 0 portrait, 1 landscape (the panel's own),
+    // 2 portrait upside down, 3 landscape upside down (each 90 degrees on from
+    // the one before). A landscape page is laid out wider; the book is laid out
+    // again at the same sentence. Menus stay portrait. False when nothing changed.
+    bool setOrientation(int orientation);
+    int orientation() const { return _orient; }
+    bool landscape() const { return _orient == 1 || _orient == 3; }
+    // Panel point (as touch reports it in portrait terms) -> the page's.
+    void portraitToPage(int16_t x, int16_t y, int16_t& px, int16_t& py) const;
+    int16_t pageWidth() const;
     // The book font family: "" for the built-in one, else one installed from
     // /fonts (FontStore); another name falls back to the built-in one. Lays the
     // book out again at the same sentence. Returns false when nothing changed.
@@ -282,6 +293,8 @@ private:
     bool (*_bookmarkProbe)(int, uint32_t, uint32_t) = nullptr;
     int _fullEvery = FULL_REFRESH_EVERY_PAGES;
     bool _sharpImages = false;
+    int _orient = 0;
+    freeink::book::FrameRotation frameRotation() const;
     uint32_t _gen = 0;
 
     std::vector<Spine> _spines;

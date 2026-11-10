@@ -288,6 +288,7 @@ bool StorageManager::loadConfig(AppConfig& cfg) {
                 boolIn("book_styles", cfg.bookStyles);
                 boolIn("focus_reading", cfg.focusReading);
                 boolIn("sharp_images", cfg.sharpImages);
+                intIn("orientation", cfg.orientation, 0, 3);
 
                 if (doc["language"].is<const char*>()) {
                     cfg.language = I18n::languageFromCode(doc["language"].as<String>());
@@ -376,6 +377,7 @@ bool StorageManager::saveConfig(const AppConfig& cfg) {
     doc["book_styles"] = cfg.bookStyles;
     doc["focus_reading"] = cfg.focusReading;
     doc["sharp_images"] = cfg.sharpImages;
+    doc["orientation"] = cfg.orientation;
     doc["full_refresh_every"] = cfg.fullRefreshEvery;
     doc["language"] = I18n::getLanguageCode(cfg.language);
 

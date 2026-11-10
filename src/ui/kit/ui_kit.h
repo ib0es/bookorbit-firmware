@@ -46,6 +46,9 @@ using fi::TextAlign;
 
 // Binds the framebuffer and fonts. Call after Display.begin().
 void begin();
+// The drawing orientation (the reader's pages and status bar may be turned;
+// everything else is drawn in Portrait). The logical size follows it.
+void setOrientation(fi::Orientation orientation);
 bool ready();
 
 fi::DisplayTarget& target();

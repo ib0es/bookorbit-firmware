@@ -51,6 +51,7 @@ struct AppConfig {
     bool bookStyles = true;
     bool focusReading = false;
     bool sharpImages = false;    // pictures: threshold instead of dithering
+    int orientation = 0;         // pages: 0 portrait, 1 landscape, 2/3 the same upside down
     int fullRefreshEvery = 5;    // pages, 0 = never
     int frontlight = 0;        // 0..100 %, 0 = off (boards with a frontlight)
     int frontlightWarm = 50;   // 0 = cool .. 100 = warm

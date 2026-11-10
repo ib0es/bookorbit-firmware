@@ -100,6 +100,7 @@ void AppController::setup() {
     Reader.setLayoutOptions(Appearance::layoutOptions(_ctx.config));
     Reader.setFullRefreshEvery(_ctx.config.fullRefreshEvery);
     Reader.setSharpImages(_ctx.config.sharpImages);
+    Reader.setOrientation(_ctx.config.orientation);
     Reader.setBookmarkProbe([](int spine, uint32_t from, uint32_t to) { return Bookmarks.findIn(spine, from, to) >= 0; });
     MemStats::mark("frontlight, reader");
 
@@ -192,6 +193,12 @@ void AppController::loop() {
             } else if (event.id >= BTN_SWIPE_LEFT && event.id <= BTN_SWIPE_DOWN) {
                 ButtonEvent translated;
                 if (TouchRouter::translateSwipe(_ctx, event, translated)) dispatch(translated);
+            } else if (_ctx.currentState == STATE_READING && Reader.orientation() == 2 &&
+                       (event.id == BTN_LEFT || event.id == BTN_RIGHT)) {
+                // Pages upside down: the front keys are at the top, in the other order.
+                ButtonEvent turned = event;
+                turned.id = event.id == BTN_LEFT ? BTN_RIGHT : BTN_LEFT;
+                dispatch(turned);
             } else {
                 dispatch(event);
             }

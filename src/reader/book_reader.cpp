@@ -573,8 +573,8 @@ void BookReader::setupLayout() {
     _bgNothingFor = -1;
     const BookPageGeometry geo = bookPageGeometry();
     LayoutParams p;
-    p.pageWidth = (int16_t)Display.width();
-    p.pageHeight = (int16_t)Display.height();
+    p.pageWidth = (int16_t)(landscape() ? EPD_WIDTH : EPD_HEIGHT);
+    p.pageHeight = (int16_t)(landscape() ? EPD_HEIGHT : EPD_WIDTH);
     (void)geo;
     p.marginLeft = (int16_t)_opts.marginPx;
     p.marginRight = (int16_t)_opts.marginPx;
@@ -1860,6 +1860,43 @@ bool BookReader::setLayoutOptions(const LayoutOptions& options) {
     return true;
 }
 
+bool BookReader::setOrientation(int orientation) {
+    orientation &= 3;
+    if (orientation == _orient) return false;
+    const Position here = position();
+    _orient = orientation;
+    if (_opened) {
+        releaseIndex();
+        setupLayout();
+        loadSpineTable();
+        goTo(here);
+    }
+    return true;
+}
+
+FrameRotation BookReader::frameRotation() const {
+    switch (_orient) {
+        case 1: return FrameRotation::None;
+        case 2: return FrameRotation::PortraitInverted;
+        case 3: return FrameRotation::UpsideDown;
+        default: return FrameRotation::Portrait;
+    }
+}
+
+int16_t BookReader::pageWidth() const { return (int16_t)(landscape() ? EPD_WIDTH : EPD_HEIGHT); }
+
+void BookReader::portraitToPage(int16_t x, int16_t y, int16_t& px, int16_t& py) const {
+    // portrait logical -> panel (the Portrait transform), then panel -> page
+    const int32_t W = EPD_WIDTH, H = EPD_HEIGHT;
+    const int32_t qx = y, qy = H - 1 - x;
+    switch (_orient) {
+        case 1: px = (int16_t)qx; py = (int16_t)qy; break;                          // native
+        case 2: px = (int16_t)qy; py = (int16_t)(W - 1 - qx); break;                // 90 CCW
+        case 3: px = (int16_t)(W - 1 - qx); py = (int16_t)(H - 1 - qy); break;      // 180
+        default: px = x; py = y; break;
+    }
+}
+
 bool BookReader::setFontSize(int size) {
     size = FontEngine::clampSize(size);
     if (size == _fontSize) return false;
@@ -1911,8 +1948,23 @@ void BookReader::drawStatusBar() {
     }
 }
 
+namespace {
+// While a page is drawn the UI (status bar, a modal on the page) is turned as
+// the page is; menus are portrait again after.
+struct TurnedUi {
+    explicit TurnedUi(int orient) {
+        using freeink::ui::Orientation;
+        static const Orientation o[] = {Orientation::Portrait, Orientation::LandscapeCounterClockwise,
+                                        Orientation::PortraitInverted, Orientation::LandscapeClockwise};
+        uikit::setOrientation(o[orient & 3]);
+    }
+    ~TurnedUi() { uikit::setOrientation(freeink::ui::Orientation::Portrait); }
+};
+}  // namespace
+
 void BookReader::renderCurrentPage() {
     if (!_opened) return;
+    TurnedUi turned(_orient);
     const uint32_t t0 = millis();
     if (!resolve()) {
         Serial.printf("[Reader] Chapter %d cannot be shown (layout failed or no memory)\n", _spine);
@@ -1956,7 +2008,7 @@ void BookReader::renderCurrentPage() {
             break;
         }
         FrameTarget frame{Display.getBuffer(), (int16_t)EPD_WIDTH, (int16_t)EPD_HEIGHT, (int16_t)(EPD_WIDTH / 8),
-                          FrameFormat::Mono1Sharp, FrameRotation::Portrait};
+                          FrameFormat::Mono1Sharp, frameRotation()};
         uint32_t firstMissing = 0;
         tRead = millis();
         const uint32_t missing = PageRenderer::renderText(page, _fonts, frame, &firstMissing);

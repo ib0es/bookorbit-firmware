@@ -24,6 +24,7 @@ enum Row : int {
     BOOK_STYLES,
     FOCUS_READING,
     IMAGES,
+    ORIENTATION,
     FULL_REFRESH,
     COUNT
 };

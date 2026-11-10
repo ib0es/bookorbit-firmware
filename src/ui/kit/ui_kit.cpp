@@ -99,6 +99,16 @@ void begin() {
 
 bool ready() { return g_target != nullptr; }
 
+void setOrientation(fi::Orientation orientation) {
+    fi::DisplayTarget& t = target();
+    if (t.orientation() == orientation) return;
+    t.setOrientation(orientation);
+    const bool touch = g_device.hasTouch, buttons = g_device.hasButtons;
+    g_device = t.deviceContext();
+    g_device.hasTouch = touch;
+    g_device.hasButtons = buttons;
+}
+
 fi::DisplayTarget& target() {
     if (!g_target) begin();
     return *g_target;
