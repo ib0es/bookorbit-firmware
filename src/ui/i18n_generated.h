@@ -528,7 +528,19 @@ enum class MsgId : uint16_t {
     KEY_ERASE = 513,
     KEY_ON_OFF = 514,
     KEY_SYNC = 515,
-    COUNT = 516
+    READER_MENU_ITEM_BOOKMARKS = 516,
+    READER_MENU_BOOKMARKS_FMT = 517,
+    READER_MENU_TAG_MARKS = 518,
+    BOOKMARKS_TITLE = 519,
+    BOOKMARKS_ADD = 520,
+    BOOKMARKS_ADD_SUB = 521,
+    BOOKMARKS_REMOVE = 522,
+    BOOKMARKS_ITEM_FMT = 523,
+    BOOKMARKS_NONE = 524,
+    KEY_DELETE = 525,
+    KEY_ADD = 526,
+    KEY_REMOVE = 527,
+    COUNT = 528
 };
 
 // Language: English (en)
@@ -1049,6 +1061,18 @@ static const char* const STRINGS_EN[(size_t)MsgId::COUNT] PROGMEM = {
     /* KEY_ERASE */ "Erase",
     /* KEY_ON_OFF */ "On/off",
     /* KEY_SYNC */ "Sync",
+    /* READER_MENU_ITEM_BOOKMARKS */ "Bookmarks",
+    /* READER_MENU_BOOKMARKS_FMT */ "%d in this book · add one here",
+    /* READER_MENU_TAG_MARKS */ "MARKS",
+    /* BOOKMARKS_TITLE */ "BOOKMARKS",
+    /* BOOKMARKS_ADD */ "Bookmark this page",
+    /* BOOKMARKS_ADD_SUB */ "The page you are reading",
+    /* BOOKMARKS_REMOVE */ "Remove this page's bookmark",
+    /* BOOKMARKS_ITEM_FMT */ "%d%% · %s",
+    /* BOOKMARKS_NONE */ "No bookmarks in this book yet",
+    /* KEY_DELETE */ "Delete",
+    /* KEY_ADD */ "Add",
+    /* KEY_REMOVE */ "Remove",
 };
 
 // Language: Russian (ru)
@@ -1569,6 +1593,18 @@ static const char* const STRINGS_RU[(size_t)MsgId::COUNT] PROGMEM = {
     /* KEY_ERASE */ "Стереть",
     /* KEY_ON_OFF */ "Вкл/выкл",
     /* KEY_SYNC */ "Синхр.",
+    /* READER_MENU_ITEM_BOOKMARKS */ "Закладки",
+    /* READER_MENU_BOOKMARKS_FMT */ "В книге: %d · добавить на этой странице",
+    /* READER_MENU_TAG_MARKS */ "ЗАКЛАДКИ",
+    /* BOOKMARKS_TITLE */ "ЗАКЛАДКИ",
+    /* BOOKMARKS_ADD */ "Добавить закладку на эту страницу",
+    /* BOOKMARKS_ADD_SUB */ "Страница, которую вы читаете",
+    /* BOOKMARKS_REMOVE */ "Убрать закладку с этой страницы",
+    /* BOOKMARKS_ITEM_FMT */ "%d%% · %s",
+    /* BOOKMARKS_NONE */ "В этой книге пока нет закладок",
+    /* KEY_DELETE */ "Удалить",
+    /* KEY_ADD */ "Добавить",
+    /* KEY_REMOVE */ "Убрать",
 };
 
 // Language: Spanish (es)
@@ -2089,6 +2125,18 @@ static const char* const STRINGS_ES[(size_t)MsgId::COUNT] PROGMEM = {
     /* KEY_ERASE */ "Borrar",
     /* KEY_ON_OFF */ "Sí/no",
     /* KEY_SYNC */ "Sincr.",
+    /* READER_MENU_ITEM_BOOKMARKS */ "Marcadores",
+    /* READER_MENU_BOOKMARKS_FMT */ "%d en este libro · añadir aquí",
+    /* READER_MENU_TAG_MARKS */ "MARCAS",
+    /* BOOKMARKS_TITLE */ "MARCADORES",
+    /* BOOKMARKS_ADD */ "Marcar esta página",
+    /* BOOKMARKS_ADD_SUB */ "La página que estás leyendo",
+    /* BOOKMARKS_REMOVE */ "Quitar el marcador de esta página",
+    /* BOOKMARKS_ITEM_FMT */ "%d%% · %s",
+    /* BOOKMARKS_NONE */ "Aún no hay marcadores en este libro",
+    /* KEY_DELETE */ "Borrar",
+    /* KEY_ADD */ "Añadir",
+    /* KEY_REMOVE */ "Quitar",
 };
 
 static const char* const* const I18N_ALL_TABLES[(size_t)AppLanguage::COUNT] = {

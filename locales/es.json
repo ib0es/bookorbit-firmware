@@ -514,5 +514,17 @@
   "KEY_TYPE": "Escribir",
   "KEY_ERASE": "Borrar",
   "KEY_ON_OFF": "Sí/no",
-  "KEY_SYNC": "Sincr."
+  "KEY_SYNC": "Sincr.",
+  "READER_MENU_ITEM_BOOKMARKS": "Marcadores",
+  "READER_MENU_BOOKMARKS_FMT": "%d en este libro · añadir aquí",
+  "READER_MENU_TAG_MARKS": "MARCAS",
+  "BOOKMARKS_TITLE": "MARCADORES",
+  "BOOKMARKS_ADD": "Marcar esta página",
+  "BOOKMARKS_ADD_SUB": "La página que estás leyendo",
+  "BOOKMARKS_REMOVE": "Quitar el marcador de esta página",
+  "BOOKMARKS_ITEM_FMT": "%d%% · %s",
+  "BOOKMARKS_NONE": "Aún no hay marcadores en este libro",
+  "KEY_DELETE": "Borrar",
+  "KEY_ADD": "Añadir",
+  "KEY_REMOVE": "Quitar"
 }

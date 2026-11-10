@@ -32,6 +32,7 @@ void handleMenuEvent(AppContext& ctx, const ButtonEvent& event);
 void handleFontMenuEvent(AppContext& ctx, const ButtonEvent& event);
 void handleTypefaceMenuEvent(AppContext& ctx, const ButtonEvent& event);
 void handleAppearanceEvent(AppContext& ctx, const ButtonEvent& event);
+void handleBookmarksEvent(AppContext& ctx, const ButtonEvent& event);
 
 // Opens a book, restores the position (xpath > progress > page), records it as
 // lastBook and switches to STATE_READING. On failure shows a message and

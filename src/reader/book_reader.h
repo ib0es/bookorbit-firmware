@@ -100,6 +100,14 @@ public:
         }
     };
     bool setLayoutOptions(const LayoutOptions& options);   // false when nothing changed
+
+    // The page on screen as a character range of its chapter [from, to) (to is
+    // past the chapter for its last page), and its first words (bookmarks).
+    bool pageRange(int& spine, uint32_t& from, uint32_t& to) const;
+    const String& pageSnippet() const { return _snippet; }
+    // Asked when the status bar is drawn: whether the page has a bookmark (a
+    // ribbon is drawn in the corner).
+    void setBookmarkProbe(bool (*probe)(int spine, uint32_t from, uint32_t to)) { _bookmarkProbe = probe; }
     const LayoutOptions& layoutOptions() const { return _opts; }
     // A full e-ink refresh every this many pages (0: never; ghosting stays until one).
     void setFullRefreshEvery(int pages) { _fullEvery = pages; }
@@ -254,6 +262,8 @@ private:
     const freeink::book::Hyphenator* hyphenatorFor(const char* language) const;
     freeink::book::LayoutParams _params;
     LayoutOptions _opts;
+    String _snippet;
+    bool (*_bookmarkProbe)(int, uint32_t, uint32_t) = nullptr;
     int _fullEvery = FULL_REFRESH_EVERY_PAGES;
     uint32_t _gen = 0;
 

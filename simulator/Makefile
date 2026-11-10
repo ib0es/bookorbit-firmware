@@ -38,6 +38,7 @@ SRCS_CXX = \
     src/ui/modal.cpp \
     src/services/library_manager.cpp \
     src/services/power_service.cpp \
+    src/services/bookmarks.cpp \
     src/services/sync_service.cpp \
     src/services/progress_sync.cpp \
     src/services/progress_store.cpp \

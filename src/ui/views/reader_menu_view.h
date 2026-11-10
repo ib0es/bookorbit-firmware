@@ -11,6 +11,9 @@ void drawFontMenuScreen(AppContext& ctx, bool fullRefresh = false);
 void drawTypefaceMenuScreen(AppContext& ctx, bool fullRefresh = false);
 // Typeface, size, spacing, margins... (src/app/screens/appearance.h), a sample below.
 void drawAppearanceScreen(AppContext& ctx, bool fullRefresh = false);
+// This page's bookmark (add/remove) and the book's bookmarks.
+void drawBookmarksScreen(AppContext& ctx, bool fullRefresh = false);
+int bookmarkOnPage();   // index in Bookmarks of the page on screen's, -1 if none
 // The families on the card the typeface menu lists (scanned again when `rescan`).
 #include <vector>
 #include "../../reader/font_store.h"

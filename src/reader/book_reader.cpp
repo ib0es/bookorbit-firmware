@@ -1597,6 +1597,14 @@ bool BookReader::prevPage() {
     return true;
 }
 
+bool BookReader::pageRange(int& spine, uint32_t& from, uint32_t& to) const {
+    if (!_opened || _want != Want::None || _loadedSpine != _spine) return false;
+    spine = _spine;
+    from = _page == 0 ? 0 : curCharStart((uint32_t)_page);   // the chapter's start belongs to its first page
+    to = (uint32_t)_page + 1 < curCount() ? curCharStart((uint32_t)_page + 1) : 0xFFFFFFFFu;
+    return true;
+}
+
 bool BookReader::setLayoutOptions(const LayoutOptions& options) {
     if (options == _opts) return false;
     const Position here = position();
@@ -1641,6 +1649,14 @@ void BookReader::drawStatusBar() {
          uikit::TextAlign::Right);
     text(Rect{left, topBand.y, (int16_t)(topBand.width - rw - 12), topBand.height}, _title.c_str(), FontSmall);
     hline(left, right, 30);
+    // A bookmarked page: a ribbon hanging from the top rule, left of the numbers.
+    int bSpine;
+    uint32_t bFrom, bTo;
+    if (_bookmarkProbe && pageRange(bSpine, bFrom, bTo) && _bookmarkProbe(bSpine, bFrom, bTo)) {
+        const int16_t bx = (int16_t)(right - rw - 22);
+        fill(Rect{bx, 0, 12, 22}, Color::Black);
+        for (int16_t i = 0; i < 6; i++) hline((int16_t)(bx + i), (int16_t)(bx + 12 - i), (int16_t)(22 - 6 + i), Color::White);
+    }
     const int16_t bottomRule = (int16_t)(height() - 44);
     hline(left, right, bottomRule);
     String chTitle = getCurrentChapterTitle();
@@ -1702,6 +1718,17 @@ void BookReader::renderCurrentPage() {
         uint32_t firstMissing = 0;
         tRead = millis();
         const uint32_t missing = PageRenderer::renderText(page, _fonts, frame, &firstMissing);
+        // The page's first words, for a bookmark made here.
+        _snippet = "";
+        for (uint16_t r = 0; r < page.runCount && _snippet.length() < 90; r++) {
+            if (_snippet.length() && _snippet[_snippet.length() - 1] != ' ') _snippet += ' ';
+            const char* t = page.runs[r].text;
+            for (uint16_t i = 0; i < page.runs[r].len; i++) {
+                // Stop at 120 bytes, on a character start.
+                if (_snippet.length() >= 120 && (static_cast<uint8_t>(t[i]) & 0xC0) != 0x80) break;
+                _snippet += t[i];
+            }
+        }
         tText = millis();
         imageCount = page.imageCount;
         if (missing) Serial.printf("[Reader] %u characters not in the font (first U+%04X)\n", (unsigned)missing,

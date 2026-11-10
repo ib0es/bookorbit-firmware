@@ -22,7 +22,8 @@ enum AppState {
     STATE_SYNC_SETTINGS,
     STATE_SLEEP_COVER_SETTINGS,
     STATE_TYPEFACE_MENU,
-    STATE_APPEARANCE_MENU
+    STATE_APPEARANCE_MENU,
+    STATE_BOOKMARKS
 };
 
 struct AppConfig {
@@ -67,7 +68,7 @@ const int NUM_WIFI_SETTINGS_ITEMS = 6;
 const int NUM_SERVER_SETTINGS_ITEMS = 4;
 const int NUM_SYNC_SETTINGS_ITEMS = 4;
 const int NUM_SLEEP_COVER_ITEMS = 3;
-const int NUM_READER_MENU_ITEMS = 5;
+const int NUM_READER_MENU_ITEMS = 6;
 
 struct AppContext {
     AppState currentState = STATE_HOME;
@@ -86,6 +87,7 @@ struct AppContext {
     int selectedFontIndex = 0;
     int selectedTypefaceIndex = 0;
     int selectedAppearanceIndex = 0;
+    int selectedBookmarkIndex = 0;   // 0 = add/remove this page's, then the bookmarks
     int selectedSyncSettingIndex = 0;
     int selectedSleepCoverIndex = 0;
     uint32_t lastActivityTime = 0;

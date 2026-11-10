@@ -4,6 +4,7 @@
 #include "../../reader/reader.h"
 #include "../../reader/font_store.h"
 #include "../../app/screens/appearance.h"
+#include "../../services/bookmarks.h"
 #include "../i18n.h"
 #include "../kit/ui_kit.h"
 
@@ -13,7 +14,7 @@ static int s_tocRowsPerPage = 1;
 int tocRowsPerPage() { return s_tocRowsPerPage; }
 
 namespace {
-enum ReaderMenuAction : fi::ActionId { ActionChapter = 1, ActionMenuItem, ActionFontSize, ActionTypeface, ActionAppearance };
+enum ReaderMenuAction : fi::ActionId { ActionChapter = 1, ActionMenuItem, ActionFontSize, ActionTypeface, ActionAppearance, ActionBookmark };
 }
 
 void drawTocScreen(AppContext& ctx, bool fullRefresh) {
@@ -128,10 +129,14 @@ void drawReaderMenuScreen(AppContext& ctx, bool fullRefresh) {
     snprintf(fontVal, sizeof(fontVal), tr(MsgId::READER_MENU_APPEARANCE_FMT), Reader.fontFamilyName().c_str(),
              BookReader::getFontSizeName(ctx.config.readerFontSize));
 
+    char marksVal[96];
+    snprintf(marksVal, sizeof(marksVal), tr(MsgId::READER_MENU_BOOKMARKS_FMT), Bookmarks.count());
+
     struct Item { const char* title; const char* value; const char* tag; };
     const Item items[NUM_READER_MENU_ITEMS] = {
         { tr(MsgId::READER_MENU_ITEM_TOC), chDesc, tr(MsgId::READER_MENU_TAG_CHAPTERS) },
         { tr(MsgId::READER_MENU_ITEM_APPEARANCE), fontVal, tr(MsgId::READER_MENU_TAG_FONT) },
+        { tr(MsgId::READER_MENU_ITEM_BOOKMARKS), marksVal, tr(MsgId::READER_MENU_TAG_MARKS) },
         { tr(MsgId::READER_MENU_ITEM_SYNC), tr(MsgId::READER_MENU_SYNC_SUB), tr(MsgId::READER_MENU_TAG_WIFI) },
         { tr(MsgId::READER_MENU_ITEM_RESUME), tr(MsgId::READER_MENU_RESUME_SUB), tr(MsgId::READER_MENU_TAG_READ) },
         { tr(MsgId::READER_MENU_ITEM_CLOSE), tr(MsgId::READER_MENU_CLOSE_SUB), tr(MsgId::READER_MENU_TAG_EXIT) },
@@ -312,6 +317,52 @@ void drawAppearanceScreen(AppContext& ctx, bool fullRefresh) {
         hline(0, width(), area.y);
         Reader.drawPreview(area.y + 6, area.height - 8, tr(MsgId::APPEAR_SAMPLE), Appearance::layoutOptions(ctx.config),
                            ctx.config.readerFontSize);
+    }
+    present(fullRefresh);
+}
+
+// ------------------------------------------------------------- bookmarks
+
+// Whether the page on screen has a bookmark: the index, -1 if not.
+int bookmarkOnPage() {
+    int spine;
+    uint32_t from, to;
+    return Reader.pageRange(spine, from, to) ? Bookmarks.findIn(spine, from, to) : -1;
+}
+
+void drawBookmarksScreen(AppContext& ctx, bool fullRefresh) {
+    Pass pass;
+    Frame& f = pass.frame();
+    clear();
+    const int n = 1 + Bookmarks.count();
+    int& sel = ctx.selectedBookmarkIndex;
+    if (sel < 0) sel = 0;
+    if (sel >= n) sel = n - 1;
+    Rect area = topBar(f, tr(MsgId::BOOKMARKS_TITLE));
+    const int here = bookmarkOnPage();
+    KeyLabels keys{tr(MsgId::KEY_BACK), tr(sel == 0 ? (here >= 0 ? MsgId::KEY_REMOVE : MsgId::KEY_ADD) : MsgId::KEY_GO),
+                   sel > 0 ? tr(MsgId::KEY_DELETE) : "", tr(sel == 0 ? (here >= 0 ? MsgId::KEY_REMOVE : MsgId::KEY_ADD) : MsgId::KEY_GO)};
+    area = keyHints(f, area, keys);
+    area = insetXY(area, kMargin, 10);
+    const int16_t rowH = (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 22);
+    const int perPage = std::max(1, (int)(area.height / (rowH + kGap)));
+    const int first = (sel / perPage) * perPage;
+    char title[160];
+    for (int i = first; i < n && i < first + perPage; i++) {
+        if (i == 0) {
+            card(f, takeTop(area, rowH), tr(here >= 0 ? MsgId::BOOKMARKS_REMOVE : MsgId::BOOKMARKS_ADD),
+                 tr(MsgId::BOOKMARKS_ADD_SUB), nullptr, sel == 0, ActionBookmark, 0);
+        } else {
+            const Bookmark& b = Bookmarks.items()[i - 1];
+            snprintf(title, sizeof(title), tr(MsgId::BOOKMARKS_ITEM_FMT), (int)(b.percent * 100.0f + 0.5f), b.chapter.c_str());
+            card(f, takeTop(area, rowH), title, b.snippet.c_str(), nullptr, sel == i, ActionBookmark, (int16_t)i);
+        }
+        takeTop(area, kGap);
+    }
+    if (n == 1) {
+        takeTop(area, 20);
+        text(takeTop(area, (int16_t)(lineHeight(FontBody) * 2 + 4)), tr(MsgId::BOOKMARKS_NONE), FontBody, Color::Black,
+             TextAlign::Center, 2);
     }
     present(fullRefresh);
 }

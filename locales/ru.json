@@ -514,5 +514,17 @@
   "KEY_TYPE": "Ввести",
   "KEY_ERASE": "Стереть",
   "KEY_ON_OFF": "Вкл/выкл",
-  "KEY_SYNC": "Синхр."
+  "KEY_SYNC": "Синхр.",
+  "READER_MENU_ITEM_BOOKMARKS": "Закладки",
+  "READER_MENU_BOOKMARKS_FMT": "В книге: %d · добавить на этой странице",
+  "READER_MENU_TAG_MARKS": "ЗАКЛАДКИ",
+  "BOOKMARKS_TITLE": "ЗАКЛАДКИ",
+  "BOOKMARKS_ADD": "Добавить закладку на эту страницу",
+  "BOOKMARKS_ADD_SUB": "Страница, которую вы читаете",
+  "BOOKMARKS_REMOVE": "Убрать закладку с этой страницы",
+  "BOOKMARKS_ITEM_FMT": "%d%% · %s",
+  "BOOKMARKS_NONE": "В этой книге пока нет закладок",
+  "KEY_DELETE": "Удалить",
+  "KEY_ADD": "Добавить",
+  "KEY_REMOVE": "Убрать"
 }

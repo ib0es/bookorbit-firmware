@@ -1,5 +1,6 @@
 #include "screens.h"
 #include "appearance.h"
+#include "../../services/bookmarks.h"
 #include "../../ui/font.h"
 #include "../../hal/mem_stats.h"
 #include "../../convert/sd_convert.h"
@@ -51,6 +52,7 @@ void closeBookAndGoHome(AppContext& ctx, bool fullRefresh) {
     const int fileId = lib.lastBook.fileId;
     const String path = lib.lastBook.filePath;
     Reader.closeBook();
+    Bookmarks.clear();
     Reader.setFontSize(ctx.config.readerFontSize);  // closed: no pagination, used by the next open
     ctx.currentState = STATE_HOME;
     drawHomeScreen(ctx, fullRefresh);
@@ -75,14 +77,20 @@ void executeMenuAction(AppContext& ctx, int index) {
             ctx.currentState = STATE_APPEARANCE_MENU;
             drawAppearanceScreen(ctx, false);
             break;
-        case 2:  // Синхронизация
+        case 2:  // Закладки
+            commitFontSize(ctx);   // pages as they will be read
+            ctx.selectedBookmarkIndex = 0;
+            ctx.currentState = STATE_BOOKMARKS;
+            drawBookmarksScreen(ctx, false);
+            break;
+        case 3:  // Синхронизация
             commitFontSize(ctx);
             SyncService::syncWithBookOrbit(ctx);
             break;
-        case 3:  // Продолжить чтение
+        case 4:  // Продолжить чтение
             returnToReading(ctx);
             break;
-        case 4:  // Закрыть книгу
+        case 5:  // Закрыть книгу
             closeBookAndGoHome(ctx, true);
             break;
     }
@@ -114,6 +122,7 @@ bool openBook(AppContext& ctx, const String& path, const String& title, const St
         }
         return false;
     }
+    Bookmarks.load(path);
     MemStats::log("book opened");
     MemStats::probeEngine("book opened");
     MemStats::logMap("book opened");
@@ -165,6 +174,7 @@ bool resumeLastBook(AppContext& ctx) {
     if (lib.lastBook.filePath.length() == 0 || !Storage.exists(lib.lastBook.filePath.c_str())) return false;
     Serial.printf("[Power] Instant resume book: %s (page %d)\n", lib.lastBook.title.c_str(), lib.lastBook.page);
     if (!Reader.openBook(lib.lastBook.filePath)) return false;
+    Bookmarks.load(lib.lastBook.filePath);
 
     // The book's record has the most exact position (a CFI after a pull from the web reader).
     const ProgressSync::Position& pos = lib.currentRecord().state.local;
@@ -412,6 +422,66 @@ void handleAppearanceEvent(AppContext& ctx, const ButtonEvent& event) {
             break;
         case BTN_BACK:
             returnToReading(ctx);   // laid out once, with everything changed here
+            break;
+        default:
+            break;
+    }
+}
+
+void handleBookmarksEvent(AppContext& ctx, const ButtonEvent& event) {
+    if (event.action != ACTION_CLICK) return;
+    const int n = 1 + Bookmarks.count();
+    int& sel = ctx.selectedBookmarkIndex;
+    switch (event.id) {
+        case BTN_DOWN:
+            sel = (sel + 1) % n;
+            drawBookmarksScreen(ctx, false);
+            break;
+        case BTN_UP:
+            sel = (sel - 1 + n) % n;
+            drawBookmarksScreen(ctx, false);
+            break;
+        case BTN_CONFIRM:
+        case BTN_RIGHT:
+            if (sel == 0) {
+                // This page's: removed if there is one, else added.
+                const int here = bookmarkOnPage();
+                if (here >= 0) {
+                    Bookmarks.remove(here);
+                } else {
+                    const BookReader::Position pos = Reader.position();
+                    Bookmark b;
+                    b.spine = pos.spine;
+                    b.chars = pos.chars;
+                    b.percent = Reader.getProgress();
+                    b.chapter = Reader.getCurrentChapterTitle();
+                    b.snippet = Reader.pageSnippet();
+                    Bookmarks.add(b);
+                    Serial.printf("[Bookmarks] added at %d:%u (%.1f%%)\n", b.spine, (unsigned)b.chars, b.percent * 100.0f);
+                }
+                Bookmarks.save();
+                returnToReading(ctx);   // the ribbon shows on the page
+            } else if (sel <= Bookmarks.count()) {
+                const Bookmark& b = Bookmarks.items()[sel - 1];
+                BookReader::Position pos;
+                pos.spine = b.spine;
+                pos.chars = b.chars;
+                Reader.goTo(pos);
+                LibraryManager::getInstance().recordReaderMove(true, true);
+                returnToReading(ctx);
+            }
+            break;
+        case BTN_LEFT:
+            if (sel > 0 && sel <= Bookmarks.count()) {
+                Bookmarks.remove(sel - 1);
+                Bookmarks.save();
+                if (sel > Bookmarks.count()) sel = Bookmarks.count();
+                drawBookmarksScreen(ctx, false);
+            }
+            break;
+        case BTN_BACK:
+            ctx.currentState = STATE_READER_MENU;
+            drawReaderMenuScreen(ctx, false);
             break;
         default:
             break;

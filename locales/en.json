@@ -514,5 +514,17 @@
   "KEY_TYPE": "Type",
   "KEY_ERASE": "Erase",
   "KEY_ON_OFF": "On/off",
-  "KEY_SYNC": "Sync"
+  "KEY_SYNC": "Sync",
+  "READER_MENU_ITEM_BOOKMARKS": "Bookmarks",
+  "READER_MENU_BOOKMARKS_FMT": "%d in this book · add one here",
+  "READER_MENU_TAG_MARKS": "MARKS",
+  "BOOKMARKS_TITLE": "BOOKMARKS",
+  "BOOKMARKS_ADD": "Bookmark this page",
+  "BOOKMARKS_ADD_SUB": "The page you are reading",
+  "BOOKMARKS_REMOVE": "Remove this page's bookmark",
+  "BOOKMARKS_ITEM_FMT": "%d%% · %s",
+  "BOOKMARKS_NONE": "No bookmarks in this book yet",
+  "KEY_DELETE": "Delete",
+  "KEY_ADD": "Add",
+  "KEY_REMOVE": "Remove"
 }
