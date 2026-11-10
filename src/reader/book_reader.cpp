@@ -403,12 +403,12 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
             if (lines.found > 0 && lines.found + 1 < lines.count && endsAfter(lines.found) < height) {
                 // the second paragraph's first line alone at the foot (an orphan)
                 q.pageHeight = (int16_t)endsAfter(lines.found);
-            } else if (lines.found > 1) {
+            } else if (lines.found > 1 && endsAfter(lines.found - 2) < height) {
                 // too big a size for that: the first paragraph's last line alone on
-                // the next page (a widow), which "no lone lines" takes one more with;
-                // a page taller than the box shows its foot (drawn moved up)
+                // the next page (a widow), which "no lone lines" takes one more with.
+                // (Bigger still, the box ends inside the first paragraph: the sample
+                // is always shown from its start, and the setting cannot show.)
                 q.pageHeight = (int16_t)endsAfter(lines.found - 2);
-                if (q.pageHeight > height) sink.dy = y + height - q.pageHeight - 6;   // descenders clear of the box
             }
         }
         Arena a(mem.p, cap);
