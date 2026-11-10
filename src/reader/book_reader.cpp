@@ -1384,17 +1384,35 @@ void BookReader::renderCurrentPage() {
                 Arena a(img.p, size);
                 return PageRenderer::renderImages(page, _src, _catalog.zip(), a, frame);
             };
+            // Smallest arena first: a PNG decodes in a few KB of arena but pngle takes
+            // ~44 KB of heap of its own, so a big arena next to it would not fit; a
+            // baseline JPEG needs ~30 KB of arena, a wide one up to kImageBytes.
+            auto drawLadder = [&](size_t limit) {
+                BookStatus r = BookStatus::OutOfMemory;
+                for (size_t size : {(size_t)12 * 1024, (size_t)32 * 1024, kImageBytes}) {
+                    if (size > limit) break;
+                    r = drawImages(size);
+                    if (r != BookStatus::OutOfMemory) break;
+                }
+                return r;
+            };
             BookStatus ist = BookStatus::OutOfMemory;
             if (_bg) {
-                // A stored JPEG decodes in ~30 KB: first with what is left beside the job.
+                // First with what is left beside the job.
                 const size_t largest = MemStats::now().largestBlock;
                 size_t room = kTransientBudget > g_liveTransient ? kTransientBudget - g_liveTransient : 0;
                 room = std::min(room, std::min(kImageBytes, largest > 4096 ? largest - 4096 : 0));
-                if (room >= 16 * 1024) ist = drawImages(room);
+                ist = drawLadder(room);
                 if (ist == BookStatus::OutOfMemory) makeRoom();   // the page record is in our buffer: still valid
             }
-            if (ist == BookStatus::OutOfMemory) ist = drawImages(kImageBytes);
-            if (ist == BookStatus::OutOfMemory) Serial.println("[Reader] No memory for the page's images");
+            if (ist == BookStatus::OutOfMemory) ist = drawLadder(kImageBytes);
+            if (ist == BookStatus::OutOfMemory) {
+                const MemStats::Snapshot m = MemStats::now();
+                Serial.printf("[Reader] No memory for the page's images (free %u KB, largest block %u KB)\n",
+                              (unsigned)(m.freeBytes / 1024), (unsigned)(m.largestBlock / 1024));
+            } else if (ist != BookStatus::Ok) {
+                Serial.printf("[Reader] Page's images not drawn: %s\n", bookStatusName(ist));
+            }
         }
         break;
     }
