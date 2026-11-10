@@ -57,7 +57,8 @@ void EngineTextCounter::textChar(bool whitespace, bool startsCodepoint) {
 void EngineTextCounter::onTag() {
     if (_tag.empty() || _tag[0] == '?' || _tag[0] == '!') return;
     bool closing = false, selfClosing = false;
-    const std::string name = localName(_tag, closing, selfClosing);
+    std::string name = localName(_tag, closing, selfClosing);
+    if (_inBody && name == "title") name = "h2";   // a heading in <title> (as the engine reads it)
     if (isSuppressed(name)) {
         if (closing) { if (_suppress > 0) _suppress--; }
         else if (!selfClosing) _suppress++;
