@@ -56,8 +56,9 @@ void SyncService::showState(AppContext& ctx, AppState state) {
 
 void SyncService::reportDownloadProgress(int percent) {
     uint32_t now = millis();
-    // Only update display every 20% or at least 2 seconds apart, preventing E-ink flicker
-    if ((percent - s_lastProgressPercent >= 20 || (now - s_lastProgressTime >= 2000 && percent > s_lastProgressPercent)) && percent < 100) {
+    // An e-ink refresh blocks ~0.45 s, the download with it: at most every 5 s
+    // (every 2 s it took a fifth of a 10 s download on the X4).
+    if (now - s_lastProgressTime >= 5000 && percent > s_lastProgressPercent && percent < 100) {
         s_lastProgressPercent = percent;
         s_lastProgressTime = now;
 
