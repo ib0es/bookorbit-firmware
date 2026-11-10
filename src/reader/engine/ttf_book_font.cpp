@@ -4,13 +4,25 @@
 #include <stdlib.h>
 #include <string.h>
 
+// stb allocates while it rasterizes (outline, edges, scanlines): through here,
+// so that a failed allocation is counted (the glyph is retried once the reader
+// made room) instead of tripping stb's assert and rebooting.
+static uint32_t g_stbAllocFailures = 0;
+static void* stbAlloc(size_t n) {
+    void* p = malloc(n);
+    if (!p) g_stbAllocFailures++;
+    return p;
+}
+#define STBTT_malloc(x, u) ((void)(u), stbAlloc(x))
+#define STBTT_free(x, u) ((void)(u), free(x))
+#define STBTT_assert(x) ((void)0)   // it checks allocations, which are handled
 #define STBTT_STATIC
 #define STB_TRUETYPE_IMPLEMENTATION
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 #endif
-#include "../../../freeink-sdk/libs/font/FreeInkFont/third_party/stb/stb_truetype.h"   // not on the include path of src/
+#include "stb_truetype_small.h"   // stb_truetype with small rasterizer chunks (see its top)
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif
@@ -261,7 +273,21 @@ const GlyphBitmap* TtfFace::rasterize(uint32_t cp, uint16_t sizePx) {
     const int w = x1 > x0 ? x1 - x0 : 0, h = y1 > y0 ? y1 - y0 : 0;
     uint8_t* px = fam->scratch(w * h > 0 ? (size_t)w * h : 1);
     if (!px) return nullptr;
-    if (w > 0 && h > 0) stbtt_MakeGlyphBitmap(_info, px, w, h, w, s, s, g);
+    if (w > 0 && h > 0) {
+        // Not enough memory for stb's working buffers: the reader makes room
+        // (stops a background layout), then once more; else the glyph is left out.
+        for (int attempt = 0;; attempt++) {
+            const uint32_t failuresBefore = g_stbAllocFailures;
+            memset(px, 0, (size_t)w * h);
+            stbtt_MakeGlyphBitmap(_info, px, w, h, w, s, s, g);
+            if (g_stbAllocFailures == failuresBefore) break;
+            fam->_stats.noMemory++;
+            if (attempt > 0 || !fam->_noMemory) return nullptr;
+            fam->_noMemory(fam->_noMemoryUser);
+            px = fam->scratch((size_t)w * h);
+            if (!px) return nullptr;
+        }
+    }
     fam->_stats.rasterized++;
     out.pixels = px;
     out.width = (uint16_t)w;

@@ -166,6 +166,13 @@ BookReader::BookReader() : _fontSize(FontEngine::kDefaultSize) {
 BookReader::~BookReader() { closeBook(); }
 
 void BookReader::setupFonts() {
+    // stb's working buffers while a glyph is rasterized (a few KB): a background
+    // layout gives the room if the heap has none.
+    _ttf.setNoMemoryHandler([](void* self) {
+        BookReader* r = static_cast<BookReader*>(self);
+        Serial.println("[Reader] No memory to rasterize a glyph: making room");
+        r->makeRoom();
+    }, this);
     _fonts = freeink::book::FontChain();
     for (int style = 0; style < 4; style++) {
         uint32_t len = 0;
@@ -1477,11 +1484,11 @@ void BookReader::renderCurrentPage() {
     // Where the time goes: finding the page (layout, cache), its record, the text, the images.
     const TtfFamily::Stats fs = _ttf.takeStats();
     Serial.printf("[Reader] Page drawn in %lu ms (find %lu, status bar %lu, record %lu, text %lu, %u images %lu); "
-                  "glyphs %u rasterized, %u cached, %u cache flushes, font caches %u B\n",
+                  "glyphs %u rasterized, %u cached, %u cache flushes, %u short of memory, font caches %u B\n",
                   (unsigned long)(tEnd - t0), (unsigned long)(tFound - t0), (unsigned long)(tBar - tFound),
                   (unsigned long)(tRead ? tRead - tBar : 0),
                   (unsigned long)(tText ? tText - tRead : 0), (unsigned)imageCount,
                   (unsigned long)(tText ? tEnd - tText : 0), (unsigned)fs.rasterized, (unsigned)fs.glyphHits,
-                  (unsigned)fs.flushes, (unsigned)_ttf.cacheBytes());
+                  (unsigned)fs.flushes, (unsigned)fs.noMemory, (unsigned)_ttf.cacheBytes());
     Display.update(full ? REFRESH_FULL : REFRESH_PARTIAL);
 }

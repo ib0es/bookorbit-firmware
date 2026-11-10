@@ -66,7 +66,11 @@ public:
     size_t cacheBytes() const;
 
     // Cache statistics since the last call, for the page-draw log.
-    struct Stats { uint32_t rasterized = 0, glyphHits = 0, flushes = 0; };
+    struct Stats { uint32_t rasterized = 0, glyphHits = 0, flushes = 0, noMemory = 0; };
+
+    // Called when a glyph cannot be rasterized for lack of memory, to make room
+    // (the glyph is then tried once more).
+    void setNoMemoryHandler(void (*fn)(void*), void* user) { _noMemory = fn; _noMemoryUser = user; }
     Stats takeStats();
 
     // Identifies the fonts in layout cache names.
@@ -116,4 +120,6 @@ private:
     size_t _scratchCap = 0;
     freeink::book::GlyphBitmap _glyph{};
     Stats _stats;
+    void (*_noMemory)(void*) = nullptr;
+    void* _noMemoryUser = nullptr;
 };
