@@ -517,7 +517,7 @@ int LibraryManager::internLibrary(const String& name) {
 void LibraryManager::setHideCompleted(bool hide) {
     if (hideCompleted == hide) return;
     hideCompleted = hide;
-    refreshCounts();
+    _countsDirty = true;
 }
 
 // ---------------------------------------------------------------- formats
@@ -859,11 +859,12 @@ void LibraryManager::refreshLocalFiles() {
         if (!matched[i]) { masterBooks.push_back(found[i]); chooseFormat(masterBooks.back()); added++; }
     }
     if (added) refreshProgress();
-    refreshCounts();
+    _countsDirty = true;
     if (added || gone) Serial.printf("[Library] Card changed: %d new books, %d removed\n", added, gone);
 }
 
 void LibraryManager::refreshCounts() {
+    _countsDirty = false;
     Counts c;
     c.folders = counts.folders;
     std::vector<int> visible;
@@ -902,7 +903,7 @@ void LibraryManager::refreshCounts() {
 
 void LibraryManager::rebuildFilteredIndices() {
     rebuildRows();
-    refreshCounts();
+    _countsDirty = true;
 }
 
 void LibraryManager::scanLocalBooks(bool forceMasterScan) {
@@ -917,7 +918,7 @@ void LibraryManager::scanLocalBooks(bool forceMasterScan) {
     else refreshProgress();   // positions changed by reading / syncing since the last list
     _scanned = true;
     rebuildRows();
-    refreshCounts();
+    _countsDirty = true;
 }
 
 void LibraryManager::rebuildRows() {
@@ -1081,6 +1082,7 @@ void LibraryManager::rebuildRows() {
         std::vector<BookItem> dirs;
         std::vector<int> files;
         std::vector<BookItem> looseFiles;   // deeper than the master scan
+        std::unordered_map<std::string, int> byKey;   // first book of each key, as the old scan found
         for (const DirEntry& e : Storage.listDirectory(f)) {
             if (e.name.startsWith(".")) continue;
             if (e.isDirectory) {
@@ -1093,11 +1095,11 @@ void LibraryManager::rebuildRows() {
             if (top) continue;
             if (!isBookFile(e.name)) continue;
             // The formats of a book ("Name.epub", "Name.fb2") are one row.
-            const std::string k = bookKey(e.fullPath);
-            int idx = -1;
-            for (int i = 0; i < (int)masterBooks.size(); i++) {
-                if (bookKey(masterBooks[i].filePath) == k) { idx = i; break; }
+            if (byKey.empty()) {   // built once per list (was a scan of every book per file)
+                for (int i = 0; i < (int)masterBooks.size(); i++) byKey.emplace(bookKey(masterBooks[i].filePath), i);
             }
+            const auto found = byKey.find(bookKey(e.fullPath));
+            const int idx = found != byKey.end() ? found->second : -1;
             if (idx >= 0) {
                 if (visible(masterBooks[idx]) && std::find(files.begin(), files.end(), idx) == files.end()) files.push_back(idx);
             } else {
