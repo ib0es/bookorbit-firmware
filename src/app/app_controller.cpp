@@ -160,8 +160,10 @@ void AppController::loop() {
 
     ButtonEvent event;
     if (Buttons.getEvent(event)) {
-        _ctx.lastActivityTime = millis();
-        Serial.printf("[Event] Button: %s | Action: %d\n", Buttons.getName(event.id), event.action);
+        const uint32_t tEvent = millis();
+        _ctx.lastActivityTime = tEvent;
+        Serial.printf("[Event] Button: %s | Action: %d at %lu ms\n", Buttons.getName(event.id), event.action,
+                      (unsigned long)tEvent);
 
         if (event.id == BTN_POWER) {
             // Power key: manual sleep (also while a dialog is open)
@@ -179,6 +181,8 @@ void AppController::loop() {
                 dispatch(event);
             }
         }
+        // From the key to the screen updated (drawing and the e-ink refresh included).
+        Serial.printf("[Event] Handled in %lu ms\n", (unsigned long)(millis() - tEvent));
     }
 
     Modal.tick();
@@ -195,9 +199,12 @@ void AppController::loop() {
     const bool readerScreens = st == STATE_READING || st == STATE_TOC || st == STATE_READER_MENU || st == STATE_FONT_MENU;
     if (!readerScreens || SyncService::backgroundActive()) {
         if (Reader.backgroundActive()) Reader.stopBackground();
-    } else if (st == STATE_READING && !Modal.isActive() && millis() - _ctx.lastActivityTime > kPrelayoutIdleMs &&
-               Reader.tickBackground()) {
-        return;
+    } else if (st == STATE_READING && !Modal.isActive() && millis() - _ctx.lastActivityTime > kPrelayoutIdleMs) {
+        const uint32_t t0 = millis();
+        const bool worked = Reader.tickBackground();
+        // Keys are not read during a slice: a long one makes the reader feel slow.
+        if (millis() - t0 > 80) Serial.printf("[Reader] Background slice took %lu ms\n", (unsigned long)(millis() - t0));
+        if (worked) return;
     }
 
     delay(10);
