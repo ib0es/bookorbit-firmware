@@ -1554,8 +1554,8 @@ namespace {
 // collapsed, the common entities as characters.
 class TextFrom {
 public:
-    TextFrom(uint32_t from, size_t maxBytes) : _from(from), _max(maxBytes) {}
-    bool full() const { return _out.size() >= _max; }
+    TextFrom(uint32_t from, size_t maxBytes) : _from(from), _limit(maxBytes) {}
+    bool full() const { return _out.size() >= _limit; }
     const std::string& text() const { return _out; }
     void feed(const char* d, size_t n) {
         for (size_t i = 0; i < n && !full(); i++) {
@@ -1605,7 +1605,7 @@ private:
     }
     EngineTextCounter _counter;
     uint32_t _from;
-    size_t _max;
+    size_t _limit;
     std::string _out, _entity;
     bool _tag = false, _inEntity = false;
 };
