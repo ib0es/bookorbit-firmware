@@ -113,6 +113,33 @@ void ensureToken(AppContext& ctx) {
     }
 }
 
+// A full sync works through every book: the files are written once at its end
+// (not two JSON files per book), and the saved catalog is read once for all.
+bool s_batch = false;
+
+struct SyncBatch {
+    std::vector<BookMetadata> catalog;
+    bool loaded = false;
+    SyncBatch() { s_batch = true; }
+    ~SyncBatch() {
+        s_batch = false;
+        LibraryManager::getInstance().saveLastBook();   // last_book.json + progress.json
+    }
+};
+SyncBatch* s_batchState = nullptr;
+
+const std::vector<BookMetadata>* savedCatalog(std::vector<BookMetadata>& local) {
+    if (s_batchState) {
+        if (!s_batchState->loaded) {
+            Storage.loadCatalog(s_batchState->catalog);
+            s_batchState->loaded = true;
+        }
+        return &s_batchState->catalog;
+    }
+    if (!Storage.loadCatalog(local)) return nullptr;
+    return &local;
+}
+
 // Fills in missing server ids of a record from the library list / cached catalog.
 // Exact matches only (server id, path, or full title).
 void resolveServerIds(BookProgressRecord& rec) {
@@ -124,9 +151,10 @@ void resolveServerIds(BookProgressRecord& rec) {
         }
     }
     if (rec.fileId > 0 && rec.bookId > 0) return;
-    std::vector<BookMetadata> catalog;
-    if (!Storage.loadCatalog(catalog)) return;
-    for (const auto& c : catalog) {
+    std::vector<BookMetadata> local;
+    const std::vector<BookMetadata>* catalog = savedCatalog(local);
+    if (!catalog) return;
+    for (const auto& c : *catalog) {
         // The format of the record: its file id, or the path it is downloaded to.
         const BookFormatEntry* fmt = nullptr;
         for (const auto& f : c.formats) {
@@ -308,7 +336,7 @@ bool SyncService::syncBookProgress(AppContext& ctx, BookProgressRecord& rec, Ser
 
     store.touch();
     lib.applyRecordToLibrary(rec);
-    lib.saveLastBook();   // writes last_book.json and progress.json
+    if (!s_batch) lib.saveLastBook();   // writes last_book.json and progress.json (a full sync: once at its end)
     syncBookmarks(ctx, rec);
     return ok;
 }
@@ -505,6 +533,9 @@ void downloadCovers(AppContext& ctx, const std::vector<BookMetadata>& catalog) {
 
 void SyncService::syncWithBookOrbit(AppContext& ctx) {
     KeepToken keepToken(ctx);
+    SyncBatch batch;
+    s_batchState = &batch;
+    struct ClearBatch { ~ClearBatch() { s_batchState = nullptr; } } clearBatch;
     Reader.stopBackground();   // Wi-Fi needs the memory a background layout holds
     Reader.releaseFontCaches();   // ...and the font caches (~25 KB, filled again as pages are drawn)
     AppState prevState = ctx.currentState;
@@ -562,6 +593,9 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
     //    at its largest now.
     std::vector<SyncedBook> synced;
     syncOpenedBooks(ctx, synced);
+    // The saved catalog read for the ids goes before the fresh one is fetched (the
+    // heap is at its tightest then); the books of step 3 get their ids from it.
+    std::vector<BookMetadata>().swap(batch.catalog);
     if (s_syncCancelled || checkSyncCancel()) {
         abortSync(ctx, prevState);
         return;
