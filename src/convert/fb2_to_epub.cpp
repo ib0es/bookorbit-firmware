@@ -301,7 +301,8 @@ private:
     bool _titleAsParas = false;
     std::string _titleText;
     std::string _firstParaText;
-    std::string _heldLabel;   // "CHAPTER I." waiting for the line that names it
+    std::string _heldLabel;
+    std::vector<std::string> _fileLabels;   // first words of each file (pass 2): contents of last resort   // "CHAPTER I." waiting for the line that names it
     bool _collectFirstPara = false;
     int _pendingEmpty = 0;
     bool _spacerEmptyLines = false;   // empty-line used as paragraph spacing (calibre output)
@@ -336,6 +337,7 @@ private:
     uint32_t _b64 = 0;
     int _b64n = 0;
     uint8_t _bin[4096];
+    uint8_t _raw[8192];   // raw image reads (sector multiples)
     uint32_t _binLen = 0;
     int _imageCount = 0;
 
@@ -456,12 +458,12 @@ ConvertResult Fb2Converter::parsePass() {
     const uint64_t total = _in.size() ? _in.size() : 1;
     bool first = true;
     for (;;) {
-        void* buf = XML_GetBuffer(_parser, 4096);
+        void* buf = XML_GetBuffer(_parser, 8192);
         if (!buf) {
             r = ConvertResult::NoMemory;
             break;
         }
-        const int32_t n = _in.read(buf, 4096);
+        const int32_t n = _in.read(buf, 8192);
         if (n < 0) {
             _stats.error = "cannot read the book";
             r = ConvertResult::IoError;
@@ -657,6 +659,10 @@ void Fb2Converter::beginBlock() {
     _pendingEmpty = 0;
     for (int i = 0; i < blanks; i++) emit("<p class=\"empty\">&#160;</p>\n");
     _fileHasContent = true;
+    if (_pass == 2 && _file <= _fileLabels.size()) {   // the words of two paragraphs stay apart
+        std::string& l = _fileLabels[_file - 1];
+        if (!l.empty() && l.back() != ' ') l += ' ';
+    }
 }
 
 void Fb2Converter::openTag(const char* tag, const char* cls, const char* ownId, bool takeAnchor) {
@@ -781,9 +787,11 @@ ConvertResult Fb2Converter::rawBinaries(uint64_t offset) {
     const uint64_t total = _in.size() ? _in.size() : 1;
     enum { TEXT, TAG, DATA } st = TEXT;
     std::string tag;
-    char buf[2048];
+    char* buf = reinterpret_cast<char*>(_raw);
     for (;;) {
-        const int32_t n = _in.read(buf, sizeof(buf));
+        // Reads end on sector boundaries: whole sectors go straight to the buffer.
+        const uint32_t want = (uint32_t)sizeof(_raw) - (uint32_t)(_read % 512);
+        const int32_t n = _in.read(buf, want);
         if (n < 0) return ConvertResult::IoError;
         if (n == 0) break;
         _read += (uint64_t)n;
@@ -1247,13 +1255,18 @@ void Fb2Converter::text(const char* s, int len) {
     if (_textDepth == 0) return;   // between blocks: layout whitespace
     if (_titleDepth) appendCollapsed(_titleText, s, len, 400);
     if (_collectFirstPara && _firstParaText.size() < 200) appendCollapsed(_firstParaText, s, len, 200);
+    if (_pass == 2 && !_titleDepth) {
+        if (_fileLabels.size() < _file) _fileLabels.resize(_file);
+        std::string& l = _fileLabels[_file - 1];
+        if (l.size() < 96) appendCollapsed(l, s, len, 96);
+    }
     if (_pass == 2) emitText(s, len);
 }
 
 // ------------------------------------------------------------- NCX and OPF
 
 bool Fb2Converter::writeNcx() {
-    std::string uid = "fb2-" + std::to_string(hashId(_bookTitle.c_str()));
+    const std::string uid = "fb2-" + std::to_string(hashId(_bookTitle.c_str()));
     std::string s =
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
         "<ncx xmlns=\"http://www.daisy.org/z3986/2005/ncx/\" version=\"2005-1\"><head>"
@@ -1261,9 +1274,38 @@ bool Fb2Converter::writeNcx() {
         "</text></docTitle><navMap>\n";
     if (!_zip.open("OEBPS/toc.ncx")) return false;
     _zip.write(s.data(), (uint32_t)s.size());
-    int open = 0;
     uint32_t order = 0;
-    if (_tmpOk && _tocCount > 0 && _tmp.beginRead()) {
+    auto navPoint = [&](const std::string& label, uint16_t file, const std::string& anchor) {
+        char src[24];
+        snprintf(src, sizeof(src), "c%04u.xhtml", (unsigned)file);
+        order++;
+        s = "<navPoint id=\"n" + std::to_string(order) + "\" playOrder=\"" + std::to_string(order) +
+            "\"><navLabel><text>" + xmlEscape(label) + "</text></navLabel><content src=\"" + src +
+            (anchor.empty() ? std::string() : "#" + xmlEscape(anchor)) + "\"/>";
+        _zip.write(s.data(), (uint32_t)s.size());
+    };
+    if (_tocCount <= 1 && _maxFile > 1) {
+        // No contents of the book's own (or one entry for all of it), but several
+        // files: one entry per file, named by its first words, so that the reader
+        // can go from part to part.
+        for (uint16_t f = 1; f <= _maxFile; f++) {
+            std::string raw = f <= _fileLabels.size() ? _fileLabels[f - 1] : std::string(), l;
+            for (size_t at; (at = raw.find("\xC2\xA0")) != std::string::npos;) raw.replace(at, 2, " ");   // no-break spaces
+            appendCollapsed(l, raw.data(), (int)raw.size(), raw.size());
+            trim(l);
+            if (l.size() > 56) {   // bytes: ~28 Cyrillic letters
+                size_t cut = l.rfind(' ', 56);
+                if (cut == std::string::npos || cut < 24) {
+                    cut = 56;
+                    while (cut > 0 && ((uint8_t)l[cut] & 0xC0) == 0x80) cut--;   // not inside a UTF-8 character
+                }
+                l = l.substr(0, cut) + "\xE2\x80\xA6";
+            }
+            navPoint(std::to_string(f) + (l.empty() ? "" : ". " + l), f, std::string());
+            _zip.write("</navPoint>\n", 12);
+        }
+    } else if (_tmpOk && _tocCount > 0 && _tmp.beginRead()) {
+        int open = 0;
         for (;;) {
             uint8_t head[4];
             if (_tmp.read(head, 4) != 4) break;
@@ -1281,26 +1323,17 @@ bool Fb2Converter::writeNcx() {
                 _zip.write("</navPoint>\n", 12);
                 open--;
             }
-            char src[32];
-            snprintf(src, sizeof(src), "c%04u.xhtml", (unsigned)file);
-            order++;
-            s = "<navPoint id=\"n" + std::to_string(order) + "\" playOrder=\"" + std::to_string(order) +
-                "\"><navLabel><text>" + xmlEscape(label) + "</text></navLabel><content src=\"" + src + "#" +
-                xmlEscape(anchor) + "\"/>";
-            _zip.write(s.data(), (uint32_t)s.size());
+            navPoint(label, file, anchor);
             open++;
         }
-    }
-    while (open > 0) {
-        _zip.write("</navPoint>\n", 12);
-        open--;
+        while (open > 0) {
+            _zip.write("</navPoint>\n", 12);
+            open--;
+        }
     }
     if (order == 0) {   // no contents in the book: the whole book as one entry
-        s = "<navPoint id=\"n1\" playOrder=\"1\"><navLabel><text>" +
-            xmlEscape(_bookTitle.empty() ? std::string("1") : _bookTitle) +
-            "</text></navLabel><content src=\"c0001.xhtml\"/></navPoint>\n";
-        _zip.write(s.data(), (uint32_t)s.size());
-        order = 1;
+        navPoint(_bookTitle.empty() ? std::string("1") : _bookTitle, 1, std::string());
+        _zip.write("</navPoint>\n", 12);
     }
     _tocCount = order;
     _zip.write("</navMap></ncx>\n", 16);

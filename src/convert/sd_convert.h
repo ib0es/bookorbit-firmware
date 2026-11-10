@@ -8,7 +8,7 @@
 namespace convert {
 
 // Bump to have every converted book made again (a converter fix).
-constexpr int kConverterVersion = 2;
+constexpr int kConverterVersion = 3;
 
 // True for the formats read through a converted EPUB (FB2 for now).
 bool needsConversion(const String& path);

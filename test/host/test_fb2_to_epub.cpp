@@ -372,6 +372,18 @@ static void testEdges() {
                         "<body><section><p>only</p></section></body></FictionBook>", epub, st));
     o = openEpub(epub);
     CHECK(o.toc.size() == 1 && o.toc[0].find("|B|") != std::string::npos);
+    // One untitled section split by size: an entry per file, by its first words.
+    std::string one = "<FictionBook><body><section><p>First words of the book that go on for a while here</p>";
+    for (int i = 0; i < 3000; i++) one += "<p>Paragraph " + std::to_string(i) + " of the one long section.</p>";
+    one += "</section></body></FictionBook>";
+    CHECK(convertString(one, epub, st));
+    o = openEpub(epub);
+    CHECK(o.chapters.size() > 1 && o.toc.size() == o.chapters.size());
+    if (o.toc.size() > 1) {
+        CHECK(o.toc[0].find("|1. First words of the book that go on for a while here\xE2\x80\xA6|") != std::string::npos);
+        CHECK(o.toc[1].find("|2. Paragraph ") != std::string::npos);
+        printf("    toc %s\n    toc %s\n", o.toc[0].c_str(), o.toc[1].c_str());
+    }
     // calibre-style spacing: an empty-line after every paragraph is dropped, two in a row stay one.
     std::string sp = "<FictionBook><body><section>";
     for (int i = 0; i < 10; i++) sp += "<p>para</p><empty-line/>";

@@ -19,33 +19,95 @@ public:
     }
     bool rewind() override { return _f.seek(0); }
     bool seek(uint64_t pos) override { return _f.seek((uint32_t)pos); }
-    int32_t read(void* dst, uint32_t len) override { return _f.read((uint8_t*)dst, len); }
+    int32_t read(void* dst, uint32_t len) override {
+        const uint32_t t = micros();
+        const int32_t n = _f.read((uint8_t*)dst, len);
+        us += micros() - t;
+        return n;
+    }
     uint64_t size() const override { return const_cast<FsFile&>(_f).size(); }
+    uint32_t us = 0;
 
 private:
     FsFile _f;
 };
 
+// Buffered: the card is written in whole 512-byte sectors where it can be
+// (a write ending mid-sector costs a read-modify-write of that sector).
 class SdOut : public OutFile {
 public:
+    static constexpr uint32_t kBuf = 8192;
     bool open(const String& p) {
         _f = Storage.open(p.c_str(), O_RDWR | O_CREAT | O_TRUNC);
-        return (bool)_f;
+        _buf = (uint8_t*)malloc(kBuf);
+        return _f && _buf;
     }
     bool close() {
         if (!_f) return false;
+        const bool ok = flush(true);
         _f.close();
-        return true;
+        return ok;
     }
     ~SdOut() override {
         if (_f) _f.close();
+        free(_buf);
     }
-    bool write(const void* d, uint32_t n) override { return _f.write((const uint8_t*)d, n) == n; }
-    bool seek(uint32_t pos) override { return _f.seek(pos); }
-    uint32_t tell() override { return (uint32_t)_f.position(); }
+    bool write(const void* d, uint32_t n) override {
+        const uint8_t* p = (const uint8_t*)d;
+        while (n) {
+            const uint32_t k = n < kBuf - _len ? n : kBuf - _len;
+            memcpy(_buf + _len, p, k);
+            _len += k;
+            _pos += k;
+            p += k;
+            n -= k;
+            if (_len == kBuf && !flush(false)) return false;
+        }
+        return true;
+    }
+    bool seek(uint32_t pos) override {
+        if (!flush(true) || !_f.seek(pos)) return false;
+        _pos = pos;
+        return true;
+    }
+    uint32_t tell() override { return _pos; }
+    uint32_t us = 0;
 
 private:
+    // Writes the buffer, all of it or up to a sector boundary (the rest stays).
+    bool flush(bool all) {
+        if (!_len) return true;
+        const uint32_t start = _pos - _len;
+        uint32_t n = _len;
+        if (!all) {
+            const uint32_t tail = (start + _len) % 512;
+            if (tail < _len) n = _len - tail;
+        }
+        const uint32_t t = micros();
+        const bool ok = _f.write(_buf, n) == n;
+        us += micros() - t;
+        memmove(_buf, _buf + n, _len - n);
+        _len -= n;
+        return ok;
+    }
     FsFile _f;
+    uint8_t* _buf = nullptr;
+    uint32_t _len = 0;
+    uint32_t _pos = 0;
+};
+
+struct TimedProgress {
+    ProgressFn fn;
+    void* user;
+    uint32_t us = 0;
+    int calls = 0;
+    static void call(void* self, int permille) {
+        TimedProgress* t = static_cast<TimedProgress*>(self);
+        const uint32_t s = micros();
+        if (t->fn) t->fn(t->user, permille);
+        t->us += micros() - s;
+        t->calls++;
+    }
 };
 
 class SdTemp : public TempFile {
@@ -121,7 +183,8 @@ bool ensureConverted(const String& path, const String& cacheDir, String& epubPat
     if (!out.open(tmpEpub)) return false;
     SdTemp toc(cacheDir + "/toc.tmp");
     ConvertStats stats;
-    const ConvertResult r = fb2ToEpub(in, out, toc, progress, user, &stats);
+    TimedProgress timed{progress, user};
+    const ConvertResult r = fb2ToEpub(in, out, toc, &TimedProgress::call, &timed, &stats);
     const bool closed = out.close();
     if (r != ConvertResult::Ok || !closed || !Storage.replaceFile(tmpEpub.c_str(), epubPath.c_str())) {
         Serial.printf("[Convert] %s: %s %s\n", path.c_str(), resultName(r), stats.error.c_str());
@@ -134,9 +197,10 @@ bool ensureConverted(const String& path, const String& cacheDir, String& epubPat
         s.write((const uint8_t*)stamp.c_str(), stamp.length());
         s.close();
     }
-    Serial.printf("[Convert] %s -> EPUB in %lu ms: %u chapters, %u images, %u contents entries, %u ids\n", path.c_str(),
-                  (unsigned long)(millis() - t0), (unsigned)stats.chapters, (unsigned)stats.images,
-                  (unsigned)stats.tocEntries, (unsigned)stats.ids);
+    Serial.printf("[Convert] %s -> EPUB in %lu ms (card reads %lu ms, writes %lu ms, progress window %lu ms): "
+                  "%u chapters, %u images, %u contents entries, %u ids\n", path.c_str(), (unsigned long)(millis() - t0),
+                  (unsigned long)(in.us / 1000), (unsigned long)(out.us / 1000), (unsigned long)(timed.us / 1000),
+                  (unsigned)stats.chapters, (unsigned)stats.images, (unsigned)stats.tocEntries, (unsigned)stats.ids);
     return true;
 }
 
