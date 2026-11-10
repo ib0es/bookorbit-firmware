@@ -169,6 +169,10 @@ void placeBookmarks(BookmarkList& list) {
             b.cfi = Reader.cfiAt(b.spine, b.chars);
             changed = b.cfi.length() > 0 || changed;
         }
+        if (b.placed() && b.snippet.length() == 0) {   // the server keeps no first words
+            b.snippet = Reader.textAt(b.spine, b.chars);
+            changed = b.snippet.length() > 0 || changed;
+        }
     }
     if (!changed) return;
     list.sort();

@@ -9,6 +9,11 @@ namespace convert {
 
 // Bump to have every converted book made again (a converter fix).
 constexpr int kConverterVersion = 6;
+// FB2 books on their own (7: laid out as the web reader does, with a CFI map).
+constexpr int kFb2ConverterVersion = 7;
+
+// In the cache directory of a converted FB2: its CFI map (reader/cfi_map.h).
+constexpr const char* kCfiMapName = "cfimap.txt";
 
 // True for the formats read through a converted EPUB: FB2, TXT, MOBI/AZW/AZW3.
 bool needsConversion(const String& path);

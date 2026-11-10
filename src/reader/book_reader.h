@@ -29,6 +29,7 @@
 #include "config.h"
 #include "chapter_item.h"
 #include "epub_cfi.h"
+#include "cfi_map.h"
 #include "engine/bitmap_book_font.h"
 #include "engine/ttf_book_font.h"
 #include "engine/sd_book_storage.h"
@@ -81,6 +82,8 @@ public:
     String cfiAt(int spine, uint32_t chars);
     bool placeOfCfi(const String& cfi, int& spine, uint32_t& chars);
     float percentAt(int spine, uint32_t chars) const;
+    // About `maxBytes` of the chapter's text from character `chars` on (a bookmark's first words).
+    String textAt(int spine, uint32_t chars, size_t maxBytes = 100);
     bool goToPosition(const String& cfi, const String& xpath, float percent, int page);
     void renderCurrentPage();
     int renderFailures() const { return _renderFailures; }   // pages that could not be drawn (tests, logs)
@@ -236,11 +239,16 @@ private:
     uint32_t charsOf(int spine) const;
     int globalPage(int spine, int page) const;
     bool chapterCharToCfi(int spine, uint32_t chars, String& out);
+    // CFIs in and out of the reader are the web reader's: for an FB2 book they go
+    // through the converter's map (identity for others).
+    String toPublicCfi(const String& local) const;
+    String toLocalCfi(const String& pub) const;
     bool cfiToChapterChar(const String& cfi, int& spine, uint32_t& chars);
     void drawStatusBar();
     void releaseIndex();
 
     bool _opened = false;
+    CfiMap _cfiMap;                 // FB2: the converted EPUB's places in the web reader's layout
     bool _noMemory = false;
     uint8_t _convertProblem = 0;   // convert::ConvertProblem
     String _path;

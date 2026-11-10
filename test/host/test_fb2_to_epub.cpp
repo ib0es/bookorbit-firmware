@@ -7,6 +7,7 @@
 #include "convert/zip_writer.h"
 #include "convert_test_util.h"
 
+#include <stdlib.h>
 #include <time.h>
 
 static bool convertString(const std::string& fb2, std::string& epub, convert::ConvertStats& st,
@@ -17,6 +18,12 @@ static bool convertString(const std::string& fb2, std::string& epub, convert::Co
     const convert::ConvertResult r = convert::fb2ToEpub(in, out, tmp, nullptr, nullptr, &st);
     if (result) *result = r;
     epub = out.d;
+    if (const char* dump = getenv("FB2_DUMP")) {   // keep the EPUB (and its CFI map) to look at
+        static int n = 0;
+        const std::string base = std::string(dump) + "/fb2-" + std::to_string(++n);
+        if (FILE* f = fopen((base + ".epub").c_str(), "wb")) { fwrite(epub.data(), 1, epub.size(), f); fclose(f); }
+        if (FILE* f = fopen((base + ".cfimap").c_str(), "wb")) { fwrite(st.cfiMap.data(), 1, st.cfiMap.size(), f); fclose(f); }
+    }
     if (r != convert::ConvertResult::Ok) printf("  convert: %s %s\n", convert::resultName(r), st.error.c_str());
     return r == convert::ConvertResult::Ok;
 }
@@ -91,9 +98,11 @@ static void testFixture() {
     const int notes = chapterWith(o, "The note text");
     CHECK(c1 >= 0 && c2 > c1 && notes > c2);
     CHECK(chapterWith(o, "paragraph number 0 ") != chapterWith(o, "paragraph number 1199 "));
-    CHECK(contains(o.chapters, "<h1 class=\"title\">Test Book<br/>Subtitle line</h1>"));
-    CHECK(contains(o.chapters, "<h2 class=\"title\" id=\"ch1\">Chapter One</h2>"));
-    CHECK(contains(o.chapters, "<h3 class=\"title\" id=\"ch1-1\">Part 1.1</h3>"));
+    // Laid out as the web reader's foliate-js lays out FB2 (CFIs mean the same place):
+    // a title is a block with a heading per line, sections stay sections.
+    CHECK(contains(o.chapters, "<div class=\"title\"><h1>Test Book</h1><h1>Subtitle line</h1>"));
+    CHECK(contains(o.chapters, "<section id=\"ch1\"><div class=\"title\"><h2>Chapter One</h2>"));
+    CHECK(contains(o.chapters, "<section id=\"ch1-1\"><div class=\"title\"><h3>Part 1.1</h3>"));
     CHECK(contains(o.chapters, "<em>em</em>"));
     CHECK(contains(o.chapters, "<strong>strong</strong>"));
     CHECK(contains(o.chapters, "<del>gone</del>"));
@@ -102,8 +111,9 @@ static void testFixture() {
     CHECK(contains(o.chapters, "&lt;tag&gt;"));
     CHECK(contains(o.chapters, "<blockquote class=\"epigraph\">"));
     CHECK(contains(o.chapters, "<p class=\"text-author\">Somebody</p>"));
-    CHECK(contains(o.chapters, "<div class=\"poem\"><p class=\"poem-title\">Poem title</p>"));
-    CHECK(contains(o.chapters, "<p class=\"v\">Line one</p>"));
+    // A poem's title is not shown (foliate drops it); a stanza is one block, its lines after <br/>.
+    CHECK(contains(o.chapters, "<blockquote class=\"poem\"><p class=\"stanza\">Line one<br/>Line two<br/></p>"));
+    CHECK(!contains(o.chapters, "Poem title"));
     CHECK(contains(o.chapters, "<td colspan=\"2\">both</td>"));
     CHECK(contains(o.chapters, "<p class=\"subtitle\">A subtitle</p>"));
     CHECK(contains(o.chapters, "<p class=\"empty\">&#160;</p>"));
@@ -212,9 +222,12 @@ static void testEdges() {
     CHECK(convertString(lp, epub, st));
     o = openEpub(epub);
     CHECK(o.ok && contains(o.chapters, "<p class=\"cont\">") && contains(o.chapters, "word399 </p>"));
+    // The pieces stand in one element, as foliate's one paragraph, and the map says where each starts.
+    CHECK(contains(o.chapters, "<div class=\"lp\"><p>word0 "));
+    CHECK(st.cfiMap.find("\nL 1 4/2/2 0 0 0 ") != std::string::npos);
     if (!o.chapters.empty()) {
         const std::string& c = o.chapters[0];
-        const size_t at = c.find("</p>\n<p class=\"cont\">");
+        const size_t at = c.find("</p><p class=\"cont\">");
         CHECK(at != std::string::npos && at > 0 && c[at - 1] == ' ');
     }
 }

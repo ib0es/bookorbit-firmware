@@ -78,6 +78,7 @@ SRCS_CXX = \
     src/convert/sd_convert.cpp \
     src/reader/engine/engine_text_counter.cpp \
     src/reader/epub_cfi.cpp \
+    src/reader/cfi_map.cpp \
     simulator/lib_adafruit_gfx/Adafruit_GFX.cpp \
     freeink-sdk/libs/book/FreeInkBook/src/FreeInkBook.cpp \
     freeink-sdk/libs/book/FreeInkBook/src/BookCatalog.cpp \

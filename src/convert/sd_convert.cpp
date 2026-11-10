@@ -139,7 +139,10 @@ String stampOf(const String& path) {
     const uint64_t size = f.size();
     f.close();
     char s[48];
-    snprintf(s, sizeof(s), "v%d %llu", kConverterVersion, (unsigned long long)size);
+    String lower = path;
+    lower.toLowerCase();
+    const int version = lower.endsWith(".fb2") ? kFb2ConverterVersion : kConverterVersion;
+    snprintf(s, sizeof(s), "v%d %llu", version, (unsigned long long)size);
     return s;
 }
 
@@ -212,6 +215,14 @@ bool ensureConverted(const String& path, const String& cacheDir, String& epubPat
                                                      : ConvertProblem::Broken;
         }
         return false;
+    }
+    // FB2: where its files stand in the web reader's layout (CFIs; reader/cfi_map.h).
+    const String mapPath = cacheDir + "/" + kCfiMapName;
+    if (stats.cfiMap.empty()) {
+        if (Storage.exists(mapPath.c_str())) Storage.remove(mapPath.c_str());
+    } else if (FsFile m = Storage.open(mapPath.c_str(), O_RDWR | O_CREAT | O_TRUNC)) {
+        m.write((const uint8_t*)stats.cfiMap.data(), stats.cfiMap.size());
+        m.close();
     }
     FsFile s = Storage.open(stampPath.c_str(), O_RDWR | O_CREAT | O_TRUNC);
     if (s) {

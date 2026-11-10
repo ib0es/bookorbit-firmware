@@ -24,6 +24,9 @@ struct ConvertStats {
     std::string author;
     std::string lang;
     std::string error;   // what failed, for the log
+    // FB2: where each file of the EPUB stands in the web reader's (foliate-js)
+    // layout of the book, for CFIs that mean the same place in both (CfiMap).
+    std::string cfiMap;
 };
 
 ConvertResult fb2ToEpub(InFile& in, OutFile& out, TempFile& tmp, ProgressFn progress = nullptr,

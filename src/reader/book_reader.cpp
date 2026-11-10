@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <new>
 #include "../convert/sd_convert.h"
+#include <SDCardManager.h>
 #include <strings.h>
 #include <text/hyph_en_us.h>
 #include "engine/hyph_ru.h"
@@ -466,6 +467,14 @@ bool BookReader::openBook(const String& filePath) {
         Serial.printf("[Reader] Cannot open %s\n", filePath.c_str());
         return false;
     }
+    _cfiMap.clear();
+    if (convert::needsConversion(filePath)) {
+        const String mapPath = cacheDirFor(filePath) + "/" + convert::kCfiMapName;
+        if (Storage.exists(mapPath.c_str())) {
+            const String text = SDCardManager::getInstance().readFile(mapPath.c_str());
+            if (!_cfiMap.parse(text.c_str(), text.length())) Serial.printf("[CFI] %s: not a map\n", mapPath.c_str());
+        }
+    }
     Storage.mkdir("/cache");
     _cache.setDir(cacheDirFor(filePath));
     Storage.mkdir(_cache.dir().c_str());
@@ -583,6 +592,7 @@ void BookReader::releaseIndex() {
 
 void BookReader::closeBook() {
     stopBackground();
+    _cfiMap.clear();
     _bgNothingFor = -1;
     releaseIndex();
     _catalog = BookCatalog();
@@ -1421,7 +1431,116 @@ bool BookReader::walkChapter(int spine, EpubCfi::Walker& walker) {
     return ok;
 }
 
-bool BookReader::cfiToChapterChar(const String& cfi, int& spine, uint32_t& chars) {
+namespace {
+// The chapter's text from an engine character on: tags left out, white space
+// collapsed, the common entities as characters.
+class TextFrom {
+public:
+    TextFrom(uint32_t from, size_t maxBytes) : _from(from), _max(maxBytes) {}
+    bool full() const { return _out.size() >= _max; }
+    const std::string& text() const { return _out; }
+    void feed(const char* d, size_t n) {
+        for (size_t i = 0; i < n && !full(); i++) {
+            const char c = d[i];
+            _counter.feed(&c, 1);
+            if (c == '<') {
+                _tag = true;
+                continue;
+            }
+            if (_tag) {
+                if (c == '>') {
+                    _tag = false;
+                    space();   // between elements: words stay apart
+                }
+                continue;
+            }
+            if (c == '&') {
+                _entity.clear();
+                _inEntity = true;
+                continue;
+            }
+            if (_inEntity) {
+                if (c != ';' && _entity.size() < 10) {
+                    _entity += c;
+                    continue;
+                }
+                _inEntity = false;
+                if (_entity == "amp") put('&');
+                else if (_entity == "lt") put('<');
+                else if (_entity == "gt") put('>');
+                else if (_entity == "quot") put('"');
+                else space();
+                continue;
+            }
+            if (c == ' ' || c == '\n' || c == '\r' || c == '\t') space();
+            else put(c);
+        }
+    }
+private:
+    // Character `_from` is the one that makes the count pass it.
+    bool started() const { return _counter.emitted() > _from; }
+    void space() {
+        if (started() && !_out.empty() && _out.back() != ' ') _out += ' ';
+    }
+    void put(char c) {
+        if (started()) _out += c;
+    }
+    EngineTextCounter _counter;
+    uint32_t _from;
+    size_t _max;
+    std::string _out, _entity;
+    bool _tag = false, _inEntity = false;
+};
+}  // namespace
+
+String BookReader::textAt(int spine, uint32_t chars, size_t maxBytes) {
+    if (!_opened || spine < 0 || spine >= (int)_spines.size()) return String();
+    ZipEntry entry;
+    BookSource* source = nullptr;
+    if (!chapterSource(spine, entry, source, _chapterSrc)) return String();
+    // From the character before: when it is not a space the place is inside a
+    // word, whose rest is left out.
+    TextFrom grab(chars > 0 ? chars - 1 : 0, maxBytes + 40);
+    Buffer mem(4096);
+    if (mem.p) {
+        Arena arena(mem.p, 4096);
+        ZipEntryReader reader;
+        if (reader.open(*source, entry, arena) == BookStatus::Ok) {
+            char buf[512];
+            for (int32_t n; !grab.full() && (n = reader.read(buf, sizeof(buf))) > 0;) grab.feed(buf, (size_t)n);
+        }
+    }
+    _chapterSrc.close();
+    std::string t = grab.text();
+    if (chars > 0 && !t.empty() && t[0] != ' ') {
+        const size_t sp = t.find(' ');
+        t.erase(0, sp == std::string::npos ? t.size() : sp);
+    }
+    while (!t.empty() && t[0] == ' ') t.erase(0, 1);
+    if (t.size() > maxBytes) {
+        size_t cut = maxBytes;
+        while (cut > 0 && (static_cast<unsigned char>(t[cut]) & 0xC0) == 0x80) cut--;   // a whole character
+        t.resize(cut);
+    }
+    return String(t.c_str());
+}
+
+String BookReader::toPublicCfi(const String& local) const {
+    if (_cfiMap.empty() || local.length() == 0) return local;
+    EpubCfi::Location loc;
+    if (!EpubCfi::parse(local.c_str(), loc) || !_cfiMap.toPublic(loc)) return local;
+    return EpubCfi::format(loc).c_str();
+}
+
+String BookReader::toLocalCfi(const String& pub) const {
+    if (_cfiMap.empty() || pub.length() == 0) return pub;
+    EpubCfi::Location loc;
+    if (!EpubCfi::parse(pub.c_str(), loc) || !_cfiMap.toLocal(loc)) return String();
+    return EpubCfi::format(loc).c_str();
+}
+
+bool BookReader::cfiToChapterChar(const String& publicCfi, int& spine, uint32_t& chars) {
+    const String cfi = toLocalCfi(publicCfi);
     EpubCfi::Location loc;
     if (!EpubCfi::parse(cfi.c_str(), loc)) return false;
     spine = loc.ordinal - 1;
@@ -1494,7 +1613,7 @@ String BookReader::cfiAt(int spine, uint32_t chars) {
         // Nothing to point at past this character (an image page): the chapter's body.
         cfi = "epubcfi(/6/" + String((spine + 1) * 2) + "!/4)";
     }
-    return cfi;
+    return toPublicCfi(cfi);
 }
 
 bool BookReader::placeOfCfi(const String& cfi, int& spine, uint32_t& chars) {

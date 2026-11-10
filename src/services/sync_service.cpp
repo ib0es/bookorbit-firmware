@@ -12,6 +12,7 @@
 #include "../ui/i18n.h"
 #include "../reader/reader.h"
 #include "progress_sync.h"
+#include "../convert/sd_convert.h"
 #include "bookmarks.h"
 #include "sync_clock.h"
 
@@ -130,10 +131,16 @@ void resolveServerIds(BookProgressRecord& rec) {
     }
 }
 
-// A CFI means the same thing to the web reader only for an EPUB file: other
-// formats are read here through an EPUB made from them, whose CFIs stay local.
+// A CFI means the same thing to the web reader for an EPUB file, and for an FB2
+// once converted here (its CFI map carries them over; reader/cfi_map.h). Other
+// formats are read through an EPUB made from them whose CFIs stay local.
 static bool cfiApplies(const BookProgressRecord& rec) {
-    return rec.filePath.length() == 0 || BookFormats::fromPath(rec.filePath.c_str()) == BookFormats::Epub;
+    if (rec.filePath.length() == 0) return true;
+    const auto kind = BookFormats::fromPath(rec.filePath.c_str());
+    if (kind == BookFormats::Epub) return true;
+    if (kind != BookFormats::Fb2) return false;
+    const String map = BookReader::cacheDirFor(rec.filePath) + "/" + convert::kCfiMapName;
+    return Storage.exists(map.c_str());
 }
 
 bool isOpenInReader(const BookProgressRecord& rec) {

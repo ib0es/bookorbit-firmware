@@ -153,6 +153,7 @@ constexpr uint32_t kSectionSplit = 24 * 1024;   // a new section starts a new fi
 constexpr uint32_t kHardSplit = 64 * 1024;      // any paragraph does past this
 constexpr uint32_t kElementWeight = 16;
 constexpr size_t kMaxIds = 8192;
+constexpr uint32_t kParLimit = 2400;            // a longer paragraph is cut in pieces (see text())
 
 const char* const kImageMime[] = {"image/jpeg", "image/png", "image/gif"};
 
@@ -177,33 +178,128 @@ void b64Init() {
 const char* const kCss =
     "body{margin:0}\n"
     "p{margin:0;text-indent:1.5em;text-align:justify}\n"
-    "h1,h2,h3,h4,h5,h6{text-align:center;text-indent:0;margin:1em 0 0.5em 0;font-weight:bold}\n"
+    "div.title{margin:1em 0 0.7em 0;text-align:center;text-indent:0}\n"
+    "h1,h2,h3,h4,h5,h6{text-align:center;text-indent:0;margin:0;font-weight:bold}\n"
     "h1{font-size:1.5em}h2{font-size:1.3em}h3{font-size:1.15em}h4,h5,h6{font-size:1em}\n"
     "p.subtitle{text-align:center;text-indent:0;font-weight:bold;margin:0.7em 0 0.3em 0}\n"
     "p.empty{text-indent:0}\n"
     "p.cont{text-indent:0}\n"
     "blockquote{margin:0.5em 0 0.5em 2em}\n"
     "blockquote.epigraph p{font-style:italic;text-indent:0}\n"
+    "blockquote.poem{font-style:normal}\n"
     "p.text-author{text-align:right;text-indent:0;font-style:italic}\n"
-    "div.poem{margin:0.5em 0 0.5em 2em}\n"
-    "div.stanza{margin:0 0 0.7em 0}\n"
-    "p.v{text-indent:0;text-align:left}\n"
-    "p.poem-title{text-indent:0;font-weight:bold}\n"
     "p.date{text-align:right;text-indent:0}\n"
+    "p.stanza{text-indent:0;text-align:left;margin:0 0 0.7em 0}\n"
+    "div.stitle{font-weight:bold}\n"
     "div.image{text-align:center;text-indent:0;margin:0.5em 0}\n"
-    "div.annotation{font-style:italic}\n"
     "td,th{padding:0.2em}\n";
 
-// What an open element closes with in the output.
-enum Close : uint8_t {
-    C_NONE, C_P, C_H, C_BLOCKQUOTE, C_DIV, C_EM, C_STRONG, C_DEL, C_SUB, C_SUP, C_CODE, C_SPAN, C_A, C_TABLE, C_TR,
-    C_TD, C_TH
+// The book is laid out as the web reader (foliate-js, fb2.js) lays it out, so
+// that a CFI means the same place in both: every FB2 element foliate keeps
+// becomes one element here, in the same order, with the same text (tags may
+// differ: only element order and text count in a CFI); what foliate drops
+// (with its text) is dropped. K: what an element becomes; X: the rules for its
+// children (foliate's BODY, SECTION, TITLE, POEM... tables).
+enum K : uint8_t {
+    K_NONE,      // not book content (the FictionBook, a first body)
+    K_DROP,      // dropped with everything in it
+    K_ROOT,      // a body after the first: one foliate section
+    K_SECTION, K_HEADER, K_HLINE, K_P, K_SUBTITLE, K_QUOTE, K_ASIDE, K_EMPTY, K_IMG, K_TABLE, K_TR, K_TD, K_TH,
+    K_INLINE, K_A, K_STANZA, K_STRONGLINE,
+    K_V,         // a stanza line: not an element, its text goes after the stanza's children
+    K_VINNER     // inside a stanza line
 };
+enum X : uint8_t { X_NONE, X_BODY, X_SECTION, X_TITLE, X_POEM, X_STANZA, X_STITLE, X_STYLE, X_TABLE, X_TR };
+
+struct Rule {
+    K k;
+    X child;
+};
+
+Rule ruleFor(X x, E e) {
+    switch (x) {
+        case X_BODY:
+            if (e == E_IMAGE) return {K_IMG, X_NONE};
+            if (e == E_TITLE) return {K_HEADER, X_TITLE};
+            if (e == E_EPIGRAPH) return {K_QUOTE, X_SECTION};
+            if (e == E_SECTION) return {K_SECTION, X_SECTION};
+            break;
+        case X_SECTION:
+            switch (e) {
+                case E_TITLE: return {K_HEADER, X_TITLE};
+                case E_EPIGRAPH: return {K_QUOTE, X_SECTION};
+                case E_IMAGE: return {K_IMG, X_NONE};
+                case E_ANNOTATION: return {K_ASIDE, X_NONE};
+                case E_SECTION: return {K_SECTION, X_SECTION};
+                case E_P: return {K_P, X_STYLE};
+                case E_POEM: return {K_QUOTE, X_POEM};
+                case E_SUBTITLE: return {K_SUBTITLE, X_STYLE};
+                case E_CITE: return {K_QUOTE, X_SECTION};
+                case E_EMPTY_LINE: return {K_EMPTY, X_NONE};
+                case E_TABLE: return {K_TABLE, X_TABLE};
+                case E_TEXT_AUTHOR: return {K_P, X_STYLE};
+                default: break;
+            }
+            break;
+        case X_TITLE:
+            if (e == E_P) return {K_HLINE, X_STYLE};
+            if (e == E_EMPTY_LINE) return {K_EMPTY, X_NONE};
+            break;
+        case X_POEM:
+            if (e == E_EPIGRAPH) return {K_QUOTE, X_SECTION};
+            if (e == E_SUBTITLE) return {K_SUBTITLE, X_STYLE};
+            if (e == E_TEXT_AUTHOR || e == E_DATE) return {K_P, X_STYLE};
+            if (e == E_STANZA) return {K_STANZA, X_STANZA};
+            break;
+        case X_STANZA:
+            if (e == E_TITLE) return {K_HEADER, X_STITLE};
+            if (e == E_SUBTITLE) return {K_P, X_STYLE};
+            if (e == E_V) return {K_V, X_NONE};
+            break;
+        case X_STITLE:
+            if (e == E_P) return {K_STRONGLINE, X_STYLE};
+            if (e == E_EMPTY_LINE) return {K_EMPTY, X_NONE};
+            break;
+        case X_STYLE:
+            switch (e) {
+                case E_STRONG: case E_EMPHASIS: case E_STYLE: case E_STRIKE: case E_SUB: case E_SUP: case E_CODE:
+                    return {K_INLINE, X_STYLE};
+                case E_A: return {K_A, X_STYLE};
+                case E_IMAGE: return {K_IMG, X_NONE};
+                default: break;
+            }
+            break;
+        case X_TABLE:
+            if (e == E_TR) return {K_TR, X_TR};
+            break;
+        case X_TR:
+            if (e == E_TH) return {K_TH, X_STYLE};
+            if (e == E_TD) return {K_TD, X_STYLE};
+            break;
+        case X_NONE:
+            break;
+    }
+    return {K_DROP, X_NONE};
+}
+
+bool isElement(K k) { return k != K_NONE && k != K_DROP && k != K_V && k != K_VINNER; }
+
+// UTF-16 units of UTF-8 text (a CFI's character offsets).
+uint32_t utf16Units(const char* s, int len) {
+    uint32_t n = 0;
+    for (int i = 0; i < len; i++) {
+        const uint8_t c = (uint8_t)s[i];
+        if ((c & 0xC0) == 0x80) continue;
+        n += c >= 0xF0 ? 2 : 1;
+    }
+    return n;
+}
 
 struct TocOpen {
     std::string anchor;
     uint16_t file = 0;
     bool labelled = false;
+    bool content = false;   // anything in the section (an empty one gets no number)
 };
 
 // ------------------------------------------------------------------ converter
@@ -242,10 +338,13 @@ private:
     void flushOut();
     void ensureChapter();
     void closeChapter();
-    void requestSplit(bool sectionStart, int sectionDepth);
-    void beginBlock();   // a block start: split, chapter, pending blank lines
-    void openTag(const char* tag, const char* cls, const char* ownId, bool takeAnchor);
-    void anchorSpan();
+    void startRoot();                 // a new file for a new foliate section
+    void splitFile();                 // a new file inside a foliate section
+    bool chainOnly() const;           // only sections open: a file may end here
+    void emitOpen(int d, const char** atts, const char* ownId);
+    void emitClose(int d);
+    void reopen(int d);               // a section open again in a new file
+    void ourPath(int d, std::string& out) const;
     std::string hrefFor(const char* href);
     int imageRef(const char* href);           // pass 2: an image's number, given on first use
     void binaryStart(const char* id, const char* contentType);
@@ -276,10 +375,27 @@ private:
 
     // element stack
     E _stack[kMaxDepth];
-    Close _close[kMaxDepth];
-    uint8_t _hLevel[kMaxDepth];
+    K _kind[kMaxDepth];
+    X _ctx[kMaxDepth];            // rules for the children
+    uint8_t _hLevel[kMaxDepth];   // a header: the level of its lines
+    uint16_t _folIdx[kMaxDepth], _folCount[kMaxDepth];   // place among foliate's element children, children so far
+    uint16_t _ourIdx[kMaxDepth], _ourCount[kMaxDepth];   // the same in this file
+    bool _wrapped[kMaxDepth];     // a long paragraph, in a div of its pieces
     int _depth = 0;
     int _skipDepth = 0;       // > 0: inside an element too deep to follow
+    int _bodyDepth = -1;      // stack index of the open body
+    int _rootDepth = -1;      // stack index of the foliate section's root element
+    int _nonChain = 0;        // open elements below the root that are not sections
+    int _folSection = 0;      // foliate sections so far
+    std::string _cfiMap;      // pass 2: our files and long paragraphs against foliate's sections
+    std::string _vText;       // the stanza line being read
+    std::vector<std::string> _stanzaV;
+    int _emptyRun = 0;        // empty-lines in a row
+    uint32_t _pOrdinal = 0;   // paragraphs so far (K_P)
+    std::vector<uint32_t> _longP;   // pass 1: ordinals of paragraphs to cut in pieces
+    size_t _longNext = 0;
+    std::string _pieces;      // " m b" per piece of the open long paragraph
+    uint32_t _slotUnits = 0;  // UTF-16 units of the open paragraph's text since its last child element
 
     // description
     bool _inTitleInfo = false;
@@ -292,32 +408,25 @@ private:
 
     // bodies
     int _body = 0;            // bodies seen
-    bool _notesBody = false;
     int _sectionDepth = 0;
     int _topSections = 0;     // top-level sections of the main body (pass 1)
     int _topSectionsSeen = 0;
-    int _textDepth = 0;       // inside p / v / title...
-    int _openBlocks = 0;      // inside blockquote / div / table
-    int _titleDepth = 0;      // > 0: inside <title> (its level in _depth)
-    int _titleLines = 0;
-    bool _titleAsParas = false;
+    int _titleDepth = -1;     // stack index of a section's title being read (contents)
+    int _pDepth = -1;         // stack index of the open K_P
     std::string _titleText;
     std::string _firstParaText;
     std::string _heldLabel;
     std::vector<std::string> _fileLabels;   // first words of each file (pass 2): contents of last resort   // "CHAPTER I." waiting for the line that names it
     bool _collectFirstPara = false;
-    int _pendingEmpty = 0;
-    uint32_t _pBytes = 0;   // text written into the open p (pass 2)
+    uint32_t _pBytes = 0;   // text of the open p (pass 1: all of it; pass 2: since the last cut)
     bool _spacerEmptyLines = false;   // empty-line used as paragraph spacing (calibre output)
     uint32_t _pCount = 0, _emptyCount = 0;
-    std::string _pendingAnchor;
     uint32_t _genId = 0;
 
     // chapters
     uint16_t _file = 1;
     bool _fileHasContent = false;
     bool _chapterOpen = false;
-    bool _splitWanted = false;
     uint32_t _weight = 0;
     uint16_t _maxFile = 0;
     char _buf[1024];
@@ -408,6 +517,7 @@ ConvertResult Fb2Converter::run() {
     _stats.images = (uint32_t)_imageCount;
     _stats.tocEntries = _tocCount;
     _stats.title = _bookTitle;
+    if (_maxFile > 0) _stats.cfiMap = "fb2cfi 1\n" + _cfiMap;
     _stats.lang = _lang;
     for (size_t i = 0; i < _authors.size(); i++) _stats.author += (i ? ", " : "") + _authors[i];
     if (_progress) _progress(_user, 1000);
@@ -420,18 +530,20 @@ void Fb2Converter::resetPass() {
     _inTitleInfo = false;
     _descDepth = 0;
     _body = 0;
-    _notesBody = false;
+    _bodyDepth = -1;
+    _rootDepth = -1;
+    _nonChain = 0;
+    _folSection = 0;
     _sectionDepth = 0;
-    _textDepth = 0;
-    _openBlocks = 0;
-    _titleDepth = 0;
-    _pendingEmpty = 0;
-    _pendingAnchor.clear();
+    _titleDepth = -1;
+    _pDepth = -1;
+    _emptyRun = 0;
+    _pOrdinal = 0;
+    _longNext = 0;
     _genId = 0;
     _file = 1;
     _fileHasContent = false;
     _chapterOpen = false;
-    _splitWanted = false;
     _weight = 0;
     _maxFile = 0;
     _bufLen = 0;
@@ -440,6 +552,9 @@ void Fb2Converter::resetPass() {
     _imageCount = 0;
     _topSectionsSeen = 0;
     _collectFirstPara = false;
+    _heldLabel.clear();
+    _stanzaV.clear();
+    _vText.clear();
     for (auto& t : _toc) t = TocOpen();
     _tocCount = 0;
     _read = 0;
@@ -641,65 +756,280 @@ void Fb2Converter::closeChapter() {
     if (_fileHasContent && _file > _maxFile) _maxFile = _file;
 }
 
-// A section start may begin a new file; past kHardSplit any block may.
-void Fb2Converter::requestSplit(bool sectionStart, int sectionDepth) {
-    if (!_fileHasContent) return;
-    if (sectionStart && ((sectionDepth == 1 && !_notesBody) || _weight > kSectionSplit)) _splitWanted = true;
-}
-
-void Fb2Converter::beginBlock() {
-    if (_openBlocks == 0 && _textDepth == 0 && _fileHasContent && (_splitWanted || _weight > kHardSplit)) {
+// A new file for a new foliate section (each element of the first body, each
+// later body): "F <file> <section>" in the map.
+void Fb2Converter::startRoot() {
+    if (_fileHasContent) {
         closeChapter();
         _file++;
-        _fileHasContent = false;
-        _weight = 0;
-        _pendingEmpty = 0;   // blank lines never open a file
     }
-    _splitWanted = false;
-    // Blank lines held back: in calibre-style books an empty-line between every
-    // two paragraphs is spacing, kept only where two or more stand together.
-    const int blanks = _spacerEmptyLines ? (_pendingEmpty >= 2 ? 1 : 0) : std::min(_pendingEmpty, 3);
-    _pendingEmpty = 0;
-    for (int i = 0; i < blanks; i++) emit("<p class=\"empty\">&#160;</p>\n");
     _fileHasContent = true;
-    if (_pass == 2 && _file <= _fileLabels.size()) {   // the words of two paragraphs stay apart
-        std::string& l = _fileLabels[_file - 1];
-        if (!l.empty() && l.back() != ' ') l += ' ';
-    }
+    _weight = 0;
+    _emptyRun = 0;
+    if (_pass == 2) _cfiMap += "F " + std::to_string(_file) + " " + std::to_string(_folSection) + "\n";
+    _folSection++;
 }
 
-void Fb2Converter::openTag(const char* tag, const char* cls, const char* ownId, bool takeAnchor) {
-    if (_pass != 2) {
-        if (!ownId && takeAnchor) _pendingAnchor.clear();
-        return;
-    }
-    emit("<");
-    emit(tag);
-    if (cls) {
-        emit(" class=\"");
-        emit(cls);
-        emit("\"");
-    }
-    const char* id = ownId;
-    if (!id && takeAnchor && !_pendingAnchor.empty()) id = _pendingAnchor.c_str();
-    if (id) {
-        emit(" id=\"");
-        emitAttrValue(id);
-        emit("\"");
-    }
-    emit(">");
-    if (id == _pendingAnchor.c_str()) _pendingAnchor.clear();
+bool Fb2Converter::chainOnly() const {
+    return _rootDepth >= 0 && _nonChain == 0 && (_kind[_rootDepth] == K_SECTION || _kind[_rootDepth] == K_ROOT);
 }
 
-// An anchor that could not go on the block itself (it has its own id).
-void Fb2Converter::anchorSpan() {
-    if (_pendingAnchor.empty()) return;
+// A new file in the middle of a foliate section, between the children of the
+// innermost open section. The open sections are opened again in it, each the
+// first child of the one above: the map says where they and the next child
+// stand among foliate's ("F <file> <section> <o1> ... <on>").
+void Fb2Converter::splitFile() {
+    const int top = _depth - 2;   // the innermost open element (the new one is at _depth - 1)
+    for (int i = top; i >= _rootDepth; i--) emitClose(i);
+    closeChapter();
+    _file++;
+    _fileHasContent = true;
+    _weight = 0;
+    _emptyRun = 0;
     if (_pass == 2) {
-        emit("<span id=\"");
-        emitAttrValue(_pendingAnchor.c_str());
-        emit("\"></span>");
+        _cfiMap += "F " + std::to_string(_file) + " " + std::to_string(_folSection - 1);
+        for (int i = _rootDepth + 1; i <= top; i++) _cfiMap += " " + std::to_string(_folIdx[i]);
+        _cfiMap += " " + std::to_string(_folCount[top]) + "\n";
     }
-    _pendingAnchor.clear();
+    for (int i = _rootDepth; i <= top; i++) {
+        reopen(i);
+        _ourIdx[i] = 0;
+        _ourCount[i] = i < top ? 1 : 0;
+    }
+}
+
+// Steps of element `d` from the file's <body> ("4/2/6/4").
+void Fb2Converter::ourPath(int d, std::string& out) const {
+    out = "4";
+    for (int i = _rootDepth; i <= d; i++)
+        if (isElement(_kind[i])) out += "/" + std::to_string(2 * (_ourIdx[i] + 1));
+}
+
+// No line breaks of our own between tags: a text node is foliate's text as it
+// is, and a CFI counts its characters (spaces too).
+void Fb2Converter::reopen(int d) {
+    emit(_kind[d] == K_ROOT ? "<section class=\"notes\">" : "<section>");
+}
+
+void Fb2Converter::emitClose(int d) {
+    switch (_kind[d]) {
+        case K_ROOT:
+        case K_SECTION: emit("</section>"); break;
+        case K_HEADER: emit("</div>"); break;
+        case K_HLINE: {
+            char tag[8];
+            snprintf(tag, sizeof(tag), "</h%u>", (unsigned)_hLevel[d - 1]);
+            emit(tag);
+            break;
+        }
+        case K_P:
+        case K_SUBTITLE:
+            emit("</p>");
+            if (_wrapped[d]) emit("</div>");
+            break;
+        case K_QUOTE: emit("</blockquote>"); break;
+        case K_ASIDE: emit("</aside>"); break;
+        case K_TABLE: emit("</table>"); break;
+        case K_TR: emit("</tr>"); break;
+        case K_TD: emit("</td>"); break;
+        case K_TH: emit("</th>"); break;
+        case K_INLINE: {
+            static const char* const close[] = {"</em>", "</strong>", "</del>", "</sub>", "</sup>", "</code>", "</span>"};
+            const E e = _stack[d];
+            emit(close[e == E_EMPHASIS ? 0 : e == E_STRONG ? 1 : e == E_STRIKE ? 2 : e == E_SUB ? 3 : e == E_SUP ? 4
+                         : e == E_CODE ? 5 : 6]);
+            break;
+        }
+        case K_A: emit("</a>"); break;
+        case K_STANZA:
+            for (const std::string& v : _stanzaV) {
+                emitText(v.data(), (int)v.size());
+                emit("<br/>");
+            }
+            _stanzaV.clear();
+            emit("</p>");
+            break;
+        case K_STRONGLINE: emit("</strong>"); break;
+        default: break;   // K_EMPTY and K_IMG are written whole when opened
+    }
+}
+
+void Fb2Converter::emitOpen(int d, const char** atts, const char* ownId) {
+    const K k = _kind[d];
+    const E e = _stack[d];
+    const int parent = d - 1;
+    auto withId = [&](const char* tag, const char* cls, const char* id) {
+        emit("<");
+        emit(tag);
+        if (cls) {
+            emit(" class=\"");
+            emit(cls);
+            emit("\"");
+        }
+        if (id) {
+            emit(" id=\"");
+            emitAttrValue(id);
+            emit("\"");
+        }
+        emit(">");
+    };
+    switch (k) {
+        case K_SECTION: {
+            std::string anchor = ownId ? ownId : std::string();
+            if (_body == 1) {
+                _sectionDepth++;
+                if (_sectionDepth == 1) _topSectionsSeen++;
+                for (int t = 1; t < _sectionDepth && t <= 3; t++)
+                    if (!_toc[t].labelled) tocFinishOpen(t);   // parents without a title so far
+                if (_sectionDepth <= 3) {
+                    if (anchor.empty()) anchor = "fb2s" + std::to_string(++_genId);
+                    TocOpen& t = _toc[_sectionDepth];
+                    t = TocOpen();
+                    t.anchor = anchor;
+                    t.file = _file;
+                    _collectFirstPara = _sectionDepth == 1;
+                    _firstParaText.clear();
+                }
+            }
+            withId("section", nullptr, anchor.empty() ? nullptr : anchor.c_str());
+            emit("");
+            break;
+        }
+        case K_HEADER: {
+            const bool stanza = _kind[parent] == K_STANZA;
+            int level;
+            if (parent == _bodyDepth && _body == 1) level = 1;                     // the book's title
+            else if (_body > 1) level = _kind[parent] == K_ROOT ? 2 : 4;          // notes
+            else level = std::min(_sectionDepth + 1, 6);
+            _hLevel[d] = (uint8_t)level;
+            if (!stanza && _kind[parent] == K_SECTION && _body == 1) {
+                _titleDepth = d;
+                _titleText.clear();
+            }
+            if (!stanza && _body > 1 && _kind[parent] == K_ROOT) {
+                _titleDepth = d;
+                _titleText.clear();
+            }
+            withId("div", stanza ? "stitle" : "title", ownId);
+            break;
+        }
+        case K_HLINE: {
+            char tag[4] = {'h', (char)('0' + _hLevel[parent]), 0, 0};
+            if (_titleDepth >= 0 && !_titleText.empty()) _titleText += ' ';
+            withId(tag, nullptr, ownId);
+            break;
+        }
+        case K_P:
+        case K_SUBTITLE: {
+            const char* cls = k == K_SUBTITLE ? "subtitle" : e == E_TEXT_AUTHOR ? "text-author" : e == E_DATE ? "date"
+                            : e == E_SUBTITLE ? "subtitle" : nullptr;
+            _wrapped[d] = false;
+            if (k == K_P) {
+                _pOrdinal++;
+                while (_longNext < _longP.size() && _longP[_longNext] < _pOrdinal) _longNext++;
+                if (_pass == 2 && _longNext < _longP.size() && _longP[_longNext] == _pOrdinal) {
+                    // Cut in pieces below: the pieces stand in one element, as the one p in foliate.
+                    _wrapped[d] = true;
+                    std::string path;
+                    ourPath(d, path);
+                    _pieces = "L " + std::to_string(_file) + " " + path + " 0 0";
+                    emit("<div class=\"lp\">");
+                }
+                _pDepth = d;
+                _pBytes = 0;
+                _slotUnits = 0;
+                if (_collectFirstPara) _firstParaText.clear();
+            }
+            withId("p", cls, ownId);
+            break;
+        }
+        case K_QUOTE:
+            withId("blockquote", e == E_EPIGRAPH ? "epigraph" : e == E_CITE ? "cite" : "poem", ownId);
+            emit("");
+            break;
+        case K_ASIDE: withId("aside", nullptr, ownId); break;
+        case K_EMPTY: {
+            const X x = _ctx[parent];
+            if (x == X_STITLE) {
+                emit("<br/>");
+            } else {
+                // foliate's <br>; spacing only where the book means it: in calibre-style
+                // books an empty-line between every two paragraphs is not, two in a row are.
+                _emptyRun++;
+                const bool show = x == X_TITLE || (_spacerEmptyLines ? _emptyRun == 2 : _emptyRun <= 3);
+                emit(show ? "<p class=\"empty\">&#160;</p>" : "<span></span>");
+            }
+            break;
+        }
+        case K_IMG: {
+            const int idx = imageRef(attr(atts, "href"));
+            const bool inlineImg = _ctx[parent] == X_STYLE;
+            char src[40];
+            snprintf(src, sizeof(src), "images/i%04d", idx);
+            if (!inlineImg) withId("div", "image", ownId);
+            if (idx >= 0) {
+                emit("<img src=\"");
+                emit(src);
+                emit("\" alt=\"\"/>");
+            } else if (inlineImg) {
+                emit("<span></span>");   // still an element, as foliate's img without a picture
+            }
+            if (!inlineImg) emit("</div>");
+            break;
+        }
+        case K_TABLE: withId("table", nullptr, ownId); emit(""); break;
+        case K_TR: withId("tr", nullptr, ownId); break;
+        case K_TD:
+        case K_TH: {
+            emit(k == K_TD ? "<td" : "<th");
+            for (const char* a : {"colspan", "rowspan", "align", "valign"}) {
+                if (const char* v = attr(atts, a)) {
+                    emit(" ");
+                    emit(a);
+                    emit("=\"");
+                    emitAttrValue(v);
+                    emit("\"");
+                }
+            }
+            if (ownId) {
+                emit(" id=\"");
+                emitAttrValue(ownId);
+                emit("\"");
+            }
+            emit(">");
+            break;
+        }
+        case K_INLINE: {
+            static const char* const tag[] = {"em", "strong", "del", "sub", "sup", "code", "span"};
+            withId(tag[e == E_EMPHASIS ? 0 : e == E_STRONG ? 1 : e == E_STRIKE ? 2 : e == E_SUB ? 3 : e == E_SUP ? 4
+                       : e == E_CODE ? 5 : 6], nullptr, ownId);
+            break;
+        }
+        case K_A: {
+            const char* href = attr(atts, "href");
+            const char* type = attr(atts, "type");
+            emit("<a");
+            if (type && strcmp(type, "note") == 0) emit(" class=\"note\"");
+            if (href) {
+                emit(" href=\"");
+                emitAttrValue(hrefFor(href).c_str());
+                emit("\"");
+            }
+            if (ownId) {
+                emit(" id=\"");
+                emitAttrValue(ownId);
+                emit("\"");
+            }
+            emit(">");
+            break;
+        }
+        case K_STANZA:
+            _stanzaV.clear();
+            withId("p", "stanza", ownId);
+            break;
+        case K_STRONGLINE: withId("strong", nullptr, ownId); break;
+        default: break;
+    }
 }
 
 std::string Fb2Converter::hrefFor(const char* href) {
@@ -881,7 +1211,7 @@ void Fb2Converter::tocFinishOpen(int depth) {
     if (depth < 1 || depth > 3) return;
     TocOpen& t = _toc[depth];
     // (An empty section never placed its anchor: nothing to point at.)
-    if (!t.anchor.empty() && !t.labelled && depth == 1 && _topSections > 1 && _pendingAnchor != t.anchor) {
+    if (!t.anchor.empty() && !t.labelled && t.content && depth == 1 && _topSections > 1) {
         t.labelled = true;
         tocRecord(depth, t.file, t.anchor, _heldLabel.empty() ? std::to_string(_topSectionsSeen) : _heldLabel);
     }
@@ -897,10 +1227,9 @@ void Fb2Converter::start(const char* name, const char** atts) {
         return;
     }
     const E e = elemOf(name);
-    const int parentDepth = _depth;
-    const E parent = parentDepth > 0 ? _stack[parentDepth - 1] : E_OTHER;
-    _stack[_depth] = e;
-    _close[_depth] = C_NONE;
+    const int d = _depth;
+    _stack[d] = e;
+    _kind[d] = K_NONE;
     _depth++;
     _weight += kElementWeight;
 
@@ -922,229 +1251,125 @@ void Fb2Converter::start(const char* name, const char** atts) {
         binaryStart(attr(atts, "id"), attr(atts, "content-type"));
         return;
     }
-    if (e == E_BODY) {
-        closeChapter();
-        if (_fileHasContent) {
-            _file++;
-            _fileHasContent = false;
-            _weight = 0;
-        }
+    if (e == E_BODY && _bodyDepth < 0) {
         _body++;
-        const char* n = attr(atts, "name");
-        _notesBody = _body > 1 && n && (strcmp(n, "notes") == 0 || strcmp(n, "comments") == 0);
+        _bodyDepth = d;
+        _ctx[d] = X_BODY;
         _sectionDepth = 0;
-        if (_notesBody) {
-            // The notes as one entry of the contents.
+        _rootDepth = -1;
+        _nonChain = 0;
+        if (_body > 1) {
+            // A later body (notes, comments) is one foliate section: the body itself.
+            startRoot();
+            _kind[d] = K_ROOT;
+            _rootDepth = d;
+            _folIdx[d] = _folCount[d] = _ourIdx[d] = _ourCount[d] = 0;
+            const char* ownId = attr(atts, "id");
             _toc[1] = TocOpen();
-            _toc[1].anchor = "fb2notes" + std::to_string(_body);
+            _toc[1].anchor = ownId ? ownId : "fb2notes" + std::to_string(_body);
             _toc[1].file = _file;
-            _pendingAnchor = _toc[1].anchor;
+            _emptyRun = 0;
+            emit("<section class=\"notes\" id=\"");
+            emitAttrValue(_toc[1].anchor.c_str());
+            emit("\">");
         }
         return;
     }
-    if (_body == 0) return;   // outside description, bodies and binaries: nothing to show
+    if (_bodyDepth < 0) return;   // outside description, bodies and binaries: nothing to show
+
+    const int parent = d - 1;
+    const K pk = _kind[parent];
+    if (parent != _bodyDepth && (pk == K_NONE || pk == K_DROP)) {
+        _kind[d] = K_DROP;
+        return;
+    }
+    if (pk == K_V || pk == K_VINNER) {   // a stanza line's inline markup: its text only
+        _kind[d] = K_VINNER;
+        return;
+    }
+    const Rule r = ruleFor(_ctx[parent], e);
+    if (r.k == K_DROP) {
+        _kind[d] = K_DROP;
+        return;
+    }
+    if (r.k == K_V) {
+        _kind[d] = K_V;
+        _vText.clear();
+        return;
+    }
+    const bool root = parent == _bodyDepth && _body == 1;
+    if (root) {
+        startRoot();
+    } else if (chainOnly() && _fileHasContent &&
+               ((r.k == K_SECTION && _weight > kSectionSplit) || _weight > kHardSplit)) {
+        splitFile();
+    }
+    if (r.k != K_EMPTY) _emptyRun = 0;
 
     const char* ownId = attr(atts, "id");
     if (ownId && _pass == 1) {
         if (_idHash.size() < kMaxIds) {
             _idHash.push_back(hashId(ownId));
-            _idFile.push_back(_file);   // corrected below for blocks that open a new file
+            _idFile.push_back(_file);
         } else {
             _idsOverflow = true;
         }
     }
-    // Record ids against the file the block lands in: decided by beginBlock().
-    auto fixId = [&]() {
-        if (ownId && _pass == 1 && !_idsOverflow && !_idFile.empty()) _idFile.back() = _file;
-    };
 
-    switch (e) {
-        case E_SECTION: {
+    _kind[d] = r.k;
+    _ctx[d] = r.child;
+    _folCount[d] = _ourCount[d] = 0;
+    if (_body == 1 && _sectionDepth >= 1) _toc[1].content = true;
+    _wrapped[d] = false;
+    if (root) {
+        _rootDepth = d;
+        _folIdx[d] = _ourIdx[d] = 0;
+    } else {
+        _folIdx[d] = _folCount[parent]++;
+        _ourIdx[d] = _ourCount[parent]++;
+        if (r.k != K_SECTION) _nonChain++;
+        if (pk == K_P) _slotUnits = 0;   // a child element of the paragraph: a new text slot after it
+    }
+    if (r.k == K_P && _pass == 1) {
+        _pOrdinal++;
+        _pDepth = d;
+        _pBytes = 0;
+        if (_ctx[parent] == X_SECTION && _stack[d] == E_P) _pCount++;
+        if (_collectFirstPara) _firstParaText.clear();
+        return;
+    }
+    if (r.k == K_EMPTY) _emptyCount += _pass == 1 ? 1 : 0;
+    if (r.k == K_SECTION && _pass == 1) {
+        // The contents' bookkeeping, as in pass 2 (emitOpen).
+        if (_body == 1) {
             _sectionDepth++;
-            if (_sectionDepth == 1 && !_notesBody && _body == 1) _topSectionsSeen++;
-            requestSplit(true, _sectionDepth);
-            if (_splitWanted && _openBlocks == 0 && _textDepth == 0) {
-                // Decide the file now so the contents entry points at it.
-                closeChapter();
-                _file++;
-                _fileHasContent = false;
-                _weight = 0;
-                _splitWanted = false;
-                _pendingEmpty = 0;
-            }
-            fixId();
-            // Parents without a title so far get their fallback label before a child.
-            for (int d = 1; d < _sectionDepth && d <= 3; d++)
-                if (!_toc[d].labelled) tocFinishOpen(d);
-            if (!_notesBody && _sectionDepth <= 3) {
+            if (_sectionDepth == 1) _topSectionsSeen++;
+            for (int t = 1; t < _sectionDepth && t <= 3; t++)
+                if (!_toc[t].labelled) tocFinishOpen(t);
+            if (_sectionDepth <= 3) {
                 TocOpen& t = _toc[_sectionDepth];
                 t = TocOpen();
                 t.anchor = ownId ? ownId : "fb2s" + std::to_string(++_genId);
                 t.file = _file;
-                _pendingAnchor = t.anchor;
                 _collectFirstPara = _sectionDepth == 1;
                 _firstParaText.clear();
-            } else if (ownId) {
-                _pendingAnchor = ownId;
             }
-            return;
         }
-        case E_TITLE: {
-            beginBlock();
-            fixId();
-            _titleDepth = _depth;
-            _titleLines = 0;
-            _titleText.clear();
-            _textDepth++;
-            _titleAsParas = parent == E_POEM || parent == E_STANZA;
-            if (_titleAsParas) return;   // its lines become p.poem-title
-            int level = parent == E_BODY ? 1 : std::min(_sectionDepth + 1, 6);
-            if (_notesBody) level = parent == E_BODY ? 2 : 4;
-            char tag[4] = {'h', (char)('0' + level), 0, 0};
-            _hLevel[_depth - 1] = (uint8_t)level;
-            openTag(tag, "title", ownId, true);
-            anchorSpan();
-            _close[_depth - 1] = C_H;
-            return;
-        }
-        case E_EPIGRAPH:
-        case E_CITE:
-        case E_POEM:
-        case E_STANZA:
-        case E_ANNOTATION:
-        case E_TABLE: {
-            beginBlock();
-            fixId();
-            const bool quote = e == E_EPIGRAPH || e == E_CITE;
-            const char* tag = quote ? "blockquote" : e == E_TABLE ? "table" : "div";
-            const char* cls = e == E_EPIGRAPH ? "epigraph" : e == E_CITE ? "cite" : e == E_POEM ? "poem"
-                            : e == E_STANZA ? "stanza" : e == E_ANNOTATION ? "annotation" : nullptr;
-            openTag(tag, cls, ownId, true);
-            anchorSpan();
-            _close[_depth - 1] = quote ? C_BLOCKQUOTE : e == E_TABLE ? C_TABLE : C_DIV;
-            _openBlocks++;
-            return;
-        }
-        case E_TR:
-            if (_textDepth == 0) {
-                emit("<tr>");
-                _close[_depth - 1] = C_TR;
-            }
-            return;
-        case E_TD:
-        case E_TH: {
-            if (_textDepth) return;
-            emit(e == E_TD ? "<td" : "<th");
-            for (const char* a : {"colspan", "rowspan", "align"}) {
-                if (const char* v = attr(atts, a)) {
-                    emit(" ");
-                    emit(a);
-                    emit("=\"");
-                    emitAttrValue(v);
-                    emit("\"");
-                }
-            }
-            emit(">");
-            _close[_depth - 1] = e == E_TD ? C_TD : C_TH;
-            _textDepth++;
-            return;
-        }
-        case E_P:
-        case E_V:
-        case E_SUBTITLE:
-        case E_TEXT_AUTHOR:
-        case E_DATE: {
-            if (_titleDepth) {
-                // A line of a title.
-                if (_titleAsParas) {
-                    openTag("p", "poem-title", ownId, true);
-                    _close[_depth - 1] = C_P;
-                } else if (_titleLines++ > 0) {
-                    emit("<br/>");
-                    _titleText += ' ';
-                }
-                return;
-            }
-            if (_textDepth) return;   // nested in another text block: its text only
-            if (e == E_P) _pCount++;
-            beginBlock();
-            fixId();
-            const char* cls = e == E_V ? "v" : e == E_SUBTITLE ? "subtitle" : e == E_TEXT_AUTHOR ? "text-author"
-                            : e == E_DATE ? "date" : nullptr;
-            openTag("p", cls, ownId, true);
-            anchorSpan();
-            _close[_depth - 1] = C_P;
-            _textDepth++;
-            _pBytes = 0;
-            if (e == E_P && _collectFirstPara) _firstParaText.clear();
-            return;
-        }
-        case E_EMPTY_LINE:
-            if (_titleDepth) {
-                emit("<br/>");
-                return;
-            }
-            _emptyCount++;
-            if (_textDepth == 0) _pendingEmpty++;
-            return;
-        case E_IMAGE: {
-            const int idx = imageRef(attr(atts, "href"));
-            const bool inlineImg = _textDepth > 0;
-            if (!inlineImg) {
-                beginBlock();
-                fixId();
-            }
-            if (idx < 0 || _pass != 2) return;
-            char src[40];
-            snprintf(src, sizeof(src), "images/i%04d", idx);
-            if (!inlineImg) {
-                openTag("div", "image", ownId, true);
-                anchorSpan();
-            }
-            emit("<img src=\"");
-            emit(src);
-            emit("\" alt=\"\"/>");
-            if (!inlineImg) emit("</div>\n");
-            return;
-        }
-        case E_A: {
-            if (!_textDepth) return;
-            const char* href = attr(atts, "href");
-            const char* type = attr(atts, "type");
-            emit("<a");
-            if (type && strcmp(type, "note") == 0) emit(" class=\"note\"");
-            if (href) {
-                emit(" href=\"");
-                emitAttrValue(hrefFor(href).c_str());
-                emit("\"");
-            }
-            if (ownId) {
-                emit(" id=\"");
-                emitAttrValue(ownId);
-                emit("\"");
-            }
-            emit(">");
-            _close[_depth - 1] = C_A;
-            return;
-        }
-        case E_EMPHASIS:
-        case E_STRONG:
-        case E_STRIKE:
-        case E_SUB:
-        case E_SUP:
-        case E_CODE:
-        case E_STYLE: {
-            if (!_textDepth) return;
-            static const char* const open[] = {"<em>", "<strong>", "<del>", "<sub>", "<sup>", "<code>", "<span>"};
-            static const Close close[] = {C_EM, C_STRONG, C_DEL, C_SUB, C_SUP, C_CODE, C_SPAN};
-            const int i = e - E_EMPHASIS;
-            emit(open[i]);
-            _close[_depth - 1] = close[i];
-            return;
-        }
-        default:
-            return;
+        return;
     }
+    if (r.k == K_HEADER && _pass == 1) {
+        const bool stanza = pk == K_STANZA;
+        if (!stanza && ((pk == K_SECTION && _body == 1) || (pk == K_ROOT && _body > 1))) {
+            _titleDepth = d;
+            _titleText.clear();
+        }
+        return;
+    }
+    if (r.k == K_HLINE && _pass == 1) {
+        if (_titleDepth >= 0 && !_titleText.empty()) _titleText += ' ';
+        return;
+    }
+    if (_pass == 2) emitOpen(d, atts, ownId);
 }
 
 void Fb2Converter::end(const char*) {
@@ -1154,8 +1379,9 @@ void Fb2Converter::end(const char*) {
     }
     if (_depth == 0) return;
     _depth--;
-    const E e = _stack[_depth];
-    const Close c = _close[_depth];
+    const int d = _depth;
+    const E e = _stack[d];
+    const K k = _kind[d];
 
     if (_descDepth > 0) {
         descEnd(e);
@@ -1166,78 +1392,76 @@ void Fb2Converter::end(const char*) {
         binaryEnd();
         return;
     }
-    if (e == E_BODY) {
-        if (_notesBody && !_toc[1].labelled) {
-            tocLabel(1, _lang.compare(0, 2, "ru") == 0 ? "\xD0\x9F\xD1\x80\xD0\xB8\xD0\xBC\xD0\xB5\xD1\x87\xD0\xB0"
-                                                         "\xD0\xBD\xD0\xB8\xD1\x8F"
-                                                       : "Notes");
+    if (d == _bodyDepth) {
+        if (k == K_ROOT) {
+            if (!_toc[1].labelled) {
+                tocLabel(1, _lang.compare(0, 2, "ru") == 0 ? "\xD0\x9F\xD1\x80\xD0\xB8\xD0\xBC\xD0\xB5\xD1\x87\xD0\xB0"
+                                                             "\xD0\xBD\xD0\xB8\xD1\x8F"
+                                                           : "Notes");
+            }
+            emitClose(d);
         }
-        _pendingEmpty = 0;
-        _notesBody = false;
+        _bodyDepth = -1;
+        _rootDepth = -1;
+        _nonChain = 0;
         return;
     }
-
-    static const char* const closeText[] = {"", "</p>\n", "", "</blockquote>\n", "</div>\n", "</em>", "</strong>",
-                                            "</del>", "</sub>", "</sup>", "</code>", "</span>", "</a>",
-                                            "</table>\n", "</tr>\n", "</td>", "</th>"};
-    if (c == C_H) {
-        char tag[16];
-        snprintf(tag, sizeof(tag), "</h%u>\n", (unsigned)_hLevel[_depth]);
-        emit(tag);
-    } else if (c != C_NONE) {
-        emit(closeText[c]);
+    switch (k) {
+        case K_NONE:
+        case K_DROP:
+        case K_VINNER:
+            return;
+        case K_V:
+            if (_pass == 2) _stanzaV.push_back(_vText);
+            _vText.clear();
+            return;
+        default:
+            break;
     }
-    if (c == C_BLOCKQUOTE || c == C_DIV || c == C_TABLE) _openBlocks--;
-    if (c == C_TD || c == C_TH) _textDepth--;
+    if (_pass == 2) emitClose(d);
+    if (d != _rootDepth && k != K_SECTION) _nonChain--;
+    if (d > 0 && _kind[d - 1] == K_P) _slotUnits = 0;
+    if (d == _rootDepth) _rootDepth = -1;
 
-    switch (e) {
-        case E_TITLE:
-            if (_titleDepth == _depth + 1) {
-                _titleDepth = 0;
-                _textDepth--;
+    switch (k) {
+        case K_HEADER:
+            if (_titleDepth == d) {
+                _titleDepth = -1;
                 trim(_titleText);
-                if (_notesBody) {
-                    if (_sectionDepth == 0) tocLabel(1, _titleText);
-                } else if (_sectionDepth >= 1) {
-                    tocLabel(_sectionDepth, _titleText);
-                }
+                if (_body > 1) tocLabel(1, _titleText);
+                else if (_sectionDepth >= 1) tocLabel(_sectionDepth, _titleText);
             }
             return;
-        case E_P:
-        case E_V:
-        case E_SUBTITLE:
-        case E_TEXT_AUTHOR:
-        case E_DATE:
-            if (c == C_P && !_titleDepth) {
-                _textDepth--;
-                if (e == E_P && _collectFirstPara) {
-                    std::string t = _firstParaText;
-                    trim(t);
-                    if (!t.empty()) {
-                        // A short first line of an untitled chapter names it ("CHAPTER I."),
-                        // with the next one when it is only a number ("CHAPTER I. Down the
-                        // Rabbit-Hole").
-                        if (_heldLabel.empty() && isChapterNumber(t)) {
-                            _heldLabel = t;
-                        } else {
-                            _collectFirstPara = false;
-                            std::string label = _heldLabel;
-                            if (label.empty()) label = t.size() <= 80 ? t : std::string();
-                            else if (t.size() <= 60) label += " " + t;
-                            _heldLabel.clear();
-                            if (!label.empty() && _topSections > 1) tocLabel(1, label);
-                        }
+        case K_P:
+            if (_pDepth == d) _pDepth = -1;
+            if (_pass == 1 && _pBytes > kParLimit) _longP.push_back(_pOrdinal);
+            if (_pass == 2 && _wrapped[d]) _cfiMap += _pieces + "\n";
+            if (_collectFirstPara && e == E_P) {
+                std::string t = _firstParaText;
+                trim(t);
+                if (!t.empty()) {
+                    // A short first line of an untitled chapter names it ("CHAPTER I."),
+                    // with the next one when it is only a number ("CHAPTER I. Down the
+                    // Rabbit-Hole").
+                    if (_heldLabel.empty() && isChapterNumber(t)) {
+                        _heldLabel = t;
+                    } else {
+                        _collectFirstPara = false;
+                        std::string label = _heldLabel;
+                        if (label.empty()) label = t.size() <= 80 ? t : std::string();
+                        else if (t.size() <= 60) label += " " + t;
+                        _heldLabel.clear();
+                        if (!label.empty() && _topSections > 1) tocLabel(1, label);
                     }
                 }
             }
             return;
-        case E_SECTION:
-            if (!_notesBody && _sectionDepth <= 3) tocFinishOpen(_sectionDepth);
-            if (_sectionDepth == 1) _collectFirstPara = false;
-            _sectionDepth--;
-            _pendingEmpty = 0;
-            // An empty section: its link target stays, if a file is open to take it.
-            if (!_pendingAnchor.empty() && _chapterOpen) anchorSpan();
+        case K_SECTION:
+            if (_body == 1) {
+                if (_sectionDepth <= 3) tocFinishOpen(_sectionDepth);
+                if (_sectionDepth == 1) _collectFirstPara = false;
+                _sectionDepth--;
+            }
             return;
         default:
             return;
@@ -1254,43 +1478,60 @@ void Fb2Converter::text(const char* s, int len) {
         binaryData(s, len);
         return;
     }
-    if (_body == 0 || _stack[_depth - 1] == E_BINARY) return;
+    if (_bodyDepth < 0) return;
+    const int d = _depth - 1;
+    const K k = _kind[d];
     _weight += (uint32_t)len;
-    if (_textDepth == 0) return;   // between blocks: layout whitespace
-    if (_titleDepth) appendCollapsed(_titleText, s, len, 400);
-    if (_collectFirstPara && _firstParaText.size() < 200) appendCollapsed(_firstParaText, s, len, 200);
-    if (_pass == 2 && !_titleDepth) {
+    if (k == K_V || k == K_VINNER) {
+        _vText.append(s, (size_t)len);
+        return;
+    }
+    if (!isElement(k)) return;   // dropped, or between the first body's sections
+    if (k == K_EMPTY || k == K_IMG) return;
+    if (_titleDepth >= 0) appendCollapsed(_titleText, s, len, 400);
+    if (_pDepth >= 0) {
+        _pBytes += (uint32_t)len;
+        if (_collectFirstPara && _firstParaText.size() < 200) appendCollapsed(_firstParaText, s, len, 200);
+    }
+    if (_pass != 2) return;
+    if (_titleDepth < 0) {
         if (_fileLabels.size() < _file) _fileLabels.resize(_file);
         std::string& l = _fileLabels[_file - 1];
+        if (!l.empty() && l.back() != ' ' && k != K_INLINE && k != K_A) l += ' ';
         if (l.size() < 96) appendCollapsed(l, s, len, 96);
     }
-    // The engine holds ~3 KB of a paragraph and cuts a longer one wherever it is
-    // full, mid-word or mid-character: a long p goes on in a new one at a space.
-    constexpr int kParLimit = 2400;
-    while (_pass == 2 && _stack[_depth - 1] == E_P && _close[_depth - 1] == C_P && _pBytes + len > kParLimit) {
-        const int room = (int)_pBytes < kParLimit ? kParLimit - (int)_pBytes : 0;
-        int cut = room < len ? room : len;
-        // the end of a sentence in the last ~800 bytes reads best, else a space
-        int sentence = cut;
-        while (sentence > 1 && cut - sentence < 800 &&
-               !(s[sentence - 1] == ' ' && (s[sentence - 2] == '.' || s[sentence - 2] == '!' || s[sentence - 2] == '?')))
-            sentence--;
-        if (sentence > 1 && cut - sentence < 800) cut = sentence;
-        while (cut > 0 && s[cut - 1] != ' ') cut--;
-        if (cut == 0) {
-            cut = room;
-            while (cut < len && s[cut] != ' ') cut++;
-            if (cut >= len) break;
-            cut++;
+    if (k == K_P && _wrapped[d]) {
+        // The engine holds ~3 KB of a paragraph and cuts a longer one wherever it
+        // is full, mid-word or mid-character: a long p goes on in a new one at a
+        // space. The map says where each piece starts in foliate's p: after how
+        // many of its child elements, how far into the text there.
+        while (_pBytes > kParLimit && len > 0) {
+            const uint32_t before = _pBytes - (uint32_t)len;   // this p's text before this chunk, since the last cut
+            const int room = before < kParLimit ? (int)(kParLimit - before) : 0;
+            int cut = room < len ? room : len;
+            int sentence = cut;   // the end of a sentence in the last ~800 bytes reads best, else a space
+            while (sentence > 1 && cut - sentence < 800 &&
+                   !(s[sentence - 1] == ' ' && (s[sentence - 2] == '.' || s[sentence - 2] == '!' || s[sentence - 2] == '?')))
+                sentence--;
+            if (sentence > 1 && cut - sentence < 800) cut = sentence;
+            while (cut > 0 && s[cut - 1] != ' ') cut--;
+            if (cut == 0) {
+                cut = room;
+                while (cut < len && s[cut] != ' ') cut++;
+                if (cut >= len) break;
+                cut++;
+            }
+            emitText(s, cut);
+            _slotUnits += utf16Units(s, cut);
+            emit("</p><p class=\"cont\">");
+            _pieces += " " + std::to_string(_folCount[d]) + " " + std::to_string(_slotUnits);
+            s += cut;
+            len -= cut;
+            _pBytes = (uint32_t)len;
         }
-        emitText(s, cut);
-        emit("</p>\n<p class=\"cont\">");
-        _pBytes = 0;
-        s += cut;
-        len -= cut;
     }
-    _pBytes += (uint32_t)len;
-    if (_pass == 2) emitText(s, len);
+    if (k == K_P) _slotUnits += utf16Units(s, len);
+    emitText(s, len);
 }
 
 // ------------------------------------------------------------- NCX and OPF
