@@ -37,7 +37,6 @@ public:
     bool isAvailable() const;
 
     uint64_t totalBytes() const;
-    uint64_t usedBytes();
 
     // Configuration file (/config.json). load() only overwrites fields present in the
     // file, so defaults from AppConfig survive a partial config.
@@ -56,8 +55,6 @@ public:
     // Names of the sub-directories of a directory, unsorted.
     std::vector<String> listSubdirs(const String& path);
 
-    // Scan for available books on SD card
-    std::vector<String> listBooks();
     std::vector<DirEntry> listDirectory(const String& path);
     // Names of all plain files in a directory, unfiltered and unsorted.
     std::vector<String> listFileNames(const String& path);
@@ -65,7 +62,6 @@ public:
     // Catalog cache (/books/catalog.json) helpers
     bool saveCatalog(const std::vector<struct BookMetadata>& catalog);
     bool loadCatalog(std::vector<struct BookMetadata>& outCatalog);
-    bool removeCatalogBook(const String& id, const String& title, const String& filePath);
 
     // Last opened book state (/books/last_book.json)
     bool saveLastBook(const LastBookInfo& info);

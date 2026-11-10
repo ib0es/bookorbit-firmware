@@ -106,10 +106,6 @@ uint64_t StorageManager::totalBytes() const {
     return SDCardManager::getInstance().sdTotalBytes();
 }
 
-uint64_t StorageManager::usedBytes() {
-    return 0;
-}
-
 bool StorageManager::ensureDirectories() {
     if (!isAvailable()) return false;
     SDCardManager& sd = SDCardManager::getInstance();
@@ -166,37 +162,6 @@ std::vector<String> StorageManager::listSubdirs(const String& path) {
     }
     dir.close();
     return result;
-}
-
-std::vector<String> StorageManager::listBooks() {
-    std::vector<String> books;
-    if (!isAvailable()) return books;
-
-    SDCardManager& sd = SDCardManager::getInstance();
-    std::vector<String> files = sd.listFiles("/books", 200);
-    for (const auto& fname : files) {
-        String lower = fname;
-        lower.toLowerCase();
-        if (lower.endsWith(".epub") || lower.endsWith(".epu") || 
-            lower.endsWith(".txt") || lower.endsWith(".fb2")) {
-            books.push_back("/books/" + fname);
-        }
-    }
-
-    // Also check root "/" if /books has no books (common user mistake when copying files)
-    if (books.empty()) {
-        std::vector<String> rootFiles = sd.listFiles("/", 50);
-        for (const auto& fname : rootFiles) {
-            String lower = fname;
-            lower.toLowerCase();
-            if (lower.endsWith(".epub") || lower.endsWith(".epu") || 
-                lower.endsWith(".txt") || lower.endsWith(".fb2")) {
-                books.push_back("/" + fname);
-            }
-        }
-    }
-
-    return books;
 }
 
 std::vector<String> StorageManager::listFileNames(const String& path) {
@@ -544,32 +509,6 @@ bool StorageManager::loadCatalog(std::vector<BookMetadata>& outCatalog) {
 
     Serial.printf("[Storage] Loaded %d books metadata from /books/catalog.json\n", (int)outCatalog.size());
     return true;
-}
-
-bool StorageManager::removeCatalogBook(const String& id, const String& title, const String& filePath) {
-    std::vector<BookMetadata> catalog;
-    if (!loadCatalog(catalog)) return false;
-
-    bool modified = false;
-    for (auto it = catalog.begin(); it != catalog.end(); ) {
-        bool match = false;
-        if (id.length() > 0 && it->id.equalsIgnoreCase(id)) match = true;
-        if (title.length() > 0 && it->title.equalsIgnoreCase(title)) match = true;
-        if (filePath.length() > 0 && filePath.indexOf(it->title) >= 0) match = true;
-
-        if (match) {
-            Serial.printf("[Storage] Removing catalog entry: '%s'\n", it->title.c_str());
-            it = catalog.erase(it);
-            modified = true;
-        } else {
-            ++it;
-        }
-    }
-
-    if (modified) {
-        saveCatalog(catalog);
-    }
-    return modified;
 }
 
 bool StorageManager::saveLastBook(const LastBookInfo& info) {
