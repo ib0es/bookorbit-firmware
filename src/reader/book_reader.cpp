@@ -343,9 +343,15 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
     sink.fonts = &_fonts;
     sink.dy = y;
     BookStatus st = BookStatus::OutOfMemory;
-    for (size_t cap : {(size_t)24 * 1024, (size_t)40 * 1024}) {
+    // The engine's layout state takes ~36 KB for a page (whatever its text).
+    stopBackground();
+    for (size_t cap : {(size_t)40 * 1024, (size_t)52 * 1024}) {
         Buffer mem(cap);
-        if (!mem.p) continue;
+        if (!mem.p) {
+            Serial.printf("[Reader] Appearance preview: no %u B block (largest %u B)\n", (unsigned)cap,
+                          (unsigned)MemStats::now().largestBlock);
+            continue;
+        }
         Arena a(mem.p, cap);
         st = ChapterLayout::layoutPlainText(src, p, a, sink);
         if (st != BookStatus::OutOfMemory || sink.drawn) break;
