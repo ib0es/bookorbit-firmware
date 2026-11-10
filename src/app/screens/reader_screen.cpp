@@ -61,6 +61,7 @@ void closeBookAndGoHome(AppContext& ctx, bool fullRefresh) {
     Reader.closeBook();
     Bookmarks.clear();
     Reader.setFontSize(ctx.config.readerFontSize);  // closed: no pagination, used by the next open
+    lib.ensureScanned();   // woken up straight into the book: the library was not scanned yet
     ctx.currentState = STATE_HOME;
     drawHomeScreen(ctx, fullRefresh);
     if (upload) SyncService::startBackgroundUpload(ctx, fileId, path);

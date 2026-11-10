@@ -913,8 +913,9 @@ void LibraryManager::scanLocalBooks(bool forceMasterScan) {
         return;
     }
     if (currentFolder.length() == 0) currentFolder = "/books";
-    if (masterBooks.empty() || forceMasterScan) buildMaster();
+    if (masterBooks.empty() || forceMasterScan || !_scanned) buildMaster();
     else refreshProgress();   // positions changed by reading / syncing since the last list
+    _scanned = true;
     rebuildRows();
     refreshCounts();
 }
