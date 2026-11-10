@@ -90,6 +90,18 @@ namespace {
 
 using ProgressSync::Action;
 
+// The client logs in again by itself when the token has expired (HTTP 401) and
+// updates ctx.config.authToken in memory: this saves it when a sync step ends,
+// so the next session does not start with a refused request and a login.
+struct KeepToken {
+    AppContext& ctx;
+    const String before;
+    explicit KeepToken(AppContext& c) : ctx(c), before(c.config.authToken) {}
+    ~KeepToken() {
+        if (ctx.config.authToken.length() > 0 && ctx.config.authToken != before) ctx.config.save();
+    }
+};
+
 // Logs in if there is no token yet; persists a fresh token.
 void ensureToken(AppContext& ctx) {
     if (ctx.config.authToken.length() > 0) return;
@@ -305,6 +317,7 @@ bool SyncService::syncBookProgress(AppContext& ctx, BookProgressRecord& rec, Ser
 // Download
 // ============================================================================
 bool SyncService::downloadBook(AppContext& ctx, BookItem& book, AppState returnState) {
+    KeepToken keepToken(ctx);
     Reader.stopBackground();   // Wi-Fi needs the memory a background layout holds
     Reader.releaseFontCaches();   // ...and the font caches (~25 KB, filled again as pages are drawn)
     const String url = book.downloadUrl();
@@ -491,6 +504,7 @@ void downloadCovers(AppContext& ctx, const std::vector<BookMetadata>& catalog) {
 }  // namespace
 
 void SyncService::syncWithBookOrbit(AppContext& ctx) {
+    KeepToken keepToken(ctx);
     Reader.stopBackground();   // Wi-Fi needs the memory a background layout holds
     Reader.releaseFontCaches();   // ...and the font caches (~25 KB, filled again as pages are drawn)
     AppState prevState = ctx.currentState;
@@ -681,6 +695,7 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
 // Current book only (closing the book, sleep, boot)
 // ============================================================================
 void SyncService::syncCurrentBookProgress(AppContext& ctx, bool autoConnectWiFi) {
+    KeepToken keepToken(ctx);
     Reader.stopBackground();   // Wi-Fi needs the memory a background layout holds
     Reader.releaseFontCaches();   // ...and the font caches (~25 KB, filled again as pages are drawn)
     auto& lib = LibraryManager::getInstance();
@@ -753,6 +768,7 @@ void SyncService::tickBackground(AppContext& ctx) {
         return;
     }
     // Connected: one short exchange (a request or two), then the radio goes off.
+    KeepToken keepToken(ctx);
     s_bgState = BgState::Idle;
     BookOrbit.setForegroundConnectHook(nullptr);
     const uint32_t t0 = millis();
@@ -772,6 +788,7 @@ void SyncService::tickBackground(AppContext& ctx) {
 }
 
 SyncService::BookSyncResult SyncService::syncBookItem(AppContext& ctx, BookItem& book) {
+    KeepToken keepToken(ctx);
     Reader.stopBackground();   // Wi-Fi needs the memory a background layout holds
     Reader.releaseFontCaches();   // ...and the font caches (~25 KB, filled again as pages are drawn)
     if (ctx.config.wifiSsid.length() == 0 || ctx.config.serverHost.length() == 0) return BookSyncResult::NotConfigured;
@@ -828,6 +845,7 @@ void SyncService::showBookSyncResult(BookSyncResult r, const BookItem& book) {
 }
 
 void SyncService::syncOnBootProgress(AppContext& ctx) {
+    KeepToken keepToken(ctx);
     Reader.stopBackground();   // Wi-Fi needs the memory a background layout holds
     Reader.releaseFontCaches();   // ...and the font caches (~25 KB, filled again as pages are drawn)
     auto& lib = LibraryManager::getInstance();
