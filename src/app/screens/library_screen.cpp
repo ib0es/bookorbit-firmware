@@ -360,7 +360,7 @@ void handleBookMenuEvent(AppContext& ctx, const ButtonEvent& event) {
             ctx.currentState = STATE_BOOK_MENU;
         {
             const auto r = SyncService::syncBookItem(ctx, *book);
-            drawBookMenuScreen(ctx, true);  // clears the status screen
+            drawBookMenuScreen(ctx, uikit::periodicFullRefresh());  // over the status screen
             SyncService::showBookSyncResult(r, *book);
         }
             break;
