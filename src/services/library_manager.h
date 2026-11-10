@@ -125,6 +125,9 @@ public:
     };
     Counts counts;
     bool hideCompleted = false;   // mirrors AppConfig::hideCompleted
+    // A book counts as read from here on (the last pages are often notes or an
+    // appendix); "hide completed" never hides the book being read.
+    static constexpr float kCompletedAt = 0.97f;
     void setHideCompleted(bool hide);
 
     const String& libraryOf(const BookItem& b) const;

@@ -412,7 +412,12 @@ std::vector<RecentBookInfo> LibraryManager::getRecentBooks() {
 
 namespace {
 
-bool isCompleted(const BookItem& b) { return b.progress >= 0.90f; }
+bool isCompleted(const BookItem& b) { return b.progress >= LibraryManager::kCompletedAt; }
+
+// Hidden by "hide completed": a completed book, but never the one being read.
+bool hiddenAsCompleted(const BookItem& b, bool hide) {
+    return hide && isCompleted(b) && !b.filePath.equalsIgnoreCase(LibraryManager::getInstance().lastBook.filePath);
+}
 
 // Folded copy for substring search (search runs once per query).
 String foldString(const String& s) {
@@ -859,7 +864,7 @@ void LibraryManager::refreshCounts() {
     for (int i = 0; i < (int)masterBooks.size(); i++) {
         const BookItem& b = masterBooks[i];
         if (isCompleted(b)) c.completed++;
-        if (hideCompleted && isCompleted(b)) continue;
+        if (hiddenAsCompleted(b, hideCompleted)) continue;
         visible.push_back(i);
         c.total++;
         if (b.anyOnCard()) c.downloaded++;
@@ -929,7 +934,7 @@ void LibraryManager::rebuildRows() {
         it.author = label;
         addFolder(it);
     };
-    auto visible = [&](const BookItem& b) { return !(hideCompleted && isCompleted(b)); };
+    auto visible = [&](const BookItem& b) { return !hiddenAsCompleted(b, hideCompleted); };
     auto byTitle = [&](int a, int b) { return foldCompare(masterBooks[a].title, masterBooks[b].title) < 0; };
 
     // Groups of the visible books by a name (author, series, library), sorted.

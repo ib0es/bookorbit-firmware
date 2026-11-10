@@ -53,7 +53,7 @@ void drawRow(Frame& f, Rect r, const BookItem& item, bool selected, int index) {
         // book with progress also says so ("15% · cloud").
         char pct[12];
         const char* read = nullptr;
-        if (item.progress >= 0.90f) read = tr(MsgId::LIB_BADGE_COMPLETED);
+        if (item.progress >= LibraryManager::kCompletedAt) read = tr(MsgId::LIB_BADGE_COMPLETED);
         else if (item.progress > 0.01f) { snprintf(pct, sizeof(pct), "%d%%", (int)roundf(item.progress * 100.0f)); read = pct; }
         if (item.isDownloaded) {
             snprintf(badgeBuf, sizeof(badgeBuf), "%s", read ? read : tr(MsgId::HOME_CAT_DOWNLOADED));   // pct is local
