@@ -2,6 +2,7 @@
 #include "progress_sync.h"
 #include "sync_clock.h"
 #include "../reader/reader.h"
+#include "../convert/sd_convert.h"
 #include "../reader/book_reader.h"
 #include "../ui/jpeg_viewer.h"
 #include "../net/bookorbit_client.h"
@@ -141,9 +142,15 @@ String LibraryManager::resolveCoverPath(const String& filePath, const String& ti
         static std::vector<String> s_unusableEpubCovers;
         bool knownBad = false;
         for (const auto& p : s_unusableEpubCovers) if (p == cPath) { knownBad = true; break; }
-        if (allowExtract && !knownBad && isEpubPath(filePath) && Storage.exists(filePath.c_str())) {
+        // A converted book (FB2) has its EPUB in its cache directory once it was opened.
+        String epub = filePath, indexDir;
+        if (convert::needsConversion(filePath)) {
+            indexDir = BookReader::cacheDirFor(filePath);
+            epub = indexDir + "/book.epub";
+        }
+        if (allowExtract && !knownBad && (isEpubPath(filePath) || indexDir.length()) && Storage.exists(epub.c_str())) {
             bool noMemory = false;
-            if (BookReader::extractCover(filePath, cPath, &noMemory) && isValidCoverFile(cPath)) return cPath;
+            if (BookReader::extractCover(epub, cPath, &noMemory, indexDir) && isValidCoverFile(cPath)) return cPath;
             if (!noMemory) s_unusableEpubCovers.push_back(cPath);   // short of memory now: tried again later
         }
     }

@@ -461,5 +461,7 @@
   "LIB_FORMAT_UNSUPPORTED_FMT": "Книги в %s пока не открываются.",
   "LIB_FORMAT_UNSUPPORTED_L2": "Выберите другой формат книги.",
   "BOOK_MENU_FORMATS": "Форматы",
-  "BOOK_MENU_FORMATS_SUB": "Читать книгу в другом формате"
+  "BOOK_MENU_FORMATS_SUB": "Читать книгу в другом формате",
+  "READER_CONVERT_TITLE": "ПРЕОБРАЗОВАНИЕ",
+  "READER_CONVERT_PROGRESS_FMT": "Подготовка книги к чтению: %d%%"
 }

@@ -475,7 +475,9 @@ enum class MsgId : uint16_t {
     LIB_FORMAT_UNSUPPORTED_L2 = 460,
     BOOK_MENU_FORMATS = 461,
     BOOK_MENU_FORMATS_SUB = 462,
-    COUNT = 463
+    READER_CONVERT_TITLE = 463,
+    READER_CONVERT_PROGRESS_FMT = 464,
+    COUNT = 465
 };
 
 // Language: English (en)
@@ -943,6 +945,8 @@ static const char* const STRINGS_EN[(size_t)MsgId::COUNT] PROGMEM = {
     /* LIB_FORMAT_UNSUPPORTED_L2 */ "Choose another format of the book.",
     /* BOOK_MENU_FORMATS */ "Formats",
     /* BOOK_MENU_FORMATS_SUB */ "Read the book in another format",
+    /* READER_CONVERT_TITLE */ "CONVERTING",
+    /* READER_CONVERT_PROGRESS_FMT */ "Preparing the book for reading: %d%%",
 };
 
 // Language: Russian (ru)
@@ -1410,6 +1414,8 @@ static const char* const STRINGS_RU[(size_t)MsgId::COUNT] PROGMEM = {
     /* LIB_FORMAT_UNSUPPORTED_L2 */ "Выберите другой формат книги.",
     /* BOOK_MENU_FORMATS */ "Форматы",
     /* BOOK_MENU_FORMATS_SUB */ "Читать книгу в другом формате",
+    /* READER_CONVERT_TITLE */ "ПРЕОБРАЗОВАНИЕ",
+    /* READER_CONVERT_PROGRESS_FMT */ "Подготовка книги к чтению: %d%%",
 };
 
 // Language: Spanish (es)
@@ -1877,6 +1883,8 @@ static const char* const STRINGS_ES[(size_t)MsgId::COUNT] PROGMEM = {
     /* LIB_FORMAT_UNSUPPORTED_L2 */ "Elija otro formato del libro.",
     /* BOOK_MENU_FORMATS */ "Formatos",
     /* BOOK_MENU_FORMATS_SUB */ "Leer el libro en otro formato",
+    /* READER_CONVERT_TITLE */ "CONVIRTIENDO",
+    /* READER_CONVERT_PROGRESS_FMT */ "Preparando el libro para leer: %d%%",
 };
 
 static const char* const* const I18N_ALL_TABLES[(size_t)AppLanguage::COUNT] = {

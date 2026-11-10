@@ -3,6 +3,7 @@
 #include <render/PageRenderer.h>
 #include <algorithm>
 #include <new>
+#include "../convert/sd_convert.h"
 #include <strings.h>
 #include <text/hyph_en_us.h>
 #include "engine/hyph_ru.h"
@@ -182,7 +183,17 @@ bool BookReader::openBook(const String& filePath) {
     lower.toLowerCase();
     _isTxt = lower.endsWith(".txt");
     _title = stemOf(filePath);
-    if (!_src.open(filePath)) {
+    String readPath = filePath;
+    _convertStep = -1;
+    if (convert::needsConversion(filePath)) {
+        // Read through an EPUB made from it once, kept beside its page cache.
+        if (!convert::ensureConverted(filePath, cacheDirFor(filePath), readPath, &BookReader::drawConvertProgress, this,
+                                      &_noMemory)) {
+            Serial.printf("[Reader] Cannot convert %s\n", filePath.c_str());
+            return false;
+        }
+    }
+    if (!_src.open(readPath)) {
         Serial.printf("[Reader] Cannot open %s\n", filePath.c_str());
         return false;
     }
@@ -210,6 +221,18 @@ bool BookReader::openBook(const String& filePath) {
     Serial.printf("[Reader] Opened %s: %u spine items (%u KB), %u TOC entries in %lu ms\n", filePath.c_str(),
                   (unsigned)_spines.size(), (unsigned)(bytes / 1024), (unsigned)_toc.size(), (unsigned long)(millis() - t0));
     return true;
+}
+
+void BookReader::drawConvertProgress(void* self, int permille) {
+    BookReader* r = static_cast<BookReader*>(self);
+    // A modal redraw per 10%: an e-ink refresh is ~0.4 s, a conversion seconds to tens of seconds.
+    const int step = permille / 100;
+    if (permille > 0 && step == r->_convertStep) return;
+    r->_convertStep = step;
+    if (permille >= 1000) return;
+    char line[64];
+    snprintf(line, sizeof(line), tr(MsgId::READER_CONVERT_PROGRESS_FMT), permille / 10);
+    drawStatusModal(tr(MsgId::READER_CONVERT_TITLE), r->_title.substring(0, 32).c_str(), line);
 }
 
 bool BookReader::openContainer() {
@@ -627,14 +650,14 @@ bool BookReader::layoutRemaining(int maxChapters) {
 
 // ------------------------------------------------------------------ cover
 
-bool BookReader::extractCover(const String& epubPath, const String& outPath, bool* noMemory) {
+bool BookReader::extractCover(const String& epubPath, const String& outPath, bool* noMemory, const String& cacheDir) {
     if (noMemory) *noMemory = false;
     bool oom = false;
     SdBookSource src;
     if (!src.open(epubPath)) return false;
     SdCacheStorage cache;
     Storage.mkdir("/cache");
-    cache.setDir(cacheDirFor(epubPath));
+    cache.setDir(cacheDir.length() ? cacheDir : cacheDirFor(epubPath));
     Storage.mkdir(cache.dir().c_str());
     // The book's index (built once, then used when the book is opened too).
     BookCatalog catalog;

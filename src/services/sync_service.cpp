@@ -127,6 +127,12 @@ void resolveServerIds(BookProgressRecord& rec) {
     }
 }
 
+// A CFI means the same thing to the web reader only for an EPUB file: other
+// formats are read here through an EPUB made from them, whose CFIs stay local.
+static bool cfiApplies(const BookProgressRecord& rec) {
+    return rec.filePath.length() == 0 || BookFormats::fromPath(rec.filePath.c_str()) == BookFormats::Epub;
+}
+
 bool isOpenInReader(const BookProgressRecord& rec) {
     return Reader.isOpened() && Reader.getOriginalFilePath().equalsIgnoreCase(rec.filePath);
 }
@@ -186,6 +192,12 @@ bool SyncService::syncBookProgress(AppContext& ctx, BookProgressRecord& rec, Ser
     switch (d.action) {
         case Action::Pull:
             ProgressSync::applyPull(rec.state, remote);
+            if (!cfiApplies(rec)) {
+                // The web reader's locator for an FB2 (or other non-EPUB) file is not a
+                // CFI of the EPUB the reader made from it: only the percent carries over.
+                rec.state.local.cfi.clear();
+                rec.state.local.xpath.clear();
+            }
             if (isOpenInReader(rec)) {
                 Reader.goToPosition(rec.state.local.cfi.c_str(), rec.state.local.xpath.c_str(),
                                     rec.state.local.percent, rec.state.local.page);
@@ -204,7 +216,8 @@ bool SyncService::syncBookProgress(AppContext& ctx, BookProgressRecord& rec, Ser
             uint32_t serverTs = 0;
             ok = BookOrbit.updateBookProgress(ctx.config.serverHost, ctx.config.bookOrbitUser, ctx.config.bookOrbitPass,
                                               ctx.config.authToken, rec.fileId, rec.state.local.percent,
-                                              rec.state.local.page, rec.state.local.cfi.c_str(), &serverTs);
+                                              rec.state.local.page,
+                                              cfiApplies(rec) ? rec.state.local.cfi.c_str() : "", &serverTs);
             if (ok) ProgressSync::applyPush(rec.state, serverTs ? serverTs : SyncClock::nowUtc());
             break;
         }

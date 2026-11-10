@@ -70,3 +70,6 @@ gutenberg/
 
 # PlatformIO device monitor logs (log2file filter)
 logs/
+
+# Test books (not ours to publish): kept locally, tests skip them when absent
+test/books/

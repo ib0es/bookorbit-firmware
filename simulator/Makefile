@@ -66,6 +66,9 @@ SRCS_CXX = \
     src/reader/book_reader.cpp \
     src/reader/engine/bitmap_book_font.cpp \
     src/reader/engine/sd_book_storage.cpp \
+    src/convert/zip_writer.cpp \
+    src/convert/fb2_to_epub.cpp \
+    src/convert/sd_convert.cpp \
     src/reader/engine/engine_text_counter.cpp \
     src/reader/epub_cfi.cpp \
     simulator/lib_adafruit_gfx/Adafruit_GFX.cpp \

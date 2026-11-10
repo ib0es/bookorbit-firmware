@@ -88,7 +88,10 @@ public:
     // Copies an EPUB's cover image (as the package declares it) to `outPath`. Builds
     // the book's index if it has none (kept for opening the book). `noMemory` is set
     // when it failed for lack of memory (worth trying again later).
-    static bool extractCover(const String& epubPath, const String& outPath, bool* noMemory = nullptr);
+    // `cacheDir`: where the book's index lives (default: the EPUB's own; an EPUB
+    // converted from another format sits in the cache directory of that file).
+    static bool extractCover(const String& epubPath, const String& outPath, bool* noMemory = nullptr,
+                             const String& cacheDir = String());
 
     // The book's layout cache directory on the card ("/cache/<file name>.fib").
     static String cacheDirFor(const String& bookPath);
@@ -123,6 +126,9 @@ public:
     int spineCount() const { return (int)_spines.size(); }
 
 private:
+    static void drawConvertProgress(void* self, int permille);
+    int _convertStep = -1;
+
     struct Prelayout;
     Prelayout* _bg = nullptr;
     int _bgNothingFor = -1;   // the current chapter for which nothing was left to lay out ahead

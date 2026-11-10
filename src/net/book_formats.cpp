@@ -24,7 +24,7 @@ struct Info { Kind kind; const char* ext; const char* label; int rank; bool read
 const Info kInfo[] = {
     { Unknown, "",      "?",    99, false },
     { Epub,    ".epub", "EPUB", 0,  true  },
-    { Fb2,     ".fb2",  "FB2",  2,  false },
+    { Fb2,     ".fb2",  "FB2",  2,  true  },   // converted to EPUB on first open
     { Mobi,    ".mobi", "MOBI", 3,  false },
     { Azw3,    ".azw3", "AZW3", 1,  false },
     { Azw,     ".azw",  "AZW",  4,  false },

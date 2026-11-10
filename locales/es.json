@@ -461,5 +461,7 @@
   "LIB_FORMAT_UNSUPPORTED_FMT": "Los libros %s aún no se pueden abrir.",
   "LIB_FORMAT_UNSUPPORTED_L2": "Elija otro formato del libro.",
   "BOOK_MENU_FORMATS": "Formatos",
-  "BOOK_MENU_FORMATS_SUB": "Leer el libro en otro formato"
+  "BOOK_MENU_FORMATS_SUB": "Leer el libro en otro formato",
+  "READER_CONVERT_TITLE": "CONVIRTIENDO",
+  "READER_CONVERT_PROGRESS_FMT": "Preparando el libro para leer: %d%%"
 }
