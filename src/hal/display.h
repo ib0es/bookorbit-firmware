@@ -48,6 +48,9 @@ public:
     void clear(EPDColor color = EPD_WHITE);
     void update(RefreshMode mode = REFRESH_FULL);
     void waitSync();
+    // Called every few ms while the panel refreshes (a full refresh blocks ~3.8 s):
+    // the keys are polled there, so that a press made meanwhile is not lost.
+    void setRefreshPoll(void (*poll)());
 
     // Drawing primitives (Adafruit_GFX overrides)
     void drawPixel(int16_t x, int16_t y, uint16_t color) override;

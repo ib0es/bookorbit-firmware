@@ -47,6 +47,7 @@ public:
     bool isRefreshPending() { return false; }
     bool refreshBusy() { return false; }
     void finishDisplayAsync() {}
+    void setBusyWaitSliceHook(bool (*)(int8_t, uint8_t)) {}   // no busy waits here
 
     static void setUpdateCallback(DisplayUpdateCallback cb) { s_callback = cb; }
     static DisplayUpdateCallback s_callback;

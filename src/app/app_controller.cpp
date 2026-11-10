@@ -74,6 +74,9 @@ void AppController::setup() {
     Storage.begin();
     MemStats::mark("SD card");
     Display.begin();
+    // A key pressed while the panel refreshes (a full refresh blocks ~3.8 s) is
+    // caught then and answered right after, not lost.
+    Display.setRefreshPoll([] { Buttons.update(); });
     MemStats::mark("display");
     uikit::begin();      // FreeInkUI target over the same framebuffer
     MemStats::mark("FreeInkUI");
