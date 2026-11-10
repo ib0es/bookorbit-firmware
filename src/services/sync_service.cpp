@@ -15,6 +15,7 @@
 #include "../convert/sd_convert.h"
 #include "bookmarks.h"
 #include "sync_clock.h"
+#include "../ui/text_utils.h"
 
 bool SyncService::s_syncCancelled = false;
 uint32_t SyncService::s_lastProgressTime = 0;
@@ -190,7 +191,7 @@ void syncBookmarks(AppContext& ctx, const BookProgressRecord& rec) {
     for (int i = 0; i < list.count(); i++) {
         const Bookmark& b = list.items()[i];
         if (b.serverId > 0 || b.cfi.length() == 0) continue;   // on the server, or no CFI worked out yet
-        const String title = b.chapter.length() ? b.chapter : b.snippet.substring(0, 80);
+        const String title = b.chapter.length() ? b.chapter : utf8Prefix(b.snippet, 80);
         const int id = BookOrbit.createBookmark(cfg.serverHost, cfg.bookOrbitUser, cfg.bookOrbitPass, cfg.authToken,
                                                 rec.bookId, rec.fileId, b.cfi, title);
         if (id <= 0) continue;
@@ -319,7 +320,7 @@ bool SyncService::downloadBook(AppContext& ctx, BookItem& book, AppState returnS
         abortSync(ctx, returnState, tr(MsgId::SYNC_DOWNLOAD_ABORTED));
         return true;
     };
-    drawStatusModal(tr(MsgId::SYNC_DOWNLOAD_BOOK_TITLE), book.title.substring(0, 36).c_str(), tr(MsgId::SYNC_CONNECTING_WIFI),
+    drawStatusModal(tr(MsgId::SYNC_DOWNLOAD_BOOK_TITLE), utf8Prefix(book.title, 64).c_str(), tr(MsgId::SYNC_CONNECTING_WIFI),
                     tr(MsgId::COMMON_WAIT), nullptr, tr(MsgId::COMMON_CANCEL));
 
     const bool wifi = BookOrbit.connectWiFi(ctx.config.wifiSsid.c_str(), ctx.config.wifiPass.c_str(), 15000, checkSyncCancel);
@@ -330,14 +331,14 @@ bool SyncService::downloadBook(AppContext& ctx, BookItem& book, AppState returnS
         return false;
     }
 
-    drawStatusModal(tr(MsgId::SYNC_DOWNLOAD_BOOK_TITLE), book.title.substring(0, 36).c_str(), tr(MsgId::SYNC_DOWNLOADING_FROM_SERVER),
+    drawStatusModal(tr(MsgId::SYNC_DOWNLOAD_BOOK_TITLE), utf8Prefix(book.title, 64).c_str(), tr(MsgId::SYNC_DOWNLOADING_FROM_SERVER),
                     ctx.config.serverHost.c_str(), nullptr, tr(MsgId::COMMON_CANCEL));
     ensureToken(ctx);
     if (cancelled()) return false;
 
     s_lastProgressTime = millis();
     s_lastProgressPercent = 0;
-    s_downloadingBookTitle = book.title.substring(0, 32);
+    s_downloadingBookTitle = utf8Prefix(book.title, 64);
 
     bool ok = BookOrbit.downloadBook(ctx.config.serverHost, url, book.filePath, ctx.config.bookOrbitUser,
                                      ctx.config.bookOrbitPass, ctx.config.authToken, reportDownloadProgress, checkSyncCancel);
@@ -778,7 +779,7 @@ SyncService::BookSyncResult SyncService::syncBookItem(AppContext& ctx, BookItem&
     const bool isCurrent = lib.lastBook.filePath.equalsIgnoreCase(book.filePath);
     if (isCurrent && Reader.isOpened()) lib.flushReaderPosition();
 
-    drawStatusModal(tr(MsgId::BOOK_SYNC_TITLE), book.title.substring(0, 32).c_str(), tr(MsgId::BOOK_SYNC_CONNECTING),
+    drawStatusModal(tr(MsgId::BOOK_SYNC_TITLE), utf8Prefix(book.title, 64).c_str(), tr(MsgId::BOOK_SYNC_CONNECTING),
                     nullptr, nullptr, tr(MsgId::BOOK_SYNC_CANCEL));
     s_syncCancelled = false;
     Buttons.clearEvents();
@@ -812,7 +813,7 @@ void SyncService::showBookSyncResult(BookSyncResult r, const BookItem& book) {
         case BookSyncResult::Synced: {
             char line[48];
             snprintf(line, sizeof(line), tr(MsgId::BOOK_SYNC_PROGRESS_FMT), book.progress * 100.0f);
-            Modal.showMessage(tr(MsgId::BOOK_SYNC_DONE), book.title.substring(0, 32), line);
+            Modal.showMessage(tr(MsgId::BOOK_SYNC_DONE), utf8Prefix(book.title, 64), line);
             break;
         }
         case BookSyncResult::Failed:
@@ -835,7 +836,7 @@ void SyncService::syncOnBootProgress(AppContext& ctx) {
     }
 
     Serial.println("[Boot] syncOnBoot enabled: synchronizing progress with server...");
-    drawStatusModal(tr(MsgId::SYNC_BOOT_TITLE), tr(MsgId::SYNC_BOOT_CHECKING), lib.lastBook.title.substring(0, 32).c_str(), nullptr, nullptr, tr(MsgId::COMMON_CANCEL));
+    drawStatusModal(tr(MsgId::SYNC_BOOT_TITLE), tr(MsgId::SYNC_BOOT_CHECKING), utf8Prefix(lib.lastBook.title, 64).c_str(), nullptr, nullptr, tr(MsgId::COMMON_CANCEL));
 
     s_syncCancelled = false;
     uint32_t waitStart = millis();
