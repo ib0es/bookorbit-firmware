@@ -116,7 +116,12 @@ public:
     void rebuildFilteredIndices();
     // Picks up books copied to / removed from the card since the master scan.
     void refreshLocalFiles();
+    // The home screen's books (up to 4). Kept until the library, the current book
+    // or a position changes: building it checks a dozen cover files on the card,
+    // and the home screen asked for it on every key press.
     std::vector<RecentBookInfo> getRecentBooks();
+    // Something shown on the home screen changed (positions, covers, the list).
+    void touch() { _gen++; }
 
     // Catalog counters, kept up to date by scanLocalBooks / rebuildFilteredIndices
     // / setHideCompleted (the catalog screen redraws often).
@@ -199,6 +204,10 @@ public:
 
 private:
     LibraryManager() = default;
+    uint32_t _gen = 1;
+    uint32_t _recentGen = 0;
+    String _recentLast;
+    std::vector<RecentBookInfo> _recent;
     int _unsavedMoves = 0;
     uint32_t _firstUnsavedAt = 0;
     void buildMaster();
