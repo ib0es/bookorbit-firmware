@@ -112,7 +112,10 @@ void AppController::setup() {
     ProgressStore::instance().load();
     MemStats::mark("progress.json");
     auto& lib = LibraryManager::getInstance();
-    lib.scanLocalBooks();
+    // Woken up in a book: the page comes first, the library scan (the card's
+    // folders and catalog.json) when the book is left (LibraryManager::ensureScanned).
+    const bool resumeBook = isWakeFromSleep && PowerService::getSavedRtcState() == STATE_READING;
+    if (!resumeBook) lib.scanLocalBooks();
     lib.initLastBook();
     MemStats::mark("library");
 
@@ -125,7 +128,7 @@ void AppController::setup() {
             SyncService::startBackgroundUpload(_ctx, lib.lastBook.fileId, lib.lastBook.filePath, /*onlyIfDirty=*/false);
         }
     };
-    if (isWakeFromSleep && PowerService::getSavedRtcState() == STATE_READING && ReaderScreen::resumeLastBook(_ctx)) {
+    if (resumeBook && ReaderScreen::resumeLastBook(_ctx)) {
         MemStats::mark("book resumed");
         MemStats::printMarks();
         Buttons.clearEvents();
@@ -134,11 +137,10 @@ void AppController::setup() {
         return;
     }
 
+    lib.ensureScanned();   // the book could not be resumed
+
     // 7. Cold boot progress sync only if user explicitly turned on syncOnBoot in Settings
-    if (!isWakeFromSleep) {
-        lib.cleanOrphanFiles();  // leftovers of deleted books (cold boot only: keeps wake fast)
-        SyncService::syncOnBootProgress(_ctx);
-    }
+    if (!isWakeFromSleep) SyncService::syncOnBootProgress(_ctx);
 
     // 8. Open Main / Home screen with last book cover
     MemStats::mark("boot done");
@@ -147,6 +149,8 @@ void AppController::setup() {
     MemStats::logMap("boot done");
     _ctx.currentState = STATE_HOME;
     drawHomeScreen(_ctx, true); // Full refresh on boot
+    // Leftovers of deleted books (cold boot only: keeps wake fast), once the screen is up.
+    if (!isWakeFromSleep) lib.cleanOrphanFiles();
     syncAfterWake();
     Buttons.clearEvents();
     _ctx.lastActivityTime = millis();

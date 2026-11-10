@@ -112,6 +112,8 @@ public:
     // (re)built when empty or forced (after a sync); otherwise only the
     // positions are refreshed from progress.json.
     void scanLocalBooks(bool forceMasterScan = false);
+    // The first scan, if none was made yet (a wake-up straight into a book skips it).
+    void ensureScanned() { if (!_scanned) scanLocalBooks(); }
     // Rebuilds the list (and counts) after the master list changed in place.
     void rebuildFilteredIndices();
     // Picks up books copied to / removed from the card since the master scan.
@@ -204,6 +206,7 @@ public:
 
 private:
     LibraryManager() = default;
+    bool _scanned = false;
     uint32_t _gen = 1;
     uint32_t _recentGen = 0;
     String _recentLast;
