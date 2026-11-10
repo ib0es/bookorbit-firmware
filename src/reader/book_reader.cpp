@@ -380,7 +380,9 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
         loose.pageHeight = 2000;
         loose.orphanLines = loose.widowLines = 1;
         Arena a(use->p, cap);
-        ChapterLayout::layoutPlainText(src, loose, a, lines);
+        const BookStatus s1 = ChapterLayout::layoutPlainText(src, loose, a, lines);
+        Serial.printf("[Reader] Appearance preview pass 1: %s, %u of %u B, line %d/%d\n", bookStatusName(s1),
+                      (unsigned)a.highWater(), (unsigned)cap, lines.found, lines.lineAfter);
         // up to the next line's baseline less its ascent: that line no longer fits
         if (lines.found >= 0 && lines.lineAfter > lines.found &&
             lines.lineAfter - _fonts.ascent(p.baseSizePx) < height)
@@ -389,6 +391,8 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
     if (cap) {
         Arena a(use->p, cap);
         st = ChapterLayout::layoutPlainText(src, p, a, sink);
+        Serial.printf("[Reader] Appearance preview: %s, %u of %u B, page %d px\n", bookStatusName(st),
+                      (unsigned)a.highWater(), (unsigned)cap, (int)p.pageHeight);
     }
     if (!sink.drawn) {
         Serial.printf("[Reader] Appearance preview not laid out (%s): a plain sample instead\n", bookStatusName(st));
