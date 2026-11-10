@@ -730,11 +730,16 @@ float BookReader::pagesPerByte() const {
     return ((float)pages + prior * kPriorBytes) / ((float)bytes + kPriorBytes);
 }
 
-int BookReader::pagesOf(int spine) const {
+int BookReader::pagesOf(int spine) const { return pagesOf(spine, -1.0f); }
+
+// `ppb` < 0: worked out here. The loops over every chapter (page numbers, the
+// table of contents) pass it in: pagesPerByte() is itself a loop over every
+// chapter, which made them quadratic (seconds for a book of a thousand parts).
+int BookReader::pagesOf(int spine, float ppb) const {
     if (spine < 0 || spine >= (int)_spines.size()) return 0;
     const Spine& s = _spines[spine];
     if (s.pages >= 0) return s.pages;
-    int est = (int)((float)s.bytes * pagesPerByte() + 0.5f);
+    int est = (int)((float)s.bytes * (ppb >= 0.0f ? ppb : pagesPerByte()) + 0.5f);
     if (building() && _bg->spine == spine && _bg->session.bytesConsumed() > 0) {
         // Being laid out: the pages made so far, extrapolated over the rest of its bytes.
         const uint32_t made = _bg->writer.pageCount();
@@ -759,8 +764,9 @@ uint32_t BookReader::charsOf(int spine) const {
 }
 
 int BookReader::globalPage(int spine, int page) const {
+    const float ppb = pagesPerByte();
     int n = 0;
-    for (int s = 0; s < spine && s < (int)_spines.size(); s++) n += pagesOf(s);
+    for (int s = 0; s < spine && s < (int)_spines.size(); s++) n += pagesOf(s, ppb);
     return n + page;
 }
 
@@ -1412,8 +1418,9 @@ int BookReader::getCurrentPage() const {
 }
 
 int BookReader::getTotalPages() const {
+    const float ppb = pagesPerByte();
     int n = 0;
-    for (int s = 0; s < (int)_spines.size(); s++) n += pagesOf(s);
+    for (int s = 0; s < (int)_spines.size(); s++) n += pagesOf(s, ppb);
     return n > 0 ? n : 1;
 }
 
@@ -1813,7 +1820,14 @@ void BookReader::buildToc() {
 }
 
 const std::vector<ChapterItem>& BookReader::getChapters() {
-    for (auto& c : _toc) c.page = globalPage((int)c.byteOffset, 0) + 1;   // estimates move as chapters get laid out
+    // Estimates move as chapters get laid out. Pages before each spine item, summed once.
+    const float ppb = pagesPerByte();
+    std::vector<int> before(_spines.size() + 1, 0);
+    for (size_t s = 0; s < _spines.size(); s++) before[s + 1] = before[s] + pagesOf((int)s, ppb);
+    for (auto& c : _toc) {
+        const size_t s = std::min<size_t>((size_t)c.byteOffset, _spines.size());
+        c.page = before[s] + 1;
+    }
     return _toc;
 }
 

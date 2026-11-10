@@ -17,7 +17,7 @@ struct CatalogItemDef {
 // redraw (every UP/DOWN) does not walk the book list or the SD card.
 CatalogItemDef getCatalogItemDef(const AppContext& ctx, int index) {
     auto& lib = LibraryManager::getInstance();
-    const LibraryManager::Counts& c = lib.counts;
+    const LibraryManager::Counts& c = lib.getCounts();
     switch (index) {
         case 0: {
             String sub = lib.searchQuery.length() > 0 ? ("\"" + lib.searchQuery + "\"") : String(tr(MsgId::CATALOG_SEARCH_HINT));

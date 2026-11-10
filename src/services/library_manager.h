@@ -123,7 +123,10 @@ public:
     // and the home screen asked for it on every key press.
     std::vector<RecentBookInfo> getRecentBooks();
     // Something shown on the home screen changed (positions, covers, the list).
-    void touch() { _gen++; }
+    void touch() {
+        _gen++;
+        _countsDirty = true;   // a position may have made a book completed
+    }
 
     // Catalog counters, kept up to date by scanLocalBooks / rebuildFilteredIndices
     // / setHideCompleted (the catalog screen redraws often).
@@ -131,6 +134,12 @@ public:
         int total = 0, libraries = 0, authors = 0, series = 0, downloaded = 0, completed = 0, folders = 0;
     };
     Counts counts;
+    // The counters, worked out again only when the list changed since (two sorts
+    // of the whole library: not on every folder opened).
+    const Counts& getCounts() {
+        if (_countsDirty) refreshCounts();
+        return counts;
+    }
     bool hideCompleted = false;   // mirrors AppConfig::hideCompleted
     // A book counts as read from here on (the last pages are often notes or an
     // appendix); "hide completed" never hides the book being read.
@@ -207,6 +216,7 @@ public:
 private:
     LibraryManager() = default;
     bool _scanned = false;
+    bool _countsDirty = true;
     uint32_t _gen = 1;
     uint32_t _recentGen = 0;
     String _recentLast;

@@ -273,6 +273,7 @@ private:
     void buildToc();
     float pagesPerByte() const;
     int pagesOf(int spine) const;             // exact or estimated
+    int pagesOf(int spine, float pagesPerByte) const;
     uint32_t charsOf(int spine) const;
     int globalPage(int spine, int page) const;
     bool chapterCharToCfi(int spine, uint32_t chars, String& out);

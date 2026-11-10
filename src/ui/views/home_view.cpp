@@ -129,7 +129,7 @@ void drawHomeScreen(AppContext& ctx, bool fullRefresh) {
     // Categories: Catalog, Settings
     fi::ListItem items[2];
     char bookCountBuf[16];
-    int totalBooks = lib.counts.total;
+    int totalBooks = lib.getCounts().total;
     snprintf(bookCountBuf, sizeof(bookCountBuf), "%d", totalBooks);
 
     items[0].label = tr(MsgId::HOME_CAT_CATALOG);
