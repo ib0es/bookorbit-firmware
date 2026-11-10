@@ -417,7 +417,26 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
     // others stay in view (the paragraph spacing setting).
     const char* second = nullptr;
     for (const char* q = strstr(text, "\n\n"); q; q = strstr(q + 2, "\n\n")) second = q;
-    for (size_t cap : {(size_t)40 * 1024, (size_t)52 * 1024, (size_t)64 * 1024}) {
+    // The cut of the page (the first pass) depends only on these: kept from the
+    // last drawing, so moving through the menu or a change that keeps it lays the
+    // sample out once instead of twice. The arena that was big enough is tried
+    // first (40 KB never was with a book's stylesheet: a third pass every time).
+    struct Cut {
+        LayoutOptions o;
+        int size = -1, width = -1, height = -1;
+        const char* text = nullptr;
+        String family;
+        bool styles = false;
+        int16_t pageHeight = 0;
+    };
+    static Cut s_cut;
+    static size_t s_cap = 40 * 1024;
+    const bool cutKnown = s_cut.o == o && s_cut.size == sizeIndex && s_cut.width == p.pageWidth &&
+                          s_cut.height == height && s_cut.text == text &&
+                          s_cut.family == _family && s_cut.styles == (p.stylesheet != nullptr);
+    const size_t kCaps[] = {(size_t)40 * 1024, (size_t)52 * 1024, (size_t)64 * 1024};
+    for (size_t cap : kCaps) {
+        if (cap < s_cap) continue;
         Buffer mem(cap);
         if (!mem.p) {
             Serial.printf("[Reader] Appearance preview: no %u B block (largest %u B)\n", (unsigned)cap,
@@ -429,7 +448,9 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
         // would at the foot of a page, so the setting shows. Found by a first pass.
         LayoutParams q = p;
         sink.dy = y;
-        if (second) {
+        if (cutKnown) {
+            q.pageHeight = s_cut.pageHeight;
+        } else if (second) {
             Lines lines;
             lines.firstWord = second + 2;
             lines.wordLen = strcspn(second + 2, " ");
@@ -459,7 +480,17 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
         Arena a(mem.p, cap);
         st = ChapterLayout::layoutPlainText(src, q, a, sink);
         if (sink.drawn) {
-            Serial.printf("[Reader] Appearance preview laid out: %u of %u B\n", (unsigned)a.highWater(), (unsigned)cap);
+            Serial.printf("[Reader] Appearance preview laid out: %u of %u B%s\n", (unsigned)a.highWater(), (unsigned)cap,
+                          cutKnown ? " (cut kept)" : "");
+            s_cap = cap;
+            s_cut.o = o;
+            s_cut.size = sizeIndex;
+            s_cut.width = p.pageWidth;
+            s_cut.height = height;
+            s_cut.text = text;
+            s_cut.family = _family;
+            s_cut.styles = p.stylesheet != nullptr;
+            s_cut.pageHeight = q.pageHeight;
             break;
         }
         Serial.printf("[Reader] Appearance preview: %s with %u B\n", bookStatusName(st), (unsigned)cap);
