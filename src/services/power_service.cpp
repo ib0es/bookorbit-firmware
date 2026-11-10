@@ -16,6 +16,7 @@
 #include "../net/bookorbit_client.h"
 #include "../app/app_controller.h"
 #include "../hal/buttons.h"
+#include "../ui/text_utils.h"
 
 RTC_DATA_ATTR static int rtcSavedState = STATE_HOME;
 
@@ -132,7 +133,7 @@ void PowerService::enterDeepSleep(AppContext& ctx) {
     if (ctx.config.syncOnSleep && ctx.config.wifiSsid.length() > 0 && ctx.config.serverHost.length() > 0 &&
         lib.lastBook.filePath.length() > 0 && lib.currentRecord().state.localDirty) {
         Serial.println("[Power] syncOnSleep enabled: uploading progress to Book Orbit...");
-        drawStatusModal(tr(MsgId::POWER_SYNC_BEFORE_SLEEP), tr(MsgId::POWER_SYNC_SAVING), lib.lastBook.title.substring(0, 32).c_str());
+        drawStatusModal(tr(MsgId::POWER_SYNC_BEFORE_SLEEP), tr(MsgId::POWER_SYNC_SAVING), utf8Prefix(lib.lastBook.title, 64).c_str());
         SyncService::syncCurrentBookProgress(ctx, true);
     }
 

@@ -10,6 +10,7 @@
 #include "../../ui/i18n.h"
 #include "../../ui/kit/ui_kit.h"
 #include "../../net/book_formats.h"
+#include "../../ui/text_utils.h"
 
 namespace {
 
@@ -33,7 +34,7 @@ void showUnsupported(const BookItem& book) {
     char line[64];
     snprintf(line, sizeof(line), tr(MsgId::LIB_FORMAT_UNSUPPORTED_FMT),
              BookFormats::label((BookFormats::Kind)book.activeKind()));
-    Modal.showMessage(tr(MsgId::LIB_FORMAT_UNSUPPORTED_TITLE), title.substring(0, 32), line,
+    Modal.showMessage(tr(MsgId::LIB_FORMAT_UNSUPPORTED_TITLE), utf8Prefix(title, 64), line,
                       tr(MsgId::LIB_FORMAT_UNSUPPORTED_L2), "", 2200, false, tr(MsgId::COMMON_BACK));
 }
 
@@ -200,13 +201,13 @@ void askDeleteSelected() {
             ? tr(MsgId::LIB_DELETE_LINE3)
             : tr(MsgId::LIB_DELETE_LINE2);
         const String path = book->filePath;
-        Modal.showConfirm(tr(MsgId::LIB_DELETE_TITLE), book->title.substring(0, 32),
+        Modal.showConfirm(tr(MsgId::LIB_DELETE_TITLE), utf8Prefix(book->title, 64),
                           tr(MsgId::LIB_DELETE_LINE1), noteLine,
                           tr(MsgId::LIB_DELETE_FOOTER),
                           [masterIdx, path]() { deleteBookFile(masterIdx, path); }, nullptr,
                           tr(MsgId::LIB_DELETE_BTN));
     } else {
-        Modal.showMessage(tr(MsgId::LIB_FILTER_CLOUD), book->title.substring(0, 32), tr(MsgId::LIB_EMPTY_MSG_1),
+        Modal.showMessage(tr(MsgId::LIB_FILTER_CLOUD), utf8Prefix(book->title, 64), tr(MsgId::LIB_EMPTY_MSG_1),
                           tr(MsgId::LIB_HINT_DOWNLOAD_BOOK), "", 1800, false, tr(MsgId::COMMON_BACK));
     }
 }
