@@ -50,6 +50,7 @@ struct AppConfig {
     bool keepLines = true;
     bool bookStyles = true;
     bool focusReading = false;
+    bool sharpImages = false;    // pictures: threshold instead of dithering
     int fullRefreshEvery = 5;    // pages, 0 = never
     int frontlight = 0;        // 0..100 %, 0 = off (boards with a frontlight)
     int frontlightWarm = 50;   // 0 = cool .. 100 = warm

@@ -23,6 +23,7 @@ enum Row : int {
     KEEP_LINES,
     BOOK_STYLES,
     FOCUS_READING,
+    IMAGES,
     FULL_REFRESH,
     COUNT
 };

@@ -119,6 +119,9 @@ public:
     const LayoutOptions& layoutOptions() const { return _opts; }
     // A full e-ink refresh every this many pages (0: never; ghosting stays until one).
     void setFullRefreshEvery(int pages) { _fullEvery = pages; }
+    // Pictures in black and white: dithered (tones as dots, for photos) or sharp
+    // (each pixel black or white at mid-gray, for line art and scans).
+    void setSharpImages(bool sharp) { _sharpImages = sharp; }
     // The book font family: "" for the built-in one, else one installed from
     // /fonts (FontStore); another name falls back to the built-in one. Lays the
     // book out again at the same sentence. Returns false when nothing changed.
@@ -278,6 +281,7 @@ private:
     String _snippet;
     bool (*_bookmarkProbe)(int, uint32_t, uint32_t) = nullptr;
     int _fullEvery = FULL_REFRESH_EVERY_PAGES;
+    bool _sharpImages = false;
     uint32_t _gen = 0;
 
     std::vector<Spine> _spines;

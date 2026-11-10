@@ -25,6 +25,7 @@ constexpr int TOC_ITEMS_PER_PAGE = 8;
 // they are left (not on every step through the sizes and spacings).
 void commitFontSize(AppContext& ctx) {
     Reader.setFullRefreshEvery(ctx.config.fullRefreshEvery);
+    Reader.setSharpImages(ctx.config.sharpImages);
     const bool size = Reader.getFontSize() != ctx.config.readerFontSize;
     const bool layout = !(Reader.layoutOptions() == Appearance::layoutOptions(ctx.config));
     if (!size && !layout) return;

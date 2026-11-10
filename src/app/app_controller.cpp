@@ -99,6 +99,7 @@ void AppController::setup() {
     Reader.setFontFamily(_ctx.config.readerFont);
     Reader.setLayoutOptions(Appearance::layoutOptions(_ctx.config));
     Reader.setFullRefreshEvery(_ctx.config.fullRefreshEvery);
+    Reader.setSharpImages(_ctx.config.sharpImages);
     Reader.setBookmarkProbe([](int spine, uint32_t from, uint32_t to) { return Bookmarks.findIn(spine, from, to) >= 0; });
     MemStats::mark("frontlight, reader");
 

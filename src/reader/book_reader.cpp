@@ -2,6 +2,7 @@
 #include "fonts/builtin_font.h"
 #include "font_store.h"
 
+#include <render/ImageRenderer.h>
 #include <render/PageRenderer.h>
 #include <algorithm>
 #include <new>
@@ -1451,6 +1452,86 @@ bool BookReader::walkChapter(int spine, EpubCfi::Walker& walker) {
 }
 
 namespace {
+// A page's pictures into the frame (as PageRenderer::renderImages, with a choice
+// of how gray becomes black and white): Floyd-Steinberg error diffusion, or a
+// plain threshold at mid-gray.
+inline bool panelXY(const FrameTarget& t, int32_t x, int32_t y, int32_t& px, int32_t& py) {
+    const bool tall = t.rotation == FrameRotation::Portrait || t.rotation == FrameRotation::PortraitInverted;
+    const int32_t lw = tall ? t.height : t.width, lh = tall ? t.width : t.height;
+    if (x < 0 || y < 0 || x >= lw || y >= lh) return false;
+    switch (t.rotation) {
+        case FrameRotation::Portrait: px = y; py = t.height - 1 - x; break;
+        case FrameRotation::PortraitInverted: px = t.width - 1 - y; py = x; break;
+        case FrameRotation::UpsideDown: px = t.width - 1 - x; py = t.height - 1 - y; break;
+        case FrameRotation::None: px = x; py = y; break;
+    }
+    return true;
+}
+
+struct PictureBlit {
+    const FrameTarget* t;
+    int16_t x, y;
+    bool sharp;
+    int16_t* err;       // width+2, shifted by 1
+    int16_t* errNext;
+    uint16_t width;
+
+    void black(int32_t lx, int32_t ly) const {
+        int32_t px, py;
+        if (panelXY(*t, lx, ly, px, py)) t->framebuffer[py * t->widthBytes + (px >> 3)] &= (uint8_t)~(0x80u >> (px & 7));
+    }
+    static bool onRow(void* user, uint16_t row, const uint8_t* gray, uint16_t w) {
+        PictureBlit* b = static_cast<PictureBlit*>(user);
+        if (w > b->width) w = b->width;
+        if (b->sharp) {
+            for (uint16_t i = 0; i < w; i++)
+                if (gray[i] < 128) b->black(b->x + i, b->y + row);
+            return true;
+        }
+        for (uint16_t i = 0; i < w; i++) {
+            int32_t v = gray[i] + b->err[i + 1];
+            v = v < 0 ? 0 : (v > 255 ? 255 : v);
+            const bool ink = v < 128;
+            if (ink) b->black(b->x + i, b->y + row);
+            const int32_t r = v - (ink ? 0 : 255);
+            b->err[i + 2] = (int16_t)(b->err[i + 2] + r * 7 / 16);
+            b->errNext[i] = (int16_t)(b->errNext[i] + r * 3 / 16);
+            b->errNext[i + 1] = (int16_t)(b->errNext[i + 1] + r * 5 / 16);
+            b->errNext[i + 2] = (int16_t)(b->errNext[i + 2] + r / 16);
+        }
+        memcpy(b->err, b->errNext, (b->width + 2u) * sizeof(int16_t));
+        memset(b->errNext, 0, (b->width + 2u) * sizeof(int16_t));
+        return true;
+    }
+};
+
+BookStatus drawImagesInto(const Page& page, BookSource& source, const ZipCatalog& zip, Arena& scratch,
+                          const FrameTarget& frame, bool sharp) {
+    BookStatus worst = BookStatus::Ok;
+    for (uint16_t m = 0; m < page.imageCount; ++m) {
+        const PageImage& image = page.images[m];
+        const size_t marked = scratch.mark();
+        PictureBlit blit{&frame, image.x, image.y, sharp, nullptr, nullptr, image.width};
+        if (!sharp) {
+            blit.err = scratch.allocArray<int16_t>(image.width + 2u);
+            blit.errNext = scratch.allocArray<int16_t>(image.width + 2u);
+            if (!blit.err || !blit.errNext) {
+                scratch.release(marked);
+                return BookStatus::OutOfMemory;
+            }
+            memset(blit.err, 0, (image.width + 2u) * sizeof(int16_t));
+            memset(blit.errNext, 0, (image.width + 2u) * sizeof(int16_t));
+        }
+        const BookStatus st = ImageRenderer::render(source, zip, image, scratch, PictureBlit::onRow, &blit);
+        scratch.release(marked);
+        // An unsupported format leaves its space blank; a real error is reported.
+        if (st != BookStatus::Ok && st != BookStatus::Unsupported) worst = st;
+    }
+    return worst;
+}
+}  // namespace
+
+namespace {
 // The chapter's text from an engine character on: tags left out, white space
 // collapsed, the common entities as characters.
 class TextFrom {
@@ -1899,7 +1980,7 @@ void BookReader::renderCurrentPage() {
                 Buffer img(size);
                 if (!img.p) return BookStatus::OutOfMemory;
                 Arena a(img.p, size);
-                return PageRenderer::renderImages(page, _src, _catalog.zip(), a, frame);
+                return drawImagesInto(page, _src, _catalog.zip(), a, frame, _sharpImages);
             };
             // Smallest arena first: a PNG decodes in a few KB of arena but pngle takes
             // ~44 KB of heap of its own, so a big arena next to it would not fit; a
