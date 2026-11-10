@@ -49,4 +49,5 @@ private:
     ProgressStore() = default;
     std::deque<BookProgressRecord> _records;
     bool _modified = false;
+    bool _readOnly = false;   // the file could not be read for lack of memory: not overwritten
 };

@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <vector>
 #include <SDCardManager.h>
+#include <ArduinoJson.h>
 
 struct AppConfig;
 
@@ -72,3 +73,11 @@ public:
 };
 
 extern StorageManager Storage;
+
+// Parses a JSON file straight from the card: no copy of it in a String and no
+// size limit (SDCardManager::readFile stops at 50 KB, which cut a large catalog
+// or progress file and made it unreadable). EmptyInput when the file is missing.
+DeserializationError readJsonFile(const char* path, JsonDocument& doc);
+// Moves an unreadable JSON file aside ("<path>.bad"), so that the next save does
+// not write an empty list over data that may still be recovered by hand.
+void keepUnreadableFile(const char* path);

@@ -26,12 +26,20 @@ ProgressSync::Position readPos(JsonObjectConst o) {
 bool ProgressStore::load() {
     _records.clear();
     _modified = false;
+    _readOnly = false;
     if (!Storage.isAvailable() || !Storage.exists(kPath)) return false;
 
-    String content = SDCardManager::getInstance().readFile(kPath);
     JsonDocument doc;
-    if (deserializeJson(doc, content)) {
-        Serial.println("[Progress] progress.json is corrupt, starting empty.");
+    const DeserializationError err = readJsonFile(kPath, doc);
+    if (err == DeserializationError::NoMemory) {
+        // The file is fine, the heap is not: never write a shorter list over it.
+        Serial.println("[Progress] progress.json does not fit in memory now: positions are not saved this session.");
+        _readOnly = true;
+        return false;
+    }
+    if (err) {
+        Serial.println("[Progress] progress.json is corrupt, starting empty (the old file is kept as .bad).");
+        keepUnreadableFile(kPath);
         return false;
     }
     for (JsonObjectConst o : doc["books"].as<JsonArrayConst>()) {
@@ -54,7 +62,7 @@ bool ProgressStore::load() {
 
 bool ProgressStore::save() {
     if (!_modified) return true;
-    if (!Storage.isAvailable()) return false;
+    if (_readOnly || !Storage.isAvailable()) return false;
     Storage.ensureDirectories();
 
     JsonDocument doc;
@@ -71,6 +79,10 @@ bool ProgressStore::save() {
         if (r.state.localChangedAt) o["changedAt"] = r.state.localChangedAt;
         if (r.state.hasBase) writePos(o["base"].to<JsonObject>(), r.state.base);
         if (r.state.baseServerUpdatedAt) o["baseUpdatedAt"] = r.state.baseServerUpdatedAt;
+    }
+    if (doc.overflowed()) {
+        Serial.println("[Progress] Not enough memory to save progress.json: the file on the card is kept.");
+        return false;
     }
     String out;
     serializeJson(doc, out);
