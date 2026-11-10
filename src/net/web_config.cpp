@@ -3,6 +3,7 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <DNSServer.h>
+#include <esp_random.h>
 #include "hal/display.h"
 #include "hal/buttons.h"
 #include "services/power_service.h"
@@ -51,7 +52,7 @@ button:active { background: #333; }
 </div>
 <div class='form-group'>
 <label>%LBL_PASS%</label>
-<input type='password' name='password' value='%PASSWORD%' placeholder='••••••••'>
+<input type='password' name='password' value='' placeholder='%PASS_HINT%'>
 </div>
 <hr style='border:none; border-top:1px solid #eee; margin:20px 0;'>
 <div class='form-group'>
@@ -60,7 +61,7 @@ button:active { background: #333; }
 </div>
 <div class='form-group'>
 <label>%LBL_WIFI_PASS%</label>
-<input type='password' name='wifi_pass' value='%WIFI_PASS%' placeholder='••••••••'>
+<input type='password' name='wifi_pass' value='' placeholder='%PASS_HINT%'>
 </div>
 <hr style='border:none; border-top:1px solid #eee; margin:20px 0;'>
 <div class='form-group' style='margin-bottom:12px;'>
@@ -107,7 +108,25 @@ p { font-size: 15px; color: #555; line-height: 1.5; }
 </html>
 )rawliteral";
 
-static void drawPortalScreen() {
+// Values put into the form: a quote or '<' in a name must not break the page.
+static String htmlEscape(const String& s) {
+    String out;
+    out.reserve(s.length() + 8);
+    for (size_t i = 0; i < s.length(); i++) {
+        const char c = s[i];
+        switch (c) {
+            case '&': out += "&amp;"; break;
+            case '<': out += "&lt;"; break;
+            case '>': out += "&gt;"; break;
+            case '\'': out += "&#39;"; break;
+            case '"': out += "&quot;"; break;
+            default: out += c;
+        }
+    }
+    return out;
+}
+
+static void drawPortalScreen(const char* apPass) {
     using namespace uikit;
     Pass pass;
     Frame& f = pass.frame();
@@ -136,6 +155,14 @@ static void drawPortalScreen() {
             Rect box = takeTop(in, (int16_t)(lineHeight(FontBody) + 22));
             frameRect(box, Color::Black);
             text(insetX(box, 12), tr(st.value), FontBody);
+            if (st.value == MsgId::WEB_STEP1_SSID) {   // the hotspot's password, under its name
+                char passLine[64];
+                snprintf(passLine, sizeof(passLine), tr(MsgId::WEB_STEP1_PASS_FMT), apPass);
+                takeTop(in, 4);
+                Rect pbox = takeTop(in, (int16_t)(lineHeight(FontBody) + 22));
+                frameRect(pbox, Color::Black);
+                text(insetX(pbox, 12), passLine, FontTitle);
+            }
         } else {
             const int16_t vh = wrappedHeight(tr(st.value), FontBody, in.width, 3);
             text(takeTop(in, vh), tr(st.value), FontBody, Color::Black, TextAlign::Left, 3);
@@ -160,8 +187,13 @@ bool WebConfigManager::runPortal(AppConfig& cfg) {
     WiFi.disconnect(true);
     WiFi.mode(WIFI_AP);
     
+    // A password of its own each time (shown on the screen): the form carries the
+    // account and Wi-Fi settings, so the hotspot is not open to anyone nearby.
     const char* apSsid = "BookOrbit-Config";
-    bool apOk = WiFi.softAP(apSsid);
+    char apPass[9];
+    for (int i = 0; i < 8; i++) apPass[i] = (char)('0' + esp_random() % 10);
+    apPass[8] = '\0';
+    bool apOk = WiFi.softAP(apSsid, apPass);
     if (!apOk) {
         Serial.println("[WebConfig] Failed to start SoftAP!");
         return false;
@@ -173,7 +205,7 @@ bool WebConfigManager::runPortal(AppConfig& cfg) {
     DNSServer dnsServer;
     dnsServer.start(53, "*", apIP);
 
-    drawPortalScreen();
+    drawPortalScreen(apPass);
 
     WebServer server(80);
     bool saved = false;
@@ -204,11 +236,11 @@ bool WebConfigManager::runPortal(AppConfig& cfg) {
         page.replace("%HTML_FOOTER%", tr(MsgId::WEB_HTML_FOOTER));
         page.replace("%DEVICE%", uikit::deviceDisplayName());
 
-        page.replace("%SERVER_URL%", serverUrl);
-        page.replace("%USERNAME%", username);
-        page.replace("%PASSWORD%", password);
-        page.replace("%WIFI_SSID%", wifiSsid);
-        page.replace("%WIFI_PASS%", wifiPass);
+        // The saved passwords are never sent back to the browser.
+        page.replace("%PASS_HINT%", htmlEscape(tr(MsgId::WEB_HTML_PASS_KEEP)));
+        page.replace("%SERVER_URL%", htmlEscape(serverUrl));
+        page.replace("%USERNAME%", htmlEscape(username));
+        page.replace("%WIFI_SSID%", htmlEscape(wifiSsid));
         page.replace("%SYNC_BOOT_CHECKED%", syncOnBoot ? "checked" : "");
         page.replace("%SYNC_SLEEP_CHECKED%", syncOnSleep ? "checked" : "");
         server.send(200, "text/html; charset=utf-8", page);
@@ -216,11 +248,17 @@ bool WebConfigManager::runPortal(AppConfig& cfg) {
 
     server.on("/save", HTTP_POST, [&]() {
         PowerService::noteActivity();
+        const String oldSsid = wifiSsid;
         if (server.hasArg("server_url")) serverUrl = server.arg("server_url");
         if (server.hasArg("username"))   username = server.arg("username");
-        if (server.hasArg("password"))   password = server.arg("password");
         if (server.hasArg("wifi_ssid"))  wifiSsid = server.arg("wifi_ssid");
-        if (server.hasArg("wifi_pass"))  wifiPass = server.arg("wifi_pass");
+        wifiSsid.trim();
+        // An empty password field keeps the saved one (the page never shows it);
+        // another network with an empty field is an open one. Passwords are taken
+        // as typed: spaces in them are significant.
+        if (server.hasArg("password") && server.arg("password").length() > 0) password = server.arg("password");
+        if (server.hasArg("wifi_pass") && server.arg("wifi_pass").length() > 0) wifiPass = server.arg("wifi_pass");
+        else if (wifiSsid != oldSsid) wifiPass = "";
 
         syncOnBoot = server.hasArg("sync_on_boot");
         syncOnSleep = server.hasArg("sync_on_sleep");
@@ -232,9 +270,6 @@ bool WebConfigManager::runPortal(AppConfig& cfg) {
             serverUrl = "http://" + serverUrl;
         }
         username.trim();
-        password.trim();
-        wifiSsid.trim();
-        wifiPass.trim();
 
         cfg.save();
 
