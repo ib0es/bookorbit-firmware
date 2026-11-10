@@ -731,7 +731,7 @@ bool BookOrbitClient::updateBookProgress(const String& serverHost, const String&
     }
 
     Serial.printf("[BookOrbit] updateBookProgress %s -> HTTP %d %s\n", jsonPayload.c_str(), code, respPayload.c_str());
-    return (code == 200);
+    return code >= 200 && code < 300;   // 201 / 204 are a success too: else the record stays dirty for good
 }
 
 
