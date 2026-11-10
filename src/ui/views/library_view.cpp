@@ -168,12 +168,12 @@ void drawLibraryScreen(AppContext& ctx, bool fullRefresh) {
     const bool curIsDir = total > 0 && lib.rowAt(lib.selectedBookIndex).isDirectory;
     const bool curDownloaded = total > 0 && lib.rowAt(lib.selectedBookIndex).isDownloaded;
     if (curIsDir) {
-        area = footerHints(f, area, tr(MsgId::LIB_HINT_OPEN_FOLDER), tr(MsgId::LIB_HINT_BACK_SLEEP));
+        area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_OPEN), "", tr(MsgId::KEY_OPEN)});
     } else if (folder.equals("@formats")) {   // format rows have no book menu
-        area = footerHints(f, area, tr(MsgId::LIB_HINT_READ_DOWNLOAD), tr(MsgId::LIB_HINT_BACK_SLEEP));
+        area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_READ), "", tr(MsgId::KEY_READ)});
     } else {
         (void)curDownloaded;
-        area = footerHints(f, area, tr(MsgId::LIB_HINT_READ_DOWNLOAD), tr(MsgId::LIB_HINT_BOOK_MENU));
+        area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_READ), tr(MsgId::KEY_MENU), tr(MsgId::KEY_READ)});
     }
     area = insetXY(area, kMargin, 10);
 

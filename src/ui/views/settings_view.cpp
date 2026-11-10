@@ -29,7 +29,9 @@ void drawCardScreen(const AppContext& ctx, const char* title, ItemDefFn def, int
     Frame& f = pass.frame();
     clear();
     Rect area = topBar(f, title);
-    area = footerHints(f, area, hintNav, hintBack);
+    (void)hintNav;
+    (void)hintBack;
+    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_SELECT), tr(MsgId::KEY_BACK), tr(MsgId::KEY_SELECT)});
     area = insetXY(area, kMargin, 10);
     int16_t cardH = (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 22);
     int16_t gap = kGap;
@@ -255,7 +257,7 @@ void drawFrontlightScreen(AppContext& ctx, bool fullRefresh) {
     Frame& f = pass.frame();
     clear();
     Rect area = topBar(f, tr(MsgId::FRONTLIGHT_TITLE));
-    area = footerHints(f, area, tr(MsgId::FRONTLIGHT_HINT_NAV), tr(MsgId::FRONTLIGHT_HINT_BACK));
+    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_DONE), tr(MsgId::KEY_ON_OFF), "-", "+"});
     area = insetXY(area, kMargin, 14);
 
     const int rows = Frontlight.hasWarmth() ? 2 : 1;

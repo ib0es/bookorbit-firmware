@@ -37,7 +37,7 @@ void drawBookMenuScreen(AppContext& ctx, bool fullRefresh) {
     Frame& f = pass.frame();
     clear();
     Rect area = topBar(f, tr(MsgId::BOOK_MENU_TITLE));
-    area = footerHints(f, area, tr(MsgId::BOOK_MENU_HINT));
+    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_SELECT), tr(MsgId::KEY_BACK), tr(MsgId::KEY_SELECT)});
     area = insetXY(area, kMargin, 8);
     if (!book) {
         present(fullRefresh);

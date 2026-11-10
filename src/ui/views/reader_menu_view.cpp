@@ -26,7 +26,7 @@ void drawTocScreen(AppContext& ctx, bool fullRefresh) {
     const auto& chapters = Reader.getChapters();
     const int total = (int)chapters.size();
     if (total == 0) {
-        area = footerHints(f, area, tr(MsgId::READER_TOC_HINT_BACK));
+        area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), "", "", ""});
         area = insetXY(area, kMargin, 20);
         takeTop(area, area.height / 4);
         text(takeTop(area, (int16_t)(lineHeight(FontBody) * 2)), tr(MsgId::READER_TOC_EMPTY), FontBody, Color::Black,
@@ -50,7 +50,7 @@ void drawTocScreen(AppContext& ctx, bool fullRefresh) {
     char navHints[160];
     snprintf(navHints, sizeof(navHints), tr(MsgId::READER_TOC_NAV_HINT_FMT), ctx.selectedTocIndex + 1, total,
              ctx.selectedTocIndex / perPage + 1, (total + perPage - 1) / perPage);
-    area = footerHints(f, area, navHints);
+    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_GO), "", ""}, navHints);
     area = insetXY(area, kMargin, 10);
 
     const int currentChapterIdx = Reader.getCurrentChapterIndex();
@@ -95,7 +95,7 @@ void drawReaderMenuScreen(AppContext& ctx, bool fullRefresh) {
     Frame& f = pass.frame();
     clear();
     Rect area = topBar(f, tr(MsgId::READER_MENU_TITLE));
-    area = footerHints(f, area, tr(MsgId::READER_MENU_HINT_NAV), tr(MsgId::READER_MENU_HINT_BACK));
+    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_TO_BOOK), tr(MsgId::KEY_SELECT), tr(MsgId::KEY_TO_BOOK), tr(MsgId::KEY_SELECT)});
     area = insetXY(area, kMargin, 8);
 
     // Book status card.
@@ -174,7 +174,7 @@ void drawFontMenuScreen(AppContext& ctx, bool fullRefresh) {
     const int n = FontEngine::kSizeCount;
     const int sel = ctx.selectedFontIndex < 0 ? 0 : (ctx.selectedFontIndex >= n ? n - 1 : ctx.selectedFontIndex);
     Rect area = topBar(f, tr(MsgId::FONT_MENU_TITLE));
-    area = footerHints(f, area, tr(MsgId::FONT_MENU_HINT));
+    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_APPLY), tr(MsgId::KEY_BACK), tr(MsgId::KEY_APPLY)});
     area = insetXY(area, kMargin, 8);
 
     // Rows grow with their font, so not all sizes fit: show a window of
@@ -247,7 +247,7 @@ void drawTypefaceMenuScreen(AppContext& ctx, bool fullRefresh) {
     if (sel < 0) sel = 0;
     if (sel >= n) sel = n - 1;
     Rect area = topBar(f, tr(MsgId::TYPEFACE_MENU_TITLE));
-    area = footerHints(f, area, tr(MsgId::TYPEFACE_MENU_HINT));
+    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_APPLY), tr(MsgId::KEY_BACK), tr(MsgId::KEY_APPLY)});
     area = insetXY(area, kMargin, 8);
     const String current = Reader.fontFamilyName();
     const int16_t rowH = (int16_t)(lineHeight(FontBody) + lineHeight(FontSmall) + 18);
@@ -284,7 +284,11 @@ void drawAppearanceScreen(AppContext& ctx, bool fullRefresh) {
     if (sel < 0) sel = 0;
     if (sel >= Appearance::COUNT) sel = Appearance::COUNT - 1;
     Rect area = topBar(f, tr(MsgId::APPEAR_TITLE));
-    area = footerHints(f, area, tr(MsgId::APPEAR_HINT));
+    {
+        const bool list = sel == Appearance::TYPEFACE || sel == Appearance::SIZE;   // OK opens a list there
+        area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_DONE), tr(list ? MsgId::KEY_OPEN : MsgId::KEY_CHANGE),
+                                           "\xE2\x97\x80", "\xE2\x96\xB6"});
+    }
     area = insetXY(area, kMargin, 6);
     const int16_t rowH = (int16_t)(lineHeight(FontBody) + 12);
     char val[64];

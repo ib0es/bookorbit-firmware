@@ -86,7 +86,17 @@ void drawHomeScreen(AppContext& ctx, bool fullRefresh) {
     clear();
 
     Rect area = appHeader(f);
-    area = footerHints(f, area, tr(MsgId::HOME_HINT_NAV), tr(MsgId::HOME_HINT_SLEEP));
+    {
+        // BACK: sleep on the book card, else back to it; LEFT/RIGHT: other recent
+        // books on the card, LEFT syncs on the sync row; OK/RIGHT open.
+        const int sel = ctx.selectedHomeIndex;
+        KeyLabels keys;
+        keys.back = tr(sel == 0 ? MsgId::KEY_SLEEP : MsgId::KEY_BACK);
+        keys.ok = tr(MsgId::KEY_OPEN);
+        keys.left = sel == 0 ? "\xE2\x97\x80" : sel == 3 ? tr(MsgId::KEY_SYNC) : "";
+        keys.right = sel == 0 ? "\xE2\x96\xB6" : tr(MsgId::KEY_OPEN);
+        area = keyHints(f, area, keys);
+    }
     area = insetX(area, kMargin);
 
     // Breadcrumb.

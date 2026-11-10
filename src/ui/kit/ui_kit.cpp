@@ -280,6 +280,36 @@ Rect footerHints(Frame&, Rect area, const char* line1, const char* line2) {
     return area;
 }
 
+Rect keyHints(Frame& f, Rect area, const KeyLabels& keys, const char* info) {
+    if (touchOnly()) return footerHints(f, area, info ? info : "x", nullptr);   // replaced by the touch hints
+    // Centres of the keys along the bottom edge, in a 480 px wide portrait
+    // screen (measured on the X4: two rockers of two keys); scaled to the width.
+    static const int16_t kCentre[4] = {96, 178, 279, 370};
+    const char* labels[4] = {keys.back, keys.ok, keys.left, keys.right};
+    const int16_t W = width(), H = height();
+    const int16_t tabH = (int16_t)(lineHeight(FontSmall) + 10);
+    const int16_t tabW = (int16_t)(78 * W / 480);
+    int16_t infoH = 0;
+    if (info && *info) infoH = (int16_t)(wrappedHeight(info, FontSmall, (int16_t)(W - 2 * (kMargin + 4)), 2) + 6);
+    Rect foot = takeBottom(area, (int16_t)(tabH + infoH + 8));
+    if (infoH) {
+        hline(0, W, foot.y);
+        text(Rect{(int16_t)(kMargin + 4), (int16_t)(foot.y + 4), (int16_t)(W - 2 * (kMargin + 4)), infoH}, info,
+             FontSmall, Color::Black, TextAlign::Left, 2);
+    }
+    for (int i = 0; i < 4; i++) {
+        const int16_t cx = (int16_t)(kCentre[i] * W / 480);
+        // Open at the bottom: the tab runs off the screen's edge, towards its key.
+        Rect tab{(int16_t)(cx - tabW / 2), (int16_t)(H - tabH), tabW, (int16_t)(tabH + 6)};
+        fill(tab, Color::White, 5);
+        frameRect(tab, Color::Black, 1, 5);
+        if (labels[i] && *labels[i])
+            text(Rect{(int16_t)(tab.x + 2), tab.y, (int16_t)(tab.width - 4), tabH}, labels[i], FontSmall, Color::Black,
+                 TextAlign::Center);
+    }
+    return area;
+}
+
 int16_t pillWidth(const char* label) { return (int16_t)(textWidth(FontSmall, label) + 20); }
 
 void pill(Rect r, const char* label, bool dark, bool onInverted) {
