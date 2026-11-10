@@ -11,6 +11,7 @@ class InFile {
 public:
     virtual ~InFile() = default;
     virtual bool rewind() = 0;
+    virtual bool seek(uint64_t pos) = 0;
     virtual int32_t read(void* dst, uint32_t len) = 0;   // 0 at the end, <0 on error
     virtual uint64_t size() const = 0;
 };

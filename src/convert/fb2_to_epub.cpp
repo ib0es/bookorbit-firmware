@@ -153,8 +153,25 @@ constexpr uint32_t kHardSplit = 64 * 1024;      // any paragraph does past this
 constexpr uint32_t kElementWeight = 16;
 constexpr size_t kMaxIds = 8192;
 
-const char* const kImageExt[] = {"jpg", "png", "gif"};
 const char* const kImageMime[] = {"image/jpeg", "image/png", "image/gif"};
+
+uint8_t imageType(const char* contentType) {
+    if (contentType && strstr(contentType, "png")) return 1;
+    if (contentType && strstr(contentType, "gif")) return 2;
+    return 0;
+}
+
+// base64 value of a byte, -1 for anything else (whitespace, '=').
+int8_t g_b64[256];
+bool g_b64Ready = false;
+void b64Init() {
+    memset(g_b64, -1, sizeof(g_b64));
+    for (int i = 0; i < 26; i++) g_b64['A' + i] = (int8_t)i, g_b64['a' + i] = (int8_t)(26 + i);
+    for (int i = 0; i < 10; i++) g_b64['0' + i] = (int8_t)(52 + i);
+    g_b64[(uint8_t)'+'] = 62;
+    g_b64[(uint8_t)'/'] = 63;
+    g_b64Ready = true;
+}
 
 const char* const kCss =
     "body{margin:0}\n"
@@ -228,7 +245,11 @@ private:
     void openTag(const char* tag, const char* cls, const char* ownId, bool takeAnchor);
     void anchorSpan();
     std::string hrefFor(const char* href);
-    int imageIndex(const char* href) const;
+    int imageRef(const char* href);           // pass 2: an image's number, given on first use
+    void binaryStart(const char* id, const char* contentType);
+    void binaryData(const char* s, int len);
+    void binaryEnd();
+    ConvertResult rawBinaries(uint64_t offset);
 
     // toc
     void tocLabel(int depth, const std::string& label);
@@ -302,16 +323,19 @@ private:
     // tables from pass 1
     std::vector<uint32_t> _idHash;
     std::vector<uint16_t> _idFile;
-    std::vector<uint32_t> _imgHash;
+    std::vector<uint32_t> _imgHash;   // images in order of first reference (pass 2)
     std::vector<uint8_t> _imgType;
     bool _idsOverflow = false;
 
     std::vector<bool> _imgWritten;
     // binary decode (pass 2)
     bool _inBinary = false;
+    bool _utf16 = false;          // binaries go through expat (no raw scan)
+    bool _stopped = false;        // the parse stopped at the first <binary>
+    uint64_t _binaryOffset = 0;
     uint32_t _b64 = 0;
     int _b64n = 0;
-    uint8_t _bin[768];
+    uint8_t _bin[4096];
     uint32_t _binLen = 0;
     int _imageCount = 0;
 
@@ -348,7 +372,10 @@ ConvertResult Fb2Converter::run() {
 
     // Pass 2: output.
     _pass = 2;
-    _imgWritten.assign(_imgHash.size(), false);
+    _imgHash.clear();
+    _imgType.clear();
+    _imgWritten.clear();
+    if (!g_b64Ready) b64Init();
     _zip.begin(&_out);
     _zip.add("mimetype", "application/epub+zip");
     _zip.add("META-INF/container.xml",
@@ -404,6 +431,7 @@ void Fb2Converter::resetPass() {
     _maxFile = 0;
     _bufLen = 0;
     _inBinary = false;
+    _stopped = false;
     _imageCount = 0;
     _topSectionsSeen = 0;
     _collectFirstPara = false;
@@ -442,7 +470,9 @@ ConvertResult Fb2Converter::parsePass() {
         if (first && n > 0) {
             // A FictionBook says so near the top; anything else is not ours.
             const char* b = static_cast<const char*>(buf);
-            bool fb = false;
+            const uint8_t* u = static_cast<const uint8_t*>(buf);
+            _utf16 = n >= 2 && ((u[0] == 0xFF && u[1] == 0xFE) || (u[0] == 0xFE && u[1] == 0xFF) || !u[0] || !u[1]);
+            bool fb = _utf16;   // (its name is in 16-bit characters there: expat decides)
             for (int32_t i = 0; i + 11 <= n && !fb; i++) fb = memcmp(b + i, "FictionBook", 11) == 0;
             if (!fb) {
                 r = ConvertResult::NotThisFormat;
@@ -450,7 +480,7 @@ ConvertResult Fb2Converter::parsePass() {
             }
             first = false;
         }
-        if (XML_ParseBuffer(_parser, n, n == 0) == XML_STATUS_ERROR) {
+        if (XML_ParseBuffer(_parser, n, n == 0) == XML_STATUS_ERROR && !_stopped) {
             char msg[96];
             snprintf(msg, sizeof(msg), "XML error at line %lu: %s", (unsigned long)XML_GetCurrentLineNumber(_parser),
                      XML_ErrorString(XML_GetErrorCode(_parser)));
@@ -460,7 +490,7 @@ ConvertResult Fb2Converter::parsePass() {
         }
         _read += (uint64_t)n;
         if (_progress) {
-            const int pm = (_pass - 1) * 400 + (int)((_pass == 1 ? 400 : 600) * _read / total);
+            const int pm = _pass == 1 ? (int)(100 * _read / total) : 100 + (int)(900 * _read / total);
             if (pm / 10 != _lastPermille / 10) {
                 _lastPermille = pm;
                 _progress(_user, pm);
@@ -471,10 +501,14 @@ ConvertResult Fb2Converter::parsePass() {
             r = ConvertResult::IoError;
             break;
         }
-        if (n == 0) break;
+        if (n == 0 || _stopped) break;
     }
     XML_ParserFree(_parser);
     _parser = nullptr;
+    if (r == ConvertResult::Ok && _pass == 2 && _stopped) {
+        r = rawBinaries(_binaryOffset);
+        if (r != ConvertResult::Ok) _stats.error = "reading the images failed";
+    }
     if (r == ConvertResult::Ok && _pass == 2 && _zip.failed()) r = ConvertResult::IoError;
     return r;
 }
@@ -491,8 +525,11 @@ void Fb2Converter::descStart(E e, const char** atts) {
         if (const char* n = attr(atts, "name")) _seriesName = n;
         if (const char* v = attr(atts, "number")) _seriesNumber = v;
     }
-    if (e == E_IMAGE && _depth >= 2 && _stack[_depth - 2] == E_COVERPAGE && _coverHref.empty()) {
-        if (const char* h = attr(atts, "href")) _coverHref = h;
+    if (e == E_IMAGE && _depth >= 2 && _stack[_depth - 2] == E_COVERPAGE) {
+        if (const char* h = attr(atts, "href")) {
+            if (_coverHref.empty()) _coverHref = h;
+            if (_coverHref == h) imageRef(h);   // the cover first: number 0
+        }
     }
 }
 
@@ -668,12 +705,139 @@ std::string Fb2Converter::hrefFor(const char* href) {
     return std::string(name) + href;
 }
 
-int Fb2Converter::imageIndex(const char* href) const {
-    if (!href || href[0] != '#') return -1;
+int Fb2Converter::imageRef(const char* href) {
+    if (_pass != 2 || !href || href[0] != '#' || !href[1]) return -1;
     const uint32_t h = hashId(href + 1);
     for (size_t i = 0; i < _imgHash.size(); i++)
         if (_imgHash[i] == h) return (int)i;
-    return -1;
+    if (_imgHash.size() >= 4096) return -1;
+    _imgHash.push_back(h);
+    _imgType.push_back(0);
+    _imgWritten.push_back(false);
+    return (int)_imgHash.size() - 1;
+}
+
+// Images are named by number, without an extension: the engine reads the
+// format from the data, the manifest from the content-type.
+void Fb2Converter::binaryStart(const char* id, const char* contentType) {
+    if (!id || !*id) return;
+    const uint32_t h = hashId(id);
+    int idx = -1;
+    for (size_t i = 0; i < _imgHash.size(); i++)
+        if (_imgHash[i] == h) idx = (int)i;
+    if (idx < 0 || _imgWritten[idx]) return;   // never shown, or a duplicate id
+    _imgWritten[idx] = true;
+    _imgType[idx] = imageType(contentType);
+    char nm[32];
+    snprintf(nm, sizeof(nm), "OEBPS/images/i%04d", idx);
+    _zip.open(nm);
+    _inBinary = true;
+    _b64 = 0;
+    _b64n = 0;
+    _binLen = 0;
+    _imageCount++;
+}
+
+void Fb2Converter::binaryData(const char* s, int len) {
+    if (!_inBinary) return;
+    for (int i = 0; i < len; i++) {
+        const int v = g_b64[(uint8_t)s[i]];
+        if (v < 0) continue;   // whitespace, '=' padding
+        _b64 = (_b64 << 6) | (uint32_t)v;
+        if (++_b64n == 4) {
+            _bin[_binLen++] = (uint8_t)(_b64 >> 16);
+            _bin[_binLen++] = (uint8_t)(_b64 >> 8);
+            _bin[_binLen++] = (uint8_t)_b64;
+            _b64n = 0;
+            _b64 = 0;
+            if (_binLen + 5 > sizeof(_bin)) {   // room for the padded tail too
+                _zip.write(_bin, _binLen);
+                _binLen = 0;
+            }
+        }
+    }
+}
+
+void Fb2Converter::binaryEnd() {
+    if (!_inBinary) return;
+    // A last group of 2 or 3 characters ('=' padded) holds 1 or 2 bytes.
+    if (_b64n == 2) _bin[_binLen++] = (uint8_t)(_b64 >> 4);
+    if (_b64n == 3) {
+        _bin[_binLen++] = (uint8_t)(_b64 >> 10);
+        _bin[_binLen++] = (uint8_t)(_b64 >> 2);
+    }
+    if (_binLen) _zip.write(_bin, _binLen);
+    _zip.close();
+    _inBinary = false;
+}
+
+// After the bodies a FictionBook holds only <binary> elements: megabytes of
+// base64 that expat would tokenize character by character. They are read
+// raw from the first one on: find a tag, take id and content-type, decode
+// to the next '<'.
+ConvertResult Fb2Converter::rawBinaries(uint64_t offset) {
+    if (!_in.seek(offset)) return ConvertResult::IoError;
+    _read = offset;
+    const uint64_t total = _in.size() ? _in.size() : 1;
+    enum { TEXT, TAG, DATA } st = TEXT;
+    std::string tag;
+    char buf[2048];
+    for (;;) {
+        const int32_t n = _in.read(buf, sizeof(buf));
+        if (n < 0) return ConvertResult::IoError;
+        if (n == 0) break;
+        _read += (uint64_t)n;
+        int32_t i = 0;
+        while (i < n) {
+            if (st == TEXT || st == DATA) {
+                const char* lt = static_cast<const char*>(memchr(buf + i, '<', (size_t)(n - i)));
+                const int32_t end = lt ? (int32_t)(lt - buf) : n;
+                if (st == DATA) binaryData(buf + i, end - i);
+                if (!lt) {
+                    i = n;
+                    break;
+                }
+                if (st == DATA) binaryEnd();
+                i = end + 1;
+                tag.clear();
+                st = TAG;
+            } else {
+                const char c = buf[i++];
+                if (c != '>') {
+                    if (tag.size() < 1024) tag += c;
+                    continue;
+                }
+                st = TEXT;
+                if (tag.compare(0, 6, "binary") != 0 || (tag.size() > 6 && tag[6] != ' ' && tag[6] != '\t' &&
+                                                          tag[6] != '\n' && tag[6] != '\r'))
+                    continue;
+                auto value = [&](const char* name) -> std::string {
+                    for (size_t at = 0; (at = tag.find(name, at)) != std::string::npos; at++) {
+                        const char before = at ? tag[at - 1] : ' ';
+                        const size_t q = at + strlen(name);
+                        if ((before == ' ' || before == '\t' || before == '\n' || before == '\r') && q < tag.size() &&
+                            (tag[q] == '"' || tag[q] == '\'')) {
+                            const size_t close = tag.find(tag[q], q + 1);
+                            if (close != std::string::npos) return tag.substr(q + 1, close - q - 1);
+                        }
+                    }
+                    return std::string();
+                };
+                binaryStart(value("id=").c_str(), value("content-type=").c_str());
+                st = DATA;
+            }
+        }
+        if (_progress) {
+            const int pm = 100 + (int)(900 * _read / total);
+            if (pm / 10 != _lastPermille / 10) {
+                _lastPermille = pm;
+                _progress(_user, pm);
+            }
+        }
+        if (_zip.failed()) return ConvertResult::IoError;
+    }
+    binaryEnd();
+    return ConvertResult::Ok;
 }
 
 // ------------------------------------------------------------------------ toc
@@ -735,31 +899,16 @@ void Fb2Converter::start(const char* name, const char** atts) {
         return;
     }
     if (e == E_BINARY) {
-        if (_pass == 1) {
-            const char* id = attr(atts, "id");
-            const char* type = attr(atts, "content-type");
-            uint8_t t = 0;
-            if (type && strstr(type, "png")) t = 1;
-            else if (type && strstr(type, "gif")) t = 2;
-            if (id && _imgHash.size() < 4096) {
-                _imgHash.push_back(hashId(id));
-                _imgType.push_back(t);
-            }
-        } else {
-            closeChapter();   // bodies come first; images after them
-            const int idx = imageIndex((std::string("#") + (attr(atts, "id") ? attr(atts, "id") : "")).c_str());
-            if (idx >= 0 && !_imgWritten[idx]) {
-                _imgWritten[idx] = true;
-                char nm[40];
-                snprintf(nm, sizeof(nm), "OEBPS/images/i%04d.%s", idx, kImageExt[_imgType[idx]]);
-                _zip.open(nm);
-                _inBinary = true;
-                _b64 = 0;
-                _b64n = 0;
-                _binLen = 0;
-                _imageCount++;
-            }
+        // The bodies are over. Pass 1 has all it needs; pass 2 reads the images raw
+        // (or through expat for a UTF-16 file, where a raw scan cannot find tags).
+        closeChapter();
+        if (_pass == 1 || !_utf16) {
+            _binaryOffset = (uint64_t)XML_GetCurrentByteIndex(_parser);
+            _stopped = true;
+            XML_StopParser(_parser, XML_FALSE);
+            return;
         }
+        binaryStart(attr(atts, "id"), attr(atts, "content-type"));
         return;
     }
     if (e == E_BODY) {
@@ -927,7 +1076,7 @@ void Fb2Converter::start(const char* name, const char** atts) {
             if (_textDepth == 0) _pendingEmpty++;
             return;
         case E_IMAGE: {
-            const int idx = imageIndex(attr(atts, "href"));
+            const int idx = imageRef(attr(atts, "href"));
             const bool inlineImg = _textDepth > 0;
             if (!inlineImg) {
                 beginBlock();
@@ -935,7 +1084,7 @@ void Fb2Converter::start(const char* name, const char** atts) {
             }
             if (idx < 0 || _pass != 2) return;
             char src[40];
-            snprintf(src, sizeof(src), "images/i%04d.%s", idx, kImageExt[_imgType[idx]]);
+            snprintf(src, sizeof(src), "images/i%04d", idx);
             if (!inlineImg) {
                 openTag("div", "image", ownId, true);
                 anchorSpan();
@@ -1002,17 +1151,7 @@ void Fb2Converter::end(const char*) {
         return;
     }
     if (e == E_BINARY) {
-        if (_inBinary) {
-            // A last group of 2 or 3 characters ('=' padded) holds 1 or 2 bytes.
-            if (_b64n == 2) _bin[_binLen++] = (uint8_t)(_b64 >> 4);
-            if (_b64n == 3) {
-                _bin[_binLen++] = (uint8_t)(_b64 >> 10);
-                _bin[_binLen++] = (uint8_t)(_b64 >> 2);
-            }
-            if (_binLen) _zip.write(_bin, _binLen);
-            _zip.close();
-            _inBinary = false;
-        }
+        binaryEnd();
         return;
     }
     if (e == E_BODY) {
@@ -1100,30 +1239,7 @@ void Fb2Converter::text(const char* s, int len) {
         return;
     }
     if (_inBinary) {
-        // base64, any whitespace skipped
-        for (int i = 0; i < len; i++) {
-            const char ch = s[i];
-            int v;
-            if (ch >= 'A' && ch <= 'Z') v = ch - 'A';
-            else if (ch >= 'a' && ch <= 'z') v = ch - 'a' + 26;
-            else if (ch >= '0' && ch <= '9') v = ch - '0' + 52;
-            else if (ch == '+') v = 62;
-            else if (ch == '/') v = 63;
-            else continue;   // '=', whitespace
-            _b64 = (_b64 << 6) | (uint32_t)v;
-            if (++_b64n == 4) {
-                _bin[_binLen++] = (uint8_t)(_b64 >> 16);
-                _bin[_binLen++] = (uint8_t)(_b64 >> 8);
-                _bin[_binLen++] = (uint8_t)_b64;
-                _b64n = 0;
-                _b64 = 0;
-                if (_binLen + 5 > sizeof(_bin)) {   // room for the padded tail too
-                    _zip.write(_bin, _binLen);
-                    _binLen = 0;
-                }
-            }
-        }
-        // trailing partial quad ('=' padding): 2 chars -> 1 byte, 3 -> 2
+        binaryData(s, len);
         return;
     }
     if (_body == 0 || _stack[_depth - 1] == E_BINARY) return;
@@ -1184,6 +1300,7 @@ bool Fb2Converter::writeNcx() {
             xmlEscape(_bookTitle.empty() ? std::string("1") : _bookTitle) +
             "</text></navLabel><content src=\"c0001.xhtml\"/></navPoint>\n";
         _zip.write(s.data(), (uint32_t)s.size());
+        order = 1;
     }
     _tocCount = order;
     _zip.write("</navMap></ncx>\n", 16);
@@ -1207,7 +1324,7 @@ bool Fb2Converter::writeOpf() {
         if (!_seriesNumber.empty())
             put("<meta name=\"calibre:series_index\" content=\"" + xmlEscape(_seriesNumber) + "\"/>\n");
     }
-    const int cover = imageIndex(_coverHref.c_str());
+    const int cover = imageRef(_coverHref.c_str());
     char buf[160];
     if (cover >= 0 && _imgWritten[cover]) {
         snprintf(buf, sizeof(buf), "<meta name=\"cover\" content=\"img%04d\"/>\n", cover);
@@ -1224,8 +1341,8 @@ bool Fb2Converter::writeOpf() {
     // Only the images whose data was written (an id without a <binary> is skipped).
     for (int i = 0; i < (int)_imgHash.size(); i++) {
         if (!_imgWritten[i]) continue;
-        snprintf(buf, sizeof(buf), "<item id=\"img%04d\" href=\"images/i%04d.%s\" media-type=\"%s\"%s/>\n", i, i,
-                 kImageExt[_imgType[i]], kImageMime[_imgType[i]], i == cover ? " properties=\"cover-image\"" : "");
+        snprintf(buf, sizeof(buf), "<item id=\"img%04d\" href=\"images/i%04d\" media-type=\"%s\"%s/>\n", i, i,
+                 kImageMime[_imgType[i]], i == cover ? " properties=\"cover-image\"" : "");
         put(buf);
     }
     put("</manifest>\n<spine toc=\"ncx\">\n");

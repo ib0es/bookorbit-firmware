@@ -36,6 +36,7 @@ class MemIn : public convert::InFile {
 public:
     explicit MemIn(std::string d) : _d(std::move(d)) {}
     bool rewind() override { _pos = 0; return true; }
+    bool seek(uint64_t pos) override { if (pos > _d.size()) return false; _pos = (size_t)pos; return true; }
     int32_t read(void* dst, uint32_t len) override {
         const size_t n = std::min<size_t>(len, _d.size() - _pos);
         memcpy(dst, _d.data() + _pos, n);
@@ -294,8 +295,8 @@ static void testFixture() {
     CHECK(contains(o.chapters, "<td colspan=\"2\">both</td>"));
     CHECK(contains(o.chapters, "<p class=\"subtitle\">A subtitle</p>"));
     CHECK(contains(o.chapters, "<p class=\"empty\">&#160;</p>"));
-    CHECK(contains(o.chapters, "<div class=\"image\"><img src=\"images/i0001.png\" alt=\"\"/></div>"));
-    CHECK(contains(o.chapters, "Inline <img src=\"images/i0001.png\" alt=\"\"/> image"));
+    CHECK(contains(o.chapters, "<div class=\"image\"><img src=\"images/i0001\" alt=\"\"/></div>"));
+    CHECK(contains(o.chapters, "Inline <img src=\"images/i0001\" alt=\"\"/> image"));
     // Links: across files to the file holding the id; within a file bare.
     char want[64];
     snprintf(want, sizeof(want), "href=\"c%04d.xhtml#n1\">[1]</a>", notes + 1);
@@ -321,7 +322,7 @@ static void testFixture() {
     ZipCatalog zip;
     Arena a(g_scratch, sizeof(g_scratch));
     CHECK(zip.open(src, a) == BookStatus::Ok);
-    const ZipEntry* img = zip.find("OEBPS/images/i0001.png");
+    const ZipEntry* img = zip.find("OEBPS/images/i0001");
     CHECK(img && img->uncompressedSize == 67);
     printf("  %zu chapters, %u pages, %u images on pages\n", o.chapters.size(), o.pages, o.images);
 }

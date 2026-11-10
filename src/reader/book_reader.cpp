@@ -225,14 +225,16 @@ bool BookReader::openBook(const String& filePath) {
 
 void BookReader::drawConvertProgress(void* self, int permille) {
     BookReader* r = static_cast<BookReader*>(self);
-    // A modal redraw per 10%: an e-ink refresh is ~0.4 s, a conversion seconds to tens of seconds.
+    // An e-ink refresh blocks for ~0.5-1 s: the window is drawn at the start, then
+    // at most every 4 s, so that the drawing does not become the conversion's cost.
     const int step = permille / 100;
-    if (permille > 0 && step == r->_convertStep) return;
+    if (permille >= 1000 || step == r->_convertStep) return;
+    if (r->_convertStep >= 0 && millis() - r->_convertDrawnAt < 4000) return;
     r->_convertStep = step;
-    if (permille >= 1000) return;
     char line[64];
     snprintf(line, sizeof(line), tr(MsgId::READER_CONVERT_PROGRESS_FMT), permille / 10);
     drawStatusModal(tr(MsgId::READER_CONVERT_TITLE), r->_title.substring(0, 32).c_str(), line);
+    r->_convertDrawnAt = millis();
 }
 
 bool BookReader::openContainer() {

@@ -18,6 +18,7 @@ public:
         if (_f) _f.close();
     }
     bool rewind() override { return _f.seek(0); }
+    bool seek(uint64_t pos) override { return _f.seek((uint32_t)pos); }
     int32_t read(void* dst, uint32_t len) override { return _f.read((uint8_t*)dst, len); }
     uint64_t size() const override { return const_cast<FsFile&>(_f).size(); }
 

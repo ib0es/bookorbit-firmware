@@ -128,6 +128,7 @@ public:
 private:
     static void drawConvertProgress(void* self, int permille);
     int _convertStep = -1;
+    uint32_t _convertDrawnAt = 0;
 
     struct Prelayout;
     Prelayout* _bg = nullptr;
