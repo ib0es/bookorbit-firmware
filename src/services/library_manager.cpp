@@ -265,7 +265,8 @@ void LibraryManager::cleanOrphanFiles() {
 
     std::vector<String> covers = books;
     std::vector<BookMetadata> catalog;
-    Storage.loadCatalog(catalog);
+    // An unreadable catalog would make the covers of every cloud book look orphaned.
+    const bool catalogKnown = Storage.loadCatalog(catalog) || !Storage.exists("/books/catalog.json");
     for (const auto& b : catalog) covers.push_back(safeFileName(b.title, b.id));
     if (lastBook.coverPath.startsWith("/covers/")) covers.push_back(stemOf(lastBook.coverPath));
     for (const auto& b : masterBooks) {
@@ -288,7 +289,7 @@ void LibraryManager::cleanOrphanFiles() {
             removed++;
         }
     }
-    for (const String& n : Storage.listFileNames("/covers")) {
+    for (const String& n : catalogKnown ? Storage.listFileNames("/covers") : std::vector<String>()) {
         const String owner = coverOwner(n);
         if (owner.length() > 0 && !contains(covers, owner)) {
             removeIfExists("/covers/" + n);

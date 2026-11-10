@@ -24,10 +24,11 @@ void BookmarkList::load(const String& bookPath) {
     _path = bookPath;
     const String file = fileFor();
     if (!Storage.isAvailable() || !Storage.exists(file.c_str())) return;
-    String content = SDCardManager::getInstance().readFile(file.c_str());
     JsonDocument doc;
-    if (deserializeJson(doc, content)) {
-        Serial.printf("[Bookmarks] %s: unreadable, ignored\n", fileFor().c_str());
+    const DeserializationError err = readJsonFile(file.c_str(), doc);
+    if (err) {
+        Serial.printf("[Bookmarks] %s: unreadable, ignored\n", file.c_str());
+        if (err != DeserializationError::NoMemory) keepUnreadableFile(file.c_str());
         return;
     }
     for (JsonObject o : doc["bookmarks"].as<JsonArray>()) {
@@ -75,6 +76,7 @@ bool BookmarkList::save() const {
         JsonArray del = doc["deleted"].to<JsonArray>();
         for (int id : _deleted) del.add(id);
     }
+    if (doc.overflowed()) return false;
     String out;
     serializeJson(doc, out);
     const String tmp = file + ".tmp";
