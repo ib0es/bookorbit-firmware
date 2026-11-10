@@ -1,5 +1,5 @@
 #pragma once
-// CFIs of a book converted here from FB2, in the web reader's terms.
+// CFIs of a book converted here (FB2, AZW3), in the web reader's terms.
 //
 // The Book Orbit web reader opens an FB2 with foliate-js: each element of the
 // first <body> is a section of its own, each later <body> another. The
@@ -20,6 +20,10 @@
 //       <body>) cut into pieces: piece i starts after m_i of foliate's
 //       paragraph's child elements, b_i UTF-16 units into the text there.
 //
+// "cfimap 2" (AZW3/KF8: each foliate section is a file of the book) is the
+// same with the offsets counted from <body>'s children: a section's top level
+// is <body>'s, not one root element's.
+//
 // Pure (no Arduino): host-tested in test/host/test_cfi_map.cpp.
 #include <cstddef>
 #include <string>
@@ -34,6 +38,7 @@ public:
     void clear() {
         _files.clear();
         _long.clear();
+        _byDepth.clear();
     }
 
     // In place: a location in the converted EPUB -> the web reader's, and back.
@@ -51,6 +56,8 @@ private:
         std::vector<int> path;                 // element steps from <body>, e.g. {4, 2, 8, 6}
         std::vector<int> m, b;                 // per piece
     };
-    std::vector<File> _files;                  // [file - 1]
+    std::vector<File> _files;                  // [file - 1]; offsets from <body>'s children on
+    bool _belowRoot = false;
     std::vector<Long> _long;
+    std::vector<size_t> _byDepth;              // _long by path length
 };

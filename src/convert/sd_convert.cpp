@@ -141,7 +141,9 @@ String stampOf(const String& path) {
     char s[48];
     String lower = path;
     lower.toLowerCase();
-    const int version = lower.endsWith(".fb2") ? kFb2ConverterVersion : kConverterVersion;
+    const int version = lower.endsWith(".fb2") ? kFb2ConverterVersion
+                        : lower.endsWith(".azw3") || lower.endsWith(".azw") ? kKf8ConverterVersion
+                                                                             : kConverterVersion;
     snprintf(s, sizeof(s), "v%d %llu", version, (unsigned long long)size);
     return s;
 }

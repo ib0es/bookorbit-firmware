@@ -68,7 +68,19 @@ int main() {
     CHECK(pub(m, "epubcfi(/6/14!/4/2/2/1:0)") == "-");
     CHECK(loc(m, "epubcfi(/6/14!/4/2/2/1:0)") == "-");
     // The <body> itself: the section's start.
-    CHECK(pub(m, "epubcfi(/6/4!/4)") == "epubcfi(/6/4!/4/2)");
+    CHECK(pub(m, "epubcfi(/6/4!/4)") == "epubcfi(/6/4!/4)");
+
+    // cfimap 2 (KF8): offsets from <body>'s children. File 2 starts inside
+    // body's child 3, before its child 5; file 3 before body's child 40.
+    const char* v2 = "cfimap 2\nF 1 0\nF 2 0 3 5\nF 3 0 40\nL 3 4/4 0 0 2 7\n";
+    CfiMap k;
+    CHECK(k.parse(v2, strlen(v2)));
+    ROUND(k, "epubcfi(/6/2!/4/6/1:2)", "epubcfi(/6/2!/4/6/1:2)");
+    ROUND(k, "epubcfi(/6/4!/4/2/2/1:2)", "epubcfi(/6/2!/4/8/12/1:2)");
+    ROUND(k, "epubcfi(/6/4!/4/4/2/1:2)", "epubcfi(/6/2!/4/10/2/1:2)");
+    ROUND(k, "epubcfi(/6/6!/4/2/1:0)", "epubcfi(/6/2!/4/82/1:0)");
+    ROUND(k, "epubcfi(/6/6!/4/4/4/1:3)", "epubcfi(/6/2!/4/84/5:10)");
+    ROUND(k, "epubcfi(/6/2!/4/8/10/1:0)", "epubcfi(/6/2!/4/8/10/1:0)");
 
     CfiMap bad;
     CHECK(!bad.parse("hello\n", 6) && bad.empty());

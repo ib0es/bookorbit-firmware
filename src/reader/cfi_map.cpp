@@ -1,5 +1,6 @@
 #include "cfi_map.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 
@@ -50,7 +51,11 @@ bool CfiMap::parse(const char* text, size_t len) {
         const char* eol = static_cast<const char*>(memchr(p, '\n', end - p));
         if (!eol) eol = end;
         if (!header) {
-            if (eol - p < 8 || strncmp(p, "fb2cfi 1", 8) != 0) return false;
+            // "fb2cfi 1": offsets from the root element's children (FB2: the
+            // section is the one element of <body>); "cfimap 2": from <body>'s.
+            if (eol - p >= 8 && strncmp(p, "fb2cfi 1", 8) == 0) _belowRoot = true;
+            else if (eol - p >= 8 && strncmp(p, "cfimap 2", 8) == 0) _belowRoot = false;
+            else return false;
             header = true;
         } else if (*p == 'F') {
             const char* q = p + 1;
@@ -62,6 +67,7 @@ bool CfiMap::parse(const char* text, size_t len) {
             File f;
             f.section = section;
             while (readInt(q, eol, v)) f.off.push_back(v);
+            if (_belowRoot && !f.off.empty()) f.off.insert(f.off.begin(), 0);   // the root: <body>'s first element
             if (_files.size() < (size_t)file) _files.resize(file);
             _files[file - 1] = f;
         } else if (*p == 'L') {
@@ -82,6 +88,10 @@ bool CfiMap::parse(const char* text, size_t len) {
         }
         p = eol + 1;
     }
+    _byDepth.resize(_long.size());
+    for (size_t i = 0; i < _long.size(); i++) _byDepth[i] = i;
+    std::stable_sort(_byDepth.begin(), _byDepth.end(),
+                     [&](size_t a, size_t b) { return _long[a].path.size() < _long[b].path.size(); });
     for (const File& f : _files) {
         if (f.section < 0) {   // a file the map does not name
             clear();
@@ -95,13 +105,15 @@ bool CfiMap::toPublic(EpubCfi::Location& loc) const {
     const int file = loc.ordinal;
     if (file < 1 || file > (int)_files.size()) return false;
     std::vector<int> s = loc.steps;
-    if (s.size() < 2 || s[0] != 4 || s[1] != 2) {
-        // Not inside the root element (the <body> itself): its start.
-        s = {4, 2};
+    if (s.empty() || s[0] != 4) {   // not inside <body>: the section's start
+        s = {4};
         loc.offset = 0;
     }
-    // A paragraph in pieces: piece i's content belongs to foliate's one p.
-    for (const Long& l : _long) {
+    // Elements in pieces: piece i's content belongs to foliate's one element.
+    // Innermost first (a cut element inside a piece of another): each path is
+    // in this file's terms down to it.
+    for (size_t li = _long.size(); li-- > 0;) {
+        const Long& l = _long[_byDepth[li]];
         if (l.file != file || s.size() < l.path.size()) continue;
         if (!std::equal(l.path.begin(), l.path.end(), s.begin())) continue;
         std::vector<int> out(l.path.begin(), l.path.end());
@@ -123,16 +135,15 @@ bool CfiMap::toPublic(EpubCfi::Location& loc) const {
                 loc.offset = 0;
             }
         } else {
-            loc.offset = 0;   // the div, or the space between pieces: the paragraph
+            loc.offset = 0;   // the div, or the space between pieces: the element
         }
         s = out;
-        break;
     }
     // The file inside its section: shift along the chain of first elements.
     const File& f = _files[file - 1];
-    for (size_t j = 0; j < f.off.size() && 2 + j < s.size(); j++) {
-        const int ours = s[2 + j];
-        s[2 + j] = ours + 2 * f.off[j];
+    for (size_t j = 0; j < f.off.size() && 1 + j < s.size(); j++) {
+        const int ours = s[1 + j];
+        s[1 + j] = ours + 2 * f.off[j];
         if (ours != 2) break;   // past the first element: deeper levels are whole
     }
     loc.steps = s;
@@ -143,8 +154,8 @@ bool CfiMap::toPublic(EpubCfi::Location& loc) const {
 bool CfiMap::toLocal(EpubCfi::Location& loc) const {
     const int section = loc.ordinal - 1;
     std::vector<int> s = loc.steps;
-    if (s.size() < 2 || s[0] != 4 || s[1] != 2) {
-        s = {4, 2};
+    if (s.empty() || s[0] != 4) {
+        s = {4};
         loc.offset = 0;
     }
     // The last file of the section that starts at or before the place.
@@ -153,7 +164,7 @@ bool CfiMap::toLocal(EpubCfi::Location& loc) const {
         const File& f = _files[i];
         if (f.section != section) continue;
         if (!f.off.empty()) {
-            std::vector<int> start = {4, 2};
+            std::vector<int> start = {4};
             for (size_t j = 0; j < f.off.size(); j++)
                 start.push_back(j + 1 < f.off.size() ? 2 * f.off[j] + 2 : 2 * f.off[j] + 1);
             if (before(s, start)) continue;
@@ -162,12 +173,15 @@ bool CfiMap::toLocal(EpubCfi::Location& loc) const {
     }
     if (file == 0) return false;
     const File& f = _files[file - 1];
-    for (size_t j = 0; j < f.off.size() && 2 + j < s.size(); j++) {
-        const int theirs = s[2 + j] - 2 * f.off[j];
-        s[2 + j] = theirs;
+    for (size_t j = 0; j < f.off.size() && 1 + j < s.size(); j++) {
+        const int theirs = s[1 + j] - 2 * f.off[j];
+        s[1 + j] = theirs;
         if (theirs != 2) break;
     }
-    for (const Long& l : _long) {
+    // Outermost first: an inner cut element's path is in this file's terms,
+    // the pieces of the ones around it included.
+    for (size_t li = 0; li < _long.size(); li++) {
+        const Long& l = _long[_byDepth[li]];
         if (l.file != file || s.size() < l.path.size()) continue;
         if (!std::equal(l.path.begin(), l.path.end(), s.begin())) continue;
         std::vector<int> out(l.path.begin(), l.path.end());
@@ -190,7 +204,6 @@ bool CfiMap::toLocal(EpubCfi::Location& loc) const {
             if (r == slot && terminal) loc.offset -= l.b[piece];
         }
         s = out;
-        break;
     }
     loc.steps = s;
     loc.ordinal = file;

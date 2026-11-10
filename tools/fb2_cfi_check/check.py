@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Checks that CFIs of FB2 books converted by the firmware mean the same place
+"""Checks that CFIs of FB2 and AZW3 books converted by the firmware mean the same place
 as the Book Orbit web reader's (foliate-js), both ways, with foliate itself.
 
   tools/fb2_cfi_check/check.py <foliate dir> <book.fb2>... [--every N]
@@ -33,13 +33,19 @@ def build(out):
             "css/Css.cpp", "layout/ChapterLayout.cpp", "cache/PageCache.cpp", "render/ImageRenderer.cpp",
             "render/PageRenderer.cpp")] + [ROOT + "/freeink-sdk/libs/font/FreeInkFont/src/" + s for s in
             ("TtfFont.cpp", "Gpos.cpp", "Gsub.cpp")]
-    subprocess.check_call(["c++"] + flags + inc + [HERE + "/fb2conv.cpp", ROOT + "/src/convert/fb2_to_epub.cpp",
+    subprocess.check_call(["c++"] + flags + inc + [HERE + "/fb2conv.cpp", ROOT + "/src/convert/fb2_to_epub.cpp", ROOT + "/src/convert/mobi_to_epub.cpp",
                            ROOT + "/src/convert/zip_writer.cpp"] + core + objs + ["-o", out + "/fb2conv"])
     subprocess.check_call(["c++"] + flags + [HERE + "/cfimap_cli.cpp", ROOT + "/src/reader/cfi_map.cpp",
                            ROOT + "/src/reader/epub_cfi.cpp", "-o", out + "/cfimap"])
 
 def norm(t):
     return re.sub(r"[\s ]+", "", t or "")[:14]
+
+def same(want, got):
+    """The same text follows; a file of ours that ends there (the book goes on
+    in the next one) gives less of it."""
+    a, b = norm(want), norm(got)
+    return a == b or (b != "" and len(b) < 14 and a.startswith(b))
 
 def translate(tools, cfimap, way, cfis):
     r = subprocess.run([tools + "/cfimap", cfimap, way], input="\n".join(cfis) + "\n", capture_output=True, text=True,
@@ -70,13 +76,13 @@ def check(foliate, fb2, tools, every):
     second = oracle(foliate, fb2, ours, {"sampleEvery": 10**9, "resolveOurs": to_ours, "resolveTheirs": to_theirs}, work)
     bad = []
     for p, c, got in zip(theirs, to_ours, second["resolvedOurs"]):
-        if norm(got) != norm(p["text"]):
+        if not same(p["text"], got):
             bad.append(("web -> here", p["cfi"], c, p["text"], got))
     for p, c, got in zip(mine, to_theirs, second["resolvedTheirs"]):
-        if norm(got) != norm(p["text"]):
+        if not same(got, p["text"]):
             bad.append(("here -> web", p["cfi"], c, p["text"], got))
     n = len(theirs) + len(mine)
-    print("%s: %d sections, %d files, %d points, %d differ" % (os.path.basename(fb2), first["sections"], len(ours), n,
+    print("%s (%s): %d sections, %d files, %d points, %d differ" % (os.path.basename(fb2), first.get("kind"), first["sections"], len(ours), n,
                                                               len(bad)))
     for b in bad[:12]:
         print("  %s %s -> %s\n    want %r\n    got  %r" % b)

@@ -34,7 +34,16 @@ namespace {
 // together: a deflated chapter is first inflated to the card on its own
 // (kInflateBytes), then laid out from there as a stored entry, whose parse
 // state is small (kStoredParseBytes) and sits next to the layout buffer.
-constexpr size_t kLayoutBytes = 54 * 1024;        // layout state + page index chunks + image pre-scan
+constexpr size_t kLayoutBytes = 54 * 1024;        // layout state + image pre-scan
+
+// The page index and anchor table of a chapter being written get an arena of
+// their own, not the layout's: ChapterLayout marks and releases its scratch
+// around placing an image, and a chapter's first page made in there had its
+// index chunk released and written over (link targets in the page index:
+// "Stale" pages). ~1.5 KB of anchors, ~1 KB per 128 pages, room to spare.
+size_t writerBytesFor(uint32_t chapterBytes, int attempt = 0) {
+    return 1600 + 1040 * (2 + chapterBytes / 128000 + 2 * attempt);
+}
 constexpr size_t kStoredParseBytes = 10 * 1024;   // XML parse of a stored chapter (2.6 KB seen)
 constexpr size_t kInflateBytes = 48 * 1024;
 // Most the transient buffers may hold together (the X4's free heap after boot is
@@ -131,8 +140,11 @@ struct BookReader::Prelayout {
 
     uint8_t* layoutMem = nullptr;
     uint8_t* parseMem = nullptr;
+    uint8_t* writerMem = nullptr;
+    size_t writerBytes = 0;
     Arena layout;
     Arena parse;
+    Arena writerArena;
     PageCacheWriter writer;
     ChapterLayoutSession session;
     bool writing = false;
@@ -145,6 +157,7 @@ struct BookReader::Prelayout {
         giveTransient(inflateMem, kInflateBytes);
         giveTransient(layoutMem, kLayoutBytes);
         giveTransient(parseMem, kStoredParseBytes);
+        giveTransient(writerMem, writerBytes);
     }
 };
 
@@ -743,9 +756,8 @@ bool BookReader::layoutChapter(int spine) {
         Serial.printf("[Reader] Chapter %d cannot be read\n", spine);
         return false;
     }
-    // The page index grows ~1 KB per 128 pages inside the layout buffer: a whole
-    // novel in one file needs more than the usual 54 KB, so a full buffer is
-    // retried bigger (the parse state is small enough to sit beside it).
+    // A full layout buffer (or page index: ~1 KB per 128 pages, a whole novel in
+    // one file) is retried bigger (the parse state is small enough to sit beside it).
     char name[48];
     pageCacheName((uint16_t)spine, _gen, name, sizeof(name));
     uint32_t pages = 0, chars = 0;
@@ -763,8 +775,12 @@ bool BookReader::layoutChapter(int spine) {
         }
         Arena layout(layoutMem.p, cap);
         Arena parse(parseMem.p, kStoredParseBytes);
+        const size_t wcap = writerBytesFor(entry.uncompressedSize, (int)((cap - kLayoutBytes) / (16 * 1024)));
+        Buffer writerMem(wcap);
+        if (!writerMem.p) break;
+        Arena writerArena(writerMem.p, wcap);
         writer = PageCacheWriter();
-        if (!writer.begin(_cache, name, _gen, layout)) {
+        if (!writer.begin(_cache, name, _gen, writerArena)) {
             Serial.printf("[Reader] Cannot write the page cache %s/%s\n", _cache.dir().c_str(), name);
             st = BookStatus::IoError;
             break;
@@ -1102,7 +1118,9 @@ bool BookReader::stepBackground() {
         }
         job->layoutMem = failed ? nullptr : takeTransient(kLayoutBytes);
         job->parseMem = job->layoutMem ? takeTransient(kStoredParseBytes) : nullptr;
-        if (!job->parseMem) {
+        job->writerBytes = writerBytesFor(job->bookEntry.uncompressedSize);
+        job->writerMem = job->parseMem ? takeTransient(job->writerBytes) : nullptr;
+        if (!job->writerMem) {
             // No memory now (the foreground holds it): try again from the next chapter on.
             if (!failed) _bgNothingFor = _spine;
             stopBackground();
@@ -1110,7 +1128,8 @@ bool BookReader::stepBackground() {
         }
         job->layout.init(job->layoutMem, kLayoutBytes);
         job->parse.init(job->parseMem, kStoredParseBytes);
-        if (!failed && job->writer.begin(job->cache, job->name, _gen, job->layout)) {
+        job->writerArena.init(job->writerMem, job->writerBytes);
+        if (!failed && job->writer.begin(job->cache, job->name, _gen, job->writerArena)) {
             job->writing = true;
             const BookStatus st = job->session.begin(_src, &_catalog.zip(), *job->source, job->entry, job->href,
                                                      _params, job->layout, job->writer, &job->parse, &job->layout);

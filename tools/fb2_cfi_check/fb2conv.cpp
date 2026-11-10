@@ -1,6 +1,7 @@
-// Converts an FB2 file with the firmware's converter: book.epub and its CFI map.
+// Converts an FB2, MOBI or AZW3 file with the firmware's converter: book.epub and its CFI map.
 // Usage: fb2conv in.fb2 out.epub out.cfimap
 #include "convert/fb2_to_epub.h"
+#include "convert/mobi_to_epub.h"
 
 #include <cstdio>
 #include <string>
@@ -26,7 +27,10 @@ int main(int argc, char** argv) {
     MemOut out;
     MemTemp tmp;
     convert::ConvertStats st;
-    const convert::ConvertResult r = convert::fb2ToEpub(in, out, tmp, nullptr, nullptr, &st);
+    const std::string name = argv[1];
+    const bool fb2 = name.size() > 4 && (name.compare(name.size() - 4, 4, ".fb2") == 0 || name.compare(name.size() - 4, 4, ".FB2") == 0);
+    const convert::ConvertResult r = fb2 ? convert::fb2ToEpub(in, out, tmp, nullptr, nullptr, &st)
+                                         : convert::mobiToEpub(in, out, tmp, nullptr, nullptr, &st);
     if (r != convert::ConvertResult::Ok) {
         fprintf(stderr, "convert: %s %s\n", convert::resultName(r), st.error.c_str());
         return 1;

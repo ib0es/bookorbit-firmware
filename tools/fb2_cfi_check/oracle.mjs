@@ -19,6 +19,8 @@ const { chromium } = createRequire(import.meta.url)('playwright')
 
 const [dir, fb2, oursFile, jobFile, outFile] = process.argv.slice(2)
 const fb2Src = fs.readFileSync(path.join(dir, 'fb2.js'), 'utf8')
+const mobiSrc = fs.readFileSync(path.join(dir, 'mobi.js'), 'utf8')
+const isFb2 = /\.fb2$/i.test(fb2)
 const cfiSrc = fs.readFileSync(path.join(dir, 'epubcfi.js'), 'utf8')
 const book = fs.readFileSync(fb2).toString('base64')
 const ours = JSON.parse(fs.readFileSync(oursFile, 'utf8'))
@@ -28,13 +30,21 @@ const browser = await chromium.launch()
 const page = await browser.newPage()
 page.on('console', (m) => console.error('[page]', m.text()))
 const out = await page.evaluate(
-  async ({ fb2Src, cfiSrc, book, ours, job }) => {
+  async ({ fb2Src, mobiSrc, isFb2, cfiSrc, book, ours, job }) => {
     const mod = (src) => import(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })))
-    const { makeFB2 } = await mod(fb2Src)
     const CFI = await mod(cfiSrc)
     const bytes = Uint8Array.from(atob(book), (c) => c.charCodeAt(0))
-    const fb = await makeFB2(new Blob([bytes]))
-    const theirDocs = fb.sections.map((s) => s.createDocument())
+    let fb, kind = 'fb2'
+    if (isFb2) {
+      const { makeFB2 } = await mod(fb2Src)
+      fb = await makeFB2(new Blob([bytes]))
+    } else {
+      const { MOBI } = await mod(mobiSrc)
+      fb = await new MOBI({ unzlib: () => { throw new Error('no zlib') } }).open(new Blob([bytes]))
+      kind = fb.constructor.name   // KF8 or MOBI6
+    }
+    const theirDocs = []
+    for (const s of fb.sections) theirDocs.push(s.createDocument ? await s.createDocument() : null)
     const ourDocs = ours.map((x) => new DOMParser().parseFromString(x, 'application/xhtml+xml'))
 
     const after = (doc, node, offset) => {
@@ -46,6 +56,7 @@ const out = await page.evaluate(
     const sample = (docs) => {
       const res = []
       docs.forEach((doc, index) => {
+        if (!doc) return
         const w = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT)
         let n = 0
         for (let t = w.nextNode(); t; t = w.nextNode()) {
@@ -79,6 +90,7 @@ const out = await page.evaluate(
         }
       })
     return {
+      kind,
       sections: theirDocs.length,
       theirs: sample(theirDocs),
       ours: sample(ourDocs),
@@ -86,7 +98,7 @@ const out = await page.evaluate(
       resolvedOurs: resolve(ourDocs, job.resolveOurs || []),
     }
   },
-  { fb2Src, cfiSrc, book, ours, job },
+  { fb2Src, mobiSrc, isFb2, cfiSrc, book, ours, job },
 )
 await browser.close()
 fs.writeFileSync(outFile, JSON.stringify(out))

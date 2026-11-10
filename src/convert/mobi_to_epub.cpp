@@ -589,6 +589,39 @@ private:
     bool canSplitHere() const;
     bool textBlockOnTop() const;
     void continueBlock();
+
+    // KF8 as the web reader (foliate-js) reads it: each part is a section of its
+    // own, parsed as XHTML. Its markup is kept as it is (only kindle: links and
+    // images are pointed at the EPUB's files), so a CFI means the same place
+    // in both; a part longer than kHardSplit goes on in more files, a long text
+    // run is cut in pieces in one <div> for the engine, and the CFI map says
+    // where those stand (reader/cfi_map.h, "cfimap 2").
+    struct KfOpen {
+        std::string name;       // as written
+        std::string open;       // its start tag, without its id (written again in a new file or piece)
+        uint16_t folIdx = 0, folCount = 0, ourIdx = 0, ourCount = 0;
+        uint32_t slot = 0;      // UTF-16 units of its text since its last child element
+        uint32_t ordinal = 0;
+        bool wrapped = false;   // cut in pieces
+        bool container = false;
+        uint16_t piece = 0;     // a cut element: the piece being written
+        std::string pieces;     // its line of the map
+    };
+    std::vector<KfOpen> _kfStack;              // open elements below <body>
+    uint16_t _kfBodyFol = 0, _kfBodyOur = 0;   // <body>'s children so far
+    std::string _kfBodyTag;
+    int _kfSection = -1;
+    std::string _kfPendingF;                   // the map's line for the file about to start
+    uint32_t _kfOrdinal = 0;
+    std::vector<uint32_t> _kfLong;             // pass 1: elements whose text is cut
+    size_t _kfLongNext = 0;
+    std::string _cfiMap;
+    void kfPart(int k, uint32_t pos);
+    void kfSplit(uint32_t offset);
+    void kfTag(const std::string& raw, uint32_t offset);
+    void kfText(const char* s, uint32_t n);
+    std::string kfRewrite(const std::string& raw, const std::string& id, bool dropId);
+    void kfNewFileLine(const std::string& offsets);
 };
 
 ConvertResult MobiConverter::run() {
@@ -667,6 +700,7 @@ ConvertResult MobiConverter::run() {
         return ConvertResult::IoError;
     }
     _stats.chapters = _maxFile;
+    if (_kf8 && !_cfiMap.empty()) _stats.cfiMap = "cfimap 2\n" + _cfiMap;
     _stats.ids = (uint32_t)_targets.size();
     _stats.title = _h.title;
     _stats.lang = _h.lang;
@@ -700,22 +734,20 @@ ConvertResult MobiConverter::pass(int which) {
         // Each part: its skeleton with its fragments put in, as one stream of
         // positions in the assembled text (which are the text's own positions).
         uint32_t fragAt = 0;
+        _kfStack.clear();
+        _kfOrdinal = 0;
+        _kfLongNext = 0;
+        _kfSection = -1;
+        _cfiMap.clear();
         for (size_t k = 0; k < _skels.size(); k++) {
             const Skel& sk = _skels[k];
-            if (k > 0) {
-                // a part is a file of its own
-                if (!_text.empty()) onText(_text.data(), (uint32_t)_text.size(), _textStart);
-                _text.clear();
-                _tstate = T_TEXT;
-                _inBody = false;
-                _skip = 0;
-                closeTo(0);
-                if (_pass == 1) boundary(sk.pos);
-                else if (_nextBound < _bounds.size() && sk.pos >= _bounds[_nextBound]) {
-                    _nextBound++;
-                    boundary(sk.pos);
-                }
-            }
+            // a part is a file of its own (a foliate section)
+            if (!_text.empty()) onText(_text.data(), (uint32_t)_text.size(), _textStart);
+            _text.clear();
+            _tstate = T_TEXT;
+            _inBody = false;
+            _skip = 0;
+            kfPart((int)k, sk.pos);
             uint32_t skelAt = sk.pos, asmPos = sk.pos, base = sk.pos + sk.len;
             for (uint32_t j = 0; j < sk.frags && fragAt < _frags.size(); j++, fragAt++) {
                 const Frag& fr = _frags[fragAt];
@@ -897,7 +929,14 @@ void MobiConverter::ensureChapter() {
         snprintf(l, sizeof(l), "<link rel=\"stylesheet\" type=\"text/css\" href=\"flow%d.css\"/>", f);
         emit(l);
     }
-    emit("</head><body>\n");
+    if (_kf8) {
+        emit("</head>");
+        emit(_kfBodyTag.empty() ? "<body>" : _kfBodyTag.c_str());
+        _cfiMap += _kfPendingF;   // this file in the CFI map
+        _kfPendingF.clear();
+    } else {
+        emit("</head><body>\n");
+    }
 }
 
 void MobiConverter::closeChapter() {
@@ -1098,6 +1137,10 @@ std::string MobiConverter::kindleLink(const char* v) {
 
 void MobiConverter::onTag(const std::string& raw, uint32_t offset) {
     if (raw.empty() || raw[0] == '!' || raw[0] == '?') return;   // comments, doctype
+    if (_kf8) {
+        kfTag(raw, offset);
+        return;
+    }
     Tag t;
     parseTag(raw, t);
     if (t.name.empty()) return;
@@ -1292,6 +1335,10 @@ void MobiConverter::flushPending(float em) {
 
 void MobiConverter::onText(const char* s, uint32_t n, uint32_t offset) {
     if (_skip > 0 || !_inBody) return;
+    if (_kf8) {
+        kfText(s, n);
+        return;
+    }
     if (_pass == 2 && _nextBound < _bounds.size() && offset >= _bounds[_nextBound] && _depth == 0) {
         _nextBound++;
         boundary(offset);
@@ -1370,6 +1417,328 @@ void MobiConverter::continueBlock() {
     emit(">\n");
     emit(o.data(), (uint32_t)o.size());
     _pBytes = 0;
+}
+
+// ------------------------------------------------------------- KF8 as is
+
+namespace {
+// Characters of XHTML text as the DOM has them (UTF-16 units; an entity is one).
+uint32_t utf16Units(const char* s, uint32_t n) {
+    uint32_t u = 0;
+    for (uint32_t i = 0; i < n; i++) {
+        const uint8_t c = (uint8_t)s[i];
+        if (c == '&') {
+            uint32_t k = i + 1;
+            while (k < n && k - i < 12 && (isalnum((unsigned char)s[k]) || s[k] == '#')) k++;
+            if (k < n && s[k] == ';' && k > i + 1) {
+                // &#x1F600; and the like outside the BMP are two units
+                const bool hex = s[i + 1] == '#' && (s[i + 2] == 'x' || s[i + 2] == 'X');
+                const unsigned long cp = s[i + 1] == '#' ? strtoul(s + i + (hex ? 3 : 2), nullptr, hex ? 16 : 10) : 0;
+                u += cp > 0xFFFF ? 2 : 1;
+                i = k;
+                continue;
+            }
+        }
+        if ((c & 0xC0) == 0x80) continue;
+        u += c >= 0xF0 ? 2 : 1;
+    }
+    return u;
+}
+
+// What the engine starts a paragraph at (as EngineTextCounter / ChapterLayout).
+bool isEngineBlock(const std::string& n) {
+    static const char* const k[] = {"p", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "li", "div", "section",
+                                    "article", "figure", "aside", "figcaption", "ul", "ol", "table", "tr", "td",
+                                    "th", "dt", "dd"};
+    for (const char* b : k)
+        if (n == b) return true;
+    return false;
+}
+}  // namespace
+
+void MobiConverter::kfNewFileLine(const std::string& offsets) {
+    if (_pass == 2)
+        _kfPendingF = "F " + std::to_string(_file) + " " + std::to_string(_kfSection) + offsets + "\n";
+}
+
+// Part k starts: a new file (once the last one has anything).
+void MobiConverter::kfPart(int k, uint32_t pos) {
+    while (!_kfStack.empty()) {   // (a part that did not close its elements)
+        if (_pass == 2) emit(("</" + _kfStack.back().name + ">").c_str());
+        _kfStack.pop_back();
+    }
+    if (_fileHasContent) {
+        closeChapter();
+        _file++;
+        _fileHasContent = false;
+        if (_pass == 1) _bounds.push_back(pos);
+    }
+    _fileStart = pos;
+    _kfSection = k;
+    _kfBodyFol = _kfBodyOur = 0;
+    _kfBodyTag.clear();
+    _pBytes = 0;
+    kfNewFileLine("");
+}
+
+// A new file inside the part, between the children of the open containers:
+// they are opened again in it; the map gets where they and the next child
+// stand among foliate's.
+void MobiConverter::kfSplit(uint32_t offset) {
+    std::string offs;
+    for (const KfOpen& o : _kfStack) offs += " " + std::to_string(o.folIdx);
+    offs += " " + std::to_string(_kfStack.empty() ? _kfBodyFol : _kfStack.back().folCount);
+    for (size_t i = _kfStack.size(); i-- > 0;)
+        if (_pass == 2) emit(("</" + _kfStack[i].name + ">").c_str());
+    closeChapter();
+    _file++;
+    if (_pass == 1) _bounds.push_back(offset);
+    _fileStart = offset;
+    _fileHasContent = true;
+    kfNewFileLine(offs);
+    _kfBodyOur = _kfStack.empty() ? 0 : 1;
+    for (size_t i = 0; i < _kfStack.size(); i++) {
+        KfOpen& o = _kfStack[i];
+        if (_pass == 2) emit(o.open.c_str());
+        o.ourIdx = 0;
+        o.ourCount = i + 1 < _kfStack.size() ? 1 : 0;
+        o.slot = 0;
+    }
+}
+
+// The start tag again, with kindle: links and images pointed at the EPUB's
+// files, and the id given (`id`), left out (`dropId`) or kept.
+std::string MobiConverter::kfRewrite(const std::string& raw, const std::string& id, bool dropId) {
+    std::string o = "<";
+    size_t i = 0;
+    const size_t n = raw.size();
+    while (i < n && !isspace((unsigned char)raw[i]) && raw[i] != '/' && raw[i] != '>') o += raw[i++];
+    bool selfClose = false;
+    while (i < n) {
+        while (i < n && (isspace((unsigned char)raw[i]) || raw[i] == '/')) {
+            if (raw[i] == '/') selfClose = true;
+            i++;
+        }
+        if (i >= n) break;
+        selfClose = false;
+        std::string an;
+        while (i < n && !isspace((unsigned char)raw[i]) && raw[i] != '=' && raw[i] != '/') an += raw[i++];
+        while (i < n && isspace((unsigned char)raw[i])) i++;
+        std::string av;
+        char q = '"';
+        bool hasValue = false;
+        if (i < n && raw[i] == '=') {
+            hasValue = true;
+            i++;
+            while (i < n && isspace((unsigned char)raw[i])) i++;
+            if (i < n && (raw[i] == '"' || raw[i] == '\'')) {
+                q = raw[i++];
+                while (i < n && raw[i] != q) av += raw[i++];
+                i++;
+            } else {
+                while (i < n && !isspace((unsigned char)raw[i])) av += raw[i++];
+                if (!av.empty() && av.back() == '/' && i >= n) {
+                    av.pop_back();
+                    selfClose = true;
+                }
+                if (av.find('"') != std::string::npos) q = '\'';
+            }
+        }
+        if (an.empty()) continue;
+        std::string lower = an;
+        for (char& c : lower) c = (char)tolower(c);
+        if (lower == "id" && (dropId || !id.empty())) continue;
+        if (strncmp(av.c_str(), "kindle:embed:", 13) == 0) {
+            const char* v = av.c_str() + 13;
+            size_t k = 0;
+            while (v[k] && isalnum((unsigned char)v[k])) k++;
+            const int idx = imageRef(base32(v, k));
+            char b[32];
+            snprintf(b, sizeof(b), "images/i%04d", idx < 0 ? 0 : idx);
+            av = b;
+        } else if (strncmp(av.c_str(), "kindle:pos:", 11) == 0) {
+            av = kindleLink(av.c_str());
+        }
+        o += ' ';
+        o += an;
+        if (hasValue) {
+            o += '=';
+            o += q;
+            o += av;
+            o += q;
+        }
+    }
+    if (!id.empty()) o += " id=\"" + id + "\"";
+    o += selfClose ? "/>" : ">";
+    return o;
+}
+
+void MobiConverter::kfTag(const std::string& raw, uint32_t offset) {
+    Tag t;
+    parseTag(raw, t);
+    if (t.name.empty()) return;
+    if (t.name == "head") {   // ours is written instead
+        if (t.end) {
+            if (_skip > 0) _skip--;
+        } else if (!t.selfClose) {
+            _skip++;
+        }
+        return;
+    }
+    if (_skip > 0 || t.name == "html") return;
+    if (t.name == "body") {
+        if (!t.end) {
+            _inBody = true;
+            _kfBodyTag = "<" + raw + ">";
+            if (_kfBodyTag.size() > 2 && _kfBodyTag[_kfBodyTag.size() - 2] == '/') _kfBodyTag.erase(_kfBodyTag.size() - 2, 1);
+        } else {
+            while (!_kfStack.empty()) {
+                if (_pass == 2) emit(("</" + _kfStack.back().name + ">").c_str());
+                _kfStack.pop_back();
+            }
+            _inBody = false;
+        }
+        return;
+    }
+    if (!_inBody) return;
+    std::string name;
+    for (size_t i = 0; i < raw.size() && !isspace((unsigned char)raw[i]) && raw[i] != '/' && raw[i] != '>'; i++)
+        name += raw[i];
+    if (t.end) {
+        std::string en = raw.substr(1);
+        while (!en.empty() && isspace((unsigned char)en.back())) en.pop_back();
+        for (size_t d = _kfStack.size(); d-- > 0;) {
+            if (_kfStack[d].name != en) continue;
+            while (_kfStack.size() > d) {
+                KfOpen& o = _kfStack.back();
+                if (_pass == 2) emit(("</" + o.name + ">").c_str());
+                if (o.wrapped && _pass == 2) {
+                    emit("</div>");
+                    _cfiMap += o.pieces + "\n";
+                }
+                if (isEngineBlock(t.name)) _pBytes = 0;
+                _kfStack.pop_back();
+                if (!_kfStack.empty()) _kfStack.back().slot = 0;   // a new text run after this child
+            }
+            break;
+        }
+        return;
+    }
+    // Contents and links: the places they point at (pass 1).
+    if (_pass == 1 && t.name == "a") {
+        const char* h = t.get("href");
+        if (h && strncmp(h, "kindle:pos:", 11) == 0) {
+            const uint32_t target = kindlePos(h);
+            if (target != UINT32_MAX) _targets.push_back(target);
+        }
+    }
+    bool container = isContainer(t.name) || t.name == "body";
+    for (const KfOpen& o : _kfStack) container = container && o.container && !o.wrapped;
+    if (offset - _fileStart > kHardSplit && _fileHasContent && container) kfSplit(offset);
+
+    KfOpen o;
+    o.name = name;
+    o.container = isContainer(t.name);
+    if (_kfStack.empty()) {
+        o.folIdx = _kfBodyFol++;
+        o.ourIdx = _kfBodyOur++;
+    } else {
+        KfOpen& p = _kfStack.back();
+        o.folIdx = p.folCount++;
+        o.ourIdx = p.ourCount++;
+        p.slot = 0;
+    }
+    o.ordinal = ++_kfOrdinal;
+    _fileHasContent = true;
+    if (isEngineBlock(t.name)) _pBytes = 0;
+    // A place a link or the contents point at: this tag's id.
+    std::string id;
+    while (_nextTarget < _targets.size() && _targets[_nextTarget] <= offset) {
+        if (id.empty()) id = "fp" + std::to_string(_targets[_nextTarget]);
+        _nextTarget++;
+    }
+    while (_kfLongNext < _kfLong.size() && _kfLong[_kfLongNext] < o.ordinal) _kfLongNext++;
+    o.wrapped = _pass == 2 && _kfLongNext < _kfLong.size() && _kfLong[_kfLongNext] == o.ordinal;
+    if (_pass == 2) {
+        if (o.wrapped) {
+            std::string path = "4";
+            for (const KfOpen& a : _kfStack) {
+                path += "/" + std::to_string(2 * (a.ourIdx + 1));
+                if (a.wrapped) path += "/" + std::to_string(2 * (a.piece + 1));   // inside a piece of a cut one
+            }
+            path += "/" + std::to_string(2 * (o.ourIdx + 1));
+            o.pieces = "L " + std::to_string(_file) + " " + path + " 0 0";
+            emit("<div class=\"lp\">");
+        }
+        emit(kfRewrite(raw, id, false).c_str());
+        o.open = kfRewrite(raw, std::string(), true);
+    }
+    if (t.selfClose) {
+        if (o.wrapped && _pass == 2) {
+            emit("</div>");
+            _cfiMap += o.pieces + "\n";
+        }
+        return;
+    }
+    _kfStack.push_back(o);
+}
+
+void MobiConverter::kfText(const char* s, uint32_t n) {
+    bool blank = true;
+    for (uint32_t i = 0; i < n && blank; i++)
+        if (!isspace((unsigned char)s[i])) blank = false;
+    if (!blank) {
+        _fileHasContent = true;
+        if (_pass == 2) {
+            if (_fileLabels.size() < _file) _fileLabels.resize(_file);
+            std::string& l = _fileLabels[_file - 1];
+            if (l.size() < 96) {
+                if (!l.empty() && l.back() != ' ') l += ' ';
+                appendCollapsed(l, s, n, 96);
+            }
+        }
+    }
+    _pBytes += n;
+    // The engine holds ~3 KB of a paragraph and cuts a longer one wherever it is
+    // full: a long run goes on in a new copy of its element at a space (pass 1
+    // finds the elements, pass 2 cuts them, in a div standing for the one).
+    constexpr uint32_t kParLimit = 2400;
+    while (!_kfStack.empty() && _pBytes > kParLimit) {
+        KfOpen& top = _kfStack.back();
+        const uint32_t before = _pBytes - n;
+        const uint32_t room = before < kParLimit ? kParLimit - before : 0;
+        uint32_t cut = room < n ? room : n;
+        uint32_t sentence = cut;
+        while (sentence > 1 && cut - sentence < 800 &&
+               !(s[sentence - 1] == ' ' && (s[sentence - 2] == '.' || s[sentence - 2] == '!' || s[sentence - 2] == '?')))
+            sentence--;
+        if (sentence > 1 && cut - sentence < 800) cut = sentence;
+        while (cut > 0 && s[cut - 1] != ' ') cut--;
+        if (cut == 0) {
+            cut = room;
+            while (cut < n && s[cut] != ' ') cut++;
+            if (cut >= n) break;
+            cut++;
+        }
+        if (_pass == 1) {
+            if (_kfLong.empty() || _kfLong.back() != top.ordinal) _kfLong.push_back(top.ordinal);
+        } else if (top.wrapped) {
+            emitText(s, cut);
+            top.slot += utf16Units(s, cut);
+            emit(("</" + top.name + ">").c_str());
+            emit(top.open.c_str());
+            top.pieces += " " + std::to_string(top.folCount) + " " + std::to_string(top.slot);
+            top.piece++;
+            top.ourCount = 0;
+        } else {
+            emitText(s, cut);
+        }
+        s += cut;
+        n -= cut;
+        _pBytes = n;
+    }
+    if (!_kfStack.empty()) _kfStack.back().slot += utf16Units(s, n);
+    emitText(s, n);
 }
 
 // ------------------------------------------------------------------ KF8
