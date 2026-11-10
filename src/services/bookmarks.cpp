@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "../hal/storage.h"
+#include "../reader/reader.h"
 
 BookmarkList Bookmarks;
 
@@ -19,6 +20,7 @@ String BookmarkList::fileFor() const {
 
 void BookmarkList::load(const String& bookPath) {
     _items.clear();
+    _deleted.clear();
     _path = bookPath;
     const String file = fileFor();
     if (!Storage.isAvailable() || !Storage.exists(file.c_str())) return;
@@ -35,9 +37,16 @@ void BookmarkList::load(const String& bookPath) {
         b.percent = o["percent"] | 0.0f;
         b.chapter = o["chapter"] | "";
         b.snippet = o["snippet"] | "";
+        b.cfi = o["cfi"] | "";
+        b.serverId = o["sid"] | 0;
         _items.push_back(b);
     }
-    std::sort(_items.begin(), _items.end(), [](const Bookmark& a, const Bookmark& b) {
+    for (int id : doc["deleted"].as<JsonArray>()) if (id > 0) _deleted.push_back(id);
+    sort();
+}
+
+void BookmarkList::sort() {
+    std::stable_sort(_items.begin(), _items.end(), [](const Bookmark& a, const Bookmark& b) {
         return a.spine != b.spine ? a.spine < b.spine : a.chars < b.chars;
     });
 }
@@ -45,7 +54,7 @@ void BookmarkList::load(const String& bookPath) {
 bool BookmarkList::save() const {
     if (!_path.length()) return false;
     const String file = fileFor();
-    if (_items.empty()) {
+    if (_items.empty() && _deleted.empty()) {
         if (Storage.exists(file.c_str())) Storage.remove(file.c_str());
         return true;
     }
@@ -59,6 +68,12 @@ bool BookmarkList::save() const {
         o["percent"] = b.percent;
         o["chapter"] = b.chapter;
         o["snippet"] = b.snippet;
+        if (b.cfi.length()) o["cfi"] = b.cfi;
+        if (b.serverId > 0) o["sid"] = b.serverId;
+    }
+    if (!_deleted.empty()) {
+        JsonArray del = doc["deleted"].to<JsonArray>();
+        for (int id : _deleted) del.add(id);
     }
     String out;
     serializeJson(doc, out);
@@ -84,5 +99,78 @@ void BookmarkList::add(const Bookmark& b) {
 }
 
 void BookmarkList::remove(int index) {
-    if (index >= 0 && index < (int)_items.size()) _items.erase(_items.begin() + index);
+    if (index < 0 || index >= (int)_items.size()) return;
+    if (_items[index].serverId > 0) _deleted.push_back(_items[index].serverId);
+    _items.erase(_items.begin() + index);
+}
+
+void BookmarkList::forgetDeleted(int serverId) {
+    _deleted.erase(std::remove(_deleted.begin(), _deleted.end(), serverId), _deleted.end());
+}
+
+bool BookmarkList::mergeRemote(const std::vector<RemoteBookmark>& remote) {
+    bool changed = false;
+    auto onServer = [&](int id) {
+        for (const auto& r : remote) if (r.id == id) return true;
+        return false;
+    };
+    // Deleted on the server (or on another device).
+    for (size_t i = 0; i < _items.size();) {
+        if (_items[i].serverId > 0 && !onServer(_items[i].serverId)) {
+            Serial.printf("[Bookmarks] %d deleted on the server\n", _items[i].serverId);
+            _items.erase(_items.begin() + i);
+            changed = true;
+        } else {
+            i++;
+        }
+    }
+    for (const auto& r : remote) {
+        if (std::find(_deleted.begin(), _deleted.end(), r.id) != _deleted.end()) continue;   // deleted here
+        bool known = false;
+        for (auto& b : _items) {
+            if (b.serverId == r.id) { known = true; break; }
+        }
+        if (known) continue;
+        for (auto& b : _items) {   // made here, the server has one there already
+            if (b.serverId == 0 && b.cfi.length() && b.cfi == r.cfi) {
+                b.serverId = r.id;
+                known = changed = true;
+                break;
+            }
+        }
+        if (known) continue;
+        Bookmark b;
+        b.spine = -1;
+        b.cfi = r.cfi;
+        b.chapter = r.title;
+        b.serverId = r.id;
+        _items.push_back(b);
+        changed = true;
+        Serial.printf("[Bookmarks] %d from the server: %s\n", r.id, r.cfi.c_str());
+    }
+    if (changed) sort();
+    return changed;
+}
+
+void placeBookmarks(BookmarkList& list) {
+    if (!Reader.isOpened() || list.bookPath().length() == 0) return;
+    bool changed = false;
+    for (Bookmark& b : list.mutableItems()) {
+        if (!b.placed()) {
+            int spine = 0;
+            uint32_t chars = 0;
+            if (!Reader.placeOfCfi(b.cfi, spine, chars)) continue;   // stays listed; tried again
+            b.spine = spine;
+            b.chars = chars;
+            b.percent = Reader.percentAt(spine, chars);
+            changed = true;
+            Serial.printf("[Bookmarks] %s -> spine %d, char %u\n", b.cfi.c_str(), spine, (unsigned)chars);
+        } else if (b.cfi.length() == 0) {
+            b.cfi = Reader.cfiAt(b.spine, b.chars);
+            changed = b.cfi.length() > 0 || changed;
+        }
+    }
+    if (!changed) return;
+    list.sort();
+    list.save();
 }

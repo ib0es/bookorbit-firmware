@@ -311,6 +311,53 @@ def run_log(scenario):
         return False, "FAIL  " + name + ": " + "; ".join(problems)
     return True, "ok    " + name
 
+# Bookmarks synced with the web reader's: (name, server state, bookmarks file on the
+# card before (None: none), script, check(server bookmarks, local file dict, log)).
+MARK7 = {"id": 7, "bookId": 1, "fileId": 101, "cfi": "epubcfi(/6/8!/4/2/1:0)", "title": "Down the Rabbit-Hole"}
+LOCAL7 = {"spine": 3, "chars": 0, "percent": 0.09, "chapter": "Down the Rabbit-Hole", "snippet": "",
+          "cfi": "epubcfi(/6/8!/4/2/1:0)", "sid": 7}
+OPEN_MARKS = "CDDwC"   # in the reader: menu -> "Закладки"
+BOOKMARK_SCENARIOS = [
+    ("bookmark made here goes up with its CFI and chapter",
+     {"progress": []}, None, "CwRRw" + OPEN_MARKS + "wC" + SYNC + "ww",
+     lambda srv, loc, log: len(srv) == 1 and srv[0]["cfi"].startswith("epubcfi(/6/4!") and srv[0]["fileId"] == 101
+     and srv[0]["title"] and loc["bookmarks"][0].get("sid") == srv[0]["id"]),
+    ("bookmark made in the web reader comes down, is placed and opens its page",
+     {"progress": [], "bookmarks": [MARK7]}, None, "Cw" + SYNC + "ww" + OPEN_MARKS + "DC",
+     lambda srv, loc, log: loc["bookmarks"][0]["sid"] == 7 and loc["bookmarks"][0]["spine"] == 3
+     and re.findall(r"\[Reader\] Page \d+/\d+ \(chapter (\d+)", log)[-1] == "3"),
+    ("bookmark deleted here is deleted on the server",
+     {"progress": [], "bookmarks": [MARK7]}, {"bookmarks": [LOCAL7]}, "Cw" + OPEN_MARKS + "DLBBw" + SYNC + "ww",
+     lambda srv, loc, log: srv == [] and loc is None),
+    ("bookmark deleted on the server goes here; an old one without a CFI gets one and goes up",
+     {"progress": []}, {"bookmarks": [LOCAL7, {"spine": 1, "chars": 836, "percent": 0.02, "chapter": "Old", "snippet": "x"}]},
+     "Cw" + SYNC + "ww",
+     lambda srv, loc, log: [m["title"] for m in srv] == ["Old"] and [b["chapter"] for b in loc["bookmarks"]] == ["Old"]),
+    ("deletes wait for the server; nothing is re-added meanwhile",
+     {"progress": [], "bookmarks": [MARK7], "failDelete": True}, {"bookmarks": [LOCAL7]}, "Cw" + OPEN_MARKS + "DLBBw" + SYNC + "ww",
+     lambda srv, loc, log: len(srv) == 1 and loc["bookmarks"] == [] and loc["deleted"] == [7]),
+]
+
+def run_bookmarks(scenario):
+    name, server, local, script, check = scenario
+    sd = prepare(dict(server), None)
+    marks = os.path.join(sd, "bookmarks", BOOK + ".epub.json")
+    if local is not None:
+        os.makedirs(os.path.dirname(marks), exist_ok=True)
+        with open(marks, "w") as f: json.dump(local, f, ensure_ascii=False)
+    _, log = run(sd, script)
+    srv = json.load(open(os.path.join(sd, "server.json"))).get("bookmarks", [])
+    loc = json.load(open(marks)) if os.path.exists(marks) else None
+    try:
+        ok = check(srv, loc, log)
+    except Exception as e:
+        ok = False
+        name += " (%r)" % e
+    shutil.rmtree(sd, ignore_errors=True)
+    if not ok:
+        return False, "FAIL  " + name + ": server %s, card %s" % (srv, loc)
+    return True, "ok    " + name
+
 def main():
     if not os.path.exists(BIN):
         sys.exit("build first: make -f test/sim/Makefile")
@@ -321,12 +368,13 @@ def main():
                 return
     from concurrent.futures import ThreadPoolExecutor
     with ThreadPoolExecutor(max_workers=os.cpu_count() or 4) as pool:
-        results = list(pool.map(run_one, SCENARIOS)) + list(pool.map(run_log, LOG_SCENARIOS))
+        results = (list(pool.map(run_one, SCENARIOS)) + list(pool.map(run_log, LOG_SCENARIOS)) +
+                   list(pool.map(run_bookmarks, BOOKMARK_SCENARIOS)))
     failed = 0
     for ok, line in results:
         print(line)
         failed += 0 if ok else 1
-    total = len(SCENARIOS) + len(LOG_SCENARIOS)
+    total = len(SCENARIOS) + len(LOG_SCENARIOS) + len(BOOKMARK_SCENARIOS)
     print("%s: %d/%d scenarios passed" % ("FAILED" if failed else "OK", total - failed, total))
     sys.exit(1 if failed else 0)
 

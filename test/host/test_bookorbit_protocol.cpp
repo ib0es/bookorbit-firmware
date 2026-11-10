@@ -106,7 +106,30 @@ static void testWrite() {
     CHECK(parseProgressWriteUpdatedAt("") == 0);
 }
 
+static void testBookmarks() {
+    std::vector<BookOrbitProtocol::Bookmark> b;
+    // Like the server: text bookmarks, an audiobook one, one without a CFI in this file.
+    CHECK(parseBookmarks(R"J([{"id":5,"bookId":1,"cfi":"epubcfi(/6/4!/4/2,/1:0)","title":"Chapter 1","positionSeconds":null,"note":null},
+                              {"id":6,"bookId":1,"cfi":null,"title":"Audio","positionSeconds":12.5},
+                              {"id":7,"bookId":1,"cfi":null,"title":"Other file","positionSeconds":null}])J", b));
+    CHECK(b.size() == 1 && b[0].id == 5 && b[0].cfi == "epubcfi(/6/4!/4/2,/1:0)" && b[0].title == "Chapter 1");
+    CHECK(parseBookmarks(R"J({"items":[{"id":9,"cfi":"epubcfi(/6/2!/4)","title":"x"}]})J", b) && b.size() == 1 && b[0].id == 9);
+    CHECK(parseBookmarks("[]", b) && b.empty());
+    CHECK(!parseBookmarks("<html>", b));
+
+    CHECK(buildBookmarkCreate(101, "epubcfi(/6/4!/4)", "Глава") ==
+          R"J({"bookFileId":101,"cfi":"epubcfi(/6/4!/4)","title":"Глава"})J");
+    CHECK(buildBookmarkCreate(101, "c", "") == R"J({"bookFileId":101,"cfi":"c","title":"Bookmark"})J");
+    std::string longTitle;
+    for (int i = 0; i < 300; i++) longTitle += "я";   // 600 bytes
+    const std::string body = buildBookmarkCreate(1, "c", longTitle);
+    CHECK(body.find("\"title\":\"") != std::string::npos && body.size() < 560 && body.find("\xD1\"") == std::string::npos);
+    CHECK(parseCreatedBookmarkId(R"J({"id":42,"bookId":1,"cfi":"c","title":"t"})J") == 42);
+    CHECK(parseCreatedBookmarkId("{}") == 0);
+}
+
 int main() {
+    testBookmarks();
     testBookProgress();
     testProgressPerFormat();
     testLogin();

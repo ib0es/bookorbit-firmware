@@ -80,6 +80,7 @@ void executeMenuAction(AppContext& ctx, int index) {
         case 2:  // Закладки
             commitFontSize(ctx);   // pages as they will be read
             ctx.selectedBookmarkIndex = 0;
+            placeBookmarks(Bookmarks);
             ctx.currentState = STATE_BOOKMARKS;
             drawBookmarksScreen(ctx, false);
             break;
@@ -123,6 +124,7 @@ bool openBook(AppContext& ctx, const String& path, const String& title, const St
         return false;
     }
     Bookmarks.load(path);
+    placeBookmarks(Bookmarks);
     MemStats::log("book opened");
     MemStats::probeEngine("book opened");
     MemStats::logMap("book opened");
@@ -175,6 +177,7 @@ bool resumeLastBook(AppContext& ctx) {
     Serial.printf("[Power] Instant resume book: %s (page %d)\n", lib.lastBook.title.c_str(), lib.lastBook.page);
     if (!Reader.openBook(lib.lastBook.filePath)) return false;
     Bookmarks.load(lib.lastBook.filePath);
+    placeBookmarks(Bookmarks);
 
     // The book's record has the most exact position (a CFI after a pull from the web reader).
     const ProgressSync::Position& pos = lib.currentRecord().state.local;
@@ -456,6 +459,7 @@ void handleBookmarksEvent(AppContext& ctx, const ButtonEvent& event) {
                     b.percent = Reader.getProgress();
                     b.chapter = Reader.getCurrentChapterTitle();
                     b.snippet = Reader.pageSnippet();
+                    b.cfi = Reader.getCfi();   // for the web reader (uploaded at the next sync)
                     Bookmarks.add(b);
                     Serial.printf("[Bookmarks] added at %d:%u (%.1f%%)\n", b.spine, (unsigned)b.chars, b.percent * 100.0f);
                 }
@@ -463,10 +467,15 @@ void handleBookmarksEvent(AppContext& ctx, const ButtonEvent& event) {
                 returnToReading(ctx);   // the ribbon shows on the page
             } else if (sel <= Bookmarks.count()) {
                 const Bookmark& b = Bookmarks.items()[sel - 1];
-                BookReader::Position pos;
-                pos.spine = b.spine;
-                pos.chars = b.chars;
-                Reader.goTo(pos);
+                if (!b.placed()) {
+                    // From the server and not placed yet (its chapter could not be read).
+                    if (!Reader.setPageByCfi(b.cfi, 0.0f)) break;
+                } else {
+                    BookReader::Position pos;
+                    pos.spine = b.spine;
+                    pos.chars = b.chars;
+                    Reader.goTo(pos);
+                }
                 LibraryManager::getInstance().recordReaderMove(true, true);
                 returnToReading(ctx);
             }

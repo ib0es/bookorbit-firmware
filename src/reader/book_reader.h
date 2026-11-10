@@ -76,6 +76,11 @@ public:
     // from `fallbackPercent` is taken as stale (returns false, does not move).
     bool setPageByCfi(const String& cfi, float fallbackPercent);
     String getCfi();
+    // The same for any place of the open book (bookmarks): a CFI of (spine, chars),
+    // the place a CFI points at (false if not in this book), the percent there.
+    String cfiAt(int spine, uint32_t chars);
+    bool placeOfCfi(const String& cfi, int& spine, uint32_t& chars);
+    float percentAt(int spine, uint32_t chars) const;
     bool goToPosition(const String& cfi, const String& xpath, float percent, int page);
     void renderCurrentPage();
     int renderFailures() const { return _renderFailures; }   // pages that could not be drawn (tests, logs)

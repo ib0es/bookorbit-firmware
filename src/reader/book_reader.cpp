@@ -1478,17 +1478,40 @@ String BookReader::getCfi() {
     if (!_opened) return "";
     const Position p = position();
     if (p.spine == _cfiSpine && p.chars == _cfiChars) return _cfi;
-    String cfi;
-    // A chapter's start (its first page may be an image: a cover, a title plate)
-    // is its <body>, not the first text character a page or two later.
-    if (p.chars == 0 || !chapterCharToCfi(p.spine, p.chars, cfi)) {
-        // Nothing to point at past this character (an image page): the chapter's body.
-        cfi = "epubcfi(/6/" + String((p.spine + 1) * 2) + "!/4)";
-    }
+    const String cfi = cfiAt(p.spine, p.chars);
     _cfiSpine = p.spine;
     _cfiChars = p.chars;
     _cfi = cfi;
     return cfi;
+}
+
+String BookReader::cfiAt(int spine, uint32_t chars) {
+    if (!_opened || spine < 0 || spine >= (int)_spines.size()) return "";
+    String cfi;
+    // A chapter's start (its first page may be an image: a cover, a title plate)
+    // is its <body>, not the first text character a page or two later.
+    if (chars == 0 || !chapterCharToCfi(spine, chars, cfi)) {
+        // Nothing to point at past this character (an image page): the chapter's body.
+        cfi = "epubcfi(/6/" + String((spine + 1) * 2) + "!/4)";
+    }
+    return cfi;
+}
+
+bool BookReader::placeOfCfi(const String& cfi, int& spine, uint32_t& chars) {
+    return _opened && cfi.length() > 0 && cfiToChapterChar(cfi, spine, chars);
+}
+
+float BookReader::percentAt(int spine, uint32_t chars) const {
+    if (!_opened || spine < 0 || spine >= (int)_spines.size()) return 0.0f;
+    uint64_t before = 0, total = 0;
+    for (int s = 0; s < (int)_spines.size(); s++) {
+        if (s < spine) before += _spines[s].bytes;
+        total += _spines[s].bytes;
+    }
+    const uint32_t inChapter = charsOf(spine);
+    double frac = inChapter > 0 ? (double)chars / inChapter : 0.0;
+    if (frac > 1.0) frac = 1.0;
+    return total > 0 ? (float)(((double)before + frac * _spines[spine].bytes) / (double)total) : 0.0f;
 }
 
 // --------------------------------------------------------------------- TOC

@@ -354,7 +354,11 @@ void drawBookmarksScreen(AppContext& ctx, bool fullRefresh) {
                  tr(MsgId::BOOKMARKS_ADD_SUB), nullptr, sel == 0, ActionBookmark, 0);
         } else {
             const Bookmark& b = Bookmarks.items()[i - 1];
-            snprintf(title, sizeof(title), tr(MsgId::BOOKMARKS_ITEM_FMT), (int)(b.percent * 100.0f + 0.5f), b.chapter.c_str());
+            if (b.placed()) {
+                snprintf(title, sizeof(title), tr(MsgId::BOOKMARKS_ITEM_FMT), (int)(b.percent * 100.0f + 0.5f), b.chapter.c_str());
+            } else {   // from the server, its place not worked out yet: no percent
+                snprintf(title, sizeof(title), "%s", b.chapter.c_str());
+            }
             card(f, takeTop(area, rowH), title, b.snippet.c_str(), nullptr, sel == i, ActionBookmark, (int16_t)i);
         }
         takeTop(area, kGap);

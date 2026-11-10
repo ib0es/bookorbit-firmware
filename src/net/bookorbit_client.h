@@ -4,6 +4,7 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <vector>
+#include "bookorbit_protocol.h"
 
 // One format (file) of a catalog book. `url` is empty for the canonical download
 // address "/api/v1/opds/<bookId>/download?fileId=<fileId>" (most formats), so a
@@ -115,8 +116,24 @@ public:
     bool fetchBookProgress(const String& serverHost, const String& username, const String& password, String& token, int bookId, int fileId, ServerProgress& out);
     bool updateBookProgress(const String& serverHost, const String& username, const String& password, String& token, int fileId, float percent, int page, const String& cfi = "", uint32_t* outUpdatedAt = nullptr);
 
+    // Bookmarks of the web reader. fetchBookmarks: CFIs in file `fileId`'s terms
+    // (the server converts those made in another EPUB of the book); false on a
+    // network/HTTP error. createBookmark: the new (or the server's existing,
+    // same-place) bookmark's id, 0 on failure. deleteBookmark: true when it is
+    // gone (also if it was already).
+    bool fetchBookmarks(const String& serverHost, const String& username, const String& password, String& token,
+                        int bookId, int fileId, std::vector<BookOrbitProtocol::Bookmark>& out);
+    int createBookmark(const String& serverHost, const String& username, const String& password, String& token,
+                       int bookId, int fileId, const String& cfi, const String& title);
+    bool deleteBookmark(const String& serverHost, const String& username, const String& password, String& token,
+                        int bookId, int bookmarkId);
 
 private:
+    // A request with the session token: logs in first when there is none, and
+    // once more when the server answers 401. Returns the HTTP code (<0 on a
+    // network error); the body of a 2xx answer goes to `response`.
+    int authedRequest(const String& serverHost, const String& username, const String& password, String& token,
+                      const char* method, const String& path, const String& body, String* response);
     void (*_foregroundHook)() = nullptr;
     String buildUrl(const String& host, const String& path);
     static String urlEncode(const String& str);

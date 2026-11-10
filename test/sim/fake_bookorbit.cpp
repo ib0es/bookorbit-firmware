@@ -14,7 +14,10 @@
 //    "backOnWifi":true,      -> BACK is pressed while Wi-Fi connects (once)
 //    "backOn":"/download",   -> BACK is pressed when a request path contains this (once)
 //    "failPut":true,         -> progress uploads answer HTTP 500
-//    "brokenCatalog":true}   -> OPDS entries without acquisition links
+//    "brokenCatalog":true,   -> OPDS entries without acquisition links
+//    "bookmarks":[{"id":1,"bookId":1,"fileId":101,"cfi":"epubcfi(...)","title":"..."}]}
+//                            -> web-reader bookmarks (GET/POST/DELETE /api/v1/books/:id/bookmarks)
+//    "failDelete":true       -> bookmark deletes answer HTTP 500
 //   Any request to the KOSync API answers 404: the firmware must not use it.
 //   Legacy shorthand: {"percent":0.3,"page":0,"xpath":"","updatedAt":"NOW-100"} (file 101).
 //   "NOW+/-N" = now +/- N seconds; written back as ISO 8601 with milliseconds.
@@ -24,6 +27,7 @@
 #include "SDCardManager.h"
 #include "net/web_config.h"
 #include <ArduinoJson.h>
+#include <algorithm>
 #include <cstdio>
 #include <ctime>
 #include <fstream>
@@ -239,7 +243,8 @@ Response route(const Request& rq, JsonDocument& st, bool& dirty) {
     if (!bearer) { r.code = 401; r.body = "{\"error\":\"no token\"}"; return r; }
 
     int bookId = 0;
-    if (sscanf(p.c_str(), "/api/v1/books/%d/progress", &bookId) == 1 && rq.method == "GET") {
+    if (sscanf(p.c_str(), "/api/v1/books/%d/progress", &bookId) == 1 && p.find("/progress") != std::string::npos &&
+        rq.method == "GET") {
         const Book* b = bookById(bookId);
         if (!b) { r.code = 404; return r; }
         JsonDocument out;   // a bare array with web-reader fields, like the real server
@@ -259,6 +264,77 @@ Response route(const Request& rq, JsonDocument& st, bool& dirty) {
         }
         r.body = toStdString(out);
         return r;
+    }
+    int markId = 0;
+    if (sscanf(p.c_str(), "/api/v1/books/%d/bookmarks/%d", &bookId, &markId) == 2 && rq.method == "DELETE") {
+        if (st["failDelete"] | false) { r.code = 500; return r; }
+        JsonArray marks = st["bookmarks"].as<JsonArray>();
+        for (size_t i = 0; i < marks.size(); i++) {
+            if ((marks[i]["id"] | 0) == markId && (marks[i]["bookId"] | 0) == bookId) {
+                marks.remove(i);
+                dirty = true;
+                r.code = 204;
+                return r;
+            }
+        }
+        r.code = 404;
+        return r;
+    }
+    if (sscanf(p.c_str(), "/api/v1/books/%d/bookmarks", &bookId) == 1 && p.find("/bookmarks/") == std::string::npos) {
+        if (!bookById(bookId)) { r.code = 404; return r; }
+        if (st["bookmarks"].isNull()) st["bookmarks"].to<JsonArray>();
+        JsonArray marks = st["bookmarks"].as<JsonArray>();
+        if (rq.method == "GET") {
+            const int reader = atoi(query(p, "readerFileId").c_str());
+            JsonDocument out;   // a bare array, like the real server
+            JsonArray items = out.to<JsonArray>();
+            for (JsonObject m : marks) {
+                if ((m["bookId"] | 0) != bookId) continue;
+                JsonObject it = items.add<JsonObject>();
+                it["id"] = m["id"];
+                it["bookId"] = bookId;
+                // Like the server: a CFI made in another file is converted; here it cannot be.
+                const int f = m["fileId"] | 0;
+                if (reader > 0 && f > 0 && f != reader) it["cfi"] = nullptr; else it["cfi"] = m["cfi"];
+                it["title"] = m["title"];
+                it["positionSeconds"] = nullptr;
+                it["note"] = nullptr;
+            }
+            r.body = toStdString(out);
+            return r;
+        }
+        if (rq.method == "POST") {
+            JsonDocument in;
+            if (deserializeJson(in, rq.body.data(), rq.body.size())) { r.code = 400; return r; }
+            for (JsonPair kv : in.as<JsonObject>()) {   // the DTO rejects unknown fields
+                const char* k = kv.key().c_str();
+                if (strcmp(k, "bookFileId") && strcmp(k, "cfi") && strcmp(k, "title")) { r.code = 400; return r; }
+            }
+            const char* cfi = in["cfi"] | "";
+            const char* title = in["title"] | "";
+            if (!*cfi || !*title) { r.code = 400; return r; }
+            JsonObject m;
+            for (JsonObject e : marks) if ((e["bookId"] | 0) == bookId && strcmp(e["cfi"] | "", cfi) == 0) m = e;
+            if (m.isNull()) {   // the server keeps one bookmark per place
+                int next = 1;
+                for (JsonObject e : marks) next = std::max(next, (e["id"] | 0) + 1);
+                m = marks.add<JsonObject>();
+                m["id"] = next;
+                m["bookId"] = bookId;
+                m["fileId"] = in["bookFileId"] | 0;
+                m["cfi"] = cfi;
+                m["title"] = title;
+                dirty = true;
+                r.code = 201;
+            }
+            JsonDocument out;
+            out["id"] = m["id"];
+            out["bookId"] = bookId;
+            out["cfi"] = m["cfi"];
+            out["title"] = m["title"];
+            r.body = toStdString(out);
+            return r;
+        }
     }
     if (p == "/api/v1/reading-progress" && rq.method == "PUT" && (st["failPut"] | false)) {
         r.code = 500; r.body = "{\"error\":\"boom\"}"; return r;

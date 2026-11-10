@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace BookOrbitProtocol {
 
@@ -35,5 +36,25 @@ std::string buildProgressWrite(int fileId, float percent, int page, const std::s
 
 // PUT /api/v1/reading-progress response -> server updatedAt (0 if absent).
 uint32_t parseProgressWriteUpdatedAt(const std::string& json);
+
+// A bookmark of the web reader (/api/v1/books/:id/bookmarks).
+struct Bookmark {
+    int id = 0;
+    std::string cfi;     // EPUB CFI (of the file asked for with ?readerFileId)
+    std::string title;
+};
+
+// GET /api/v1/books/:id/bookmarks response (array or {"items":[...]}): the text
+// bookmarks; audiobook ones (positionSeconds) and ones without a CFI in this
+// file are left out. False only for malformed JSON.
+bool parseBookmarks(const std::string& json, std::vector<Bookmark>& out);
+
+// POST /api/v1/books/:id/bookmarks body. The title is required by the server
+// (1..500 characters): an empty one becomes "Bookmark", a long one is cut at a
+// character boundary.
+std::string buildBookmarkCreate(int fileId, const std::string& cfi, const std::string& title);
+
+// POST response -> the bookmark's id (0 if none).
+int parseCreatedBookmarkId(const std::string& json);
 
 }  // namespace BookOrbitProtocol

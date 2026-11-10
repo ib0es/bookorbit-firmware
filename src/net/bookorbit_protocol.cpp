@@ -86,4 +86,41 @@ uint32_t parseProgressWriteUpdatedAt(const std::string& json) {
     return TimeUtils::parseIso8601(u);
 }
 
+bool parseBookmarks(const std::string& json, std::vector<Bookmark>& out) {
+    out.clear();
+    JsonDocument doc;
+    if (deserializeJson(doc, json.data(), json.size())) return false;
+    JsonArrayConst items = doc.is<JsonArrayConst>() ? doc.as<JsonArrayConst>() : doc["items"].as<JsonArrayConst>();
+    for (JsonObjectConst o : items) {
+        if (!o["positionSeconds"].isNull()) continue;   // an audiobook position
+        Bookmark b;
+        b.id = o["id"] | 0;
+        b.cfi = str(o["cfi"]);
+        b.title = str(o["title"]);
+        if (b.id <= 0 || b.cfi.empty()) continue;
+        out.push_back(b);
+    }
+    return true;
+}
+
+std::string buildBookmarkCreate(int fileId, const std::string& cfi, const std::string& title) {
+    std::string t = title.empty() ? std::string("Bookmark") : title;
+    if (t.size() > 500) {
+        size_t cut = 500;
+        while (cut > 0 && (static_cast<unsigned char>(t[cut]) & 0xC0) == 0x80) cut--;   // not inside a character
+        t.resize(cut);
+    }
+    JsonDocument doc;
+    if (fileId > 0) doc["bookFileId"] = fileId;
+    doc["cfi"] = cfi.c_str();
+    doc["title"] = t.c_str();
+    return toStdString(doc);
+}
+
+int parseCreatedBookmarkId(const std::string& json) {
+    JsonDocument doc;
+    if (deserializeJson(doc, json.data(), json.size())) return 0;
+    return doc["id"] | 0;
+}
+
 }  // namespace BookOrbitProtocol

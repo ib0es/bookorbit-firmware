@@ -12,6 +12,7 @@
 #include "../ui/i18n.h"
 #include "../reader/reader.h"
 #include "progress_sync.h"
+#include "bookmarks.h"
 #include "sync_clock.h"
 
 bool SyncService::s_syncCancelled = false;
@@ -51,6 +52,7 @@ void SyncService::showState(AppContext& ctx, AppState state) {
         state = Reader.isOpened() ? STATE_READING : STATE_HOME;
     }
     ctx.currentState = state;
+    if (Reader.isOpened()) placeBookmarks(Bookmarks);   // ones that came from the server
     Modal.redrawScreen(false);
 }
 
@@ -136,6 +138,62 @@ static bool cfiApplies(const BookProgressRecord& rec) {
 
 bool isOpenInReader(const BookProgressRecord& rec) {
     return Reader.isOpened() && Reader.getOriginalFilePath().equalsIgnoreCase(rec.filePath);
+}
+
+// Two-way exchange of the book's bookmarks with the web reader's (EPUB only:
+// a CFI of the EPUB made here from another format means nothing to the server).
+// Deletions made here go first, then the server's list is taken (deleted there,
+// new there), then the bookmarks made here go up.
+void syncBookmarks(AppContext& ctx, const BookProgressRecord& rec) {
+    if (rec.bookId <= 0 || rec.fileId <= 0 || rec.filePath.length() == 0 || !cfiApplies(rec)) return;
+    const bool open = Bookmarks.bookPath().length() > 0 && Bookmarks.bookPath().equalsIgnoreCase(rec.filePath);
+    BookmarkList other;
+    BookmarkList& list = open ? Bookmarks : other;
+    if (!open) list.load(rec.filePath);
+    auto& cfg = ctx.config;
+    bool changed = false;
+
+    const std::vector<int> deleted = list.deletedOnDevice();
+    for (int id : deleted) {
+        if (!BookOrbit.deleteBookmark(cfg.serverHost, cfg.bookOrbitUser, cfg.bookOrbitPass, cfg.authToken, rec.bookId, id))
+            continue;   // tried again next time
+        list.forgetDeleted(id);
+        changed = true;
+    }
+
+    std::vector<BookOrbitProtocol::Bookmark> server;
+    if (!BookOrbit.fetchBookmarks(cfg.serverHost, cfg.bookOrbitUser, cfg.bookOrbitPass, cfg.authToken, rec.bookId,
+                                  rec.fileId, server)) {
+        if (changed) list.save();
+        return;
+    }
+    std::vector<RemoteBookmark> remote;
+    remote.reserve(server.size());
+    for (const auto& b : server) {
+        RemoteBookmark r;
+        r.id = b.id;
+        r.cfi = b.cfi.c_str();
+        r.title = b.title.c_str();
+        remote.push_back(r);
+    }
+    std::vector<BookOrbitProtocol::Bookmark>().swap(server);
+    if (list.mergeRemote(remote)) changed = true;
+
+    int uploaded = 0;
+    for (int i = 0; i < list.count(); i++) {
+        const Bookmark& b = list.items()[i];
+        if (b.serverId > 0 || b.cfi.length() == 0) continue;   // on the server, or no CFI worked out yet
+        const String title = b.chapter.length() ? b.chapter : b.snippet.substring(0, 80);
+        const int id = BookOrbit.createBookmark(cfg.serverHost, cfg.bookOrbitUser, cfg.bookOrbitPass, cfg.authToken,
+                                                rec.bookId, rec.fileId, b.cfi, title);
+        if (id <= 0) continue;
+        list.setServerId(i, id);
+        uploaded++;
+        changed = true;
+    }
+    Serial.printf("[Bookmarks] '%s': %d on the server, %d here, %d uploaded, %d deletes pending\n", rec.title.c_str(),
+                  (int)remote.size(), list.count(), uploaded, (int)list.deletedOnDevice().size());
+    if (changed) list.save();
 }
 
 }  // namespace
@@ -231,6 +289,7 @@ bool SyncService::syncBookProgress(AppContext& ctx, BookProgressRecord& rec, Ser
     store.touch();
     lib.applyRecordToLibrary(rec);
     lib.saveLastBook();   // writes last_book.json and progress.json
+    syncBookmarks(ctx, rec);
     return ok;
 }
 
