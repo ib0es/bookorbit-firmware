@@ -66,7 +66,7 @@ public:
     size_t cacheBytes() const;
 
     // Cache statistics since the last call, for the page-draw log.
-    struct Stats { uint32_t rasterized = 0, glyphHits = 0, flushes = 0, noMemory = 0; };
+    struct Stats { uint32_t rasterized = 0, glyphHits = 0, flushes = 0, noMemory = 0, rasterUs = 0; };
 
     // Called when a glyph cannot be rasterized for lack of memory, to make room
     // (the glyph is then tried once more).

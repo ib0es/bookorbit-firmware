@@ -4,6 +4,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(ARDUINO)
+#include <Arduino.h>   // micros()
+#else
+#include <chrono>
+static uint32_t micros() {
+    return (uint32_t)std::chrono::duration_cast<std::chrono::microseconds>(
+               std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+#endif
+
 // stb allocates while it rasterizes (outline, edges, scanlines): through here,
 // so that a failed allocation is counted (the glyph is retried once the reader
 // made room) instead of tripping stb's assert and rebooting.
@@ -16,6 +26,12 @@ static void* stbAlloc(size_t n) {
 #define STBTT_malloc(x, u) ((void)(u), stbAlloc(x))
 #define STBTT_free(x, u) ((void)(u), free(x))
 #define STBTT_assert(x) ((void)0)   // it checks allocations, which are handled
+// stb's first rasterizer steps edges in fixed point; the second (its default)
+// in floats, which the C3 (no FPU) emulates: ~6.5 ms a glyph on the X4. Their
+// 1-bit result is the same.
+#ifndef STBTT_RASTERIZER_VERSION
+#define STBTT_RASTERIZER_VERSION 1
+#endif
 #define STBTT_STATIC
 #define STB_TRUETYPE_IMPLEMENTATION
 #if defined(__GNUC__)
@@ -44,7 +60,7 @@ using freeink::book::StyleItalic;
 #define TTF_GLYPH_SLOTS 320
 #endif
 #ifndef TTF_GLYPH_BITS_BYTES
-#define TTF_GLYPH_BITS_BYTES (6 * 1024)
+#define TTF_GLYPH_BITS_BYTES (8 * 1024)
 #endif
 static_assert(TTF_GLYPH_BITS_BYTES <= 65535, "glyph offsets are 16-bit");
 
@@ -273,6 +289,7 @@ const GlyphBitmap* TtfFace::rasterize(uint32_t cp, uint16_t sizePx) {
     const int w = x1 > x0 ? x1 - x0 : 0, h = y1 > y0 ? y1 - y0 : 0;
     uint8_t* px = fam->scratch(w * h > 0 ? (size_t)w * h : 1);
     if (!px) return nullptr;
+    const uint32_t t0 = micros();
     if (w > 0 && h > 0) {
         // Not enough memory for stb's working buffers: the reader makes room
         // (stops a background layout), then once more; else the glyph is left out.
@@ -289,6 +306,7 @@ const GlyphBitmap* TtfFace::rasterize(uint32_t cp, uint16_t sizePx) {
         }
     }
     fam->_stats.rasterized++;
+    fam->_stats.rasterUs += micros() - t0;
     out.pixels = px;
     out.width = (uint16_t)w;
     out.height = (uint16_t)h;
