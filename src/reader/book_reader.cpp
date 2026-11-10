@@ -1342,10 +1342,14 @@ void BookReader::renderCurrentPage() {
         Display.update(REFRESH_PARTIAL);
         return;
     }
+    const uint32_t tFound = millis();
     Serial.printf("[Reader] Page %d/%d (chapter %d, page %d/%u)\n", getCurrentPage(), getTotalPages(), _spine,
                   _page + 1, (unsigned)curCount());
     Display.clear(EPD_WHITE);
     drawStatusBar();
+    const uint32_t tBar = millis();
+    uint32_t tRead = 0, tText = 0;
+    unsigned imageCount = 0;
     // A page record: runs plus text; justified text is many runs. Retried larger
     // when the page does not fit (dense pages need ~15 KB).
     for (size_t cap = kRenderBytes; cap <= 64 * 1024; cap *= 2) {
@@ -1374,7 +1378,10 @@ void BookReader::renderCurrentPage() {
         FrameTarget frame{Display.getBuffer(), (int16_t)EPD_WIDTH, (int16_t)EPD_HEIGHT, (int16_t)(EPD_WIDTH / 8),
                           FrameFormat::Mono1Sharp, FrameRotation::Portrait};
         uint32_t firstMissing = 0;
+        tRead = millis();
         const uint32_t missing = PageRenderer::renderText(page, _fonts, frame, &firstMissing);
+        tText = millis();
+        imageCount = page.imageCount;
         if (missing) Serial.printf("[Reader] %u characters not in the font (first U+%04X)\n", (unsigned)missing,
                                    (unsigned)firstMissing);
         if (page.imageCount > 0 && !_isTxt) {
@@ -1417,6 +1424,12 @@ void BookReader::renderCurrentPage() {
         break;
     }
     const bool full = (_renderedPages++ % FULL_REFRESH_EVERY_PAGES) == 0;
-    Serial.printf("[Reader] Page drawn in %lu ms\n", (unsigned long)(millis() - t0));
+    const uint32_t tEnd = millis();
+    // Where the time goes: finding the page (layout, cache), its record, the text, the images.
+    Serial.printf("[Reader] Page drawn in %lu ms (find %lu, status bar %lu, record %lu, text %lu, %u images %lu)\n",
+                  (unsigned long)(tEnd - t0), (unsigned long)(tFound - t0), (unsigned long)(tBar - tFound),
+                  (unsigned long)(tRead ? tRead - tBar : 0),
+                  (unsigned long)(tText ? tText - tRead : 0), (unsigned)imageCount,
+                  (unsigned long)(tText ? tEnd - tText : 0));
     Display.update(full ? REFRESH_FULL : REFRESH_PARTIAL);
 }
