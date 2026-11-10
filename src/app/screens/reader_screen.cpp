@@ -364,6 +364,13 @@ void handleTypefaceMenuEvent(AppContext& ctx, const ButtonEvent& event) {
                     String name = fam.name;
                     drawInstallProgress(&name, 0);
                     if (!FontStore::install(fam, &drawInstallProgress, &name)) {
+                        // The flash partition is erased by now: the family that was in
+                        // it is gone, the book is in the built-in one, and so is the config.
+                        if (ctx.config.readerFont.length() > 0) {
+                            ctx.config.readerFont = "";
+                            ctx.config.save();
+                        }
+                        LibraryManager::getInstance().flushReaderPosition();
                         Modal.showMessage(tr(MsgId::TYPEFACE_MENU_TITLE), tr(MsgId::TYPEFACE_INSTALL_FAILED), fam.name.c_str(),
                                           "", "", 2500, true);
                         typefaceFamilies(true);
