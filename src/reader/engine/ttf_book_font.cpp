@@ -19,19 +19,22 @@ using freeink::book::GlyphBitmap;
 using freeink::book::StyleBold;
 using freeink::book::StyleItalic;
 
-// Cache sizes. A small heap (ESP32-C3) gets ~25 KB in all; more where there is PSRAM.
+// Cache sizes: ~13 KB in all for a small heap (ESP32-C3), where a background
+// layout (64 KB) and a page record (12 KB) must fit beside them. A page of body
+// text has ~100 distinct glyphs of ~45 bytes at 1 bit.
 #ifndef TTF_ADVANCE_SLOTS
-#define TTF_ADVANCE_SLOTS 512
+#define TTF_ADVANCE_SLOTS 256
 #endif
 #ifndef TTF_KERN_SLOTS
 #define TTF_KERN_SLOTS 256
 #endif
 #ifndef TTF_GLYPH_SLOTS
-#define TTF_GLYPH_SLOTS 384
+#define TTF_GLYPH_SLOTS 320
 #endif
 #ifndef TTF_GLYPH_BITS_BYTES
-#define TTF_GLYPH_BITS_BYTES (14 * 1024)
+#define TTF_GLYPH_BITS_BYTES (6 * 1024)
 #endif
+static_assert(TTF_GLYPH_BITS_BYTES <= 65535, "glyph offsets are 16-bit");
 
 namespace {
 
@@ -68,6 +71,9 @@ bool TtfFamily::addFace(uint8_t style, const uint8_t* data, uint32_t len) {
     f._id = style & 3;
     stbtt_GetFontVMetrics(info, &f._ascent, &f._descent, &f._lineGap);
     f._unitsPerEmInv = stbtt_ScaleForMappingEmToPixels(info, 1.0f);
+    const uint8_t* head = data + stbtt__find_table(const_cast<uint8_t*>(data), (stbtt_uint32)offset, "head");
+    f._unitsPerEm = (int32_t)((head[18] << 8) | head[19]);
+    if (f._unitsPerEm <= 0) f._unitsPerEm = 1000;
     f._kerns = info->kern != 0 || info->gpos != 0;
     f._ligFi = stbtt_FindGlyphIndex(info, 0xFB01) != 0;
     f._ligFl = stbtt_FindGlyphIndex(info, 0xFB02) != 0;
@@ -95,6 +101,8 @@ bool TtfFamily::ensureCaches() {
     _bitsUsed = 0;
     return true;
 }
+
+bool TtfFamily::reserve() { return ensureCaches(); }
 
 void TtfFamily::release() {
     free(_mem);
@@ -137,6 +145,13 @@ uint8_t* TtfFamily::scratch(size_t bytes) {
 
 float TtfFace::scale(uint16_t sizePx) const { return _unitsPerEmInv * (float)sizePx; }
 
+// Font units to pixels, rounded, in integers: the C3 has no FPU, and this runs
+// for every character laid out or drawn.
+int16_t TtfFace::px(int32_t units, uint16_t sizePx) const {
+    const int32_t v = units * (int32_t)sizePx, half = _unitsPerEm / 2;
+    return (int16_t)((v >= 0 ? v + half : v - half) / _unitsPerEm);
+}
+
 int TtfFace::glyphOf(uint32_t cp, int16_t* unscaledAdvance) const {
     TtfFamily* fam = _family;
     const uint32_t key = ((uint32_t)_id << 24) | (cp & 0xFFFFFF);
@@ -168,14 +183,12 @@ bool TtfFace::hasGlyph(uint32_t cp) const {
 int16_t TtfFace::advance(uint32_t cp, uint16_t sizePx, uint8_t) {
     int16_t adv = 0;
     if (glyphOf(cp, &adv) == 0 && cp == 0xA0) glyphOf(' ', &adv);   // a font may leave NBSP out
-    return (int16_t)lroundf((float)adv * scale(sizePx));
+    return px(adv, sizePx);
 }
 
-int16_t TtfFace::lineHeight(uint16_t sizePx) {
-    return (int16_t)lroundf((float)(_ascent - _descent + _lineGap) * scale(sizePx));
-}
+int16_t TtfFace::lineHeight(uint16_t sizePx) { return px(_ascent - _descent + _lineGap, sizePx); }
 
-int16_t TtfFace::ascent(uint16_t sizePx) { return (int16_t)lroundf((float)_ascent * scale(sizePx)); }
+int16_t TtfFace::ascent(uint16_t sizePx) { return px(_ascent, sizePx); }
 
 int16_t TtfFace::kerning(uint32_t left, uint32_t right, uint16_t sizePx, uint8_t) {
     if (!_kerns) return 0;
@@ -194,7 +207,7 @@ int16_t TtfFace::kerning(uint32_t left, uint32_t right, uint16_t sizePx, uint8_t
     } else {
         kern = stbtt_GetGlyphKernAdvance(_info, g1, g2);
     }
-    return kern ? (int16_t)lroundf((float)kern * scale(sizePx)) : 0;
+    return kern ? px(kern, sizePx) : 0;
 }
 
 uint32_t TtfFace::ligature(uint32_t left, uint32_t right, uint8_t) {
@@ -206,15 +219,26 @@ uint32_t TtfFace::ligature(uint32_t left, uint32_t right, uint8_t) {
 
 const GlyphBitmap* TtfFace::rasterize(uint32_t cp, uint16_t sizePx) {
     TtfFamily* fam = _family;
-    const int g = glyphOf(cp, nullptr);
-    if (!g) return nullptr;
     int16_t adv = 0;
-    glyphOf(cp, &adv);
+    const int g = glyphOf(cp, &adv);
+    if (!g) return nullptr;
     const bool cacheable = fam->_glyphs && sizePx < 128 && cp < (1u << 21);
     const uint32_t key = ((uint32_t)_id << 28) | ((uint32_t)sizePx << 21) | cp;
-    TtfFamily::GlyphEntry* e = cacheable ? &fam->_glyphs[mix(key) % TTF_GLYPH_SLOTS] : nullptr;
+    // Two places a glyph can be (pairs of slots): fewer evictions of a page's glyphs by each other.
+    TtfFamily::GlyphEntry* e = nullptr;
+    if (cacheable) {
+        const uint32_t i = (mix(key) % TTF_GLYPH_SLOTS) & ~1u;
+        TtfFamily::GlyphEntry* a = &fam->_glyphs[i];
+        TtfFamily::GlyphEntry* b = &fam->_glyphs[i + 1];
+        const auto live = [fam](const TtfFamily::GlyphEntry* x) {
+            return x->key != kEmpty && x->generation == fam->_generation;
+        };
+        if (live(a) && a->key == key) e = a;
+        else if (live(b) && b->key == key) e = b;
+        else e = !live(a) ? a : !live(b) ? b : ((key >> 3) & 1 ? b : a);   // else one of them goes
+    }
     GlyphBitmap& out = fam->_glyph;
-    out.advance = (int16_t)lroundf((float)adv * scale(sizePx));
+    out.advance = px(adv, sizePx);
     if (e && e->key == key && e->generation == fam->_generation) {
         // A hit: 1-bit rows back to 0/255 coverage.
         const uint32_t w = e->width, h = e->height, stride = (w + 7) / 8;

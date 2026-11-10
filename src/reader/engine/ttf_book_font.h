@@ -33,6 +33,7 @@ public:
 private:
     friend class TtfFamily;
     float scale(uint16_t sizePx) const;
+    int16_t px(int32_t units, uint16_t sizePx) const;
     int glyphOf(uint32_t codepoint, int16_t* unscaledAdvance) const;
 
     TtfFamily* _family = nullptr;
@@ -41,6 +42,7 @@ private:
     bool _kerns = false;
     bool _ligFi = false, _ligFl = false;
     float _unitsPerEmInv = 0;
+    int32_t _unitsPerEm = 1000;
     int _ascent = 0, _descent = 0, _lineGap = 0;   // font units
 };
 
@@ -57,7 +59,9 @@ public:
     bool addFace(uint8_t style, const uint8_t* data, uint32_t len);
     TtfFace* face(uint8_t style) { return _faces[style & 3].fontReady() ? &_faces[style & 3].face : nullptr; }
 
-    // The caches: allocated on first use, given back by release() (and filled again later).
+    // The caches: allocated on first use (or by reserve(), early, before big
+    // buffers come and go around them), given back by release(), filled again later.
+    bool reserve();
     void release();
     size_t cacheBytes() const;
 

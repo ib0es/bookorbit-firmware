@@ -188,6 +188,7 @@ const char* BookReader::getFontSizeName(int size) {
 bool BookReader::openBook(const String& filePath) {
     closeBook();
     _noMemory = false;
+    _ttf.reserve();   // low in the heap, before the book's buffers come and go around it
     const uint32_t t0 = millis();
     _path = filePath;
     String lower = filePath;
@@ -1392,6 +1393,7 @@ void BookReader::renderCurrentPage() {
     const uint32_t tFound = millis();
     Serial.printf("[Reader] Page %d/%d (chapter %d, page %d/%u)\n", getCurrentPage(), getTotalPages(), _spine,
                   _page + 1, (unsigned)curCount());
+    _ttf.reserve();   // after a sync gave it back: before the page record and a layout job
     Display.clear(EPD_WHITE);
     drawStatusBar();
     const uint32_t tBar = millis();
