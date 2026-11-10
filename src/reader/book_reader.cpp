@@ -313,6 +313,7 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
     struct Draw : PageSink {
         FontChain* fonts;
         int dy;
+        int clipTop = 0, ascent = 0;
         bool drawn = false;
         bool onPage(const Page& page) override {
             if (drawn) return true;   // the first page only (see Lines)
@@ -329,6 +330,7 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
                     PageRenderer::renderText(part, *fonts, frame);
                     n = 0;
                 }
+                if (page.runs[i].baselineY + dy - ascent < clipTop) continue;   // above the box
                 runs[n] = page.runs[i];
                 runs[n].baselineY = (int16_t)(runs[n].baselineY + dy);
                 n++;
@@ -343,6 +345,8 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
     } sink;
     sink.fonts = &_fonts;
     sink.dy = y;
+    sink.clipTop = y;
+    sink.ascent = _fonts.ascent(p.baseSizePx);
     BookStatus st = BookStatus::OutOfMemory;
     // The engine's layout state: ~36 KB for this page on the host, ~41 KB on the
     // X4 (with a book's stylesheet): a bigger arena when it runs out.
@@ -350,19 +354,19 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
     struct Lines : PageSink {
         const char* firstWord = nullptr;   // of the second paragraph
         size_t wordLen = 0;
-        int prevBaseline = -1, lineAfter = -1, found = -1;
+        int base[64];                      // the first page's line baselines
+        int count = 0, found = -1;         // the second paragraph's first line
         bool pageSeen = false;
         bool onPage(const Page& page) override {
             // The first page only; the rest are let through (stopping the engine
             // early makes it report running out of memory).
             if (pageSeen) return true;
             pageSeen = true;
-            for (uint16_t i = 0; i < page.runCount; i++) {
+            for (uint16_t i = 0; i < page.runCount && count < 64; i++) {
                 const PageTextRun& r = page.runs[i];
-                if (r.baselineY == prevBaseline) continue;   // the same line
-                if (found >= 0 && lineAfter < 0) lineAfter = r.baselineY;
-                prevBaseline = r.baselineY;
-                if (found < 0 && r.len >= wordLen && memcmp(r.text, firstWord, wordLen) == 0) found = r.baselineY;
+                if (count > 0 && r.baselineY == base[count - 1]) continue;   // the same line
+                if (found < 0 && r.len >= wordLen && memcmp(r.text, firstWord, wordLen) == 0) found = count;
+                base[count++] = r.baselineY;
             }
             return true;
         }
@@ -379,12 +383,13 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
         // out allowing lone lines): "no lone lines" then moves that line on, as it
         // would at the foot of a page, so the setting shows. Found by a first pass.
         LayoutParams q = p;
+        sink.dy = y;
         if (second) {
             Lines lines;
             lines.firstWord = second + 2;
             lines.wordLen = strcspn(second + 2, " ");
             LayoutParams loose = p;
-            loose.pageHeight = (int16_t)(height * 2);   // a page of everything would overflow the page record
+            loose.pageHeight = 1600;   // the whole sample on one page (big sizes too)
             loose.orphanLines = loose.widowLines = 1;
             Arena a(mem.p, cap);
             const BookStatus s1 = ChapterLayout::layoutPlainText(src, loose, a, lines);
@@ -392,9 +397,19 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
                 Serial.printf("[Reader] Appearance preview: %u B is not enough (%u used)\n", (unsigned)cap, (unsigned)a.highWater());
                 continue;
             }
-            // up to the next line's baseline less its ascent: that line no longer fits
-            if (lines.found >= 0 && lines.lineAfter > lines.found && lines.lineAfter - _fonts.ascent(p.baseSizePx) < height)
-                q.pageHeight = (int16_t)(lines.lineAfter - _fonts.ascent(p.baseSizePx));
+            // A page that ends just under line k: line k+1 no longer fits.
+            const int asc = _fonts.ascent(p.baseSizePx);
+            auto endsAfter = [&](int k) { return lines.base[k + 1] - asc; };
+            if (lines.found > 0 && lines.found + 1 < lines.count && endsAfter(lines.found) < height) {
+                // the second paragraph's first line alone at the foot (an orphan)
+                q.pageHeight = (int16_t)endsAfter(lines.found);
+            } else if (lines.found > 1) {
+                // too big a size for that: the first paragraph's last line alone on
+                // the next page (a widow), which "no lone lines" takes one more with;
+                // a page taller than the box shows its foot (drawn moved up)
+                q.pageHeight = (int16_t)endsAfter(lines.found - 2);
+                if (q.pageHeight > height) sink.dy = y + height - q.pageHeight - 6;   // descenders clear of the box
+            }
         }
         Arena a(mem.p, cap);
         st = ChapterLayout::layoutPlainText(src, q, a, sink);
