@@ -42,6 +42,7 @@ build_fib hyph "$ROOT/test/host/test_hyphenation.cpp"
 build_fib fb2 "$ROOT/test/host/test_fb2_to_epub.cpp" "$ROOT/src/convert/fb2_to_epub.cpp" "$ROOT/src/convert/zip_writer.cpp"
 build_fib mobi "$ROOT/test/host/test_mobi_to_epub.cpp" "$ROOT/src/convert/mobi_to_epub.cpp" "$ROOT/src/convert/fb2_to_epub.cpp" "$ROOT/src/convert/zip_writer.cpp"
 build_fib txt "$ROOT/test/host/test_txt_to_epub.cpp" "$ROOT/src/convert/txt_to_epub.cpp" "$ROOT/src/convert/fb2_to_epub.cpp" "$ROOT/src/convert/zip_writer.cpp"
+build_fib ttf "$ROOT/test/host/test_ttf_font.cpp" "$ROOT/src/reader/engine/ttf_book_font.cpp" "$ROOT/src/reader/fonts/builtin_font.cpp"
 build_fib counter "$ROOT/test/host/test_engine_text_counter.cpp" "$ROOT/src/reader/engine/engine_text_counter.cpp" "$ROOT/src/reader/epub_cfi.cpp"
 
 rc=0
@@ -54,6 +55,7 @@ echo "== BookOrbitProtocol"; "$OUT/protocol/test" | grep -v "^[a-zA-Z/]* *$" || 
 echo "== FB2 to EPUB";       "$OUT/fb2/test" "$ROOT/test/books" || rc=1
 echo "== MOBI to EPUB";      "$OUT/mobi/test" "$ROOT/test/books" || rc=1
 echo "== TXT to EPUB";       "$OUT/txt/test" "$ROOT/test/books" || rc=1
+echo "== TrueType fonts";    "$OUT/ttf/test" || rc=1
 echo "== Hyphenation";      "$OUT/hyph/test" || rc=1
 echo "== EngineTextCounter"; "$OUT/counter/test" "$ROOT/simulator/sdcard/books/Alice in Wonderland.epub" \
     "$ROOT/simulator/sdcard/books/01. Frankenstein (1818).epub" "$ROOT/simulator/sdcard/books/Pride and Prejudice.epub" \

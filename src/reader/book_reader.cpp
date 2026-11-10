@@ -1,4 +1,5 @@
 #include "book_reader.h"
+#include "fonts/builtin_font.h"
 
 #include <render/PageRenderer.h>
 #include <algorithm>
@@ -157,12 +158,22 @@ String BookReader::cacheDirFor(const String& bookPath) {
 }
 
 BookReader::BookReader() : _fontSize(FontEngine::kDefaultSize) {
-    _fonts.add(&_font);
+    setupFonts();
     _hyphEn.init(k_hyph_en_us, k_hyph_en_us_size);
     _hyphRu.init(k_hyph_ru, k_hyph_ru_size);
 }
 
 BookReader::~BookReader() { closeBook(); }
+
+void BookReader::setupFonts() {
+    _fonts = freeink::book::FontChain();
+    for (int style = 0; style < 4; style++) {
+        uint32_t len = 0;
+        const uint8_t* data = builtinfont::face(style, &len);
+        if (_ttf.addFace((uint8_t)style, data, len)) _fonts.add(_ttf.face((uint8_t)style), (uint8_t)style);
+    }
+    _fonts.add(&_font);   // anything the family lacks
+}
 
 const char* BookReader::getFontSizeName(int size) {
     static char buf[8][12];   // a few names may be alive at once (menus)
@@ -297,7 +308,7 @@ void BookReader::setupLayout() {
     p.hyphenator = hyphenatorFor(p.language);
     p.stylesheet = _catalog.stylesheet();
     _params = p;
-    _gen = layoutGenerationHash(_params, BitmapBookFont::kFingerprint);
+    _gen = layoutGenerationHash(_params, BitmapBookFont::kFingerprint ^ _ttf.fingerprint());
     _held.spine = -1;   // pages of another layout
 }
 
@@ -1462,10 +1473,13 @@ void BookReader::renderCurrentPage() {
     const bool full = (_renderedPages++ % FULL_REFRESH_EVERY_PAGES) == 0;
     const uint32_t tEnd = millis();
     // Where the time goes: finding the page (layout, cache), its record, the text, the images.
-    Serial.printf("[Reader] Page drawn in %lu ms (find %lu, status bar %lu, record %lu, text %lu, %u images %lu)\n",
+    const TtfFamily::Stats fs = _ttf.takeStats();
+    Serial.printf("[Reader] Page drawn in %lu ms (find %lu, status bar %lu, record %lu, text %lu, %u images %lu); "
+                  "glyphs %u rasterized, %u cached, %u cache flushes, font caches %u B\n",
                   (unsigned long)(tEnd - t0), (unsigned long)(tFound - t0), (unsigned long)(tBar - tFound),
                   (unsigned long)(tRead ? tRead - tBar : 0),
                   (unsigned long)(tText ? tText - tRead : 0), (unsigned)imageCount,
-                  (unsigned long)(tText ? tEnd - tText : 0));
+                  (unsigned long)(tText ? tEnd - tText : 0), (unsigned)fs.rasterized, (unsigned)fs.glyphHits,
+                  (unsigned)fs.flushes, (unsigned)_ttf.cacheBytes());
     Display.update(full ? REFRESH_FULL : REFRESH_PARTIAL);
 }

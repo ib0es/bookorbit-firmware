@@ -29,6 +29,7 @@
 #include "chapter_item.h"
 #include "epub_cfi.h"
 #include "engine/bitmap_book_font.h"
+#include "engine/ttf_book_font.h"
 #include "engine/sd_book_storage.h"
 
 class BookReader {
@@ -120,6 +121,8 @@ public:
     bool tickBackground();
     void stopBackground();
     bool backgroundActive() const { return _bg != nullptr; }
+    // Gives back the font caches (~25 KB; Wi-Fi needs the memory): they fill again as pages are drawn.
+    void releaseFontCaches() { _ttf.release(); }
     static constexpr int kLookahead = 2;   // chapters ahead of the current one
     // Pages of a laid-out spine item, -1 if it is not laid out (tests, logs).
     int chapterPages(int spine) const {
@@ -199,8 +202,10 @@ private:
     uint8_t* _bookMem = nullptr;
     freeink::book::Arena _bookArena;
 
-    BitmapBookFont _font;
+    BitmapBookFont _font;            // what the TrueType faces lack (and the font with none)
+    TtfFamily _ttf;                  // the built-in family
     freeink::book::FontChain _fonts;
+    void setupFonts();
     freeink::book::Hyphenator _hyphEn;
     freeink::book::Hyphenator _hyphRu;
     // Picks the patterns by the book's language ("ru", "ru-RU", "rus", "en"...); a

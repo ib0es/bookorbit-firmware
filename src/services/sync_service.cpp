@@ -239,6 +239,7 @@ bool SyncService::syncBookProgress(AppContext& ctx, BookProgressRecord& rec, Ser
 // ============================================================================
 bool SyncService::downloadBook(AppContext& ctx, BookItem& book, AppState returnState) {
     Reader.stopBackground();   // Wi-Fi needs the memory a background layout holds
+    Reader.releaseFontCaches();   // ...and the font caches (~25 KB, filled again as pages are drawn)
     const String url = book.downloadUrl();
     if (url.length() == 0) {
         drawStatusModal(tr(MsgId::COMMON_ERROR), tr(MsgId::SYNC_ERR_FILE_NOT_FOUND), "");
@@ -424,6 +425,7 @@ void downloadCovers(AppContext& ctx, const std::vector<BookMetadata>& catalog) {
 
 void SyncService::syncWithBookOrbit(AppContext& ctx) {
     Reader.stopBackground();   // Wi-Fi needs the memory a background layout holds
+    Reader.releaseFontCaches();   // ...and the font caches (~25 KB, filled again as pages are drawn)
     AppState prevState = ctx.currentState;
     s_syncCancelled = false;
     ctx.currentState = STATE_SYNCING;
@@ -613,6 +615,7 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
 // ============================================================================
 void SyncService::syncCurrentBookProgress(AppContext& ctx, bool autoConnectWiFi) {
     Reader.stopBackground();   // Wi-Fi needs the memory a background layout holds
+    Reader.releaseFontCaches();   // ...and the font caches (~25 KB, filled again as pages are drawn)
     auto& lib = LibraryManager::getInstance();
     if (lib.lastBook.filePath.length() == 0) return;
     if (Reader.isOpened()) lib.flushReaderPosition();
@@ -658,6 +661,7 @@ void SyncService::cancelBackground() {
 
 void SyncService::startBackgroundUpload(AppContext& ctx, int fileId, const String& filePath, bool onlyIfDirty) {
     Reader.stopBackground();   // Wi-Fi needs the memory a background layout holds
+    Reader.releaseFontCaches();   // ...and the font caches (~25 KB, filled again as pages are drawn)
     if (ctx.config.wifiSsid.length() == 0 || ctx.config.serverHost.length() == 0) return;
     if (s_bgState != BgState::Idle) cancelBackground();
     s_bgFileId = fileId;
@@ -702,6 +706,7 @@ void SyncService::tickBackground(AppContext& ctx) {
 
 SyncService::BookSyncResult SyncService::syncBookItem(AppContext& ctx, BookItem& book) {
     Reader.stopBackground();   // Wi-Fi needs the memory a background layout holds
+    Reader.releaseFontCaches();   // ...and the font caches (~25 KB, filled again as pages are drawn)
     if (ctx.config.wifiSsid.length() == 0 || ctx.config.serverHost.length() == 0) return BookSyncResult::NotConfigured;
     auto& lib = LibraryManager::getInstance();
     const bool isCurrent = lib.lastBook.filePath.equalsIgnoreCase(book.filePath);
@@ -757,6 +762,7 @@ void SyncService::showBookSyncResult(BookSyncResult r, const BookItem& book) {
 
 void SyncService::syncOnBootProgress(AppContext& ctx) {
     Reader.stopBackground();   // Wi-Fi needs the memory a background layout holds
+    Reader.releaseFontCaches();   // ...and the font caches (~25 KB, filled again as pages are drawn)
     auto& lib = LibraryManager::getInstance();
     if (!ctx.config.syncOnBoot || ctx.config.wifiSsid.length() == 0 || ctx.config.serverHost.length() == 0 || lib.lastBook.filePath.length() == 0) {
         return;

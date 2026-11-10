@@ -66,6 +66,8 @@ SRCS_CXX = \
     src/reader/book_reader.cpp \
     src/reader/engine/bitmap_book_font.cpp \
     src/reader/engine/sd_book_storage.cpp \
+    src/reader/engine/ttf_book_font.cpp \
+    src/reader/fonts/builtin_font.cpp \
     src/convert/zip_writer.cpp \
     src/convert/fb2_to_epub.cpp \
     src/convert/mobi_to_epub.cpp \
