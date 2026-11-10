@@ -548,9 +548,14 @@ bool BookOrbitClient::downloadFile(const String& serverHost, const String& fileU
 
     Storage.ensureDirectories();
 
-    FsFile file = Storage.open(destSdPath.c_str(), O_WRITE | O_CREAT | O_TRUNC);
+    // Written beside the target and swapped in only when complete: a reset or a
+    // cut connection never leaves a full-size file of garbage that passes for
+    // the book, and a failed new download keeps the copy already on the card.
+    const String partPath = destSdPath + ".part";
+    if (Storage.exists(partPath.c_str())) Storage.remove(partPath.c_str());
+    FsFile file = Storage.open(partPath.c_str(), O_WRITE | O_CREAT | O_TRUNC);
     if (!file) {
-        Serial.printf("[BookOrbit] Cannot open %s for write on SD!\n", destSdPath.c_str());
+        Serial.printf("[BookOrbit] Cannot open %s for write on SD!\n", partPath.c_str());
         http.end();
         return false;
     }
@@ -572,7 +577,7 @@ bool BookOrbitClient::downloadFile(const String& serverHost, const String& fileU
     if (!buffer) {
         Serial.println("[BookOrbit] Failed to allocate download buffer!");
         file.close();
-        Storage.remove(destSdPath.c_str());
+        Storage.remove(partPath.c_str());
         http.end();
         return false;
     }
@@ -590,12 +595,16 @@ bool BookOrbitClient::downloadFile(const String& serverHost, const String& fileU
     Serial.printf("[BookOrbit] Download finished: %u bytes in %lu ms (%.1f KB/s), result %d%s.\n",
                   (unsigned)downloaded, elapsed, speedKBps, result, sink.cancelled() ? " (cancelled)" : "");
 
-    const bool success = result >= 0 && flushed && !sink.cancelled() && downloaded > 0 &&
-                         (totalBytes <= 0 || downloaded >= (size_t)totalBytes);
+    bool success = result >= 0 && flushed && !sink.cancelled() && downloaded > 0 &&
+                   (totalBytes <= 0 || downloaded >= (size_t)totalBytes);
+    if (success && !Storage.replaceFile(partPath.c_str(), destSdPath.c_str())) {
+        Serial.printf("[BookOrbit] Cannot move %s into place\n", partPath.c_str());
+        success = false;
+    }
     if (!success) {
-        Storage.remove(destSdPath.c_str());
+        Storage.remove(partPath.c_str());
         Serial.printf("[BookOrbit] Incomplete download removed from SD: %s (%u / %d bytes)\n",
-                      destSdPath.c_str(), (unsigned)downloaded, totalBytes);
+                      partPath.c_str(), (unsigned)downloaded, totalBytes);
     } else if (onProgress) {
         onProgress(100);
     }
