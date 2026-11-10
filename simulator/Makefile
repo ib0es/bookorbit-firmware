@@ -28,6 +28,7 @@ SRCS_CXX = \
     src/main.cpp \
     src/app/app_state.cpp \
     src/app/app_controller.cpp \
+    src/app/orientation.cpp \
     src/app/touch_router.cpp \
     src/app/screens/home_screen.cpp \
     src/app/screens/catalog_screen.cpp \

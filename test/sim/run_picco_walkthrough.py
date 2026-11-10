@@ -33,8 +33,10 @@ APPEAR_TYPEFACE, APPEAR_SIZE = "T240,67;", "T240,103;"   # rows of the Appearanc
 APPEAR_ORIENTATION = "T240,463;"
 APPEAR_STATUS_BAR = "T240,535;"
 SB_BOTTOM = "T240,211;"   # the last row of the status bar menu
-SET_LANG, SET_WIFI, SET_SERVER, SET_SLEEP, SET_INFO, SET_LIGHT = "T240,90;", "T240,165;", "T240,240;", "T240,315;", "T240,520;", "T240,665;"
-SET_SYNC = "T240,593;"
+# Settings rows (ten of them with the screen orientation, 65 px apart)
+SET_LANG, SET_WIFI, SET_SERVER, SET_SLEEP, SET_INFO, SET_LIGHT = "T240,85;", "T240,150;", "T240,215;", "T240,280;", "T240,475;", "T240,605;"
+SET_SYNC = "T240,540;"
+SET_ORIENTATION = "T240,670;"
 
 def pages(log):
     return [tuple(map(int, m)) for m in re.findall(r"\[Reader\] Page (\d+)/(\d+)", log)]
@@ -109,6 +111,10 @@ CASES = [
     ("power: after sleep, the book syncs in the background",
      HOME_SETTINGS + SET_SYNC + "T240,240;" + BACK + BACK + "P" + "Z" + "ww",
      lambda log, sd: "Background sync queued" in log and re.search(r"Background sync (done|failed) in", log)),
+    ("settings: screen orientation turns the whole interface, a quarter turn a tap",
+     HOME_SETTINGS + SET_ORIENTATION + SET_ORIENTATION,
+     lambda log, sd: config(sd)["ui_orientation"] == 2 and config(sd).get("orientation", 0) == 0
+                     and "drawSettingsScreen" in log.split("TAP_240_670")[-1]),
     ("settings: frontlight + button",
      HOME_SETTINGS + SET_LIGHT + "T442,124;" + BACK,
      lambda log, sd: "[Light] brightness 10%" in log and config(sd)["frontlight"] == 10),

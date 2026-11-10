@@ -125,8 +125,10 @@ public:
     void setSharpImages(bool sharp) { _sharpImages = sharp; }
     // Which way the pages are drawn: 0 portrait, 1 landscape (the panel's own),
     // 2 portrait upside down, 3 landscape upside down (each 90 degrees on from
-    // the one before). A landscape page is laid out wider; the book is laid out
-    // again at the same sentence. Menus stay portrait. False when nothing changed.
+    // the one before), as the whole screen is turned (app/orientation.h). A
+    // landscape page is laid out wider; the book is laid out again at the same
+    // sentence. The pages' own turn (the interface's and the book's together).
+    // False when nothing changed.
     bool setOrientation(int orientation);
     // What the status bar shows (above and below the text). Hiding a line gives
     // its room to the text (the book is laid out again). False when nothing changed.
@@ -145,9 +147,7 @@ public:
     const StatusBar& statusBar() const { return _bar; }
     int orientation() const { return _orient; }
     bool landscape() const { return _orient == 1 || _orient == 3; }
-    // Panel point (as touch reports it in portrait terms) -> the page's.
-    void portraitToPage(int16_t x, int16_t y, int16_t& px, int16_t& py) const;
-    int16_t pageWidth() const;
+
     // The book font family: "" for the built-in one, else one installed from
     // /fonts (FontStore); another name falls back to the built-in one. Lays the
     // book out again at the same sentence. Returns false when nothing changed.
@@ -310,7 +310,9 @@ private:
     bool _sharpImages = false;
     int _orient = 0;
     StatusBar _bar;
-    freeink::book::FrameRotation frameRotation() const;
+public:
+    freeink::book::FrameRotation frameRotation() const;   // the screen's turn, for the book's frames
+private:
     uint32_t _gen = 0;
 
     std::vector<Spine> _spines;

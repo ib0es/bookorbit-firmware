@@ -3,6 +3,8 @@
 #include "../ui/kit/ui_kit.h"
 #include "screens/screens.h"
 #include "../reader/reader.h"
+#include "orientation.h"
+#include "../hal/display.h"
 #include "../ui/views/library_view.h"
 #include "../ui/views/reader_menu_view.h"
 #include "../ui/font.h"
@@ -16,11 +18,12 @@ ButtonEvent make(ButtonId id) {
     return e;
 }
 
-// Reading: three vertical zones of the page (turned as the page is).
-ButtonEvent readingZone(const ButtonEvent& tap) {
+// Reading: three vertical zones of the page (taps come in the interface's
+// terms; the book may be turned on top of it).
+ButtonEvent readingZone(const AppContext& ctx, const ButtonEvent& tap) {
     int16_t x, y;
-    Reader.portraitToPage(tap.x, tap.y, x, y);
-    const int16_t w = Reader.pageWidth();
+    interfaceToPage(ctx.config.uiOrientation, Reader.orientation(), tap.x, tap.y, x, y);
+    const int16_t w = (int16_t)(Reader.landscape() ? EPD_WIDTH : EPD_HEIGHT);
     if (x < w / 3) return make(BTN_LEFT);
     if (x >= w - w / 3) return make(BTN_RIGHT);
     return make(BTN_CONFIRM);
@@ -30,7 +33,7 @@ ButtonEvent readingZone(const ButtonEvent& tap) {
 
 bool translate(AppContext& ctx, const ButtonEvent& tap, ButtonEvent& out) {
     if (ctx.currentState == STATE_READING) {
-        out = readingZone(tap);
+        out = readingZone(ctx, tap);
         return true;
     }
 
@@ -110,14 +113,14 @@ bool translateSwipe(AppContext& ctx, const ButtonEvent& swipe, ButtonEvent& out)
 
     if (ctx.currentState == STATE_READING) {
         // The swipe in the page's terms: a finger moving left turns to the next page.
-        int sx = swipe.id == BTN_SWIPE_LEFT ? -1 : swipe.id == BTN_SWIPE_RIGHT ? 1 : 0;
-        int sy = swipe.id == BTN_SWIPE_UP ? -1 : swipe.id == BTN_SWIPE_DOWN ? 1 : 0;
+        const int sx = swipe.id == BTN_SWIPE_LEFT ? -1 : swipe.id == BTN_SWIPE_RIGHT ? 1 : 0;
+        const int sy = swipe.id == BTN_SWIPE_UP ? -1 : swipe.id == BTN_SWIPE_DOWN ? 1 : 0;
         int16_t ax, ay, bx, by;
-        Reader.portraitToPage(100, 100, ax, ay);
-        Reader.portraitToPage((int16_t)(100 + sx), (int16_t)(100 + sy), bx, by);
-        const int dx = bx - ax;
-        if (dx == 0) return false;   // along the page's height
-        out = make(dx < 0 ? BTN_RIGHT : BTN_LEFT);
+        interfaceToPage(ctx.config.uiOrientation, Reader.orientation(), 200, 200, ax, ay);
+        interfaceToPage(ctx.config.uiOrientation, Reader.orientation(), (int16_t)(200 + sx), (int16_t)(200 + sy), bx, by);
+        (void)vertical;
+        if (bx == ax) return false;   // along the page's height
+        out = make(bx < ax ? BTN_RIGHT : BTN_LEFT);
         return true;
     }
 

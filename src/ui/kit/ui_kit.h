@@ -49,6 +49,9 @@ void begin();
 // The drawing orientation (the reader's pages and status bar may be turned;
 // everything else is drawn in Portrait). The logical size follows it.
 void setOrientation(fi::Orientation orientation);
+// With the screen upside down the front keys are at the top in the other
+// order: LEFT and RIGHT are swapped for the screens (and their tabs).
+bool keysReversed();
 bool ready();
 
 fi::DisplayTarget& target();

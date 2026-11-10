@@ -238,8 +238,31 @@ void battery(Frame& f, Rect r, Color color) {
     text(lbl, label, FontSmall, color, TextAlign::Right);
 }
 
-Rect topBar(Frame& f, const char* title) {
+namespace {
+// The edge the front keys are at, as the screen is turned: 0 bottom (portrait),
+// 1 top (portrait upside down), 2 right (landscape), 3 left (landscape upside down).
+int keyEdge() {
+    switch (target().orientation()) {
+        case fi::Orientation::PortraitInverted: return 1;
+        case fi::Orientation::LandscapeCounterClockwise: return 2;
+        case fi::Orientation::LandscapeClockwise: return 3;
+        default: return 0;
+    }
+}
+int16_t keyTabHeight() { return (int16_t)(lineHeight(FontSmall) + 10); }
+
+// The screen below the key tabs when the keys are at the top.
+Rect screenUnderKeys() {
     Rect area = screen();
+    if (!touchOnly() && keyEdge() == 1) takeTop(area, (int16_t)(keyTabHeight() + 4));
+    return area;
+}
+}  // namespace
+
+bool keysReversed() { return !touchOnly() && keyEdge() == 1; }
+
+Rect topBar(Frame& f, const char* title) {
+    Rect area = screenUnderKeys();
     const int16_t h = (int16_t)(lineHeight(FontTitle) + 18);
     Rect bar = takeTop(area, h);
     fill(bar, Color::Black);
@@ -259,7 +282,7 @@ Rect topBar(Frame& f, const char* title) {
 }
 
 Rect appHeader(Frame& f) {
-    Rect area = screen();
+    Rect area = screenUnderKeys();
     const int16_t h = (int16_t)(lineHeight(FontTitle) + 16);
     Rect bar = takeTop(area, h);
     Rect inner = insetX(bar, kMargin + 4);
@@ -292,30 +315,62 @@ Rect footerHints(Frame&, Rect area, const char* line1, const char* line2) {
 
 Rect keyHints(Frame& f, Rect area, const KeyLabels& keys, const char* info) {
     if (touchOnly()) return footerHints(f, area, info ? info : "x", nullptr);   // replaced by the touch hints
-    // Centres of the keys along the bottom edge, in a 480 px wide portrait
-    // screen (measured on the X4: two rockers of two keys); scaled to the width.
+    // Centres of the keys along the bottom edge of a 480 px wide portrait
+    // screen (measured on the X4: two rockers of two keys). The tabs stand at
+    // the keys wherever the screen is turned: along the top (upside down: the
+    // keys in the other order, LEFT and RIGHT swapped, see keysReversed()), or
+    // down a side in landscape.
     static const int16_t kCentre[4] = {96, 178, 279, 370};
-    const char* labels[4] = {keys.back, keys.ok, keys.left, keys.right};
+    const int edge = keyEdge();
+    const char* labels[4] = {keys.back, keys.ok, edge == 1 ? keys.right : keys.left, edge == 1 ? keys.left : keys.right};
     const int16_t W = width(), H = height();
-    const int16_t tabH = (int16_t)(lineHeight(FontSmall) + 10);
-    const int16_t tabW = (int16_t)(78 * W / 480);
+    const int16_t tabH = keyTabHeight();
     int16_t infoH = 0;
     if (info && *info) infoH = (int16_t)(wrappedHeight(info, FontSmall, (int16_t)(W - 2 * (kMargin + 4)), 2) + 6);
-    Rect foot = takeBottom(area, (int16_t)(tabH + infoH + 8));
     if (infoH) {
+        Rect foot = takeBottom(area, (int16_t)(infoH + 8));
         hline(0, W, foot.y);
         text(Rect{(int16_t)(kMargin + 4), (int16_t)(foot.y + 4), (int16_t)(W - 2 * (kMargin + 4)), infoH}, info,
              FontSmall, Color::Black, TextAlign::Left, 2);
     }
-    for (int i = 0; i < 4; i++) {
-        const int16_t cx = (int16_t)(kCentre[i] * W / 480);
-        // Open at the bottom: the tab runs off the screen's edge, towards its key.
-        Rect tab{(int16_t)(cx - tabW / 2), (int16_t)(H - tabH), tabW, (int16_t)(tabH + 6)};
+    auto drawTab = [&](Rect tab, Rect label, const char* s) {
         fill(tab, Color::White, 5);
         frameRect(tab, Color::Black, 1, 5);
-        if (labels[i] && *labels[i])
-            text(Rect{(int16_t)(tab.x + 2), tab.y, (int16_t)(tab.width - 4), tabH}, labels[i], FontSmall, Color::Black,
-                 TextAlign::Center);
+        if (s && *s) text(label, s, FontSmall, Color::Black, TextAlign::Center, 2);
+    };
+    if (edge <= 1) {
+        const int16_t panelW = W;   // portrait: the keys run along the width
+        const int16_t tabW = (int16_t)(78 * panelW / 480);
+        if (edge == 0) takeBottom(area, (int16_t)(tabH + 8));
+        for (int i = 0; i < 4; i++) {
+            int16_t cx = (int16_t)(kCentre[i] * panelW / 480);
+            if (edge == 1) cx = (int16_t)(panelW - cx);
+            // Open at the edge: the tab runs off the screen, towards its key.
+            Rect tab = edge == 0 ? Rect{(int16_t)(cx - tabW / 2), (int16_t)(H - tabH), tabW, (int16_t)(tabH + 6)}
+                                 : Rect{(int16_t)(cx - tabW / 2), (int16_t)-6, tabW, (int16_t)(tabH + 6)};
+            Rect label{(int16_t)(tab.x + 2), edge == 0 ? tab.y : (int16_t)0, (int16_t)(tab.width - 4), tabH};
+            drawTab(tab, label, labels[i]);
+        }
+        return area;
+    }
+    // Landscape: the keys run down the right edge (bottom to top: BACK, OK, LEFT,
+    // RIGHT) or, upside down, the left one (top to bottom).
+    const int16_t panelH = H;   // the keys' axis is the screen's height now
+    const int16_t tabW = 96, keyTabH = (int16_t)(70 * panelH / 480);
+    Rect strip = edge == 2 ? Rect{(int16_t)(area.right() - tabW - 6), area.y, (int16_t)(tabW + 6), area.height}
+                           : Rect{area.x, area.y, (int16_t)(tabW + 6), area.height};
+    if (edge == 2) area.width = (int16_t)(area.width - strip.width);
+    else {
+        area.x = (int16_t)(area.x + strip.width);
+        area.width = (int16_t)(area.width - strip.width);
+    }
+    for (int i = 0; i < 4; i++) {
+        const int16_t at = (int16_t)(kCentre[i] * panelH / 480);
+        const int16_t cy = edge == 2 ? (int16_t)(panelH - at) : at;
+        Rect tab = edge == 2 ? Rect{(int16_t)(W - tabW), (int16_t)(cy - keyTabH / 2), (int16_t)(tabW + 6), keyTabH}
+                             : Rect{(int16_t)-6, (int16_t)(cy - keyTabH / 2), (int16_t)(tabW + 6), keyTabH};
+        Rect label{(int16_t)(edge == 2 ? tab.x + 4 : 4), tab.y, (int16_t)(tabW - 8), keyTabH};
+        drawTab(tab, label, labels[i]);
     }
     return area;
 }

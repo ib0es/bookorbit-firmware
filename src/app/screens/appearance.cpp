@@ -69,9 +69,9 @@ const char* value(const AppConfig& cfg, int row, char* buf, size_t len) {
             snprintf(buf, len, "%s", tr(cfg.sharpImages ? MsgId::APPEAR_IMAGES_SHARP : MsgId::APPEAR_IMAGES_DITHERED));
             break;
         case ORIENTATION: {
-            static const MsgId k[] = {MsgId::APPEAR_ORIENT_PORTRAIT, MsgId::APPEAR_ORIENT_LANDSCAPE,
-                                      MsgId::APPEAR_ORIENT_PORTRAIT_FLIPPED, MsgId::APPEAR_ORIENT_LANDSCAPE_FLIPPED};
-            snprintf(buf, len, "%s", tr(k[cfg.orientation & 3]));
+            // on top of the interface's turn, a quarter turn a step
+            if ((cfg.orientation & 3) == 0) snprintf(buf, len, "%s", tr(MsgId::APPEAR_ORIENT_AS_UI));
+            else snprintf(buf, len, tr(MsgId::APPEAR_ORIENT_TURNED_FMT), (cfg.orientation & 3) * 90);
             break;
         }
         case FULL_REFRESH:

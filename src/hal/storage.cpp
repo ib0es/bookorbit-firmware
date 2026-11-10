@@ -289,6 +289,7 @@ bool StorageManager::loadConfig(AppConfig& cfg) {
                 boolIn("focus_reading", cfg.focusReading);
                 boolIn("sharp_images", cfg.sharpImages);
                 intIn("orientation", cfg.orientation, 0, 3);
+                intIn("ui_orientation", cfg.uiOrientation, 0, 3);
                 intIn("sb_top", cfg.sbTop, 0, 2);
                 intIn("sb_pages", cfg.sbPages, 0, 2);
                 intIn("sb_bottom", cfg.sbBottom, 0, 2);
@@ -383,6 +384,7 @@ bool StorageManager::saveConfig(const AppConfig& cfg) {
     doc["focus_reading"] = cfg.focusReading;
     doc["sharp_images"] = cfg.sharpImages;
     doc["orientation"] = cfg.orientation;
+    doc["ui_orientation"] = cfg.uiOrientation;
     doc["sb_top"] = cfg.sbTop;
     doc["sb_pages"] = cfg.sbPages;
     doc["sb_bottom"] = cfg.sbBottom;

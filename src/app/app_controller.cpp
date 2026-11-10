@@ -6,6 +6,7 @@
 #include "config.h"
 #include "screens/screens.h"
 #include "screens/appearance.h"
+#include "orientation.h"
 #include "screens/status_bar_menu.h"
 #include "../services/bookmarks.h"
 #include "touch_router.h"
@@ -29,6 +30,15 @@
 #include "../ui/views/settings_view.h"
 #include "../ui/views/reader_menu_view.h"
 #include "../ui/views/book_menu_view.h"
+
+namespace {
+AppContext* g_ctxForKeys = nullptr;
+bool keysUpsideDown() {
+    if (!g_ctxForKeys || uikit::touchOnly()) return false;
+    const int o = g_ctxForKeys->currentState == STATE_READING ? Reader.orientation() : g_ctxForKeys->config.uiOrientation;
+    return (o & 3) == 2;
+}
+}  // namespace
 
 void AppController::setup() {
     // 0. Disable any surviving deep-sleep pin holds from previous sleep cycle
@@ -101,7 +111,8 @@ void AppController::setup() {
     Reader.setLayoutOptions(Appearance::layoutOptions(_ctx.config));
     Reader.setFullRefreshEvery(_ctx.config.fullRefreshEvery);
     Reader.setSharpImages(_ctx.config.sharpImages);
-    Reader.setOrientation(_ctx.config.orientation);
+    g_ctxForKeys = &_ctx;
+    applyOrientation(_ctx.config.uiOrientation, _ctx.config.orientation);
     Reader.setStatusBar(StatusBarMenu::options(_ctx.config));
     Reader.setBookmarkProbe([](int spine, uint32_t from, uint32_t to) { return Bookmarks.findIn(spine, from, to) >= 0; });
     MemStats::mark("frontlight, reader");
@@ -195,9 +206,9 @@ void AppController::loop() {
             } else if (event.id >= BTN_SWIPE_LEFT && event.id <= BTN_SWIPE_DOWN) {
                 ButtonEvent translated;
                 if (TouchRouter::translateSwipe(_ctx, event, translated)) dispatch(translated);
-            } else if (_ctx.currentState == STATE_READING && Reader.orientation() == 2 &&
-                       (event.id == BTN_LEFT || event.id == BTN_RIGHT)) {
-                // Pages upside down: the front keys are at the top, in the other order.
+            } else if (keysUpsideDown() && (event.id == BTN_LEFT || event.id == BTN_RIGHT)) {
+                // The screen upside down: the front keys are at the top, in the other order
+                // (reading: as the book is turned; elsewhere as the interface is).
                 ButtonEvent turned = event;
                 turned.id = event.id == BTN_LEFT ? BTN_RIGHT : BTN_LEFT;
                 dispatch(turned);

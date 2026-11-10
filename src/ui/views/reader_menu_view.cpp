@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "reader_menu_view.h"
 #include "../../hal/display.h"
 #include "../../ui/font.h"
@@ -142,11 +143,20 @@ void drawReaderMenuScreen(AppContext& ctx, bool fullRefresh) {
         { tr(MsgId::READER_MENU_ITEM_RESUME), tr(MsgId::READER_MENU_RESUME_SUB), tr(MsgId::READER_MENU_TAG_READ) },
         { tr(MsgId::READER_MENU_ITEM_CLOSE), tr(MsgId::READER_MENU_CLOSE_SUB), tr(MsgId::READER_MENU_TAG_EXIT) },
     };
-    const int16_t cardH = (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 22);
-    for (int i = 0; i < NUM_READER_MENU_ITEMS; i++) {
-        card(f, takeTop(area, cardH), items[i].title, items[i].value, items[i].tag, i == ctx.selectedReaderMenuIndex,
-             ActionMenuItem, (int16_t)i);
-        takeTop(area, kGap);
+    int16_t cardH = (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 22);
+    int16_t gap = kGap;
+    const int n = NUM_READER_MENU_ITEMS;
+    if (n * (cardH + gap) > area.height) {   // a landscape screen: tighter, then a page at a time
+        gap = 4;
+        cardH = std::max<int16_t>((int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 6),
+                                  (int16_t)(area.height / n - gap));
+    }
+    const int perPage = std::max(1, (int)((area.height + gap) / (cardH + gap)));
+    const int sel = ctx.selectedReaderMenuIndex;
+    const int first = n > perPage ? (sel / perPage) * perPage : 0;
+    for (int i = first; i < n && i < first + perPage; i++) {
+        card(f, takeTop(area, cardH), items[i].title, items[i].value, items[i].tag, i == sel, ActionMenuItem, (int16_t)i);
+        takeTop(area, gap);
     }
 
     // Live preview of the book font (drawn with the reader's own font,
@@ -298,7 +308,11 @@ void drawAppearanceScreen(AppContext& ctx, bool fullRefresh) {
     area = insetXY(area, kMargin, 6);
     const int16_t rowH = (int16_t)(lineHeight(FontBody) + 12);
     char val[64];
-    for (int i = 0; i < Appearance::COUNT; i++) {
+    // All the rows when they fit (with room for the preview below), else the
+    // page of rows the selection is on (a landscape screen).
+    const int perPage = std::max(1, (int)(area.height / (rowH + 2)));
+    const int first = Appearance::COUNT > perPage ? (sel / perPage) * perPage : 0;
+    for (int i = first; i < Appearance::COUNT && i < first + perPage; i++) {
         Rect row = takeTop(area, rowH);
         const bool isSel = i == sel;
         if (isSel) fill(row, Color::Black, 4);

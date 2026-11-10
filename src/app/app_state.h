@@ -52,7 +52,11 @@ struct AppConfig {
     bool bookStyles = true;
     bool focusReading = false;
     bool sharpImages = false;    // pictures: threshold instead of dithering
-    int orientation = 0;         // pages: 0 portrait, 1 landscape, 2/3 the same upside down
+    // Orientations, a quarter turn a step: 0 portrait, 1 landscape, 2 portrait upside
+    // down, 3 landscape upside down. The interface (Settings) and the book on top
+    // of it (Appearance): the pages are turned by both.
+    int uiOrientation = 0;
+    int orientation = 0;
     // Status bar: top left 0 book title, 1 chapter, 2 none; page number 0 in the
     // book, 1 in the chapter, 2 none; bottom 0 chapter and progress bar, 1 bar, 2 none.
     int sbTop = 0, sbPages = 0, sbBottom = 0;
@@ -69,8 +73,10 @@ struct AppConfig {
 
 const int NUM_HOME_ITEMS = 4;      // 0=Recent, 1=Catalog, 2=Settings, 3=Sync
 const int NUM_CATALOG_ITEMS = 9;   // Search, All, Libraries, Authors, Series, Folders, Downloaded, Completed, Toggle Hide Completed
-const int NUM_SETTINGS_ITEMS = 8;  // + 1 (frontlight) on boards that have one, see settingsItemCount()
+const int NUM_SETTINGS_ITEMS = 9;  // + 1 (frontlight) on boards that have one, see settingsItemCount()
 int settingsItemCount();
+// The page orientation row: the last one (after the frontlight where there is one).
+inline int orientationSettingIndex() { return settingsItemCount() - 1; }
 const int NUM_WIFI_SETTINGS_ITEMS = 6;
 const int NUM_SERVER_SETTINGS_ITEMS = 4;
 const int NUM_SYNC_SETTINGS_ITEMS = 4;

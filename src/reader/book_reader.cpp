@@ -233,12 +233,26 @@ bool BookReader::setFontFamily(const String& name) {
     return true;
 }
 
+namespace {
+// The interface's own turn (menus drawn on top of a book's pages follow it).
+freeink::book::FrameRotation uiFrameRotation() {
+    using freeink::ui::Orientation;
+    using freeink::book::FrameRotation;
+    switch (uikit::target().orientation()) {
+        case Orientation::LandscapeCounterClockwise: return FrameRotation::None;
+        case Orientation::PortraitInverted: return FrameRotation::PortraitInverted;
+        case Orientation::LandscapeClockwise: return FrameRotation::UpsideDown;
+        default: return FrameRotation::Portrait;
+    }
+}
+}  // namespace
+
 int BookReader::drawSample(int x, int y, int width, int height, const char* utf8, uint16_t sizePx,
                            uint16_t lineSpacingPct) {
     uint8_t* fb = Display.getBuffer();
     if (!fb) return 0;
     freeink::book::FrameTarget frame{fb, (int16_t)EPD_WIDTH, (int16_t)EPD_HEIGHT, (int16_t)(EPD_WIDTH / 8),
-                                     freeink::book::FrameFormat::Mono1Sharp, freeink::book::FrameRotation::Portrait};
+                                     freeink::book::FrameFormat::Mono1Sharp, uiFrameRotation()};
     const int lh = _fonts.lineHeight(sizePx) * lineSpacingPct / 100, asc = _fonts.ascent(sizePx);
     int top = y;
     const char* p = utf8;
@@ -327,6 +341,7 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
     // The first page, drawn moved down to the box.
     struct Draw : PageSink {
         FontChain* fonts;
+        FrameRotation rotation = FrameRotation::Portrait;
         int dy;
         int clipTop = 0, ascent = 0;
         bool drawn = false;
@@ -334,7 +349,7 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
             if (drawn) return true;   // the first page only (see Lines)
             uint8_t* fb = Display.getBuffer();
             FrameTarget frame{fb, (int16_t)EPD_WIDTH, (int16_t)EPD_HEIGHT, (int16_t)(EPD_WIDTH / 8),
-                              FrameFormat::Mono1Sharp, FrameRotation::Portrait};
+                              FrameFormat::Mono1Sharp, rotation};
             PageTextRun runs[48];
             uint16_t n = 0;
             for (uint16_t i = 0; i < page.runCount; i++) {
@@ -359,6 +374,7 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
         }
     } sink;
     sink.fonts = &_fonts;
+    sink.rotation = uiFrameRotation();
     sink.dy = y;
     sink.clipTop = y;
     sink.ascent = _fonts.ascent(p.baseSizePx);
@@ -1900,20 +1916,6 @@ FrameRotation BookReader::frameRotation() const {
     }
 }
 
-int16_t BookReader::pageWidth() const { return (int16_t)(landscape() ? EPD_WIDTH : EPD_HEIGHT); }
-
-void BookReader::portraitToPage(int16_t x, int16_t y, int16_t& px, int16_t& py) const {
-    // portrait logical -> panel (the Portrait transform), then panel -> page
-    const int32_t W = EPD_WIDTH, H = EPD_HEIGHT;
-    const int32_t qx = y, qy = H - 1 - x;
-    switch (_orient) {
-        case 1: px = (int16_t)qx; py = (int16_t)qy; break;                          // native
-        case 2: px = (int16_t)qy; py = (int16_t)(W - 1 - qx); break;                // 90 CCW
-        case 3: px = (int16_t)(W - 1 - qx); py = (int16_t)(H - 1 - qy); break;      // 180
-        default: px = x; py = y; break;
-    }
-}
-
 bool BookReader::setFontSize(int size) {
     size = FontEngine::clampSize(size);
     if (size == _fontSize) return false;
@@ -1996,22 +1998,25 @@ void BookReader::drawStatusBar() {
 }
 
 namespace {
-// While a page is drawn the UI (status bar, a modal on the page) is turned as
-// the page is; menus are portrait again after.
+// While a page is drawn the UI (its status bar, a modal on it) is turned as the
+// page is; the interface's own turn after.
 struct TurnedUi {
-    explicit TurnedUi(int orient) {
+    freeink::ui::Orientation was;
+    explicit TurnedUi(freeink::book::FrameRotation r) : was(uikit::target().orientation()) {
         using freeink::ui::Orientation;
-        static const Orientation o[] = {Orientation::Portrait, Orientation::LandscapeCounterClockwise,
-                                        Orientation::PortraitInverted, Orientation::LandscapeClockwise};
-        uikit::setOrientation(o[orient & 3]);
+        using freeink::book::FrameRotation;
+        uikit::setOrientation(r == FrameRotation::None ? Orientation::LandscapeCounterClockwise
+                              : r == FrameRotation::PortraitInverted ? Orientation::PortraitInverted
+                              : r == FrameRotation::UpsideDown ? Orientation::LandscapeClockwise
+                                                               : Orientation::Portrait);
     }
-    ~TurnedUi() { uikit::setOrientation(freeink::ui::Orientation::Portrait); }
+    ~TurnedUi() { uikit::setOrientation(was); }
 };
 }  // namespace
 
 void BookReader::renderCurrentPage() {
     if (!_opened) return;
-    TurnedUi turned(_orient);
+    TurnedUi turned(frameRotation());
     const uint32_t t0 = millis();
     if (!resolve()) {
         Serial.printf("[Reader] Chapter %d cannot be shown (layout failed or no memory)\n", _spine);

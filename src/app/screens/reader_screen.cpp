@@ -1,5 +1,6 @@
 #include "screens.h"
 #include "appearance.h"
+#include "../orientation.h"
 #include "status_bar_menu.h"
 #include "../../services/bookmarks.h"
 #include "../../ui/font.h"
@@ -33,7 +34,7 @@ void commitFontSize(AppContext& ctx) {
     const bool bar = !(Reader.statusBar() == StatusBarMenu::options(ctx.config));
     if (!size && !layout && !turned && !bar) return;
     Reader.setStatusBar(StatusBarMenu::options(ctx.config));
-    Reader.setOrientation(ctx.config.orientation);
+    applyOrientation(ctx.config.uiOrientation, ctx.config.orientation);
     Reader.setLayoutOptions(Appearance::layoutOptions(ctx.config));
     Reader.setFontSize(ctx.config.readerFontSize);  // shows a status screen if it has to paginate
     LibraryManager::getInstance().flushReaderPosition();   // same place, new page numbers
@@ -430,7 +431,7 @@ void handleAppearanceEvent(AppContext& ctx, const ButtonEvent& event) {
                 drawFontMenuScreen(ctx, false);
             } else if (Appearance::step(ctx.config, sel, event.id == BTN_LEFT ? -1 : 1)) {
                 ctx.config.save();
-                drawAppearanceScreen(ctx, false);
+                drawAppearanceScreen(ctx, false);   // (the book turns when the menus are left)
             }
             break;
         case BTN_BACK:
