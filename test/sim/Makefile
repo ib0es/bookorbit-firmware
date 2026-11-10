@@ -33,7 +33,8 @@ SIM_CXX := $(filter-out simulator/src/sim_main.cpp simulator/src/net_sim.cpp .cp
 SIM_C   := $(shell sed -n '/^SRCS_C =/,/^$$/p' simulator/Makefile | grep -o '[A-Za-z0-9_/.-]*\.c\b')
 
 OPT ?= -O1
-CXXFLAGS := -std=c++17 $(OPT) -g -DARDUINO=100 -w -MMD -MP -include test/sim/prelude.h $(DEVFLAGS) \
+# The heap diagnostics (off in device builds) are kept on here: a scenario checks the probe.
+CXXFLAGS := -std=c++17 $(OPT) -g -DARDUINO=100 -DBOOKORBIT_MEM_DIAG=1 -w -MMD -MP -include test/sim/prelude.h $(DEVFLAGS) \
             -Itest/sim/stubs_net -Isimulator/include -Iinclude -Isrc -Isimulator/lib_adafruit_gfx \
             -Isimulator/lib_arduinojson/src -Ifreeink-sdk/libs/book/FreeInkBook/third_party/tjpgd \
             -Ifreeink-sdk/libs/ui/FreeInkUI/include
