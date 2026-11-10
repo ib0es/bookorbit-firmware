@@ -185,10 +185,14 @@ bool BookReader::openBook(const String& filePath) {
     _title = stemOf(filePath);
     String readPath = filePath;
     _convertStep = -1;
+    _convertProblem = 0;
     if (convert::needsConversion(filePath)) {
         // Read through an EPUB made from it once, kept beside its page cache.
-        if (!convert::ensureConverted(filePath, cacheDirFor(filePath), readPath, &BookReader::drawConvertProgress, this,
-                                      &_noMemory)) {
+        convert::ConvertProblem why = convert::ConvertProblem::None;
+        const bool converted = convert::ensureConverted(filePath, cacheDirFor(filePath), readPath,
+                                                        &BookReader::drawConvertProgress, this, &_noMemory, &why);
+        _convertProblem = (uint8_t)why;
+        if (!converted) {
             Serial.printf("[Reader] Cannot convert %s\n", filePath.c_str());
             return false;
         }

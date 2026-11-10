@@ -157,12 +157,13 @@ String readSmall(const String& path) {
 bool needsConversion(const String& path) {
     String l = path;
     l.toLowerCase();
-    return l.endsWith(".fb2") || l.endsWith(".mobi") || l.endsWith(".azw") || l.endsWith(".prc");
+    return l.endsWith(".fb2") || l.endsWith(".mobi") || l.endsWith(".azw") || l.endsWith(".azw3") || l.endsWith(".prc");
 }
 
 bool ensureConverted(const String& path, const String& cacheDir, String& epubPath, ProgressFn progress, void* user,
-                     bool* noMemory) {
+                     bool* noMemory, ConvertProblem* why) {
     if (noMemory) *noMemory = false;
+    if (why) *why = ConvertProblem::None;
     epubPath = cacheDir + "/book.epub";
     const String stampPath = cacheDir + "/source.txt";
     const String stamp = stampOf(path);
@@ -195,6 +196,12 @@ bool ensureConverted(const String& path, const String& cacheDir, String& epubPat
         Serial.printf("[Convert] %s: %s %s\n", path.c_str(), resultName(r), stats.error.c_str());
         Storage.remove(tmpEpub.c_str());
         if (noMemory) *noMemory = r == ConvertResult::NoMemory;
+        if (why) {
+            *why = r == ConvertResult::NoMemory      ? ConvertProblem::NoMemory
+                   : r == ConvertResult::Unsupported ? (stats.error.find("DRM") != std::string::npos ? ConvertProblem::Drm
+                                                                                                  : ConvertProblem::Unsupported)
+                                                     : ConvertProblem::Broken;
+        }
         return false;
     }
     FsFile s = Storage.open(stampPath.c_str(), O_RDWR | O_CREAT | O_TRUNC);

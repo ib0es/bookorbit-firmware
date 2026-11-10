@@ -42,6 +42,8 @@ public:
     bool isOpened() const { return _opened; }
     // The last openBook() failed for lack of memory (not a broken or DRM book).
     bool lastFailedForMemory() const { return _noMemory; }
+    // Why the last openBook() failed to convert the book (FB2/MOBI/AZW3), if it did.
+    uint8_t lastConvertProblem() const { return _convertProblem; }
     String getTitle() const { return _title; }
     String getOriginalFilePath() const { return _path; }
     // 0..1: whole chapters by their (exactly known) size, the current one by characters.
@@ -184,6 +186,7 @@ private:
 
     bool _opened = false;
     bool _noMemory = false;
+    uint8_t _convertProblem = 0;   // convert::ConvertProblem
     bool _isTxt = false;
     String _path;
     String _title;

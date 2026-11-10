@@ -224,7 +224,8 @@ static void testCp1252AndRefusals() {
     CHECK(!convertMobi(buildMobi("<p>x</p>", {}, 65001, 1, 2), epub, st, &r) && r == convert::ConvertResult::Unsupported);
     CHECK(st.error.find("DRM") != std::string::npos);
     CHECK(!convertMobi(buildMobi("<p>x</p>", {}, 65001, 17480), epub, st, &r) && r == convert::ConvertResult::Unsupported);
-    CHECK(!convertMobi(buildMobi("<p>x</p>", {}, 65001, 2, 0, 8), epub, st, &r) && r == convert::ConvertResult::Unsupported);
+    // KF8 without its part tables: unreadable
+    CHECK(!convertMobi(buildMobi("<p>x</p>", {}, 65001, 2, 0, 8), epub, st, &r) && r == convert::ConvertResult::ParseError);
     CHECK(!convertMobi("not a palm database at all, just text that is long enough to have a header......", epub, st, &r) &&
           r == convert::ConvertResult::NotThisFormat);
     // <br> straight inside a p starts the next p (without the space above); a
@@ -236,7 +237,7 @@ static void testCp1252AndRefusals() {
     o = openEpub(epub);
     CHECK(o.ok && contains(o.chapters, "<p style=\"text-indent:2em;margin-top:1em;\">one</p>\n<p style=\"text-indent:2em;\">two</p>\n"
                                        "<p style=\"text-indent:2em;\"><b>x<br/>y</b></p>"));
-    CHECK(contains(o.chapters, "</p>\n<p style=\"text-indent:0;\">word") && contains(o.chapters, "word399 </p>"));
+    CHECK(contains(o.chapters, "</p>\n<p style=\"margin-top:0;text-indent:0;\">word") && contains(o.chapters, "word399 </p>"));
     // A book with no page breaks and no contents: split by size, one entry per file.
     std::string big = "<html><body>";
     for (int i = 0; i < 3000; i++) big += "<p>Paragraph " + std::to_string(i) + " of one long run.</p>";
@@ -248,7 +249,9 @@ static void testCp1252AndRefusals() {
 }
 
 static void testRealBooks(const char* dir) {
-    for (const auto& f : filesIn(dir, ".mobi")) {
+    std::vector<std::string> files = filesIn(dir, ".mobi");
+    for (const auto& f : filesIn(dir, ".azw3")) files.push_back(f);
+    for (const auto& f : files) {
         const std::string mobi = readFile(f);
         std::string epub;
         convert::ConvertStats st;

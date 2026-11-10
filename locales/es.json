@@ -463,5 +463,7 @@
   "BOOK_MENU_FORMATS": "Formatos",
   "BOOK_MENU_FORMATS_SUB": "Leer el libro en otro formato",
   "READER_CONVERT_TITLE": "CONVIRTIENDO",
-  "READER_CONVERT_PROGRESS_FMT": "Preparando el libro para leer: %d%%"
+  "READER_CONVERT_PROGRESS_FMT": "Preparando el libro para leer: %d%%",
+  "READER_OPEN_DRM": "El libro está protegido (DRM)",
+  "READER_OPEN_VARIANT": "Esta variante del formato no es compatible"
 }

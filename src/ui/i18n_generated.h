@@ -477,7 +477,9 @@ enum class MsgId : uint16_t {
     BOOK_MENU_FORMATS_SUB = 462,
     READER_CONVERT_TITLE = 463,
     READER_CONVERT_PROGRESS_FMT = 464,
-    COUNT = 465
+    READER_OPEN_DRM = 465,
+    READER_OPEN_VARIANT = 466,
+    COUNT = 467
 };
 
 // Language: English (en)
@@ -947,6 +949,8 @@ static const char* const STRINGS_EN[(size_t)MsgId::COUNT] PROGMEM = {
     /* BOOK_MENU_FORMATS_SUB */ "Read the book in another format",
     /* READER_CONVERT_TITLE */ "CONVERTING",
     /* READER_CONVERT_PROGRESS_FMT */ "Preparing the book for reading: %d%%",
+    /* READER_OPEN_DRM */ "The book is copy-protected (DRM)",
+    /* READER_OPEN_VARIANT */ "This variant of the format is not supported",
 };
 
 // Language: Russian (ru)
@@ -1416,6 +1420,8 @@ static const char* const STRINGS_RU[(size_t)MsgId::COUNT] PROGMEM = {
     /* BOOK_MENU_FORMATS_SUB */ "Читать книгу в другом формате",
     /* READER_CONVERT_TITLE */ "ПРЕОБРАЗОВАНИЕ",
     /* READER_CONVERT_PROGRESS_FMT */ "Подготовка книги к чтению: %d%%",
+    /* READER_OPEN_DRM */ "Книга защищена от копирования (DRM)",
+    /* READER_OPEN_VARIANT */ "Этот вариант формата не поддерживается",
 };
 
 // Language: Spanish (es)
@@ -1885,6 +1891,8 @@ static const char* const STRINGS_ES[(size_t)MsgId::COUNT] PROGMEM = {
     /* BOOK_MENU_FORMATS_SUB */ "Leer el libro en otro formato",
     /* READER_CONVERT_TITLE */ "CONVIRTIENDO",
     /* READER_CONVERT_PROGRESS_FMT */ "Preparando el libro para leer: %d%%",
+    /* READER_OPEN_DRM */ "El libro está protegido (DRM)",
+    /* READER_OPEN_VARIANT */ "Esta variante del formato no es compatible",
 };
 
 static const char* const* const I18N_ALL_TABLES[(size_t)AppLanguage::COUNT] = {

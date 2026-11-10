@@ -1270,6 +1270,12 @@ void Fb2Converter::text(const char* s, int len) {
     while (_pass == 2 && _stack[_depth - 1] == E_P && _close[_depth - 1] == C_P && _pBytes + len > kParLimit) {
         const int room = (int)_pBytes < kParLimit ? kParLimit - (int)_pBytes : 0;
         int cut = room < len ? room : len;
+        // the end of a sentence in the last ~800 bytes reads best, else a space
+        int sentence = cut;
+        while (sentence > 1 && cut - sentence < 800 &&
+               !(s[sentence - 1] == ' ' && (s[sentence - 2] == '.' || s[sentence - 2] == '!' || s[sentence - 2] == '?')))
+            sentence--;
+        if (sentence > 1 && cut - sentence < 800) cut = sentence;
         while (cut > 0 && s[cut - 1] != ' ') cut--;
         if (cut == 0) {
             cut = room;

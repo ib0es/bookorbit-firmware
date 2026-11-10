@@ -256,10 +256,13 @@ LOG_SCENARIOS = [
     ("saved catalog of older firmware: its address still downloads",
      {}, None, "DC" + "DC" + "UC" + "w",
      [r"GET /api/v1/download/103 -> 200", r"Book /books/Moby Dick.epub downloaded successfully"], []),
-    ("formats list: a format the reader cannot open keeps the book's format",
-     {}, None, HOME_SYNC + FORMATS + "DDC",
-     [r"Formats of 'Alice in Wonderland': 4", r"'Alice in Wonderland': AZW3 cannot be opened yet"],
-     [r"format AZW3", r"download\?fileId=121"]),
+    # Every format the server lists is readable now (FB2, MOBI and AZW3 through a
+    # conversion): choosing one downloads it. The fake file is no real AZW3: the
+    # conversion refuses it and the book's format stays.
+    ("formats list: an AZW3 is downloaded and converted; a file that is no book is refused",
+     {}, None, HOME_SYNC + FORMATS + "DDC" + "w",
+     [r"Formats of 'Alice in Wonderland': 4", r"download\?fileId=121", r"\[Convert\] .*Alice in Wonderland\.azw3"],
+     [r"cannot be opened yet"]),
     ("formats list: another format is downloaded and opened at its own position",
      {"progress": [{"fileId": 101, "percentage": 40, "updatedAt": "NOW-50"},
                    {"fileId": 131, "percentage": 10, "updatedAt": "NOW-50"}]}, None, HOME_SYNC + FORMATS + "DC" + "w",

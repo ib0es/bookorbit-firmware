@@ -1,6 +1,7 @@
 #include "screens.h"
 #include "../../ui/font.h"
 #include "../../hal/mem_stats.h"
+#include "../../convert/sd_convert.h"
 #include "../../reader/reader.h"
 #include "../../hal/storage.h"
 #include "../../services/library_manager.h"
@@ -92,7 +93,12 @@ bool openBook(AppContext& ctx, const String& path, const String& title, const St
     Buttons.clearEvents();
     Serial.printf("[Reader] Opening book: %s (file %d)\n", path.c_str(), fileId);
     if (!Reader.openBook(path)) {
-        if (Reader.lastFailedForMemory()) {
+        const auto why = (convert::ConvertProblem)Reader.lastConvertProblem();
+        if (why == convert::ConvertProblem::Drm || why == convert::ConvertProblem::Unsupported) {
+            Modal.showMessage(tr(MsgId::READER_OPEN_ERR_TITLE), tr(MsgId::READER_OPEN_ERR_L1),
+                              tr(why == convert::ConvertProblem::Drm ? MsgId::READER_OPEN_DRM : MsgId::READER_OPEN_VARIANT),
+                              "", "", 4000, false, tr(MsgId::READER_OPEN_ERR_FOOTER));
+        } else if (Reader.lastFailedForMemory()) {
             Modal.showMessage(tr(MsgId::COMMON_ERROR), tr(MsgId::READER_OPEN_ERR_L1),
                               tr(MsgId::READER_OPEN_ERR_L2), "", "", 4000, false, tr(MsgId::READER_OPEN_ERR_FOOTER));
         } else {
