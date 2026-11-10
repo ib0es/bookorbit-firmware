@@ -5,6 +5,7 @@
 // Script: U D L R C B P = buttons, w = wait 2.2 s (runs loop()),
 //         S = server edit (renames <sd>/server_next.json to server.json),
 //         Z = sleep and wake up (setup() runs again, RAM state is rebuilt from the SD card),
+//         H<key> = hold an arrow key (U D L R) for 3 s (its auto-repeat),
 //         T<x>,<y>; tap, W<x0>,<y0>,<x1>,<y1>; swipe (logical portrait coordinates),
 //         [ ... ] = steps for a screen that runs its own input loop (keyboard, Wi-Fi
 //         list, web portal): queued first, then fed to that loop as it polls.
@@ -137,6 +138,18 @@ int main(int argc, char** argv) {
             case 'C': click(InputManager::BTN_CONFIRM, "CONFIRM"); break;
             case 'B': click(InputManager::BTN_BACK, "BACK"); break;
             case 'P': click(InputManager::BTN_POWER, "POWER"); break;
+            case 'H': {  // H<key>: hold for 3 s
+                const char k = i + 1 < script.size() ? script[++i] : 'D';
+                const InputManager::Button b = k == 'U' ? InputManager::BTN_UP : k == 'L' ? InputManager::BTN_LEFT
+                                             : k == 'R' ? InputManager::BTN_RIGHT : InputManager::BTN_DOWN;
+                g_label = "hold";
+                printf(">>> HOLD %c 3s\n", k);
+                InputManager::simPress(b);
+                const uint32_t t = millis();
+                while (millis() - t < 3000) loop();
+                InputManager::simRelease(b);
+                run(3);
+            } break;
             case 'S': { std::string r=std::string(argv[2]); std::rename((r+"/server_next.json").c_str(), (r+"/server.json").c_str()); printf(">>> SERVER UPDATED\n"); } break;
             case 'Z': g_label = "wake"; printf(">>> SLEEP + WAKE (setup again)\n");
                 g_simWakeCause = ESP_SLEEP_WAKEUP_TIMER; setup(); g_simWakeCause = ESP_SLEEP_WAKEUP_UNDEFINED; break;

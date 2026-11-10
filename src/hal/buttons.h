@@ -32,6 +32,9 @@ struct ButtonEvent {
     ButtonAction action;
     int16_t x = 0;   // BTN_TAP only
     int16_t y = 0;
+    // 0 for a press; 1, 2, 3... for the clicks an arrow key repeats while held
+    // (long lists move a page at a time after a few).
+    uint8_t repeat = 0;
 };
 
 class ButtonManager {
@@ -57,6 +60,10 @@ private:
     bool _hasPendingEvent;
     bool _powerLongPressFired;
     bool _lightSwitchChanged = false;
+    // Auto-repeat of a held arrow key.
+    ButtonId _heldKey = BTN_NONE;
+    uint32_t _heldSince = 0, _lastRepeat = 0;
+    uint8_t _repeats = 0;
 };
 
 extern ButtonManager Buttons;

@@ -24,7 +24,22 @@ void ButtonManager::update() {
         Serial.printf("[Buttons] Light switch: %s\n", _freeinkInput.isToggleSwitchOn() ? "on" : "off");
     }
 
+    // A held arrow key repeats: after 0.5 s, then every 0.25 s. The single event
+    // slot throttles it to the screen's pace: a click repeated while the panel
+    // refreshes waits for the next update().
+    if (_heldKey != BTN_NONE && !isPressed(_heldKey)) _heldKey = BTN_NONE;
     if (_hasPendingEvent) return; // Keep pending until consumed
+    if (_heldKey != BTN_NONE) {
+        const uint32_t now = millis();
+        if (now - _heldSince >= 500 && now - _lastRepeat >= 250) {
+            _lastRepeat = now;
+            if (_repeats < 255) _repeats++;
+            _pendingEvent = { _heldKey, ACTION_CLICK };
+            _pendingEvent.repeat = _repeats;
+            _hasPendingEvent = true;
+            return;
+        }
+    }
 
     // Check click / press edges
     if (_freeinkInput.wasPressed(InputManager::BTN_CONFIRM)) {
@@ -84,6 +99,15 @@ bool ButtonManager::getEvent(ButtonEvent& event) {
     if (_hasPendingEvent) {
         event = _pendingEvent;
         _hasPendingEvent = false;
+        // A fresh press of an arrow key starts its auto-repeat clock.
+        const ButtonId id = event.id;
+        if (event.repeat == 0 && (id == BTN_UP || id == BTN_DOWN || id == BTN_LEFT || id == BTN_RIGHT)) {
+            _heldKey = id;
+            _heldSince = _lastRepeat = millis();
+            _repeats = 0;
+        } else if (event.repeat == 0) {
+            _heldKey = BTN_NONE;
+        }
         return true;
     }
     return false;
@@ -104,6 +128,7 @@ bool ButtonManager::isPressed(ButtonId id) {
 
 void ButtonManager::clearEvents() {
     _hasPendingEvent = false;
+    _heldKey = BTN_NONE;
     _pendingEvent = { BTN_NONE, ACTION_NONE };
 }
 

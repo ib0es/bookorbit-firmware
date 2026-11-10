@@ -53,7 +53,8 @@ void drawTocScreen(AppContext& ctx, bool fullRefresh) {
     char navHints[160];
     snprintf(navHints, sizeof(navHints), tr(MsgId::READER_TOC_NAV_HINT_FMT), ctx.selectedTocIndex + 1, total,
              ctx.selectedTocIndex / perPage + 1, (total + perPage - 1) / perPage);
-    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_GO), "", ""}, navHints);
+    // LEFT / RIGHT: a page of chapters back / on.
+    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_GO), "\xE2\x97\x80\xE2\x97\x80", "\xE2\x96\xB6\xE2\x96\xB6"}, navHints);
     area = insetXY(area, kMargin, 10);
 
     const int currentChapterIdx = Reader.getCurrentChapterIndex();
