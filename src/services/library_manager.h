@@ -157,6 +157,11 @@ public:
     // marks the record dirty. `withXPath` also computes the KOReader xpath (reads the
     // SD card, so page turns skip it). `persist` writes both files.
     void recordReaderMove(bool withXPath, bool persist);
+    // Page turns are kept in memory (an SD write per page is slow and wears the
+    // card); they are written while the reader sits idle once a few piled up or
+    // a minute went by. Returns true when it wrote.
+    bool persistIfDue();
+    bool positionUnsaved() const { return _unsavedMoves > 0; }
     // Not a user move (closing, sleeping, font change, before a sync): refresh
     // page/xpath of lastBook and its record from the open reader, then save.
     void flushReaderPosition();
@@ -191,6 +196,8 @@ public:
 
 private:
     LibraryManager() = default;
+    int _unsavedMoves = 0;
+    uint32_t _firstUnsavedAt = 0;
     void buildMaster();
     void refreshProgress();
     void refreshCounts();

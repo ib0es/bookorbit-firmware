@@ -1164,6 +1164,7 @@ void LibraryManager::initLastBook() {
 
 
 bool LibraryManager::saveLastBook() {
+    _unsavedMoves = 0;
     bool ok = Storage.saveLastBook(lastBook);
     ProgressStore::instance().save();
     return ok;
@@ -1225,7 +1226,23 @@ void LibraryManager::recordReaderMove(bool withXPath, bool persist) {
     BookProgressRecord& rec = currentRecord();
     ProgressSync::recordLocalMove(rec.state, pos, SyncClock::nowUtc());
     ProgressStore::instance().touch();
-    if (persist) saveLastBook();
+    if (persist) {
+        saveLastBook();
+    } else if (_unsavedMoves++ == 0) {
+        _firstUnsavedAt = millis();
+    }
+}
+
+bool LibraryManager::persistIfDue() {
+    constexpr int kMaxUnsavedPages = 5;
+    constexpr uint32_t kMaxUnsavedMs = 60000;
+    if (_unsavedMoves == 0) return false;
+    if (_unsavedMoves < kMaxUnsavedPages && millis() - _firstUnsavedAt < kMaxUnsavedMs) return false;
+    const uint32_t t0 = millis();
+    const int pages = _unsavedMoves;
+    saveLastBook();
+    Serial.printf("[Library] Position saved while idle (%d page turns) in %lu ms\n", pages, (unsigned long)(millis() - t0));
+    return true;
 }
 
 void LibraryManager::flushReaderPosition() {

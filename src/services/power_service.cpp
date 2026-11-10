@@ -71,6 +71,30 @@ void PowerService::sleepIfIdle(AppContext& ctx) {
     }
 }
 
+void PowerService::checkBattery(AppContext& ctx) {
+    constexpr uint32_t kEveryMs = 60000;
+    constexpr int kCriticalPercent = 3;
+    static uint32_t s_lastCheck = 0;
+    static int s_lowReadings = 0;
+    const uint32_t now = millis();
+    if (now - s_lastCheck < kEveryMs) return;
+    s_lastCheck = now;
+    // A failed gauge read reports 0 % and 0 V: only a real voltage counts.
+    const int pct = Battery.getPercentage();
+    const float volts = Battery.getVoltage();
+    if (Battery.isCharging() || volts < 2.5f || pct > kCriticalPercent) {
+        s_lowReadings = 0;
+        return;
+    }
+    if (++s_lowReadings < 2) return;
+    Serial.printf("[Power] Battery critical (%d%%, %.2f V): saving and going to sleep.\n", pct, volts);
+    if (Reader.isOpened()) LibraryManager::getInstance().flushReaderPosition();
+    drawStatusModal(tr(MsgId::POWER_LOW_BATTERY_TITLE), tr(MsgId::POWER_LOW_BATTERY_L1), tr(MsgId::POWER_LOW_BATTERY_L2));
+    delay(3000);
+    enterDeepSleep(ctx);
+    s_lowReadings = 0;
+}
+
 bool PowerService::pollModalEvent(ButtonEvent& event) {
     AppContext& ctx = AppController::getInstance().getContext();
 

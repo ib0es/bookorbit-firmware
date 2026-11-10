@@ -224,6 +224,8 @@ void AppController::loop() {
 
     // Auto deep sleep on inactivity (only when on battery, never while plugged into USB)
     PowerService::sleepIfIdle(_ctx);
+    // An almost flat battery: save and sleep before the board browns out.
+    PowerService::checkBattery(_ctx);
 
     // While a page is being read, the chapters ahead are laid out in slices of a
     // few tens of milliseconds (buttons are polled between them). Leaving the page
@@ -238,6 +240,8 @@ void AppController::loop() {
         if (Reader.backgroundActive()) Reader.stopBackground();
     } else if (st == STATE_READING && !Modal.isActive() && millis() - _ctx.lastActivityTime > kPrelayoutIdleMs &&
                (int32_t)(millis() - s_restUntil) >= 0) {
+        // Page turns not on the card yet go first: a reset or a flat battery must not lose them.
+        if (LibraryManager::getInstance().persistIfDue()) return;
         const uint32_t t0 = millis();
         const bool worked = Reader.tickBackground();
         const uint32_t took = millis() - t0;
