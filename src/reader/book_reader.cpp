@@ -298,6 +298,7 @@ void BookReader::setupLayout() {
     p.stylesheet = _catalog.stylesheet();
     _params = p;
     _gen = layoutGenerationHash(_params, BitmapBookFont::kFingerprint);
+    _held.spine = -1;   // pages of another layout
 }
 
 void BookReader::releaseIndex() {
@@ -610,6 +611,7 @@ bool BookReader::resolve() {
         case Want::None: break;
     }
     _want = Want::None;
+    _held.spine = -1;
     if (_page < 0) _page = 0;
     if (_page >= count) _page = count - 1;
     return true;
@@ -732,6 +734,9 @@ void BookReader::stopBackground() {
         if (_want == Want::None && _loadedSpine == _bg->spine && _bg->writer.pageCount() > 0) {
             _want = Want::Page;
             _wantValue = (uint32_t)_page;
+            _held.spine = _spine;
+            _held.page = (uint32_t)_page;
+            _held.chars = _bg->writer.charStart((uint32_t)_page);
         }
         _loadedSpine = -1;
     }
@@ -916,7 +921,10 @@ bool BookReader::buildIncrementally(int spine) {
     if (!_bg || _bg->spine != spine) {
         stopBackground();
         ZipEntry e;
-        if (_catalog.spineEntry((size_t)spine, &e) == BookStatus::Ok && e.method != 0 && e.uncompressedSize > 200000) {
+        char unpacked[24];
+        snprintf(unpacked, sizeof(unpacked), "x%d.xhtml", spine);
+        if (_catalog.spineEntry((size_t)spine, &e) == BookStatus::Ok && e.method != 0 && e.uncompressedSize > 200000 &&
+            _cache.fileSize(unpacked) != (int64_t)e.uncompressedSize) {
             drawStatusModal(tr(MsgId::READER_FORMAT_TITLE), _title.substring(0, 32).c_str(), tr(MsgId::READER_FORMAT_LINE),
                             tr(MsgId::READER_OPENING_WAIT));   // unpacking a big one takes seconds
         }
@@ -933,11 +941,26 @@ bool BookReader::buildIncrementally(int spine) {
     return _loadedSpine == spine;
 }
 
+// Catching up far into a chapter (its job was stopped for a sync or sleep, or a
+// jump into a long one) takes seconds: the screen says so.
+void BookReader::sayCatchingUp(uint32_t pagesLeft) {
+    if (pagesLeft < 40) return;
+    Serial.printf("[Reader] Chapter %d: laying out ~%u pages to get there\n", _bg->spine, (unsigned)pagesLeft);
+    drawStatusModal(tr(MsgId::READER_FORMAT_TITLE), _title.substring(0, 32).c_str(), tr(MsgId::READER_FORMAT_LINE),
+                    tr(MsgId::READER_OPENING_WAIT));
+}
+
 void BookReader::buildUntilPages(uint32_t count) {
+    if (building() && _bg->writer.pageCount() < count) sayCatchingUp(count - _bg->writer.pageCount());
     while (building() && _bg->writer.pageCount() < count) stepBackground();
 }
 
 void BookReader::buildUntilChar(uint32_t chars) {
+    if (building()) {
+        const uint32_t n = _bg->writer.pageCount();
+        const uint32_t made = n > 0 ? _bg->writer.charStart(n - 1) : 0;
+        if (chars > made) sayCatchingUp((chars - made) / 1500);   // ~1500 characters a page
+    }
     // The page holding `chars` is complete once a later page starts after it.
     while (building()) {
         const uint32_t n = _bg->writer.pageCount();
@@ -979,8 +1002,13 @@ uint32_t BookReader::curTotalChars() const {
 // ---------------------------------------------------------------- position
 
 BookReader::Position BookReader::position() const {
-    settle();
     Position p;
+    if (heldHere()) {   // not worth laying the chapter out again for
+        p.spine = _spine;
+        p.chars = _held.chars;
+        return p;
+    }
+    settle();
     p.spine = _spine;
     if (_want == Want::Char) p.chars = _wantValue;
     else if (_want == Want::Fraction) p.chars = (uint32_t)(_wantFraction * charsOf(_spine));
@@ -1015,6 +1043,7 @@ float BookReader::getProgress() const {
 
 int BookReader::getCurrentPage() const {
     if (!_opened) return 1;
+    if (heldHere()) return globalPage(_spine, (int)_wantValue) + 1;
     settle();
     const int page = (_want == Want::None) ? _page : 0;
     return globalPage(_spine, page) + 1;

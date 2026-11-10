@@ -108,8 +108,14 @@ static int incrementalLayout(const char* path) {
         const BookReader::Position here = Reader.position();
         seen.push_back({here.spine, here.chars});
         if (seen.size() % 37 == 0 && Reader.backgroundActive()) {
+            const int pageBefore = Reader.getCurrentPage();
             Reader.stopBackground();
             stops++;
+            // where the reader is, known without laying the chapter out again (a sync, sleep)
+            if (Reader.getCurrentPage() != pageBefore || Reader.backgroundActive()) {
+                if (stopFail++ < 3) printf("  incremental: after a stop, page %d (was %d), %s\n", Reader.getCurrentPage(),
+                                           pageBefore, Reader.backgroundActive() ? "laid out again" : "not laid out");
+            }
             if (Reader.position().spine != here.spine || Reader.position().chars != here.chars) {
                 if (stopFail++ < 3) printf("  incremental: after a stop at %d:%u, %d:%u\n", here.spine, (unsigned)here.chars,
                                            Reader.position().spine, (unsigned)Reader.position().chars);

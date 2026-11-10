@@ -144,7 +144,8 @@ private:
     bool building() const;
     void makeRoom();                          // frees the job's memory the cheaper way (drop or finish)
     bool buildIncrementally(int spine);       // starts (or adopts) the job, waits for the first page
-    void buildUntilPages(uint32_t count);     // waits until `count` pages exist (or the chapter ends)
+    void buildUntilPages(uint32_t count);
+    void sayCatchingUp(uint32_t pagesLeft);     // waits until `count` pages exist (or the chapter ends)
     void buildUntilChar(uint32_t chars);      // until the page holding `chars` is complete
     void buildUntilAnchor(uint32_t idHash);
     uint32_t curCount() const;
@@ -224,6 +225,10 @@ private:
 
     Want _want = Want::None;
     uint32_t _wantValue = 0;
+    // Where the page on screen starts, kept when its layout job is stopped (for a
+    // sync, sleep): its position is then known without laying the chapter out again.
+    struct Held { int spine = -1; uint32_t page = 0, chars = 0; } _held;
+    bool heldHere() const { return _want == Want::Page && _held.spine == _spine && _held.page == _wantValue; }
     float _wantFraction = 0.0f;   // Want::Fraction: share of the chapter's characters
 
     // getCfi() is a chapter walk: cached for the page it was made for.
