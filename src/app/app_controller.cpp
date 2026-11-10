@@ -101,27 +101,17 @@ void AppController::setup() {
 
     // 3. Load configuration from SD card if present
     _ctx.config.load();
-    I18n::setLanguage(_ctx.config.language);
-    MemStats::mark("config, language");
     Frontlight.begin();
     if (Buttons.hasLightSwitch()) Frontlight.setEnabled(Buttons.lightSwitchOn());
-    Frontlight.apply(_ctx.config.frontlight, _ctx.config.frontlightWarm);
-    Reader.setFontSize(_ctx.config.readerFontSize);
-    Reader.setFontFamily(_ctx.config.readerFont);
-    Reader.setLayoutOptions(Appearance::layoutOptions(_ctx.config));
-    Reader.setFullRefreshEvery(_ctx.config.fullRefreshEvery);
-    Reader.setSharpImages(_ctx.config.sharpImages);
     g_ctxForKeys = &_ctx;
-    applyOrientation(_ctx.config.uiOrientation, _ctx.config.orientation);
-    Reader.setStatusBar(StatusBarMenu::options(_ctx.config));
+    applyConfig();
     Reader.setBookmarkProbe([](int spine, uint32_t from, uint32_t to) { return Bookmarks.findIn(spine, from, to) >= 0; });
-    MemStats::mark("frontlight, reader");
+    MemStats::mark("config, frontlight, reader");
 
     // 4. Per-book progress, scan local books on SD, 5. load last read book state
     ProgressStore::instance().load();
     MemStats::mark("progress.json");
     auto& lib = LibraryManager::getInstance();
-    lib.setHideCompleted(_ctx.config.hideCompleted);
     lib.scanLocalBooks();
     lib.initLastBook();
     MemStats::mark("library");
@@ -160,6 +150,20 @@ void AppController::setup() {
     syncAfterWake();
     Buttons.clearEvents();
     _ctx.lastActivityTime = millis();
+}
+
+void AppController::applyConfig() {
+    const AppConfig& c = _ctx.config;
+    I18n::setLanguage(c.language);
+    Frontlight.apply(c.frontlight, c.frontlightWarm);
+    Reader.setFullRefreshEvery(c.fullRefreshEvery);
+    Reader.setSharpImages(c.sharpImages);
+    Reader.setFontFamily(c.readerFont);
+    Reader.setLayoutOptions(Appearance::layoutOptions(c));
+    applyOrientation(c.uiOrientation, c.orientation);
+    Reader.setStatusBar(StatusBarMenu::options(c));
+    Reader.setFontSize(c.readerFontSize);
+    LibraryManager::getInstance().setHideCompleted(c.hideCompleted);
 }
 
 // The background layout waits this long after a key: quick page turns run
