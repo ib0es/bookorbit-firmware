@@ -115,6 +115,10 @@ public:
     int drawSample(int x, int y, int width, int height, const char* utf8, uint16_t sizePx,
                    uint16_t lineSpacingPct = 100);
     int sampleLineHeight(uint16_t sizePx) { return _fonts.lineHeight(sizePx); }
+    // Lays out `text` (paragraphs split by blank lines) as a page would be with
+    // these options and size, and draws what fits in the box: the Appearance
+    // preview. Falls back to drawSample() when there is no memory to lay out.
+    void drawPreview(int y, int height, const char* text, const LayoutOptions& options, int sizeIndex);
     bool setFontSize(int size);
     static const char* getFontSizeName(int size);
 

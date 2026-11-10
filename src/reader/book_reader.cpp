@@ -274,6 +274,89 @@ int BookReader::drawSample(int x, int y, int width, int height, const char* utf8
     return top - y;
 }
 
+void BookReader::drawPreview(int y, int height, const char* text, const LayoutOptions& o, int sizeIndex) {
+    using namespace freeink::book;
+    LayoutParams p;
+    p.pageWidth = (int16_t)Display.width();
+    p.pageHeight = (int16_t)height;
+    p.marginLeft = p.marginRight = (int16_t)o.marginPx;
+    p.marginTop = p.marginBottom = 0;
+    p.baseSizePx = (uint16_t)FontEngine::sizePx(sizeIndex);
+    p.font = &_fonts;
+    p.defaultAlign = o.justify ? TextAlign::Justify : TextAlign::Left;
+    // The sample's own language (the menu's), for its hyphenation.
+    bool cyrillic = false;
+    for (const char* c = text; *c && !cyrillic; c++) cyrillic = (uint8_t)*c == 0xD0 || (uint8_t)*c == 0xD1;
+    p.language = cyrillic ? "ru" : "en";
+    p.hyphenator = o.hyphenate ? hyphenatorFor(p.language) : nullptr;
+    p.stylesheet = o.bookStyles && _opened ? _catalog.stylesheet() : nullptr;
+    p.embeddedStyles = o.bookStyles;
+    p.lineSpacingPct = o.lineSpacingPct;
+    p.paragraphSpacingPct = o.paragraphSpacingPct;
+    p.orphanLines = p.widowLines = o.keepLines ? 2 : 1;
+    p.focusReading = o.focusReading;
+
+    struct TextSource : BookSource {
+        const char* s;
+        uint32_t n;
+        int32_t readAt(uint64_t off, void* dst, uint32_t len) override {
+            if (off >= n) return 0;
+            const uint32_t k = std::min<uint32_t>(len, n - (uint32_t)off);
+            memcpy(dst, s + off, k);
+            return (int32_t)k;
+        }
+        uint64_t size() const override { return n; }
+    } src;
+    src.s = text;
+    src.n = (uint32_t)strlen(text);
+    // The first page, drawn moved down to the box.
+    struct Draw : PageSink {
+        FontChain* fonts;
+        int dy;
+        bool drawn = false;
+        bool onPage(const Page& page) override {
+            uint8_t* fb = Display.getBuffer();
+            FrameTarget frame{fb, (int16_t)EPD_WIDTH, (int16_t)EPD_HEIGHT, (int16_t)(EPD_WIDTH / 8),
+                              FrameFormat::Mono1Sharp, FrameRotation::Portrait};
+            PageTextRun runs[48];
+            uint16_t n = 0;
+            for (uint16_t i = 0; i < page.runCount; i++) {
+                if (n == 48) {   // in batches: a justified line is a run per word
+                    Page part{};
+                    part.runs = runs;
+                    part.runCount = n;
+                    PageRenderer::renderText(part, *fonts, frame);
+                    n = 0;
+                }
+                runs[n] = page.runs[i];
+                runs[n].baselineY = (int16_t)(runs[n].baselineY + dy);
+                n++;
+            }
+            Page part{};
+            part.runs = runs;
+            part.runCount = n;
+            PageRenderer::renderText(part, *fonts, frame);
+            drawn = true;
+            return false;   // the first page only
+        }
+    } sink;
+    sink.fonts = &_fonts;
+    sink.dy = y;
+    BookStatus st = BookStatus::OutOfMemory;
+    for (size_t cap : {(size_t)24 * 1024, (size_t)40 * 1024}) {
+        Buffer mem(cap);
+        if (!mem.p) continue;
+        Arena a(mem.p, cap);
+        st = ChapterLayout::layoutPlainText(src, p, a, sink);
+        if (st != BookStatus::OutOfMemory || sink.drawn) break;
+    }
+    if (!sink.drawn) {
+        Serial.printf("[Reader] Appearance preview not laid out (%s): a plain sample instead\n", bookStatusName(st));
+        drawSample(o.marginPx, y, Display.width() - 2 * o.marginPx, height, text, (uint16_t)FontEngine::sizePx(sizeIndex),
+                   o.lineSpacingPct);
+    }
+}
+
 const char* BookReader::getFontSizeName(int size) {
     static char buf[8][12];   // a few names may be alive at once (menus)
     static int next = 0;

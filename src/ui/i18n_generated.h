@@ -1014,7 +1014,7 @@ static const char* const STRINGS_EN[(size_t)MsgId::COUNT] PROGMEM = {
     /* APPEAR_REFRESH_NEVER */ "never",
     /* APPEAR_ON */ "on",
     /* APPEAR_OFF */ "off",
-    /* APPEAR_SAMPLE */ "Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do.",
+    /* APPEAR_SAMPLE */ "Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do: once or twice she had peeped into the book her sister was reading, but it had no pictures or conversations in it.\n\n“And what is the use of a book,” thought Alice, “without pictures or conversations?” So she was considering in her own mind whether the pleasure of making a daisy-chain would be worth the trouble.",
 };
 
 // Language: Russian (ru)
@@ -1517,7 +1517,7 @@ static const char* const STRINGS_RU[(size_t)MsgId::COUNT] PROGMEM = {
     /* APPEAR_REFRESH_NEVER */ "никогда",
     /* APPEAR_ON */ "вкл",
     /* APPEAR_OFF */ "выкл",
-    /* APPEAR_SAMPLE */ "Алисе наскучило сидеть с сестрой без дела на берегу реки; разок-другой она заглянула в книжку, которую читала сестра.",
+    /* APPEAR_SAMPLE */ "Алисе наскучило сидеть с сестрой без дела на берегу реки; разок-другой она заглянула в книжку, которую читала сестра, но там не было ни картинок, ни разговоров.\n\n— Что толку в книжке, — подумала Алиса, — если в ней нет ни картинок, ни разговоров? Она сидела и размышляла, не встать ли ей и не нарвать ли цветов для венка.",
 };
 
 // Language: Spanish (es)
@@ -2020,7 +2020,7 @@ static const char* const STRINGS_ES[(size_t)MsgId::COUNT] PROGMEM = {
     /* APPEAR_REFRESH_NEVER */ "nunca",
     /* APPEAR_ON */ "sí",
     /* APPEAR_OFF */ "no",
-    /* APPEAR_SAMPLE */ "Alicia empezaba a cansarse de estar sentada con su hermana a la orilla del río, sin tener nada que hacer.",
+    /* APPEAR_SAMPLE */ "Alicia empezaba a cansarse de estar sentada con su hermana a la orilla del río, sin tener nada que hacer: había echado un par de ojeadas al libro que su hermana estaba leyendo, pero no tenía dibujos ni diálogos.\n\n«¿Y de qué sirve un libro sin dibujos ni diálogos?», se preguntaba Alicia. Así pues, estaba pensando si el placer de tejer una guirnalda de margaritas le compensaría la molestia.",
 };
 
 static const char* const* const I18N_ALL_TABLES[(size_t)AppLanguage::COUNT] = {

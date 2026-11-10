@@ -306,9 +306,8 @@ void drawAppearanceScreen(AppContext& ctx, bool fullRefresh) {
     takeTop(area, 6);
     if (area.height > 40) {
         hline(0, width(), area.y);
-        const int m = ctx.config.marginPx;
-        Reader.drawSample(m, area.y + 6, width() - 2 * m, area.height - 8, tr(MsgId::APPEAR_SAMPLE),
-                          (uint16_t)FontEngine::sizePx(ctx.config.readerFontSize), (uint16_t)ctx.config.lineSpacing);
+        Reader.drawPreview(area.y + 6, area.height - 8, tr(MsgId::APPEAR_SAMPLE), Appearance::layoutOptions(ctx.config),
+                           ctx.config.readerFontSize);
     }
     present(fullRefresh);
 }

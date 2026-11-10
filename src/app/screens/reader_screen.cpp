@@ -71,6 +71,7 @@ void executeMenuAction(AppContext& ctx, int index) {
             }
             break;
         case 1:  // Оформление
+            Reader.stopBackground();   // its memory lays out the preview
             ctx.currentState = STATE_APPEARANCE_MENU;
             drawAppearanceScreen(ctx, false);
             break;
