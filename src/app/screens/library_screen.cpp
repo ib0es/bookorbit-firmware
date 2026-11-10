@@ -1,4 +1,5 @@
 #include "screens.h"
+#include <algorithm>
 #include "../../hal/storage.h"
 #include "../../services/library_manager.h"
 #include "../../services/sync_service.h"
@@ -260,17 +261,22 @@ void handleEvent(AppContext& ctx, const ButtonEvent& event) {
     auto& lib = LibraryManager::getInstance();
     const int count = lib.rowCount();
 
+    // Held down: a row at a time, then a page at a time after a few repeats.
+    const int step = event.repeat >= 4 ? std::max(1, libraryRowsPerPage()) : 1;
     switch (event.id) {
         case BTN_DOWN:
             if (count > 0) {
-                lib.selectedBookIndex = (lib.selectedBookIndex + 1) % count;
-                drawLibraryScreen(ctx);
+                const int at = lib.selectedBookIndex;
+                // A repeat stops at the end of the list instead of wrapping around.
+                lib.selectedBookIndex = event.repeat ? std::min(at + step, count - 1) : (at + 1) % count;
+                if (lib.selectedBookIndex != at) drawLibraryScreen(ctx);
             }
             break;
         case BTN_UP:
             if (count > 0) {
-                lib.selectedBookIndex = (lib.selectedBookIndex - 1 + count) % count;
-                drawLibraryScreen(ctx);
+                const int at = lib.selectedBookIndex;
+                lib.selectedBookIndex = event.repeat ? std::max(at - step, 0) : (at - 1 + count) % count;
+                if (lib.selectedBookIndex != at) drawLibraryScreen(ctx);
             }
             break;
         case BTN_CONFIRM:

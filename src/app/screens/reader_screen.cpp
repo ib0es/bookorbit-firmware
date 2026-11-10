@@ -1,4 +1,5 @@
 #include "screens.h"
+#include <algorithm>
 #include "appearance.h"
 #include "../orientation.h"
 #include "status_bar_menu.h"
@@ -248,12 +249,18 @@ void handleTocEvent(AppContext& ctx, const ButtonEvent& event) {
     if (event.action != ACTION_CLICK) return;
     auto& lib = LibraryManager::getInstance();
 
-    if (event.id == BTN_DOWN || event.id == BTN_UP) {
-        int prev = ctx.selectedTocIndex;
-        if (event.id == BTN_DOWN && ctx.selectedTocIndex + 1 < Reader.getChapterCount()) ctx.selectedTocIndex++;
-        if (event.id == BTN_UP && ctx.selectedTocIndex > 0) ctx.selectedTocIndex--;
+    if (event.id == BTN_DOWN || event.id == BTN_UP || event.id == BTN_LEFT || event.id == BTN_RIGHT) {
+        const int prev = ctx.selectedTocIndex;
+        const int perPage = std::max(1, tocRowsPerPage());   // as many rows as the last drawing fitted
+        const int n = Reader.getChapterCount();
+        // UP/DOWN a row (a page at a time once held for a while), LEFT/RIGHT a page.
+        const bool byPage = event.id == BTN_LEFT || event.id == BTN_RIGHT || event.repeat >= 4;
+        const bool down = event.id == BTN_DOWN || event.id == BTN_RIGHT;
+        int to = prev;
+        if (byPage) to = down ? (prev / perPage + 1) * perPage : (prev / perPage - (prev % perPage == 0 ? 1 : 0)) * perPage;
+        else to = down ? prev + 1 : prev - 1;
+        ctx.selectedTocIndex = std::max(0, std::min(to, n - 1));
         if (prev != ctx.selectedTocIndex) {
-            const int perPage = tocRowsPerPage();   // as many rows as the last drawing fitted
             const bool pageChanged = (prev / perPage != ctx.selectedTocIndex / perPage);
             drawTocScreen(ctx, pageChanged && uikit::periodicFullRefresh());
         }
