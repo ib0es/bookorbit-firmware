@@ -71,6 +71,10 @@ CASES = [
     ("library: Cancel in the delete dialog keeps the book",
      HOME_ALL_BOOKS + LIB_FRANKENSTEIN + "T240,256;" + "T140,475;",
      lambda log, sd: "Deleting" not in log and os.path.exists(os.path.join(sd, "books/Frankenstein.epub"))),
+    ("catalog: a book's formats list, tap a format in the cloud downloads and opens it",
+     HOME_SYNC + "ww" + HOME_CATALOG + CATALOG_ALL_BOOKS + "T200,123;" + "T240,275;" + "T200,267;" + "w",
+     lambda log, sd: "Alice in Wonderland.fb2 downloaded successfully" in log.split("TAP_200_267", 1)[1]
+     and "Opening book: /books/Alice in Wonderland.fb2" in log),
     ("library: book menu Back and title tap return",
      HOME_ALL_BOOKS + LIB_FRANKENSTEIN + TITLE + LIB_FRANKENSTEIN + BACK + TITLE + TITLE,
      lambda log, sd: log.rstrip().endswith("frames") and "drawHomeScreen" in log.split("TAP_240_20")[-1]),

@@ -54,8 +54,9 @@ bool translate(AppContext& ctx, const ButtonEvent& tap, ButtonEvent& out) {
             auto& lib = LibraryManager::getInstance();
             if (value < 0 || value >= lib.rowCount()) return false;
             lib.selectedBookIndex = value;
-            // A tap on a book opens its menu (Read first); folders open directly.
-            if (!lib.rowAt(value).isDirectory) {
+            // A tap on a book opens its menu (Read first); folders and format rows
+            // (a book's list of formats: they have no menu) open directly.
+            if (!lib.rowAt(value).isDirectory && lib.rowAt(value).formatRow < 0) {
                 LibraryScreen::openBookMenu(ctx);
                 return false;
             }
