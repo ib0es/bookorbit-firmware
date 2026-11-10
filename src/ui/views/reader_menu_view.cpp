@@ -4,6 +4,7 @@
 #include "../../reader/reader.h"
 #include "../../reader/font_store.h"
 #include "../../app/screens/appearance.h"
+#include "../../app/screens/status_bar_menu.h"
 #include "../../services/bookmarks.h"
 #include "../i18n.h"
 #include "../kit/ui_kit.h"
@@ -14,7 +15,7 @@ static int s_tocRowsPerPage = 1;
 int tocRowsPerPage() { return s_tocRowsPerPage; }
 
 namespace {
-enum ReaderMenuAction : fi::ActionId { ActionChapter = 1, ActionMenuItem, ActionFontSize, ActionTypeface, ActionAppearance, ActionBookmark };
+enum ReaderMenuAction : fi::ActionId { ActionChapter = 1, ActionMenuItem, ActionFontSize, ActionTypeface, ActionAppearance, ActionBookmark, ActionStatusBar };
 }
 
 void drawTocScreen(AppContext& ctx, bool fullRefresh) {
@@ -317,6 +318,37 @@ void drawAppearanceScreen(AppContext& ctx, bool fullRefresh) {
         hline(0, width(), area.y);
         Reader.drawPreview(area.y + 6, area.height - 8, tr(MsgId::APPEAR_SAMPLE), Appearance::layoutOptions(ctx.config),
                            ctx.config.readerFontSize);
+    }
+    present(fullRefresh);
+}
+
+// ------------------------------------------------------------- status bar
+
+void drawStatusBarScreen(AppContext& ctx, bool fullRefresh) {
+    Pass pass;
+    Frame& f = pass.frame();
+    clear();
+    int& sel = ctx.selectedStatusBarIndex;
+    if (sel < 0) sel = 0;
+    if (sel >= StatusBarMenu::COUNT) sel = StatusBarMenu::COUNT - 1;
+    Rect area = topBar(f, tr(MsgId::SB_TITLE));
+    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_CHANGE), "\xE2\x97\x80", "\xE2\x96\xB6"});
+    area = insetXY(area, kMargin, 6);
+    const int16_t rowH = (int16_t)(lineHeight(FontBody) + 12);
+    char val[64];
+    for (int i = 0; i < StatusBarMenu::COUNT; i++) {
+        Rect row = takeTop(area, rowH);
+        const bool isSel = i == sel;
+        if (isSel) fill(row, Color::Black, 4);
+        const Color ink = isSel ? Color::White : Color::Black;
+        Rect in = insetX(row, 10);
+        StatusBarMenu::value(ctx.config, i, val, sizeof(val));
+        const int16_t vw = (int16_t)(textWidth(FontBody, val) + 4);
+        text(Rect{(int16_t)(in.right() - vw), in.y, vw, in.height}, val, FontBody, ink, TextAlign::Right);
+        text(Rect{in.x, in.y, (int16_t)(in.width - vw - 8), in.height}, StatusBarMenu::label(i), FontBody, ink);
+        if (!isSel) hline((int16_t)(row.x + 6), (int16_t)(row.right() - 6), (int16_t)(row.bottom() - 1));
+        f.hit(row, ActionStatusBar, (int16_t)i);
+        takeTop(area, 2);
     }
     present(fullRefresh);
 }

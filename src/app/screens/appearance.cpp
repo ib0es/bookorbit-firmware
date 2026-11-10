@@ -46,6 +46,7 @@ const char* label(int row) {
         case IMAGES: return tr(MsgId::APPEAR_IMAGES);
         case ORIENTATION: return tr(MsgId::APPEAR_ORIENTATION);
         case FULL_REFRESH: return tr(MsgId::APPEAR_FULL_REFRESH);
+        case STATUS_BAR: return tr(MsgId::APPEAR_STATUS_BAR);
     }
     return "";
 }
@@ -77,6 +78,7 @@ const char* value(const AppConfig& cfg, int row, char* buf, size_t len) {
             if (cfg.fullRefreshEvery <= 0) snprintf(buf, len, "%s", tr(MsgId::APPEAR_REFRESH_NEVER));
             else snprintf(buf, len, tr(MsgId::APPEAR_REFRESH_FMT), cfg.fullRefreshEvery);
             break;
+        case STATUS_BAR: snprintf(buf, len, "%s", "\xE2\x96\xB6"); break;   // a menu of its own
         default: buf[0] = 0;
     }
     return buf;

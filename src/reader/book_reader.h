@@ -128,6 +128,21 @@ public:
     // the one before). A landscape page is laid out wider; the book is laid out
     // again at the same sentence. Menus stay portrait. False when nothing changed.
     bool setOrientation(int orientation);
+    // What the status bar shows (above and below the text). Hiding a line gives
+    // its room to the text (the book is laid out again). False when nothing changed.
+    struct StatusBar {
+        uint8_t top = 0;       // top left: 0 book title, 1 chapter title, 2 nothing
+        uint8_t pages = 0;     // 0 page in the book, 1 page in the chapter, 2 none
+        bool percent = false;  // how much of the book is read
+        bool battery = true;
+        uint8_t bottom = 0;    // 0 chapter title and progress bar, 1 the bar, 2 nothing
+        bool topShown() const { return top != 2 || pages != 2 || percent || battery; }
+        bool operator==(const StatusBar& o) const {
+            return top == o.top && pages == o.pages && percent == o.percent && battery == o.battery && bottom == o.bottom;
+        }
+    };
+    bool setStatusBar(const StatusBar& bar);
+    const StatusBar& statusBar() const { return _bar; }
     int orientation() const { return _orient; }
     bool landscape() const { return _orient == 1 || _orient == 3; }
     // Panel point (as touch reports it in portrait terms) -> the page's.
@@ -294,6 +309,7 @@ private:
     int _fullEvery = FULL_REFRESH_EVERY_PAGES;
     bool _sharpImages = false;
     int _orient = 0;
+    StatusBar _bar;
     freeink::book::FrameRotation frameRotation() const;
     uint32_t _gen = 0;
 

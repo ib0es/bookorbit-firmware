@@ -578,8 +578,10 @@ void BookReader::setupLayout() {
     (void)geo;
     p.marginLeft = (int16_t)_opts.marginPx;
     p.marginRight = (int16_t)_opts.marginPx;
-    p.marginTop = (int16_t)geo.top;
-    p.marginBottom = 56;   // the chapter line and progress bar below (rule at height - 44)
+    // Room for the status bar: its top line, and below the chapter line and progress
+    // bar (rule at height - 44), the bar alone, or nothing.
+    p.marginTop = (int16_t)(_bar.topShown() ? geo.top : 16);
+    p.marginBottom = (int16_t)(_bar.bottom == 0 ? 56 : _bar.bottom == 1 ? 30 : 16);
     p.baseSizePx = (uint16_t)FontEngine::sizePx(_fontSize);
     p.font = &_fonts;
     p.defaultAlign = _opts.justify ? freeink::book::TextAlign::Justify : freeink::book::TextAlign::Left;
@@ -1874,6 +1876,21 @@ bool BookReader::setOrientation(int orientation) {
     return true;
 }
 
+bool BookReader::setStatusBar(const StatusBar& bar) {
+    if (bar == _bar) return false;
+    const bool relayout = bar.topShown() != _bar.topShown() || (bar.bottom == 0) != (_bar.bottom == 0) ||
+                          (bar.bottom == 2) != (_bar.bottom == 2);
+    _bar = bar;
+    if (_opened && relayout) {
+        const Position here = position();
+        releaseIndex();
+        setupLayout();
+        loadSpineTable();
+        goTo(here);
+    }
+    return true;
+}
+
 FrameRotation BookReader::frameRotation() const {
     switch (_orient) {
         case 1: return FrameRotation::None;
@@ -1919,32 +1936,62 @@ void BookReader::drawStatusBar() {
     Pass pass;
     Frame& f = pass.frame();
     const int16_t left = 20, right = (int16_t)(width() - 20);
-    char statusRight[64];
-    snprintf(statusRight, sizeof(statusRight), "%d/%d  |  %d%%", getCurrentPage(), getTotalPages(),
-             Battery.getPercentage());
-    const int16_t rw = (int16_t)(textWidth(FontSmall, statusRight) + 4);
-    Rect topBand{left, 4, (int16_t)(right - left), 24};
-    text(Rect{(int16_t)(right - rw), topBand.y, rw, topBand.height}, statusRight, FontSmall, Color::Black,
-         uikit::TextAlign::Right);
-    text(Rect{left, topBand.y, (int16_t)(topBand.width - rw - 12), topBand.height}, _title.c_str(), FontSmall);
-    hline(left, right, 30);
-    // A bookmarked page: a ribbon hanging from the top rule, left of the numbers.
-    int bSpine;
-    uint32_t bFrom, bTo;
-    if (_bookmarkProbe && pageRange(bSpine, bFrom, bTo) && _bookmarkProbe(bSpine, bFrom, bTo)) {
-        const int16_t bx = (int16_t)(right - rw - 22);
-        fill(Rect{bx, 0, 12, 22}, Color::Black);
-        for (int16_t i = 0; i < 6; i++) hline((int16_t)(bx + i), (int16_t)(bx + 12 - i), (int16_t)(22 - 6 + i), Color::White);
-    }
-    const int16_t bottomRule = (int16_t)(height() - 44);
-    hline(left, right, bottomRule);
-    String chTitle = getCurrentChapterTitle();
-    const int32_t permille = (int32_t)(getProgress() * 1000.0f);
-    if (chTitle.length() > 0) {
-        text(Rect{left, (int16_t)(bottomRule + 2), (int16_t)(right - left), 20}, chTitle.c_str(), FontSmall);
-        progress(f, Rect{left, (int16_t)(height() - 18), (int16_t)(right - left), 8}, permille);
+    if (_bar.topShown()) {
+        // right: page number, percent read, battery; left: the title or chapter
+        String r;
+        auto add = [&](const String& part) { r = r.length() ? r + "  |  " + part : part; };
+        if (_bar.pages == 0) add(String(getCurrentPage()) + "/" + String(getTotalPages()));
+        if (_bar.pages == 1) add(String(_page + 1) + "/" + String((unsigned)curCount()));
+        if (_bar.percent) add(String((int)(getProgress() * 100.0f)) + "%");
+        Rect topBand{left, 4, (int16_t)(right - left), 24};
+        int16_t rw = 0;
+        if (_bar.battery) {   // the battery glyph with its percentage, at the right
+            char pct[8];
+            snprintf(pct, sizeof(pct), "%d%%+", Battery.getPercentage());
+            const int16_t bw = (int16_t)(textWidth(FontSmall, pct) + 32);
+            battery(f, Rect{(int16_t)(right - bw), topBand.y, bw, topBand.height}, Color::Black);
+            rw = (int16_t)(bw + (r.length() ? 14 : 0));
+        }
+        if (r.length()) {
+            const int16_t tw = (int16_t)(textWidth(FontSmall, r.c_str()) + 4);
+            text(Rect{(int16_t)(right - rw - tw), topBand.y, tw, topBand.height}, r.c_str(), FontSmall, Color::Black,
+                 uikit::TextAlign::Right);
+            rw = (int16_t)(rw + tw);
+        }
+        const String l = _bar.top == 0 ? _title : _bar.top == 1 ? getCurrentChapterTitle() : String();
+        if (l.length()) text(Rect{left, topBand.y, (int16_t)(topBand.width - rw - 12), topBand.height}, l.c_str(), FontSmall);
+        hline(left, right, 30);
+        // A bookmarked page: a ribbon hanging from the top rule, left of the numbers.
+        int bSpine;
+        uint32_t bFrom, bTo;
+        if (_bookmarkProbe && pageRange(bSpine, bFrom, bTo) && _bookmarkProbe(bSpine, bFrom, bTo)) {
+            const int16_t bx = (int16_t)(right - rw - 22);
+            fill(Rect{bx, 0, 12, 22}, Color::Black);
+            for (int16_t i = 0; i < 6; i++) hline((int16_t)(bx + i), (int16_t)(bx + 12 - i), (int16_t)(22 - 6 + i), Color::White);
+        }
     } else {
-        progress(f, Rect{left, (int16_t)(height() - 28), (int16_t)(right - left), 10}, permille);
+        // No top line: a bookmark still shows, in the corner.
+        int bSpine;
+        uint32_t bFrom, bTo;
+        if (_bookmarkProbe && pageRange(bSpine, bFrom, bTo) && _bookmarkProbe(bSpine, bFrom, bTo)) {
+            const int16_t bx = (int16_t)(right - 12);
+            fill(Rect{bx, 0, 10, 14}, Color::Black);
+            for (int16_t i = 0; i < 5; i++) hline((int16_t)(bx + i), (int16_t)(bx + 10 - i), (int16_t)(14 - 5 + i), Color::White);
+        }
+    }
+    const int32_t permille = (int32_t)(getProgress() * 1000.0f);
+    if (_bar.bottom == 0) {
+        const int16_t bottomRule = (int16_t)(height() - 44);
+        hline(left, right, bottomRule);
+        String chTitle = getCurrentChapterTitle();
+        if (chTitle.length() > 0) {
+            text(Rect{left, (int16_t)(bottomRule + 2), (int16_t)(right - left), 20}, chTitle.c_str(), FontSmall);
+            progress(f, Rect{left, (int16_t)(height() - 18), (int16_t)(right - left), 8}, permille);
+        } else {
+            progress(f, Rect{left, (int16_t)(height() - 28), (int16_t)(right - left), 10}, permille);
+        }
+    } else if (_bar.bottom == 1) {
+        progress(f, Rect{left, (int16_t)(height() - 18), (int16_t)(right - left), 8}, permille);
     }
 }
 

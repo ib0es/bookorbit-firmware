@@ -26,6 +26,7 @@ enum Row : int {
     IMAGES,
     ORIENTATION,
     FULL_REFRESH,
+    STATUS_BAR,     // opens the status bar menu
     COUNT
 };
 

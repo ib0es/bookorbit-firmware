@@ -6,6 +6,7 @@
 #include "config.h"
 #include "screens/screens.h"
 #include "screens/appearance.h"
+#include "screens/status_bar_menu.h"
 #include "../services/bookmarks.h"
 #include "touch_router.h"
 #include "../hal/display.h"
@@ -101,6 +102,7 @@ void AppController::setup() {
     Reader.setFullRefreshEvery(_ctx.config.fullRefreshEvery);
     Reader.setSharpImages(_ctx.config.sharpImages);
     Reader.setOrientation(_ctx.config.orientation);
+    Reader.setStatusBar(StatusBarMenu::options(_ctx.config));
     Reader.setBookmarkProbe([](int spine, uint32_t from, uint32_t to) { return Bookmarks.findIn(spine, from, to) >= 0; });
     MemStats::mark("frontlight, reader");
 
@@ -219,7 +221,8 @@ void AppController::loop() {
     // coming from it, and dropping it would mean laying the chapter out again.
     const AppState st = _ctx.currentState;
     const bool readerScreens = st == STATE_READING || st == STATE_TOC || st == STATE_READER_MENU || st == STATE_FONT_MENU ||
-                               st == STATE_TYPEFACE_MENU || st == STATE_APPEARANCE_MENU || st == STATE_BOOKMARKS;
+                               st == STATE_TYPEFACE_MENU || st == STATE_APPEARANCE_MENU || st == STATE_BOOKMARKS ||
+                               st == STATE_STATUSBAR_MENU;
     if (!readerScreens || SyncService::backgroundActive()) {
         if (Reader.backgroundActive()) Reader.stopBackground();
     } else if (st == STATE_READING && !Modal.isActive() && millis() - _ctx.lastActivityTime > kPrelayoutIdleMs &&
@@ -253,6 +256,7 @@ void AppController::dispatch(const ButtonEvent& event) {
         case STATE_TYPEFACE_MENU:     ReaderScreen::handleTypefaceMenuEvent(_ctx, event); break;
         case STATE_APPEARANCE_MENU:   ReaderScreen::handleAppearanceEvent(_ctx, event); break;
         case STATE_BOOKMARKS:         ReaderScreen::handleBookmarksEvent(_ctx, event); break;
+        case STATE_STATUSBAR_MENU:    ReaderScreen::handleStatusBarEvent(_ctx, event); break;
         case STATE_SYNC_SETTINGS:     SettingsScreen::handleSyncSettingsEvent(_ctx, event); break;
         case STATE_SLEEP_COVER_SETTINGS: SettingsScreen::handleSleepCoverSettingsEvent(_ctx, event); break;
         case STATE_SYNCING:           break;
@@ -277,6 +281,7 @@ void AppController::redrawCurrentScreen(bool fullRefresh) {
         case STATE_TYPEFACE_MENU:     drawTypefaceMenuScreen(_ctx, fullRefresh); break;
         case STATE_APPEARANCE_MENU:   drawAppearanceScreen(_ctx, fullRefresh); break;
         case STATE_BOOKMARKS:         drawBookmarksScreen(_ctx, fullRefresh); break;
+        case STATE_STATUSBAR_MENU:    drawStatusBarScreen(_ctx, fullRefresh); break;
         case STATE_SYNC_SETTINGS:     drawSyncSettingsScreen(_ctx, fullRefresh); break;
         case STATE_SLEEP_COVER_SETTINGS: drawSleepCoverSettingsScreen(_ctx, fullRefresh); break;
         case STATE_SYNCING:           break;

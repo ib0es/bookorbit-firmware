@@ -1,5 +1,6 @@
 #include "screens.h"
 #include "appearance.h"
+#include "status_bar_menu.h"
 #include "../../services/bookmarks.h"
 #include "../../ui/font.h"
 #include "../../hal/mem_stats.h"
@@ -29,7 +30,9 @@ void commitFontSize(AppContext& ctx) {
     const bool size = Reader.getFontSize() != ctx.config.readerFontSize;
     const bool layout = !(Reader.layoutOptions() == Appearance::layoutOptions(ctx.config));
     const bool turned = Reader.orientation() != ctx.config.orientation;
-    if (!size && !layout && !turned) return;
+    const bool bar = !(Reader.statusBar() == StatusBarMenu::options(ctx.config));
+    if (!size && !layout && !turned && !bar) return;
+    Reader.setStatusBar(StatusBarMenu::options(ctx.config));
     Reader.setOrientation(ctx.config.orientation);
     Reader.setLayoutOptions(Appearance::layoutOptions(ctx.config));
     Reader.setFontSize(ctx.config.readerFontSize);  // shows a status screen if it has to paginate
@@ -417,6 +420,10 @@ void handleAppearanceEvent(AppContext& ctx, const ButtonEvent& event) {
         case BTN_CONFIRM:
             if (sel == Appearance::TYPEFACE && event.id != BTN_LEFT) {
                 openTypefaces(ctx);
+            } else if (sel == Appearance::STATUS_BAR && event.id != BTN_LEFT) {
+                ctx.selectedStatusBarIndex = 0;
+                ctx.currentState = STATE_STATUSBAR_MENU;
+                drawStatusBarScreen(ctx, false);
             } else if (sel == Appearance::SIZE && event.id == BTN_CONFIRM) {
                 ctx.selectedFontIndex = ctx.config.readerFontSize;
                 ctx.currentState = STATE_FONT_MENU;
@@ -428,6 +435,34 @@ void handleAppearanceEvent(AppContext& ctx, const ButtonEvent& event) {
             break;
         case BTN_BACK:
             returnToReading(ctx);   // laid out once, with everything changed here
+            break;
+        default:
+            break;
+    }
+}
+
+void handleStatusBarEvent(AppContext& ctx, const ButtonEvent& event) {
+    if (event.action != ACTION_CLICK) return;
+    int& sel = ctx.selectedStatusBarIndex;
+    switch (event.id) {
+        case BTN_DOWN:
+            sel = (sel + 1) % StatusBarMenu::COUNT;
+            drawStatusBarScreen(ctx, false);
+            break;
+        case BTN_UP:
+            sel = (sel - 1 + StatusBarMenu::COUNT) % StatusBarMenu::COUNT;
+            drawStatusBarScreen(ctx, false);
+            break;
+        case BTN_LEFT:
+        case BTN_RIGHT:
+        case BTN_CONFIRM:
+            StatusBarMenu::step(ctx.config, sel, event.id == BTN_LEFT ? -1 : 1);
+            ctx.config.save();
+            drawStatusBarScreen(ctx, false);
+            break;
+        case BTN_BACK:
+            ctx.currentState = STATE_APPEARANCE_MENU;
+            drawAppearanceScreen(ctx, false);
             break;
         default:
             break;

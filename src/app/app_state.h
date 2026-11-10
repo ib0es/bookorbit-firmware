@@ -23,7 +23,8 @@ enum AppState {
     STATE_SLEEP_COVER_SETTINGS,
     STATE_TYPEFACE_MENU,
     STATE_APPEARANCE_MENU,
-    STATE_BOOKMARKS
+    STATE_BOOKMARKS,
+    STATE_STATUSBAR_MENU
 };
 
 struct AppConfig {
@@ -52,6 +53,10 @@ struct AppConfig {
     bool focusReading = false;
     bool sharpImages = false;    // pictures: threshold instead of dithering
     int orientation = 0;         // pages: 0 portrait, 1 landscape, 2/3 the same upside down
+    // Status bar: top left 0 book title, 1 chapter, 2 none; page number 0 in the
+    // book, 1 in the chapter, 2 none; bottom 0 chapter and progress bar, 1 bar, 2 none.
+    int sbTop = 0, sbPages = 0, sbBottom = 0;
+    bool sbPercent = false, sbBattery = true;
     int fullRefreshEvery = 5;    // pages, 0 = never
     int frontlight = 0;        // 0..100 %, 0 = off (boards with a frontlight)
     int frontlightWarm = 50;   // 0 = cool .. 100 = warm
@@ -89,6 +94,7 @@ struct AppContext {
     int selectedFontIndex = 0;
     int selectedTypefaceIndex = 0;
     int selectedAppearanceIndex = 0;
+    int selectedStatusBarIndex = 0;
     int selectedBookmarkIndex = 0;   // 0 = add/remove this page's, then the bookmarks
     int selectedSyncSettingIndex = 0;
     int selectedSleepCoverIndex = 0;
