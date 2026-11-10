@@ -3,6 +3,7 @@
 #include "../../ui/font.h"
 #include "../../reader/reader.h"
 #include "../../reader/font_store.h"
+#include "../../app/screens/appearance.h"
 #include "../i18n.h"
 #include "../kit/ui_kit.h"
 
@@ -12,7 +13,7 @@ static int s_tocRowsPerPage = 1;
 int tocRowsPerPage() { return s_tocRowsPerPage; }
 
 namespace {
-enum ReaderMenuAction : fi::ActionId { ActionChapter = 1, ActionMenuItem, ActionFontSize, ActionTypeface };
+enum ReaderMenuAction : fi::ActionId { ActionChapter = 1, ActionMenuItem, ActionFontSize, ActionTypeface, ActionAppearance };
 }
 
 void drawTocScreen(AppContext& ctx, bool fullRefresh) {
@@ -123,18 +124,14 @@ void drawReaderMenuScreen(AppContext& ctx, bool fullRefresh) {
     char chDesc[128];
     if (chCount > 0) snprintf(chDesc, sizeof(chDesc), tr(MsgId::READER_MENU_TOC_SUB_FMT), chCount);
     else snprintf(chDesc, sizeof(chDesc), "%s", tr(MsgId::READER_MENU_TOC_NONE));
-    char fontVal[64];
-    snprintf(fontVal, sizeof(fontVal), tr(MsgId::READER_MENU_FONT_FMT),
+    char fontVal[128];
+    snprintf(fontVal, sizeof(fontVal), tr(MsgId::READER_MENU_APPEARANCE_FMT), Reader.fontFamilyName().c_str(),
              BookReader::getFontSizeName(ctx.config.readerFontSize));
-
-    char faceVal[96];
-    snprintf(faceVal, sizeof(faceVal), tr(MsgId::READER_MENU_TYPEFACE_FMT), Reader.fontFamilyName().c_str());
 
     struct Item { const char* title; const char* value; const char* tag; };
     const Item items[NUM_READER_MENU_ITEMS] = {
         { tr(MsgId::READER_MENU_ITEM_TOC), chDesc, tr(MsgId::READER_MENU_TAG_CHAPTERS) },
-        { tr(MsgId::READER_MENU_ITEM_FONT), fontVal, tr(MsgId::READER_MENU_TAG_FONT) },
-        { tr(MsgId::READER_MENU_ITEM_TYPEFACE), faceVal, tr(MsgId::READER_MENU_TAG_FONT) },
+        { tr(MsgId::READER_MENU_ITEM_APPEARANCE), fontVal, tr(MsgId::READER_MENU_TAG_FONT) },
         { tr(MsgId::READER_MENU_ITEM_SYNC), tr(MsgId::READER_MENU_SYNC_SUB), tr(MsgId::READER_MENU_TAG_WIFI) },
         { tr(MsgId::READER_MENU_ITEM_RESUME), tr(MsgId::READER_MENU_RESUME_SUB), tr(MsgId::READER_MENU_TAG_READ) },
         { tr(MsgId::READER_MENU_ITEM_CLOSE), tr(MsgId::READER_MENU_CLOSE_SUB), tr(MsgId::READER_MENU_TAG_EXIT) },
@@ -273,6 +270,45 @@ void drawTypefaceMenuScreen(AppContext& ctx, bool fullRefresh) {
         takeTop(area, 10);
         text(takeTop(area, (int16_t)(lineHeight(FontSmall) * 2 + 4)), tr(MsgId::TYPEFACE_CARD_HINT), FontSmall,
              Color::Black, TextAlign::Center, 2);
+    }
+    present(fullRefresh);
+}
+
+// ------------------------------------------------------------- appearance
+
+void drawAppearanceScreen(AppContext& ctx, bool fullRefresh) {
+    Pass pass;
+    Frame& f = pass.frame();
+    clear();
+    int& sel = ctx.selectedAppearanceIndex;
+    if (sel < 0) sel = 0;
+    if (sel >= Appearance::COUNT) sel = Appearance::COUNT - 1;
+    Rect area = topBar(f, tr(MsgId::APPEAR_TITLE));
+    area = footerHints(f, area, tr(MsgId::APPEAR_HINT));
+    area = insetXY(area, kMargin, 6);
+    const int16_t rowH = (int16_t)(lineHeight(FontBody) + 12);
+    char val[64];
+    for (int i = 0; i < Appearance::COUNT; i++) {
+        Rect row = takeTop(area, rowH);
+        const bool isSel = i == sel;
+        if (isSel) fill(row, Color::Black, 4);
+        const Color ink = isSel ? Color::White : Color::Black;
+        Rect in = insetX(row, 10);
+        Appearance::value(ctx.config, i, val, sizeof(val));
+        const int16_t vw = (int16_t)(textWidth(FontBody, val) + 4);
+        text(Rect{(int16_t)(in.right() - vw), in.y, vw, in.height}, val, FontBody, ink, TextAlign::Right);
+        text(Rect{in.x, in.y, (int16_t)(in.width - vw - 8), in.height}, Appearance::label(i), FontBody, ink);
+        if (!isSel) hline((int16_t)(row.x + 6), (int16_t)(row.right() - 6), (int16_t)(row.bottom() - 1));
+        f.hit(row, ActionAppearance, (int16_t)i);
+        takeTop(area, 2);
+    }
+    // The settings as they will look: size, typeface, line spacing, margins.
+    takeTop(area, 6);
+    if (area.height > 40) {
+        hline(0, width(), area.y);
+        const int m = ctx.config.marginPx;
+        Reader.drawSample(m, area.y + 6, width() - 2 * m, area.height - 8, tr(MsgId::APPEAR_SAMPLE),
+                          (uint16_t)FontEngine::sizePx(ctx.config.readerFontSize), (uint16_t)ctx.config.lineSpacing);
     }
     present(fullRefresh);
 }

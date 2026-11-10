@@ -218,12 +218,13 @@ bool BookReader::setFontFamily(const String& name) {
     return true;
 }
 
-int BookReader::drawSample(int x, int y, int width, int height, const char* utf8, uint16_t sizePx) {
+int BookReader::drawSample(int x, int y, int width, int height, const char* utf8, uint16_t sizePx,
+                           uint16_t lineSpacingPct) {
     uint8_t* fb = Display.getBuffer();
     if (!fb) return 0;
     freeink::book::FrameTarget frame{fb, (int16_t)EPD_WIDTH, (int16_t)EPD_HEIGHT, (int16_t)(EPD_WIDTH / 8),
                                      freeink::book::FrameFormat::Mono1Sharp, freeink::book::FrameRotation::Portrait};
-    const int lh = _fonts.lineHeight(sizePx), asc = _fonts.ascent(sizePx);
+    const int lh = _fonts.lineHeight(sizePx) * lineSpacingPct / 100, asc = _fonts.ascent(sizePx);
     int top = y;
     const char* p = utf8;
     while (*p && top + lh <= y + height) {
@@ -396,16 +397,22 @@ void BookReader::setupLayout() {
     LayoutParams p;
     p.pageWidth = (int16_t)Display.width();
     p.pageHeight = (int16_t)Display.height();
-    p.marginLeft = (int16_t)geo.left;
-    p.marginRight = (int16_t)(Display.width() - geo.left - geo.width);
+    (void)geo;
+    p.marginLeft = (int16_t)_opts.marginPx;
+    p.marginRight = (int16_t)_opts.marginPx;
     p.marginTop = (int16_t)geo.top;
     p.marginBottom = 56;   // the chapter line and progress bar below (rule at height - 44)
     p.baseSizePx = (uint16_t)FontEngine::sizePx(_fontSize);
     p.font = &_fonts;
-    p.defaultAlign = freeink::book::TextAlign::Justify;
+    p.defaultAlign = _opts.justify ? freeink::book::TextAlign::Justify : freeink::book::TextAlign::Left;
     p.language = bookLanguage();
-    p.hyphenator = hyphenatorFor(p.language);
-    p.stylesheet = _catalog.stylesheet();
+    p.hyphenator = _opts.hyphenate ? hyphenatorFor(p.language) : nullptr;
+    p.stylesheet = _opts.bookStyles ? _catalog.stylesheet() : nullptr;
+    p.embeddedStyles = _opts.bookStyles;
+    p.lineSpacingPct = _opts.lineSpacingPct;
+    p.paragraphSpacingPct = _opts.paragraphSpacingPct;
+    p.orphanLines = p.widowLines = _opts.keepLines ? 2 : 1;
+    p.focusReading = _opts.focusReading;
     _params = p;
     _gen = layoutGenerationHash(_params, BitmapBookFont::kFingerprint ^ _ttf.fingerprint());
     _held.spine = -1;   // pages of another layout
@@ -1435,6 +1442,19 @@ bool BookReader::prevPage() {
     return true;
 }
 
+bool BookReader::setLayoutOptions(const LayoutOptions& options) {
+    if (options == _opts) return false;
+    const Position here = position();
+    _opts = options;
+    if (_opened) {
+        releaseIndex();
+        setupLayout();
+        loadSpineTable();
+        goTo(here);
+    }
+    return true;
+}
+
 bool BookReader::setFontSize(int size) {
     size = FontEngine::clampSize(size);
     if (size == _fontSize) return false;
@@ -1570,7 +1590,7 @@ void BookReader::renderCurrentPage() {
         }
         break;
     }
-    const bool full = (_renderedPages++ % FULL_REFRESH_EVERY_PAGES) == 0;
+    const bool full = _fullEvery > 0 ? (_renderedPages++ % (uint32_t)_fullEvery) == 0 : _renderedPages++ == 0;
     const uint32_t tEnd = millis();
     // Where the time goes: finding the page (layout, cache), its record, the text, the images.
     const TtfFamily::Stats fs = _ttf.takeStats();

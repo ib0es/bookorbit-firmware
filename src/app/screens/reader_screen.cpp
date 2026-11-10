@@ -1,4 +1,5 @@
 #include "screens.h"
+#include "appearance.h"
 #include "../../ui/font.h"
 #include "../../hal/mem_stats.h"
 #include "../../convert/sd_convert.h"
@@ -19,10 +20,14 @@ namespace {
 
 constexpr int TOC_ITEMS_PER_PAGE = 8;
 
-// The menu only changes the font setting; the book is re-paginated once,
-// when the menu is left (not on every step through the sizes).
+// The menus only change the settings; the book is laid out again once, when
+// they are left (not on every step through the sizes and spacings).
 void commitFontSize(AppContext& ctx) {
-    if (Reader.getFontSize() == ctx.config.readerFontSize) return;
+    Reader.setFullRefreshEvery(ctx.config.fullRefreshEvery);
+    const bool size = Reader.getFontSize() != ctx.config.readerFontSize;
+    const bool layout = !(Reader.layoutOptions() == Appearance::layoutOptions(ctx.config));
+    if (!size && !layout) return;
+    Reader.setLayoutOptions(Appearance::layoutOptions(ctx.config));
     Reader.setFontSize(ctx.config.readerFontSize);  // shows a status screen if it has to paginate
     LibraryManager::getInstance().flushReaderPosition();   // same place, new page numbers
 }
@@ -65,30 +70,18 @@ void executeMenuAction(AppContext& ctx, int index) {
                                   1500, /*fullRedraw=*/true);
             }
             break;
-        case 1:  // Шрифт: submenu of sizes
-            ctx.selectedFontIndex = ctx.config.readerFontSize;
-            ctx.currentState = STATE_FONT_MENU;
-            drawFontMenuScreen(ctx, false);
+        case 1:  // Оформление
+            ctx.currentState = STATE_APPEARANCE_MENU;
+            drawAppearanceScreen(ctx, false);
             break;
-        case 2:  // Шрифт: the families
-            typefaceFamilies(true);
-            ctx.selectedTypefaceIndex = 0;
-            if (!Reader.usingBuiltinFont()) {
-                const auto& fams = typefaceFamilies(false);
-                for (size_t i = 0; i < fams.size(); i++)
-                    if (fams[i].name == Reader.fontFamilyName()) ctx.selectedTypefaceIndex = (int)i + 1;
-            }
-            ctx.currentState = STATE_TYPEFACE_MENU;
-            drawTypefaceMenuScreen(ctx, false);
-            break;
-        case 3:  // Синхронизация
+        case 2:  // Синхронизация
             commitFontSize(ctx);
             SyncService::syncWithBookOrbit(ctx);
             break;
-        case 4:  // Продолжить чтение
+        case 3:  // Продолжить чтение
             returnToReading(ctx);
             break;
-        case 5:  // Закрыть книгу
+        case 4:  // Закрыть книгу
             closeBookAndGoHome(ctx, true);
             break;
     }
@@ -293,17 +286,18 @@ void handleFontMenuEvent(AppContext& ctx, const ButtonEvent& event) {
             break;
         case BTN_CONFIRM:
         case BTN_RIGHT:
-            // Apply and go back to the page (re-paginates once, with a status screen if needed).
+            // Chosen: back to Appearance (laid out once, when it is left).
             if (sel != ctx.config.readerFontSize) {
                 ctx.config.readerFontSize = sel;
                 ctx.config.save();
             }
-            returnToReading(ctx);
+            ctx.currentState = STATE_APPEARANCE_MENU;
+            drawAppearanceScreen(ctx, false);
             break;
         case BTN_BACK:
         case BTN_LEFT:
-            ctx.currentState = STATE_READER_MENU;
-            drawReaderMenuScreen(ctx, false);
+            ctx.currentState = STATE_APPEARANCE_MENU;
+            drawAppearanceScreen(ctx, false);
             break;
         default:
             break;
@@ -358,19 +352,65 @@ void handleTypefaceMenuEvent(AppContext& ctx, const ButtonEvent& event) {
                 }
                 family = fam.name;
             }
-            commitFontSize(ctx);
             if (Reader.setFontFamily(family)) LibraryManager::getInstance().flushReaderPosition();
             if (ctx.config.readerFont != family) {
                 ctx.config.readerFont = family;
                 ctx.config.save();
             }
-            returnToReading(ctx);
+            ctx.currentState = STATE_APPEARANCE_MENU;
+            drawAppearanceScreen(ctx, false);
             break;
         }
         case BTN_BACK:
         case BTN_LEFT:
-            ctx.currentState = STATE_READER_MENU;
-            drawReaderMenuScreen(ctx, false);
+            ctx.currentState = STATE_APPEARANCE_MENU;
+            drawAppearanceScreen(ctx, false);
+            break;
+        default:
+            break;
+    }
+}
+
+static void openTypefaces(AppContext& ctx) {
+    typefaceFamilies(true);
+    ctx.selectedTypefaceIndex = 0;
+    if (!Reader.usingBuiltinFont()) {
+        const auto& fams = typefaceFamilies(false);
+        for (size_t i = 0; i < fams.size(); i++)
+            if (fams[i].name == Reader.fontFamilyName()) ctx.selectedTypefaceIndex = (int)i + 1;
+    }
+    ctx.currentState = STATE_TYPEFACE_MENU;
+    drawTypefaceMenuScreen(ctx, false);
+}
+
+void handleAppearanceEvent(AppContext& ctx, const ButtonEvent& event) {
+    if (event.action != ACTION_CLICK) return;
+    int& sel = ctx.selectedAppearanceIndex;
+    switch (event.id) {
+        case BTN_DOWN:
+            sel = (sel + 1) % Appearance::COUNT;
+            drawAppearanceScreen(ctx, false);
+            break;
+        case BTN_UP:
+            sel = (sel - 1 + Appearance::COUNT) % Appearance::COUNT;
+            drawAppearanceScreen(ctx, false);
+            break;
+        case BTN_LEFT:
+        case BTN_RIGHT:
+        case BTN_CONFIRM:
+            if (sel == Appearance::TYPEFACE && event.id != BTN_LEFT) {
+                openTypefaces(ctx);
+            } else if (sel == Appearance::SIZE && event.id == BTN_CONFIRM) {
+                ctx.selectedFontIndex = ctx.config.readerFontSize;
+                ctx.currentState = STATE_FONT_MENU;
+                drawFontMenuScreen(ctx, false);
+            } else if (Appearance::step(ctx.config, sel, event.id == BTN_LEFT ? -1 : 1)) {
+                ctx.config.save();
+                drawAppearanceScreen(ctx, false);
+            }
+            break;
+        case BTN_BACK:
+            returnToReading(ctx);   // laid out once, with everything changed here
             break;
         default:
             break;

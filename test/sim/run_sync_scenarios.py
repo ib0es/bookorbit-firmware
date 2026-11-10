@@ -15,7 +15,7 @@ if not os.path.isabs(BIN): BIN = os.path.join(ROOT, BIN)
 SD_TEMPLATE = os.path.join(ROOT, "simulator/sdcard")
 TEST_CONFIG = os.path.join(ROOT, "test/sim/config.json")   # replaces a local simulator/sdcard/config.json
 BOOK = "Alice in Wonderland"
-SYNC = "CDDDCw"          # in the reader: menu -> "Синхронизация" (4th) -> wait
+SYNC = "CDDCw"           # in the reader: menu -> "Синхронизация" -> wait
 HOME_SYNC = "UCww"       # on the home screen: "Синхронизация сейчас" -> wait
 
 def srv(pct=None, upd="NOW-100", fail=False, **extra):

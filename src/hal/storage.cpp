@@ -272,6 +272,21 @@ bool StorageManager::loadConfig(AppConfig& cfg) {
                 }
 
                 cfg.readerFont = doc["font_family"].is<const char*>() ? doc["font_family"].as<String>() : String();
+                auto intIn = [&](const char* key, int& v, int lo, int hi) {
+                    if (doc[key].is<int>()) v = constrain(doc[key].as<int>(), lo, hi);
+                };
+                auto boolIn = [&](const char* key, bool& v) {
+                    if (doc[key].is<bool>()) v = doc[key].as<bool>();
+                };
+                intIn("line_spacing", cfg.lineSpacing, 80, 200);
+                intIn("paragraph_spacing", cfg.paragraphSpacing, 0, 200);
+                intIn("margin_px", cfg.marginPx, 4, 60);
+                intIn("full_refresh_every", cfg.fullRefreshEvery, 0, 50);
+                boolIn("justify", cfg.justify);
+                boolIn("hyphenation", cfg.hyphenation);
+                boolIn("keep_lines", cfg.keepLines);
+                boolIn("book_styles", cfg.bookStyles);
+                boolIn("focus_reading", cfg.focusReading);
 
                 if (doc["language"].is<const char*>()) {
                     cfg.language = I18n::languageFromCode(doc["language"].as<String>());
@@ -351,6 +366,15 @@ bool StorageManager::saveConfig(const AppConfig& cfg) {
     doc["cover_fit_mode"] = cfg.sleepCoverFitMode;
     doc["font_pt"] = FontEngine::sizePx(cfg.readerFontSize);
     doc["font_family"] = cfg.readerFont;
+    doc["line_spacing"] = cfg.lineSpacing;
+    doc["paragraph_spacing"] = cfg.paragraphSpacing;
+    doc["margin_px"] = cfg.marginPx;
+    doc["justify"] = cfg.justify;
+    doc["hyphenation"] = cfg.hyphenation;
+    doc["keep_lines"] = cfg.keepLines;
+    doc["book_styles"] = cfg.bookStyles;
+    doc["focus_reading"] = cfg.focusReading;
+    doc["full_refresh_every"] = cfg.fullRefreshEvery;
     doc["language"] = I18n::getLanguageCode(cfg.language);
 
     String jsonStr;

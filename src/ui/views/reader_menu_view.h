@@ -9,6 +9,8 @@ void drawTocScreen(AppContext& ctx, bool fullRefresh = false);
 void drawFontMenuScreen(AppContext& ctx, bool fullRefresh = false);
 // Book font families: the built-in one, then those in /fonts on the card.
 void drawTypefaceMenuScreen(AppContext& ctx, bool fullRefresh = false);
+// Typeface, size, spacing, margins... (src/app/screens/appearance.h), a sample below.
+void drawAppearanceScreen(AppContext& ctx, bool fullRefresh = false);
 // The families on the card the typeface menu lists (scanned again when `rescan`).
 #include <vector>
 #include "../../reader/font_store.h"

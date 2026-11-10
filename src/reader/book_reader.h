@@ -26,6 +26,7 @@
 #include <render/TtfFont.h>
 #include <text/Hyphenator.h>
 
+#include "config.h"
 #include "chapter_item.h"
 #include "epub_cfi.h"
 #include "engine/bitmap_book_font.h"
@@ -80,6 +81,28 @@ public:
     int renderFailures() const { return _renderFailures; }   // pages that could not be drawn (tests, logs)
 
     int getFontSize() const { return _fontSize; }
+
+    // How pages are laid out beyond the font (the Appearance menu). A change lays
+    // the book out again at the same sentence.
+    struct LayoutOptions {
+        uint16_t lineSpacingPct = 100;       // line height, % of the font's
+        uint16_t paragraphSpacingPct = 100;  // space between paragraphs, % of the book's
+        uint8_t marginPx = 20;               // left and right
+        bool justify = true;                 // else left-aligned
+        bool hyphenate = true;
+        bool keepLines = true;               // no lone first/last line of a paragraph at a page edge
+        bool bookStyles = true;              // the book's CSS
+        bool focusReading = false;           // the start of each word in bold
+        bool operator==(const LayoutOptions& o) const {
+            return lineSpacingPct == o.lineSpacingPct && paragraphSpacingPct == o.paragraphSpacingPct &&
+                   marginPx == o.marginPx && justify == o.justify && hyphenate == o.hyphenate &&
+                   keepLines == o.keepLines && bookStyles == o.bookStyles && focusReading == o.focusReading;
+        }
+    };
+    bool setLayoutOptions(const LayoutOptions& options);   // false when nothing changed
+    const LayoutOptions& layoutOptions() const { return _opts; }
+    // A full e-ink refresh every this many pages (0: never; ghosting stays until one).
+    void setFullRefreshEvery(int pages) { _fullEvery = pages; }
     // The book font family: "" for the built-in one, else one installed from
     // /fonts (FontStore); another name falls back to the built-in one. Lays the
     // book out again at the same sentence. Returns false when nothing changed.
@@ -89,7 +112,8 @@ public:
     bool usingBuiltinFont() const { return _family.length() == 0; }
     // Draws text in the book font (menus' previews): wrapped at spaces in the box,
     // the lines that fit. Returns the height used.
-    int drawSample(int x, int y, int width, int height, const char* utf8, uint16_t sizePx);
+    int drawSample(int x, int y, int width, int height, const char* utf8, uint16_t sizePx,
+                   uint16_t lineSpacingPct = 100);
     int sampleLineHeight(uint16_t sizePx) { return _fonts.lineHeight(sizePx); }
     bool setFontSize(int size);
     static const char* getFontSizeName(int size);
@@ -225,6 +249,8 @@ private:
     const char* bookLanguage();
     const freeink::book::Hyphenator* hyphenatorFor(const char* language) const;
     freeink::book::LayoutParams _params;
+    LayoutOptions _opts;
+    int _fullEvery = FULL_REFRESH_EVERY_PAGES;
     uint32_t _gen = 0;
 
     std::vector<Spine> _spines;

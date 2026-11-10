@@ -33,6 +33,7 @@ SRCS_CXX = \
     src/app/screens/catalog_screen.cpp \
     src/app/screens/library_screen.cpp \
     src/app/screens/reader_screen.cpp \
+    src/app/screens/appearance.cpp \
     src/app/screens/settings_screen.cpp \
     src/ui/modal.cpp \
     src/services/library_manager.cpp \
