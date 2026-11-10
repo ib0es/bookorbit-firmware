@@ -43,6 +43,10 @@ void log(const char* where) {
 }
 
 bool probeEngine(const char* where) {
+#if !BOOKORBIT_MEM_DIAG
+    (void)where;
+    return true;
+#endif
     // Sizes from fibcheck on 27 real books (FREEINK_BOOK_SMALL): fixed layout peak
     // 95,333 bytes in two buffers, plus up to ~30 KB for an open book.
     constexpr size_t kLayout = 50 * 1024, kParse = 46 * 1024, kBook = 30 * 1024, kPiece = 2 * 1024;
@@ -104,7 +108,9 @@ bool walker(walker_heap_into_t, walker_block_info_t block, void* user) {
 }  // namespace
 
 void logMap(const char* where) {
-#if MEM_HEAP_WALK
+#if !BOOKORBIT_MEM_DIAG
+    (void)where;
+#elif MEM_HEAP_WALK
     static HeapMap map;   // static: the walk must not allocate
     map = HeapMap();
     heap_caps_walk(MALLOC_CAP_8BIT, walker, &map);
@@ -174,7 +180,7 @@ void appendMark(const char* fmt, ...) {
 }  // namespace
 
 void mark(const char* step) {
-#if MEM_HEAP_WALK
+#if MEM_HEAP_WALK && BOOKORBIT_MEM_DIAG
     g_walk.n = 0;
     g_walk.lost = 0;
     heap_caps_walk(MALLOC_CAP_8BIT, bigWalker, nullptr);

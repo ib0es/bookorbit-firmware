@@ -6,6 +6,13 @@
 
 #include <Arduino.h>
 
+// The heavy diagnostics (probeEngine, logMap, mark/printMarks) take most of the
+// heap for a moment or walk it with the heap locked: off in normal builds
+// (-DBOOKORBIT_MEM_DIAG=1 turns them on). now(), log() and summary() always work.
+#ifndef BOOKORBIT_MEM_DIAG
+#define BOOKORBIT_MEM_DIAG 0
+#endif
+
 namespace MemStats {
 
 struct Snapshot {
