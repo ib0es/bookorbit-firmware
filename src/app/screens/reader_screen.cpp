@@ -30,7 +30,8 @@ void commitFontSize(AppContext& ctx) {
     Reader.setSharpImages(ctx.config.sharpImages);
     const bool size = Reader.getFontSize() != ctx.config.readerFontSize;
     const bool layout = !(Reader.layoutOptions() == Appearance::layoutOptions(ctx.config));
-    const bool turned = Reader.orientation() != ctx.config.orientation;
+    // The pages' turn is the interface's and the book's together (applyOrientation).
+    const bool turned = Reader.orientation() != ((ctx.config.uiOrientation + ctx.config.orientation) & 3);
     const bool bar = !(Reader.statusBar() == StatusBarMenu::options(ctx.config));
     if (!size && !layout && !turned && !bar) return;
     Reader.setStatusBar(StatusBarMenu::options(ctx.config));
