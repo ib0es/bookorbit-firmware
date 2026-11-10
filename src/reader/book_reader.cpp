@@ -345,16 +345,50 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
     BookStatus st = BookStatus::OutOfMemory;
     // The engine's layout state takes ~36 KB for a page (whatever its text).
     stopBackground();
-    for (size_t cap : {(size_t)40 * 1024, (size_t)52 * 1024}) {
-        Buffer mem(cap);
-        if (!mem.p) {
-            Serial.printf("[Reader] Appearance preview: no %u B block (largest %u B)\n", (unsigned)cap,
-                          (unsigned)MemStats::now().largestBlock);
-            continue;
+    size_t cap = 0;
+    Buffer mem40(40 * 1024);
+    Buffer* use = &mem40;
+    Buffer mem52(mem40.p ? 0 : 52 * 1024);
+    if (!mem40.p) use = &mem52;
+    if (use->p) cap = use->n;
+    else Serial.printf("[Reader] Appearance preview: no 40 KB block (largest %u B)\n", (unsigned)MemStats::now().largestBlock);
+
+    // The page is cut right under the first line of the second paragraph (as laid
+    // out allowing lone lines): "no lone lines" then moves that line on, as it
+    // would at the foot of a page, so the setting shows. Found by a first pass.
+    struct Lines : PageSink {
+        const char* firstWord;   // of the second paragraph
+        size_t wordLen;
+        int prevBaseline = -1, lineAfter = -1, found = -1;
+        bool onPage(const Page& page) override {
+            for (uint16_t i = 0; i < page.runCount; i++) {
+                const PageTextRun& r = page.runs[i];
+                if (r.baselineY == prevBaseline) continue;   // the same line
+                if (found >= 0 && lineAfter < 0) lineAfter = r.baselineY;
+                prevBaseline = r.baselineY;
+                if (found < 0 && r.len >= wordLen && memcmp(r.text, firstWord, wordLen) == 0) found = r.baselineY;
+            }
+            return false;
         }
-        Arena a(mem.p, cap);
+    } lines;
+    const char* second = strstr(text, "\n\n");
+    if (cap && second) {
+        second += 2;
+        lines.firstWord = second;
+        lines.wordLen = strcspn(second, " ");
+        LayoutParams loose = p;
+        loose.pageHeight = 2000;
+        loose.orphanLines = loose.widowLines = 1;
+        Arena a(use->p, cap);
+        ChapterLayout::layoutPlainText(src, loose, a, lines);
+        // up to the next line's baseline less its ascent: that line no longer fits
+        if (lines.found >= 0 && lines.lineAfter > lines.found &&
+            lines.lineAfter - _fonts.ascent(p.baseSizePx) < height)
+            p.pageHeight = (int16_t)(lines.lineAfter - _fonts.ascent(p.baseSizePx));
+    }
+    if (cap) {
+        Arena a(use->p, cap);
         st = ChapterLayout::layoutPlainText(src, p, a, sink);
-        if (st != BookStatus::OutOfMemory || sink.drawn) break;
     }
     if (!sink.drawn) {
         Serial.printf("[Reader] Appearance preview not laid out (%s): a plain sample instead\n", bookStatusName(st));
