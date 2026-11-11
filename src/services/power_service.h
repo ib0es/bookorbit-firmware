@@ -19,7 +19,9 @@ public:
     // storage: the PHY goes back to Serial/JTAG only through a reset). B7.
     [[noreturn]] static void restartIntoSettings();
     static bool takeRestartIntoSettings();
-    static void enterDeepSleep(AppContext& ctx);
+    // `syncAllowed` false: no sync before sleep, whatever the settings (an almost
+    // flat battery must not power the radio: B10).
+    static void enterDeepSleep(AppContext& ctx, bool syncAllowed = true);
 
     // Button polling for blocking UI loops (modals, on-screen keyboard, Wi-Fi picker,
     // web portal). Applies the same power rules as AppController::loop():

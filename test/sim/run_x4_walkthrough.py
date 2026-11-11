@@ -237,6 +237,12 @@ CASES = [
     ("power: a critical battery saves the place and sleeps (B2)", None,
      {"SIM_BATTERY_PCT": "2", "SIM_BATTERY_CHECK_MS": "300"}, OPEN_BOOK + "RR" + "w",
      lambda log, sd: "Battery critical" in log and "Entering Deep Sleep" in log.split("Battery critical")[1]),
+    ("power: a critical battery sleeps without syncing, the progress stays queued (B10)",
+     lambda sd: merge_config(sd, sync_on_sleep=True),
+     {"SIM_BATTERY_PCT": "2", "SIM_BATTERY_CHECK_MS": "300"}, OPEN_BOOK + "RR" + "w",
+     lambda log, sd: "Battery critical" in log and "no sync before sleep" in log
+                     and "syncOnSleep enabled" not in log and "[WiFi] Connect" not in log
+                     and "Entering Deep Sleep" in log),
     ("power: on USB a low battery does not send it to sleep (B3)", None,
      {"SIM_BATTERY_PCT": "2", "SIM_BATTERY_CHECK_MS": "300", "SIM_USB": "1"}, OPEN_BOOK + "w",
      lambda log, sd: "Battery critical" not in log and "Entering Deep Sleep" not in log),

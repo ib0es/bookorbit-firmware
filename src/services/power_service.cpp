@@ -195,7 +195,7 @@ void PowerService::checkBattery(AppContext& ctx) {
     if (Reader.isOpened()) LibraryManager::getInstance().flushReaderPosition();
     drawStatusModal(tr(MsgId::POWER_LOW_BATTERY_TITLE), tr(MsgId::POWER_LOW_BATTERY_L1), tr(MsgId::POWER_LOW_BATTERY_L2));
     delay(3000);
-    enterDeepSleep(ctx);
+    enterDeepSleep(ctx, /*syncAllowed=*/false);   // B10: no radio on an almost flat battery
     s_lowReadings = 0;
 }
 
@@ -227,7 +227,7 @@ bool PowerService::pollModalEvent(ButtonEvent& event) {
     return false;
 }
 
-void PowerService::enterDeepSleep(AppContext& ctx) {
+void PowerService::enterDeepSleep(AppContext& ctx, bool syncAllowed) {
     Serial.println("[Power] Entering Deep Sleep. Goodnight!");
     SyncService::cancelBackground();   // a background upload in progress stays queued
 
@@ -245,7 +245,9 @@ void PowerService::enterDeepSleep(AppContext& ctx) {
     }
 
     // 1. Sync reading progress before sleep only if explicitly enabled and local changes exist
-    if (ctx.config.syncOnSleep && ctx.config.wifiSsid.length() > 0 && ctx.config.serverHost.length() > 0 &&
+    // (never on a critical battery: the progress stays queued for the next sync)
+    if (!syncAllowed) Serial.println("[Power] Critical battery: no sync before sleep; progress stays queued.");
+    if (syncAllowed && ctx.config.syncOnSleep && ctx.config.wifiSsid.length() > 0 && ctx.config.serverHost.length() > 0 &&
         lib.lastBook.filePath.length() > 0 && lib.currentRecord().state.localDirty) {
         Serial.println("[Power] syncOnSleep enabled: uploading progress to Book Orbit...");
         drawStatusModal(tr(MsgId::POWER_SYNC_BEFORE_SLEEP), tr(MsgId::POWER_SYNC_SAVING), utf8Prefix(lib.lastBook.title, 64).c_str());
