@@ -36,6 +36,8 @@
 #include "../ui/views/book_menu_view.h"
 #include "../services/usb_msc_session.h"
 #include "input.h"
+#include "../core/power_policy.h"
+#include "../platform/system.h"
 
 
 void AppController::setup() {
@@ -306,6 +308,22 @@ void AppController::loop() {
         }
     } else {
         _lastClockMinute = -1;
+    }
+
+    if (_ctx.currentState == STATE_USB_MSC) {
+        // B8: no computer for as long as the idle timeout -> leave the mode (on the
+        // device a restart into Settings), and the usual sleep follows.
+        const uint32_t nowMs = millis();
+        if (UsbMsc.hostConnected() || _usbNoHostSince == 0) _usbNoHostSince = nowMs;
+        if (PowerPolicy::shouldLeaveUsbMsc(UsbMsc.hostConnected(), nowMs - _usbNoHostSince, Platform::sleepTimeoutMs())) {
+            Serial.println("[USB-MSC] No computer for the idle timeout: leaving USB mass storage.");
+            _usbNoHostSince = 0;
+            UsbMscSession::exit(_ctx);
+            _ctx.lastActivityTime = millis();
+            redrawCurrentScreen(true);
+        }
+    } else {
+        _usbNoHostSince = 0;
     }
 
     if (_ctx.currentState == STATE_USB_MSC && UsbMsc.pollStateChanged()) {

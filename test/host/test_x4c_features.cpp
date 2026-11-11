@@ -64,8 +64,16 @@ static void testX4ClassicDefaultsAndSettingsLayout() {
     CHECK(settingsItemCount() == 9);
 }
 
+static void testPowerPolicyLeaveUsbMsc() {
+    constexpr uint32_t kTimeout = 300000;
+    CHECK(!PowerPolicy::shouldLeaveUsbMsc(true, kTimeout * 10, kTimeout));   // a computer: stays
+    CHECK(!PowerPolicy::shouldLeaveUsbMsc(false, kTimeout - 1, kTimeout));   // not yet
+    CHECK(PowerPolicy::shouldLeaveUsbMsc(false, kTimeout, kTimeout));        // no computer for the timeout
+}
+
 int main() {
     testPowerPolicyIdleDeepSleep();
+    testPowerPolicyLeaveUsbMsc();
     testX4ClassicDefaultsAndSettingsLayout();
     printf("%s: %d/%d checks passed\n", g_failed ? "FAILED" : "OK", g_checks - g_failed, g_checks);
     return g_failed ? 1 : 0;
