@@ -54,6 +54,13 @@ public:
     using TouchMapper = void (*)(float nx, float ny, int16_t& x, int16_t& y);
     void setTouchMapper(TouchMapper mapper) { _touchMapper = mapper; }
 
+    // Which key an event reports, given the physical key: the app turns the
+    // front keys with the screen. Applied by getEvent(), so every input loop
+    // (main loop, dialogs, keyboard, network list) sees the same keys;
+    // isPressed() stays physical.
+    using KeyRemap = ButtonId (*)(ButtonId physical);
+    void setKeyRemap(KeyRemap remap) { _keyRemap = remap; }
+
     // Side slide switch that turns the frontlight on/off (Picco, GPIO6).
     bool hasLightSwitch() const { return _freeinkInput.hasToggleSwitch(); }
     bool lightSwitchOn() const { return _freeinkInput.isToggleSwitchOn(); }
@@ -71,6 +78,7 @@ public:
 private:
     InputManager _freeinkInput;
     TouchMapper _touchMapper = nullptr;
+    KeyRemap _keyRemap = nullptr;
     ButtonEvent _pendingEvent;
     bool _hasPendingEvent;
     bool _powerLongPressFired;

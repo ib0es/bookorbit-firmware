@@ -121,6 +121,9 @@ def subfolder_book(sd):
 def russian(sd):
     merge_config(sd, language="ru")
 
+def upside_down(sd):
+    merge_config(sd, ui_orientation=2)
+
 def updown_pages(sd):
     merge_config(sd, updown_pages=True)
 
@@ -255,6 +258,16 @@ CASES = [
      "DC" + "[" + kb_tap(215, 385) + kb_tap(177, 265) + kb_tap(100, 385) + kb_tap(430, 448) + "]" + "C", search_cyrillic),
     ("keyboard: backspace removes a whole Cyrillic letter (U2)", russian, {},
      "DC" + "[" + kb_tap(215, 385) + kb_tap(177, 265) + kb_tap(278, 448) + kb_tap(430, 448) + "]" + "C", search_backspace),
+    # Upside down the front keys are turned for the keyboard's own input loop too
+    # (C7). A letter is typed (the first nested OK is taken by the key that opened
+    # the keyboard, hence two), DOWN x3 to Shift, LEFT wraps to OK; upside down the
+    # physical RIGHT does that.
+    ("keyboard upside down: LEFT and RIGHT follow the screen (C7)", upside_down, {},
+     "DC" + "[" + "DU" + "CC" + "DDD" + "R" + "C" + "]" + "C",
+     lambda log, sd: re.search(r"\[Library\] Search '.+'", log)),
+    ("keyboard the right way up: LEFT from Shift wraps to OK (C7)", None, {},
+     "DC" + "[" + "DU" + "CC" + "DDD" + "L" + "C" + "]" + "C",
+     lambda log, sd: re.search(r"\[Library\] Search '.+'", log)),
     ("library: a book in a subfolder gets a cache of its own (B13)", subfolder_book, {},
      "DC" + "DDDDD" + "C" + "D" + "C" + "D" + "C", subfolder_cache),
     ("names: two server books of one title get a file each; the old file goes to the one read here",

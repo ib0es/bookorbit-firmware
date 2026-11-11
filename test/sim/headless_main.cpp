@@ -93,6 +93,10 @@ static void applyNested(const NestedStep& s) {
     switch (s.kind) {
         case 'U': g_label = "n_UP"; printf(">>> (nested) UP\n"); InputManager::simPress(InputManager::BTN_UP); g_pressed = InputManager::BTN_UP; break;
         case 'D': g_label = "n_DOWN"; printf(">>> (nested) DOWN\n"); InputManager::simPress(InputManager::BTN_DOWN); g_pressed = InputManager::BTN_DOWN; break;
+        case 'L': g_label = "n_LEFT"; printf(">>> (nested) LEFT\n"); InputManager::simPress(InputManager::BTN_LEFT); g_pressed = InputManager::BTN_LEFT; break;
+        case 'R': g_label = "n_RIGHT"; printf(">>> (nested) RIGHT\n"); InputManager::simPress(InputManager::BTN_RIGHT); g_pressed = InputManager::BTN_RIGHT; break;
+        case 'C': g_label = "n_CONFIRM"; printf(">>> (nested) CONFIRM\n"); InputManager::simPress(InputManager::BTN_CONFIRM); g_pressed = InputManager::BTN_CONFIRM; break;
+        case 'B': g_label = "n_BACK"; printf(">>> (nested) BACK\n"); InputManager::simPress(InputManager::BTN_BACK); g_pressed = InputManager::BTN_BACK; break;
         case 'k': g_label = "n_HOME_TAP"; printf(">>> (nested) HOME_TAP\n"); InputManager::simHomeKeyTap(); break;
         case 'T': {
             char lbl[32]; snprintf(lbl, sizeof(lbl), "n_TAP_%d_%d", s.a, s.b); g_label = lbl; printf(">>> (nested) %s\n", lbl);
@@ -111,7 +115,7 @@ static size_t queueNested(const std::string& script, size_t i) {
     for (++i; i < script.size() && script[i] != ']'; ++i) {
         const char c = script[i];
         int a = 0, b = 0, cc = 0, d = 0, n = 0;
-        if (c == 'U' || c == 'D' || c == 'k') g_nested.push_back({c, 0, 0, 0, 0});
+        if (c == 'U' || c == 'D' || c == 'L' || c == 'R' || c == 'C' || c == 'B' || c == 'k') g_nested.push_back({c, 0, 0, 0, 0});
         else if (c == 'T' && sscanf(script.c_str() + i + 1, "%d,%d;%n", &a, &b, &n) == 2) { g_nested.push_back({c, a, b, 0, 0}); i += n; }
         else if (c == 'W' && sscanf(script.c_str() + i + 1, "%d,%d,%d,%d;%n", &a, &b, &cc, &d, &n) == 4) { g_nested.push_back({c, a, b, cc, d}); i += n; }
     }

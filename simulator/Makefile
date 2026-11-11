@@ -39,6 +39,7 @@ SRCS_CXX = \
     src/main.cpp \
     src/app/app_state.cpp \
     src/app/app_controller.cpp \
+    src/app/input.cpp \
     src/core/auto_rotate.cpp \
     src/app/orientation.cpp \
     src/app/touch_router.cpp \
