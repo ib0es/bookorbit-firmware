@@ -48,6 +48,21 @@ bool translate(AppContext& ctx, const ButtonEvent& tap, ButtonEvent& out) {
     int16_t value = 0;
     if (!uikit::hitTest(tap.x, tap.y, action, value)) return false;
 
+    // Value rows' "-" / "+" (C5) and a bookmark's "delete" (C1): the row is
+    // selected and stepped down / up, or deleted, as LEFT / RIGHT would.
+    if (ctx.currentState == STATE_APPEARANCE_MENU || ctx.currentState == STATE_STATUSBAR_MENU) {
+        if (action == ActionValueLess || action == ActionValueMore) {
+            (ctx.currentState == STATE_APPEARANCE_MENU ? ctx.selectedAppearanceIndex : ctx.selectedStatusBarIndex) = value;
+            out = make(action == ActionValueLess ? BTN_LEFT : BTN_RIGHT);
+            return true;
+        }
+    }
+    if (ctx.currentState == STATE_BOOKMARKS && action == ActionBookmarkDelete) {
+        ctx.selectedBookmarkIndex = value;
+        out = make(BTN_LEFT);
+        return true;
+    }
+
     switch (ctx.currentState) {
         case STATE_HOME:
             // home_view: 1 = continue-reading card, 2 = category (1=catalog, 2=settings), 3 = sync row

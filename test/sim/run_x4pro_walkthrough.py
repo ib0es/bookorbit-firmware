@@ -31,9 +31,9 @@ RMENU_TOC, RMENU_FONT, RMENU_MARKS = "T240,200;", "T240,278;", "T240,354;"
 RMENU_SYNC, RMENU_RESUME, RMENU_CLOSE = "T240,430;", "T240,506;", "T240,582;"
 MARKS_THIS_PAGE = "T240,90;"
 APPEAR_TYPEFACE, APPEAR_SIZE = "T240,67;", "T240,103;"
-APPEAR_ORIENTATION = "T240,463;"
+APPEAR_ORIENTATION = "T100,463;"   # on the label: the middle of a value row is its "-" (C5)
 APPEAR_STATUS_BAR = "T240,584;"
-SB_BOTTOM = "T240,211;"
+SB_BOTTOM = "T100,211;"   # on the label (the middle of a value row is its "-")
 
 # Settings rows (11 rows on X4 Pro: 0..8 shared + 9 USB-MSC + 10 Touch Wake)
 SET_LANG = "T240,80;"
@@ -102,7 +102,7 @@ CASES = [
      lambda log, sd: config(sd)["orientation"] == 1 and [p for p, _ in pages(log)][-3:] == [2, 3, 2]),
     ("reader menu: status bar menu, bottom line off gives text room",
      HOME_CARD + "w" + HOME_KEY_LONG + RMENU_FONT + APPEAR_STATUS_BAR + SB_BOTTOM + SB_BOTTOM + TITLE + TITLE + "w",
-     lambda log, sd: config(sd)["sb_bottom"] == 2 and "[Reader] Page" in log.split("TAP_240_211")[-1]),
+     lambda log, sd: config(sd)["sb_bottom"] == 2 and "[Reader] Page" in log.split("TAP_100_211")[-1]),
     ("reader menu: bookmarks, tap 'this page' adds bookmark",
      HOME_CARD + "w" + READ_RIGHT + HOME_KEY_LONG + RMENU_MARKS + MARKS_THIS_PAGE,
      lambda log, sd: "[Bookmarks] added" in log and os.path.isdir(os.path.join(sd, "bookmarks"))),
