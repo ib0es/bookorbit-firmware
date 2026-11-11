@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include "home_view.h"
 #include "../../hal/display.h"
@@ -22,7 +23,9 @@ void drawFeatured(Frame& f, Rect card, AppContext& ctx, const RecentBookInfo& bo
 
     const int16_t indicatorH = (int16_t)(lineHeight(FontSmall) + 8);
     const int16_t coverH = (int16_t)(card.height - indicatorH);
-    const int16_t coverW = (int16_t)(coverH * 2 / 3 + 4);
+    // At most half the card: in landscape the card is narrow and tall, and the
+    // text column beside the cover had no room left (the cover is cropped to fit).
+    const int16_t coverW = (int16_t)std::min<int>(coverH * 2 / 3 + 4, card.width / 2);
     Rect cover{card.x, card.y, coverW, coverH};
     frameRect(cover, Color::Black);
 
@@ -119,10 +122,22 @@ void drawHomeScreen(AppContext& ctx, bool fullRefresh) {
         curBook.author = tr(MsgId::HOME_EMPTY_HINT);
         curBook.progress = 0.0f;
     }
-    const int16_t cardH = (int16_t)(230 + lineHeight(FontSmall) + 8);
-    drawFeatured(f, takeTop(area, cardH), ctx, curBook, lib.recentBookIndex, (int)rBooks.size());
-
-    takeTop(area, 10);
+    // Portrait: the book card on top, the rows under it. Landscape (the screen
+    // turned): the card on the left, the rows on the right; stacked, the rows
+    // fell off the bottom of the screen and could not be reached.
+    const bool landscape = width() > height();
+    if (landscape) {
+        const int16_t cardW = (int16_t)(area.width * 56 / 100);
+        Rect cardArea{area.x, area.y, cardW, (int16_t)(area.height - 8)};
+        drawFeatured(f, cardArea, ctx, curBook, lib.recentBookIndex, (int)rBooks.size());
+        const int16_t gap = 18;
+        vline((int16_t)(area.x + cardW + gap / 2), area.y, (int16_t)(area.bottom() - 8));
+        area = Rect{(int16_t)(area.x + cardW + gap), area.y, (int16_t)(area.width - cardW - gap), area.height};
+    } else {
+        const int16_t cardH = (int16_t)(230 + lineHeight(FontSmall) + 8);
+        drawFeatured(f, takeTop(area, cardH), ctx, curBook, lib.recentBookIndex, (int)rBooks.size());
+        takeTop(area, 10);
+    }
     hline(area.x, area.right(), area.y);
     takeTop(area, 6);
 
