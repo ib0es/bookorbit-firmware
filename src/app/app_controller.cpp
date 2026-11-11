@@ -116,7 +116,7 @@ void AppController::setup() {
     // folders and catalog.json) when the book is left (LibraryManager::ensureScanned).
     // Restarted to open a book that did not fit in the cut-up heap: as after sleep.
     const bool restartedIntoBook = PowerService::takeRestartIntoBook();
-    const bool resumeBook = (isWakeFromSleep || restartedIntoBook) && PowerService::getSavedRtcState() == STATE_READING;
+    const bool resumeBook = restartedIntoBook || (isWakeFromSleep && PowerService::getSavedRtcState() == STATE_READING);
     if (!resumeBook) lib.scanLocalBooks();
     lib.initLastBook();
     MemStats::mark("library");
