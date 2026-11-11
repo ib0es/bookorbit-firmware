@@ -12,6 +12,8 @@
 #include <functional>
 #include <string>
 #include <unordered_map>
+#include "../storage/catalog_store.h"
+#include "../storage/last_book_store.h"
 
 bool LibraryManager::isValidCoverFile(const String& path) {
     if (path.length() == 0 || !Storage.exists(path.c_str())) return false;
@@ -252,7 +254,7 @@ void LibraryManager::cleanOrphanFiles() {
     std::vector<String> covers = books;
     std::vector<BookMetadata> catalog;
     // An unreadable catalog would make the covers of every cloud book look orphaned.
-    const bool catalogKnown = Storage.loadCatalog(catalog) || !Storage.exists("/books/catalog.json");
+    const bool catalogKnown = CatalogStore::load(catalog) || !Storage.exists("/books/catalog.json");
     for (const auto& b : catalog) covers.push_back(catalogStem(b.title, catalogBookId(b)));
     if (lastBook.coverPath.startsWith("/covers/")) covers.push_back(stemOf(lastBook.coverPath));
     for (const auto& b : masterBooks) {
@@ -307,7 +309,7 @@ void LibraryManager::updateLastBookAfterDeletion(const String& deletedPath) {
         lastBook.totalPages = 1;
     }
     recentBookIndex = 0;
-    Storage.saveLastBook(lastBook);
+    LastBookStore::save(lastBook);
 }
 
 namespace {
@@ -708,7 +710,7 @@ void LibraryManager::buildMaster() {
     libraryNames.clear();
     int folders = 0;
     std::vector<BookMetadata> catalog;
-    Storage.loadCatalog(catalog);
+    CatalogStore::load(catalog);
     // One allocation for the list (it lives until the next sync), made before the
     // per-book strings so it does not end up between them.
     masterBooks.reserve(catalog.size() + 16);
@@ -1152,7 +1154,7 @@ void LibraryManager::rebuildRows() {
 }
 
 void LibraryManager::initLastBook() {
-    if (Storage.loadLastBook(lastBook)) {
+    if (LastBookStore::load(lastBook)) {
         ProgressStore& store = ProgressStore::instance();
         if (BookProgressRecord* rec = store.find(lastBook.fileId, lastBook.filePath)) {
             // progress.json is the source of truth for the position.
@@ -1198,7 +1200,7 @@ void LibraryManager::initLastBook() {
 bool LibraryManager::saveLastBook() {
     touch();
     _unsavedMoves = 0;
-    bool ok = Storage.saveLastBook(lastBook);
+    bool ok = LastBookStore::save(lastBook);
     ProgressStore::instance().save();
     return ok;
 }
@@ -1284,7 +1286,7 @@ void LibraryManager::migrateLegacyNames(const std::vector<BookMetadata>& catalog
     int moved = 0;
     // The last book as on the card: at boot the list is built before it is loaded.
     LastBookInfo saved;
-    const bool haveSaved = Storage.loadLastBook(saved);
+    const bool haveSaved = LastBookStore::load(saved);
     bool savedChanged = false;
     for (const auto& o : owner) {
         const BookMetadata& b = catalog[o.second];
@@ -1339,7 +1341,7 @@ void LibraryManager::migrateLegacyNames(const std::vector<BookMetadata>& catalog
         if (active >= 0) selectFormat(item, active);
     }
     if (moved > 0) {
-        if (savedChanged) Storage.saveLastBook(saved);
+        if (savedChanged) LastBookStore::save(saved);
         ProgressStore::instance().save();
         JpegViewer::clearCache();
         touch();
@@ -1444,5 +1446,5 @@ void LibraryManager::applyRecordToLibrary(const BookProgressRecord& rec) {
 }
 
 bool LibraryManager::loadLastBook() {
-    return Storage.loadLastBook(lastBook);
+    return LastBookStore::load(lastBook);
 }
