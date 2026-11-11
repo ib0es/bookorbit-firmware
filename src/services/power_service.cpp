@@ -54,6 +54,20 @@ bool PowerService::restartIntoLastBook() {
     Platform::restart();
 }
 
+RTC_NOINIT_ATTR static uint32_t rtcSettingsAfterRestart;
+static constexpr uint32_t kSettingsMagic = 0x5E77C0DE;
+
+void PowerService::restartIntoSettings() {
+    rtcSettingsAfterRestart = kSettingsMagic;
+    Platform::restart();
+}
+
+bool PowerService::takeRestartIntoSettings() {
+    const bool yes = rtcSettingsAfterRestart == kSettingsMagic;
+    rtcSettingsAfterRestart = 0;
+    return yes;
+}
+
 bool PowerService::takeRestartIntoBook() {
     const bool yes = rtcOpenBookAfterRestart == kOpenBookMagic;
     rtcOpenBookAfterRestart = 0;
@@ -97,9 +111,6 @@ int PowerService::getSavedRtcState() {
     return rtcSavedState;
 }
 
-void PowerService::setSavedRtcState(int state) {
-    rtcSavedState = state;
-}
 
 void PowerService::noteActivity() {
     AppController::getInstance().getContext().lastActivityTime = millis();
