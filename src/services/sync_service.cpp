@@ -170,11 +170,8 @@ void resolveServerIds(BookProgressRecord& rec) {
             if ((rec.fileId > 0 && f.fileId == rec.fileId) ||
                 LibraryManager::catalogFormatPath(c, f).equalsIgnoreCase(rec.filePath)) { fmt = &f; break; }
         }
-        const bool byTitle = !fmt && rec.title.length() > 0 && c.title.equalsIgnoreCase(rec.title) &&
-                             BookFormats::fromPath(rec.filePath.c_str()) ==
-                                 (BookFormats::Kind)(c.preferredFormat() ? c.preferredFormat()->kind : 0);
-        if (fmt || byTitle) {
-            if (rec.fileId <= 0) rec.fileId = fmt ? fmt->fileId : c.fileId;
+        if (fmt) {   // never by the title alone: two books of one title are two books
+            if (rec.fileId <= 0) rec.fileId = fmt->fileId;
             if (rec.bookId <= 0) rec.bookId = LibraryManager::catalogBookId(c);
             break;
         }
@@ -400,7 +397,7 @@ bool SyncService::downloadBook(AppContext& ctx, BookItem& book, AppState returnS
         if (book.coverPath.length() == 0) {
             book.coverPath = LibraryManager::resolveCoverPath(book.filePath, book.title);
             if (book.coverPath.length() == 0) {
-                book.coverPath = "/covers/" + LibraryManager::safeFileName(book.title, String(book.fileId)) + ".jpg";
+                book.coverPath = "/covers/" + LibraryManager::catalogStem(book.title, book.bookId) + ".jpg";
             }
         }
         if (book.coverUrl.length() > 0 && !LibraryManager::isValidCoverFile(book.coverPath)) {
@@ -443,23 +440,11 @@ void showConfigError(AppContext& ctx, AppState prevState, const char* what, cons
     SyncService::showState(ctx, prevState);
 }
 
-// Record for a format of a catalog entry: by file id or the path it is downloaded
-// to, then (preferred format only) by exact title for books sideloaded before they
-// had a server id.
+// Record for a format of a catalog entry: by file id or the path it is downloaded to.
 BookProgressRecord* recordForCatalogFormat(const BookMetadata& b, const BookFormatEntry& f) {
     ProgressStore& store = ProgressStore::instance();
     const String path = LibraryManager::catalogFormatPath(b, f);
     BookProgressRecord* rec = store.find(f.fileId, path);
-    if (!rec && f.fileId == b.fileId) {
-        for (auto& r : store.records()) {
-            if (r.fileId <= 0 && r.title.equalsIgnoreCase(b.title) && r.filePath.equalsIgnoreCase(path)) { rec = &r; break; }
-        }
-        for (auto& r : store.records()) {
-            if (rec) break;
-            if (r.fileId <= 0 && r.title.equalsIgnoreCase(b.title) &&
-                BookFormats::fromPath(r.filePath.c_str()) == (BookFormats::Kind)f.kind) rec = &r;
-        }
-    }
     if (rec) {
         if (f.fileId > 0) rec->fileId = f.fileId;
         const int bookId = LibraryManager::catalogBookId(b);
@@ -511,8 +496,7 @@ void downloadCovers(AppContext& ctx, const std::vector<BookMetadata>& catalog) {
         if (SyncService::isCancelled() || SyncService::checkSyncCancel()) break;
         if (b.coverUrl.length() == 0) continue;
 
-        const String safe = LibraryManager::safeFileName(b.title, b.id);
-        const String coverPath = "/covers/" + safe + ".jpg";
+        const String coverPath = "/covers/" + LibraryManager::catalogStem(b.title, LibraryManager::catalogBookId(b)) + ".jpg";
         const String destPath = LibraryManager::catalogBookPath(b);
         const bool wanted = lib.lastBook.filePath.equalsIgnoreCase(destPath) ||
                             Storage.exists(destPath.c_str()) || downloaded < 4;
@@ -634,6 +618,10 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
             // Out of memory part-way: keep the books we knew about but did not get now.
             mergeSavedCatalog(catalog);
         }
+        // Files downloaded by older firmware (named by title) take their id names
+        // before their positions are looked up by those names.
+        lib.migrateLegacyNames(catalog);
+
         // 3. Books on the card never opened here (downloaded by older firmware, or
         //    copied over) get a record and the server's position: their first sync
         //    is a pull. Each format separately: a book read here as FB2 and on the

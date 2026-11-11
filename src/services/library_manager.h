@@ -118,6 +118,11 @@ public:
     void rebuildFilteredIndices();
     // Picks up books copied to / removed from the card since the master scan.
     void refreshLocalFiles();
+    // Books downloaded by firmware before November 2026 are named by their title
+    // alone: renamed to their catalogStem, with the cache, cover, bookmarks and
+    // position records that go by the name. Run on the saved catalog when the
+    // list is built, and on a fresh one in a sync (no catalog was saved yet).
+    void migrateLegacyNames(const std::vector<BookMetadata>& catalog);
     // The home screen's books (up to 4). Their covers are looked up on the card
     // once until something changes (recentCover): that is a dozen file checks per
     // book, and the home screen asks on every key press.
@@ -210,9 +215,14 @@ public:
     // Leaves it (back to the list it was opened from).
     void closeFormats();
 
-    // File name used for a catalog book on the SD card ("/books/<safe title>.epub").
+    // A title as a file name: the characters FAT does not take become "_".
     static String safeFileName(const String& title, const String& fallbackId);
-    // Path of the preferred format of a catalog book, and of one of its formats.
+    // Name (no folder, no extension) of a server book's files on the card: its
+    // book and its cover. "<safe title> [<book id>]": two server books of one
+    // title never share a file, a cover or a position.
+    static String catalogStem(const String& title, int bookId);
+    // Path of the preferred format of a catalog book, and of one of its formats
+    // ("/books/<catalogStem>.epub").
     static String catalogBookPath(const BookMetadata& b);
     static String catalogFormatPath(const BookMetadata& b, const BookFormatEntry& f);
     // Server ids of a catalog entry: book id (from the OPDS id) and file id.
