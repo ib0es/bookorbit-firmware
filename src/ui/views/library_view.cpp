@@ -49,8 +49,8 @@ void drawRow(Frame& f, Rect r, const BookItem& item, bool selected, int index) {
         // Icon: where the book is. Badge: how far it is read (or where it is).
         if (item.isDownloaded) icon::check(inner.x, iconY, ink);
         else icon::cloud(inner.x, iconY, ink);
-        // Filled pill = on the card, outlined pill = only in the cloud; a cloud
-        // book with progress also says so ("15% · cloud").
+        // Filled pill = on the card (how far it is read), outlined pill = only
+        // in the cloud (no position: none is asked for until it is downloaded).
         char pct[12];
         const char* read = nullptr;
         if (item.progress >= LibraryManager::kCompletedAt) read = tr(MsgId::LIB_BADGE_COMPLETED);
@@ -59,8 +59,7 @@ void drawRow(Frame& f, Rect r, const BookItem& item, bool selected, int index) {
             snprintf(badgeBuf, sizeof(badgeBuf), "%s", read ? read : tr(MsgId::HOME_CAT_DOWNLOADED));   // pct is local
         } else {
             badgeDark = false;
-            if (read) snprintf(badgeBuf, sizeof(badgeBuf), tr(MsgId::LIB_BADGE_IN_CLOUD_FMT), read);
-            else badge = tr(MsgId::HOME_CAT_CLOUD);
+            badge = tr(MsgId::HOME_CAT_CLOUD);
         }
     }
 

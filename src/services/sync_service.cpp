@@ -468,23 +468,14 @@ BookProgressRecord* recordForCatalogFormat(const BookMetadata& b, const BookForm
     return rec;
 }
 
-// Result of syncing one opened book, reused for its catalog entry.
-struct SyncedBook {
-    int fileId = 0;
-    int bookId = 0;
-    ServerProgress server;
-};
-
-// By file id: each format of a book is synced on its own.
-const SyncedBook* findSynced(const std::vector<SyncedBook>& synced, int fileId) {
-    for (const auto& s : synced) {
-        if (fileId > 0 && s.fileId == fileId) return &s;
-    }
-    return nullptr;
+// File ids synced already in this sync (each format of a book is synced on its own).
+bool alreadySynced(const std::vector<int>& synced, int fileId) {
+    for (int id : synced) if (fileId > 0 && id == fileId) return true;
+    return false;
 }
 
 // Three-way sync of every book that has a progress record on this device.
-void syncOpenedBooks(AppContext& ctx, std::vector<SyncedBook>& synced) {
+void syncOpenedBooks(AppContext& ctx, std::vector<int>& synced) {
     auto& records = ProgressStore::instance().records();
     for (size_t i = 0; i < records.size(); i++) {
         if (SyncService::isCancelled() || SyncService::checkSyncCancel()) break;
@@ -492,11 +483,8 @@ void syncOpenedBooks(AppContext& ctx, std::vector<SyncedBook>& synced) {
         if (rec.filePath.length() > 0 && !Storage.exists(rec.filePath.c_str())) continue;   // deleted book
         resolveServerIds(rec);
         if (rec.bookId <= 0) continue;   // matched against the catalog below
-        SyncedBook s;
-        SyncService::syncBookProgress(ctx, rec, &s.server);   // a failure leaves it queued (dirty)
-        s.fileId = rec.fileId;
-        s.bookId = rec.bookId;
-        if (s.fileId > 0 || s.bookId > 0) synced.push_back(s);   // do not ask again for its catalog entry
+        SyncService::syncBookProgress(ctx, rec);   // a failure leaves it queued (dirty)
+        if (rec.fileId > 0) synced.push_back(rec.fileId);   // not asked again for its catalog entry
     }
     ProgressStore::instance().save();
 }
@@ -600,7 +588,7 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
     // 1. Reading progress of every book opened on this device, before the catalog:
     //    it must not depend on the catalog fitting into memory, and the heap is
     //    at its largest now.
-    std::vector<SyncedBook> synced;
+    std::vector<int> synced;
     syncOpenedBooks(ctx, synced);
     // The saved catalog read for the ids goes before the fresh one is fetched (the
     // heap is at its tightest then); the books of step 3 get their ids from it.
@@ -646,46 +634,24 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
             // Out of memory part-way: keep the books we knew about but did not get now.
             mergeSavedCatalog(catalog);
         }
-
-        // 3. Server progress for the catalog: from step 1 for opened books; books
-        //    downloaded here but never opened get a record (first sync = pull);
-        //    for the rest a snapshot, only to show it in the library.
-        //    Each format separately: a book read here as FB2 and on the web as EPUB
-        //    has two positions. The snapshot shown is the preferred format's.
-        for (auto& b : catalog) {
+        // 3. Books on the card never opened here (downloaded by older firmware, or
+        //    copied over) get a record and the server's position: their first sync
+        //    is a pull. Each format separately: a book read here as FB2 and on the
+        //    web as EPUB has two positions. Books only on the server are not asked
+        //    about: their position comes when they are downloaded.
+        for (const auto& b : catalog) {
             if (s_syncCancelled || checkSyncCancel()) break;
-            ServerProgress snapshot;
             const int bookId = LibraryManager::catalogBookId(b);
             for (const auto& f : b.formats) {
                 if (s_syncCancelled || checkSyncCancel()) break;
-                const bool preferred = f.fileId == b.fileId;
-                ServerProgress srv;
-                const SyncedBook* done = findSynced(synced, f.fileId);
-                if (done) {
-                    srv = done->server;
-                } else {
-                    BookProgressRecord* rec = recordForCatalogFormat(b, f);
-                    const String path = LibraryManager::catalogFormatPath(b, f);
-                    if (!rec && (Storage.exists(path.c_str()) || lib.lastBook.filePath.equalsIgnoreCase(path))) {
-                        rec = &ProgressStore::instance().getOrCreate(f.fileId, bookId, path, b.title);
-                    }
-                    if (rec) {
-                        syncBookProgress(ctx, *rec, &srv);
-                        SyncedBook s;
-                        s.fileId = f.fileId;
-                        s.bookId = bookId;
-                        s.server = srv;
-                        synced.push_back(s);
-                    } else if (preferred && bookId > 0) {
-                        BookOrbit.fetchBookProgress(ctx.config.serverHost, ctx.config.bookOrbitUser, ctx.config.bookOrbitPass,
-                                                    ctx.config.authToken, bookId, f.fileId, srv);
-                    }
-                }
-                if (preferred) snapshot = srv;
+                if (alreadySynced(synced, f.fileId)) continue;
+                const String path = LibraryManager::catalogFormatPath(b, f);
+                if (!Storage.exists(path.c_str())) continue;   // not on the card
+                BookProgressRecord* rec = recordForCatalogFormat(b, f);
+                if (!rec) rec = &ProgressStore::instance().getOrCreate(f.fileId, bookId, path, b.title);
+                syncBookProgress(ctx, *rec);
+                if (f.fileId > 0) synced.push_back(f.fileId);
             }
-            b.lastProgress = snapshot.exists ? snapshot.percent : 0.0f;
-            b.lastPage = snapshot.page;
-            b.serverUpdatedAt = snapshot.updatedAt;
         }
         Storage.saveCatalog(catalog);
         ProgressStore::instance().save();
@@ -711,7 +677,7 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
     // allocated between short-lived ones (a fragmented heap after a sync had
     // only ~50 KB in one piece of ~110 KB free).
     std::vector<BookMetadata>().swap(catalog);
-    std::vector<SyncedBook>().swap(synced);
+    std::vector<int>().swap(synced);
     BookOrbit.disconnectWiFi();
     MemStats::log("sync: done, Wi-Fi off");
 
@@ -852,8 +818,6 @@ SyncService::BookSyncResult SyncService::syncBookItem(AppContext& ctx, BookItem&
             BookProgressRecord& rec = isCurrent ? lib.currentRecord()
                 : ProgressStore::instance().getOrCreate(book.fileId, book.bookId, book.filePath, book.title);
             ok = syncBookProgress(ctx, rec);
-            // A book never opened here keeps showing the server's position
-            // (from the catalog) unless the sync produced one.
             if (ProgressSync::hasProgress(rec.state.local.percent)) {
                 book.progress = rec.state.local.percent;
                 if (rec.state.local.page > 0) book.page = rec.state.local.page;

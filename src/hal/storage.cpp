@@ -422,10 +422,6 @@ bool StorageManager::saveCatalog(const std::vector<BookMetadata>& catalog) {
             if (f.url.length() > 0) fo["u"] = f.url;
         }
         obj["cover"] = b.coverUrl;
-        obj["progress"] = b.lastProgress;
-        obj["page"] = b.lastPage;
-        if (b.xpath.length() > 0) obj["xpath"] = b.xpath;
-        if (b.serverUpdatedAt > 0) obj["srvUpdated"] = b.serverUpdatedAt;
     }
     const bool ok = JsonFile::write("/books/catalog.json", doc);
     if (ok) {
@@ -468,10 +464,8 @@ bool StorageManager::loadCatalog(std::vector<BookMetadata>& outCatalog) {
             b.formats.push_back(f);
         }
         if (obj["cover"].is<const char*>()) b.coverUrl = obj["cover"].as<String>();
-        if (obj["progress"].is<float>()) b.lastProgress = obj["progress"].as<float>();
-        if (obj["page"].is<int>()) b.lastPage = obj["page"].as<int>();
-        if (obj["xpath"].is<const char*>()) b.xpath = obj["xpath"].as<String>();
-        if (obj["srvUpdated"].is<uint32_t>()) b.serverUpdatedAt = obj["srvUpdated"].as<uint32_t>();
+        // "progress", "page", "xpath", "srvUpdated" of older firmware: server
+        // snapshots of books not on the card, no longer kept.
         if (b.title.length() > 0) {
             outCatalog.push_back(b);
         }
