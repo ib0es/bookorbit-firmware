@@ -22,7 +22,7 @@
 #include "Imu.h"
 #include "SDCardManager.h"
 #include "UsbMassStorage.h"
-#include "hal/display.h"
+#include "platform/hal/display.h"
 #include "esp_sleep.h"
 
 void setup();

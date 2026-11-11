@@ -1,11 +1,11 @@
 #include "wifi_manager_ui.h"
 #include <WiFi.h>
 #include <vector>
-#include "hal/display.h"
-#include "hal/buttons.h"
+#include "platform/hal/display.h"
+#include "platform/hal/buttons.h"
 #include "services/power_service.h"
 #include "services/sync_service.h"
-#include "hal/battery.h"
+#include "platform/hal/battery.h"
 #include "ui/font.h"
 #include "ui/keyboard_ui.h"
 #include "ui/i18n.h"

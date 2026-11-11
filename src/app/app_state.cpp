@@ -1,6 +1,6 @@
 #include "app_state.h"
-#include "../hal/frontlight.h"
-#include "../hal/storage.h"
+#include "../platform/hal/frontlight.h"
+#include "../platform/hal/storage.h"
 
 bool AppConfig::load() {
     return Storage.loadConfig(*this);

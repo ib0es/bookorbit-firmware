@@ -1,6 +1,6 @@
 #include "sync_clock.h"
 #include "../core/time_utils.h"
-#include "../hal/rtc.h"
+#include "../platform/hal/rtc.h"
 #include "../platform/system.h"
 #include <cstdlib>
 

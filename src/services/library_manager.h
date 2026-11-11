@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 #include <vector>
-#include "../hal/storage.h"
+#include "../platform/hal/storage.h"
 #include "progress_store.h"
 
 struct BookMetadata;

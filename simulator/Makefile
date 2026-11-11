@@ -66,16 +66,16 @@ SRCS_CXX = \
     src/ui/views/settings_view.cpp \
     src/ui/views/reader_menu_view.cpp \
     src/ui/views/book_menu_view.cpp \
-    src/hal/battery.cpp \
-    src/hal/rtc.cpp \
-    src/hal/imu.cpp \
-    src/hal/frontlight.cpp \
-    src/hal/buttons.cpp \
-    src/hal/display.cpp \
-    src/hal/storage.cpp \
+    src/platform/hal/battery.cpp \
+    src/platform/hal/rtc.cpp \
+    src/platform/hal/imu.cpp \
+    src/platform/hal/frontlight.cpp \
+    src/platform/hal/buttons.cpp \
+    src/platform/hal/display.cpp \
+    src/platform/hal/storage.cpp \
     src/storage/json_file.cpp \
-    src/hal/usb_msc.cpp \
-    src/hal/mem_stats.cpp \
+    src/platform/hal/usb_msc.cpp \
+    src/platform/hal/mem_stats.cpp \
     src/ui/i18n.cpp \
     src/ui/kit/ui_kit.cpp \
     freeink-sdk/libs/ui/FreeInkUI/src/FreeInkUI.cpp \

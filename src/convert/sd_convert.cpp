@@ -1,6 +1,6 @@
 #include "sd_convert.h"
 
-#include "../hal/storage.h"
+#include "../platform/hal/storage.h"
 #include "../reader/engine/sd_book_storage.h"
 #include "fb2_to_epub.h"
 #include "mobi_to_epub.h"

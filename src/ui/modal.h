@@ -15,7 +15,7 @@
 
 #include <Arduino.h>
 #include <functional>
-#include "../hal/buttons.h"
+#include "../platform/hal/buttons.h"
 
 // Default display time for informational messages.
 constexpr uint32_t MODAL_MESSAGE_MS = 1800;

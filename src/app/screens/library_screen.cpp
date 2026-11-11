@@ -1,6 +1,6 @@
 #include "screens.h"
 #include <algorithm>
-#include "../../hal/storage.h"
+#include "../../platform/hal/storage.h"
 #include "../../services/library_manager.h"
 #include "../../services/sync_service.h"
 #include "../../ui/modal.h"

@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 #include <UsbMassStorage.h>
-#include "../app/app_state.h"
+#include "../../app/app_state.h"
 
 // Wraps FreeInk's UsbMassStorage lifecycle: stops background SD readers/writers,
 // detaches FsVolume for raw block access, hands off USB PHY cleanly on ESP32-S3,

@@ -1,11 +1,11 @@
 #include "usb_msc.h"
 
 #include "storage.h"
-#include "../net/bookorbit_client.h"
-#include "../reader/reader.h"
-#include "../services/library_manager.h"
-#include "../services/power_service.h"
-#include "../services/sync_service.h"
+#include "../../net/bookorbit_client.h"
+#include "../../reader/reader.h"
+#include "../../services/library_manager.h"
+#include "../../services/power_service.h"
+#include "../../services/sync_service.h"
 
 #if defined(ESP_PLATFORM)
 #include <esp_system.h>

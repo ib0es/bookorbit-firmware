@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-#include "../hal/storage.h"
+#include "../platform/hal/storage.h"
 #include "json_writer.h"
 
 namespace {

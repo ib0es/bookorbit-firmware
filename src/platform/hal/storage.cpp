@@ -1,12 +1,12 @@
 #include "storage.h"
-#include "../ui/font.h"
-#include "../app/app_state.h"
+#include "../../ui/font.h"
+#include "../../app/app_state.h"
 #include <ArduinoJson.h>
 #include <algorithm>
-#include "../net/bookorbit_client.h"
-#include "../core/book_formats.h"
-#include "../storage/json_file.h"
-#include "../platform/device.h"
+#include "../../net/bookorbit_client.h"
+#include "../../core/book_formats.h"
+#include "../../storage/json_file.h"
+#include "../device.h"
 #include <Preferences.h>
 
 StorageManager Storage;

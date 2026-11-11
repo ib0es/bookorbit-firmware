@@ -7,7 +7,7 @@
 #include <Arduino.h>
 #include <BookStorage.h>
 
-#include "../../hal/storage.h"
+#include "../../platform/hal/storage.h"
 
 class SdBookSource : public freeink::book::BookSource {
 public:

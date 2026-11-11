@@ -3,7 +3,7 @@
 #include <Arduino.h>
 #include "app_state.h"
 #include "../core/auto_rotate.h"
-#include "../hal/buttons.h"
+#include "../platform/hal/buttons.h"
 
 // Top-level application loop: boot sequence, event routing and power rules.
 // Screen-specific behaviour lives in app/screens/*; dialogs in ui/modal.h.

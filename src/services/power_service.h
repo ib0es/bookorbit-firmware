@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 #include "../app/app_state.h"
-#include "../hal/buttons.h"
+#include "../platform/hal/buttons.h"
 
 class PowerService {
 public:

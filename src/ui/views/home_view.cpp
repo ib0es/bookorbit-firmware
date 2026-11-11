@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <cmath>
 #include "home_view.h"
-#include "../../hal/display.h"
+#include "../../platform/hal/display.h"
 #include "../../ui/jpeg_viewer.h"
 #include "../../services/library_manager.h"
 #include "../i18n.h"

@@ -5,12 +5,12 @@
 #include <WiFi.h>
 #include <PowerManager.h>
 #include <BoardConfig.h>
-#include "../hal/display.h"
-#include "../hal/battery.h"
-#include "../hal/imu.h"
-#include "../hal/frontlight.h"
-#include "../hal/storage.h"
-#include "../hal/usb_msc.h"
+#include "../platform/hal/display.h"
+#include "../platform/hal/battery.h"
+#include "../platform/hal/imu.h"
+#include "../platform/hal/frontlight.h"
+#include "../platform/hal/storage.h"
+#include "../platform/hal/usb_msc.h"
 #include "../ui/font.h"
 #include "../ui/jpeg_viewer.h"
 #include "../ui/modal.h"
@@ -23,7 +23,7 @@
 #include "../reader/reader.h"
 #include "../net/bookorbit_client.h"
 #include "../app/app_controller.h"
-#include "../hal/buttons.h"
+#include "../platform/hal/buttons.h"
 #include "../ui/text_utils.h"
 #include "../platform/device.h"
 #include "../platform/system.h"

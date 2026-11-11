@@ -4,10 +4,10 @@
 #include <WebServer.h>
 #include <DNSServer.h>
 #include <esp_random.h>
-#include "hal/display.h"
-#include "hal/buttons.h"
+#include "platform/hal/display.h"
+#include "platform/hal/buttons.h"
 #include "services/power_service.h"
-#include "hal/storage.h"
+#include "platform/hal/storage.h"
 #include "app/app_state.h"
 #include "ui/font.h"
 #include "ui/i18n.h"

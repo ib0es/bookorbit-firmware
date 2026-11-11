@@ -1,6 +1,6 @@
 #include <algorithm>
 #include "reader_menu_view.h"
-#include "../../hal/display.h"
+#include "../../platform/hal/display.h"
 #include "../../ui/font.h"
 #include "../../reader/reader.h"
 #include "../../reader/font_store.h"
