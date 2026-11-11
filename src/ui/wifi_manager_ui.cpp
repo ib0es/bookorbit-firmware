@@ -4,6 +4,7 @@
 #include "hal/display.h"
 #include "hal/buttons.h"
 #include "services/power_service.h"
+#include "services/sync_service.h"
 #include "hal/battery.h"
 #include "ui/font.h"
 #include "ui/keyboard_ui.h"
@@ -27,6 +28,17 @@ struct ScannedNet {
 
 static void drawModal(const char* title, const char* line1, const char* line2 = nullptr, const char* line3 = nullptr) {
     drawStatusModal(title, line1, line2, line3);
+}
+
+// Connecting takes up to 14 s: BACK (a tap on touch boards) gives up. Returns
+// 1 connected, 0 failed, -1 cancelled.
+static int connectCancellable(const char* title, const char* line1, const String& ssid, const char* pass, uint32_t timeoutMs) {
+    SyncService::resetCancel();
+    drawStatusModal(title, line1, ssid.c_str(), tr(MsgId::COMMON_WAIT), nullptr, tr(MsgId::COMMON_CANCEL));
+    const bool ok = BookOrbit.connectWiFi(ssid.c_str(), pass, timeoutMs, SyncService::checkSyncCancel);
+    const bool cancelled = !ok && SyncService::isCancelled();
+    SyncService::resetCancel();
+    return ok ? 1 : (cancelled ? -1 : 0);
 }
 
 WifiManagerUI::WifiManagerUI() {}
@@ -194,8 +206,10 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
 
                     if (chosen.isOpen) {
                         // Open network without password
-                        drawModal(tr(MsgId::WIFI_CONNECTING_TITLE), tr(MsgId::WIFI_CONNECTING_OPEN), chosen.ssid.c_str(), tr(MsgId::COMMON_WAIT));
-                        if (BookOrbit.connectWiFi(chosen.ssid.c_str(), "", 12000)) {
+                        const int c = connectCancellable(tr(MsgId::WIFI_CONNECTING_TITLE), tr(MsgId::WIFI_CONNECTING_OPEN), chosen.ssid, "", 12000);
+                        if (c < 0) {
+                            redraw = true;
+                        } else if (c > 0) {
                             outSsid = chosen.ssid;
                             outPass = "";
                             String ipStr = "IP: " + WiFi.localIP().toString();
@@ -214,8 +228,13 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
                         // If matching current saved network and has password, offer fast connect
                         if (chosen.ssid.equalsIgnoreCase(outSsid) && outPass.length() > 0) {
                             passCandidate = outPass;
-                            drawModal(tr(MsgId::WIFI_CONNECTING_TITLE), tr(MsgId::WIFI_CONNECTING_SAVED), chosen.ssid.c_str());
-                            if (BookOrbit.connectWiFi(chosen.ssid.c_str(), passCandidate.c_str(), 14000)) {
+                            const int c = connectCancellable(tr(MsgId::WIFI_CONNECTING_TITLE), tr(MsgId::WIFI_CONNECTING_SAVED), chosen.ssid,
+                                                             passCandidate.c_str(), 14000);
+                            if (c < 0) {
+                                redraw = true;
+                                continue;
+                            }
+                            if (c > 0) {
                                 outSsid = chosen.ssid;
                                 String ipStr = "IP: " + WiFi.localIP().toString();
                                 drawModal(tr(MsgId::WIFI_CONNECTED_TITLE), tr(MsgId::WIFI_CONNECTED_SAVED), chosen.ssid.c_str(), ipStr.c_str());
@@ -239,8 +258,11 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
                         lastEnteredSsid = chosen.ssid;
                         lastEnteredPass = passCandidate;
 
-                        drawModal(tr(MsgId::WIFI_CHECKING_PASS_TITLE), tr(MsgId::WIFI_CONNECTING_PREFIX), chosen.ssid.c_str(), tr(MsgId::WIFI_AUTH_WAIT));
-                        if (BookOrbit.connectWiFi(chosen.ssid.c_str(), passCandidate.c_str(), 14000)) {
+                        const int c = connectCancellable(tr(MsgId::WIFI_CHECKING_PASS_TITLE), tr(MsgId::WIFI_CONNECTING_PREFIX), chosen.ssid,
+                                                         passCandidate.c_str(), 14000);
+                        if (c < 0) {
+                            redraw = true;
+                        } else if (c > 0) {
                             outSsid = chosen.ssid;
                             outPass = passCandidate;
                             String ipStr = "IP: " + WiFi.localIP().toString();
