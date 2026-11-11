@@ -67,6 +67,8 @@ public:
 
     // Pages
     bool nextPage();
+    // On the last page of the last chapter (nextPage() has nowhere to go).
+    bool atEnd();
     bool prevPage();
     bool setPage(int page);
     bool setPageByProgress(float percent);

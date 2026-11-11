@@ -15,6 +15,7 @@
 #include "../../services/sync_service.h"
 #include "../../services/power_service.h"
 #include "../../ui/modal.h"
+#include "../../ui/text_utils.h"
 #include "../../ui/views/home_view.h"
 #include "../../ui/views/reader_menu_view.h"
 #include "../../ui/views/status_modal.h"
@@ -49,8 +50,9 @@ void returnToReading(AppContext& ctx) {
     Reader.renderCurrentPage();
 }
 
-// Saves the position, pushes unsynced progress, closes the book and goes home.
-void closeBookAndGoHome(AppContext& ctx, bool fullRefresh) {
+// Saves the position, pushes unsynced progress, closes the book and goes home
+// (drawn here, or by the dialog that called it: `draw` false).
+void closeBookAndGoHome(AppContext& ctx, bool fullRefresh, bool draw = true) {
     auto& lib = LibraryManager::getInstance();
     const uint32_t t0 = millis();
     lib.flushReaderPosition();
@@ -66,7 +68,7 @@ void closeBookAndGoHome(AppContext& ctx, bool fullRefresh) {
     Reader.setFontSize(ctx.config.readerFontSize);  // closed: no pagination, used by the next open
     lib.ensureScanned();   // woken up straight into the book: the library was not scanned yet
     ctx.currentState = STATE_HOME;
-    drawHomeScreen(ctx, fullRefresh);
+    if (draw) drawHomeScreen(ctx, fullRefresh);
     if (upload) SyncService::startBackgroundUpload(ctx, fileId, path);
 }
 
@@ -234,7 +236,16 @@ void handleReadingEvent(AppContext& ctx, const ButtonEvent& event) {
 
     switch (action) {
         case Action::Next:
-            if (Reader.nextPage()) lib.recordReaderMove(/*withXPath=*/false, /*persist=*/false);
+            if (Reader.nextPage()) {
+                lib.recordReaderMove(/*withXPath=*/false, /*persist=*/false);
+            } else if (Reader.atEnd()) {
+                // The last page (U2): close the book, or stay on it.
+                Serial.println("[Reader] End of the book");
+                Modal.showConfirm(tr(MsgId::READER_END_TITLE), utf8Prefix(lib.lastBook.title, 64),
+                                  tr(MsgId::READER_END_L1), "", tr(MsgId::READER_END_FOOTER),
+                                  [&ctx]() { closeBookAndGoHome(ctx, false, /*draw=*/false); }, nullptr,
+                                  tr(MsgId::READER_END_CLOSE));
+            }
             break;
         case Action::Prev:
             if (Reader.prevPage()) lib.recordReaderMove(false, false);
