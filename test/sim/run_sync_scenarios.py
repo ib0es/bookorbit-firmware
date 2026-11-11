@@ -151,6 +151,12 @@ P40 = [{"fileId": f, "percentage": 40, "updatedAt": "NOW-50"} for f in (101, 102
 
 # name, server state, server after 'S', script, log must match (all), log must not match (any)
 LOG_SCENARIOS = [
+    # Only books on the card have a position here: the sync asks the server for
+    # those, never for books it only lists (their position comes with the download).
+    ("full sync: progress asked for the books on the card only",
+     {"progress": P40}, None, HOME_SYNC,
+     [r"GET /api/v1/books/1/progress -> 200", r"Catalog fetched: 3 books"],
+     [r"GET /api/v1/books/[23]/progress"]),
     ("download a cloud book: file, cover, server position",
      {"progress": P40}, None, HOME_SYNC + CLOUD + "w",
      [r"\[Sync\] Book /books/.+ downloaded successfully", r"Download finished: \d+ bytes .* result \d+",

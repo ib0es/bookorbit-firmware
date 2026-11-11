@@ -416,7 +416,6 @@
   "CATALOG_TAG_OPTION": "OPCIÓN",
   "CATALOG_HIDE_ON": "[ON] Ocultar libros terminados",
   "CATALOG_HIDE_OFF": "[OFF] Mostrar todos los libros",
-  "LIB_BADGE_IN_CLOUD_FMT": "%s · nube",
   "WIFI_SCAN_NONE_TITLE": "REDES NO ENCONTRADAS",
   "WIFI_SCAN_NONE_L1": "No se encontraron redes Wi-Fi al alcance.",
   "WIFI_SCAN_NONE_HINT_CONFIRM": "[CONFIRM] — Reintentar búsqueda",

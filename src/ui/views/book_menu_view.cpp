@@ -17,7 +17,7 @@ int bookMenuItems(const BookItem& book, BookMenuAction out[BOOK_MENU_MAX]) {
     if (onDevice) out[n++] = BOOK_MENU_READ;
     else if (book.downloadUrl().length() > 0) out[n++] = BOOK_MENU_DOWNLOAD;
     if (book.formats.size() > 1) out[n++] = BOOK_MENU_FORMATS;
-    if (onServer) out[n++] = BOOK_MENU_SYNC;
+    if (onServer && onDevice) out[n++] = BOOK_MENU_SYNC;   // a book only on the server has no position here
     if (onDevice) out[n++] = BOOK_MENU_DELETE;
     out[n++] = BOOK_MENU_BACK;
     return n;
@@ -57,8 +57,10 @@ void drawBookMenuScreen(AppContext& ctx, bool fullRefresh) {
         if (hasAuthor) text(takeTop(in, (int16_t)(sh + 2)), book->author.c_str(), FontSmall);
         const bool onDevice = book->isDownloaded && Storage.exists(book->filePath.c_str());
         char status[112];
-        snprintf(status, sizeof(status), tr(MsgId::BOOK_MENU_STATUS_FMT),
-                 tr(onDevice ? MsgId::BOOK_MENU_ON_DEVICE : MsgId::BOOK_MENU_IN_CLOUD), book->progress * 100.0f);
+        // A book only on the server: where it is, no position (none is asked for).
+        if (onDevice) snprintf(status, sizeof(status), tr(MsgId::BOOK_MENU_STATUS_FMT), tr(MsgId::BOOK_MENU_ON_DEVICE),
+                               book->progress * 100.0f);
+        else snprintf(status, sizeof(status), "%s", tr(MsgId::BOOK_MENU_IN_CLOUD));
         if (book->formats.size() > 1) {   // which of its formats this is about
             const size_t used = strlen(status);
             snprintf(status + used, sizeof(status) - used, " \xC2\xB7 %s",
@@ -66,7 +68,7 @@ void drawBookMenuScreen(AppContext& ctx, bool fullRefresh) {
         }
         text(takeTop(in, (int16_t)(sh + 2)), status, FontSmall);
         takeTop(in, 5);
-        progress(f, takeTop(in, 7), (int32_t)(book->progress * 1000.0f));
+        if (onDevice) progress(f, takeTop(in, 7), (int32_t)(book->progress * 1000.0f));
     }
     takeTop(area, 8);
 

@@ -416,7 +416,6 @@
   "CATALOG_TAG_OPTION": "ОПЦИЯ",
   "CATALOG_HIDE_ON": "[ВКЛ] Прочитанные скрыты в списках",
   "CATALOG_HIDE_OFF": "[ВЫКЛ] Показываются все книги",
-  "LIB_BADGE_IN_CLOUD_FMT": "%s · облако",
   "WIFI_SCAN_NONE_TITLE": "СЕТИ НЕ НАЙДЕНЫ",
   "WIFI_SCAN_NONE_L1": "В зоне действия не найдено Wi-Fi сетей.",
   "WIFI_SCAN_NONE_HINT_CONFIRM": "[CONFIRM] — Повторить поиск",

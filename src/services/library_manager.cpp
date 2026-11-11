@@ -788,11 +788,7 @@ void LibraryManager::buildMaster() {
         if (item.author.length() == 0) item.author = std::move(b.author);
         if (b.series.length() > 0) { item.series = std::move(b.series); item.seriesIndex = b.seriesIndex; }
         if (b.library.length() > 0) item.libraryIdx = (int16_t)internLibrary(b.library);
-        // Server snapshot (of the preferred format); this device's own position
-        // (if any) wins in refreshProgress().
-        item.progress = b.lastProgress;
-        item.page = b.lastPage > 0 ? b.lastPage : 1;
-        item.xpath = std::move(b.xpath);
+        // No position from the catalog: this device's own (if any) comes in refreshProgress().
     }
     const size_t catalogSize = catalog.size();
     std::vector<BookMetadata>().swap(catalog);   // before the per-book work below

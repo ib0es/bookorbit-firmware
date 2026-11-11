@@ -416,7 +416,6 @@
   "CATALOG_TAG_OPTION": "OPTION",
   "CATALOG_HIDE_ON": "[ON] Finished books are hidden",
   "CATALOG_HIDE_OFF": "[OFF] All books are shown",
-  "LIB_BADGE_IN_CLOUD_FMT": "%s · cloud",
   "WIFI_SCAN_NONE_TITLE": "NO NETWORKS FOUND",
   "WIFI_SCAN_NONE_L1": "No Wi-Fi networks found in range.",
   "WIFI_SCAN_NONE_HINT_CONFIRM": "[CONFIRM] — Rescan",

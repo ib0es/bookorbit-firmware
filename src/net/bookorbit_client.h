@@ -24,10 +24,8 @@ struct BookMetadata {
     int seriesIndex = 0;
     std::vector<BookFormatEntry> formats;   // every format, the preferred one included
     String coverUrl;
-    float lastProgress = 0.0f; // 0.0 to 1.0
-    int lastPage = 0;
-    String xpath;
-    uint32_t serverUpdatedAt = 0;   // server snapshot only; local state is in ProgressStore
+    // No reading position: a book's position is asked for once it is on the card
+    // (download, sync); one only on the server shows none.
     String library;                 // Server library name e.g. "Фентези", "Фантастика"
 
     // Download address of a format of this book (rebuilt when canonical).
