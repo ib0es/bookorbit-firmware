@@ -12,7 +12,7 @@ TARGETS = [
     "src/core/progress_sync.cpp",
     "src/core/time_utils.cpp",
     "src/services/sync_clock.cpp",
-    "src/services/progress_store.cpp",
+    "src/storage/progress_store.cpp",
     "src/services/sync_service.cpp",
     "src/core/bookorbit_protocol.cpp",
     "src/core/opds_stream_parser.cpp",

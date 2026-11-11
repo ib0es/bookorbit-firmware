@@ -4,7 +4,7 @@
 #include <vector>
 #include "../platform/hal/storage.h"
 #include "../storage/book_records.h"
-#include "progress_store.h"
+#include "../storage/progress_store.h"
 
 
 // One format (file) of a book: "/books/<name>.epub", "/books/<name>.fb2"... next

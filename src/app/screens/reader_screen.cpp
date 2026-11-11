@@ -10,7 +10,7 @@
 #include "../../reader/reader.h"
 #include "../../platform/hal/storage.h"
 #include "../../services/library_manager.h"
-#include "../../services/progress_store.h"
+#include "../../storage/progress_store.h"
 #include "../../core/progress_sync.h"
 #include "../../services/sync_service.h"
 #include "../../services/power_service.h"
