@@ -4,7 +4,7 @@
 
 #include <algorithm>
 
-#include "../hal/storage.h"
+#include "../platform/hal/storage.h"
 #include "../platform/font_partition.h"
 
 namespace FontStore {

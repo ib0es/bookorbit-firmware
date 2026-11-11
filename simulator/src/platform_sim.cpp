@@ -7,7 +7,7 @@
 #include <cstdlib>
 
 #include "config.h"
-#include "hal/storage.h"
+#include "platform/hal/storage.h"
 
 namespace Platform {
 

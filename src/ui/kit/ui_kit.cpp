@@ -8,8 +8,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../../hal/battery.h"
-#include "../../hal/display.h"
+#include "../../platform/hal/battery.h"
+#include "../../platform/hal/display.h"
 #include "ui_fonts.h"
 
 namespace uikit {

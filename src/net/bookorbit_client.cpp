@@ -1,6 +1,6 @@
 #include "bookorbit_client.h"
 #include <ArduinoJson.h>
-#include "../hal/storage.h"
+#include "../platform/hal/storage.h"
 #include "../core/opds_stream_parser.h"
 #include "../core/bookorbit_protocol.h"
 #include "../services/sync_clock.h"

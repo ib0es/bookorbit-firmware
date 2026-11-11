@@ -6,7 +6,7 @@
 
 #include <Arduino.h>
 #include "../app_state.h"
-#include "../../hal/buttons.h"
+#include "../../platform/hal/buttons.h"
 
 namespace HomeScreen {
 void handleEvent(AppContext& ctx, const ButtonEvent& event);

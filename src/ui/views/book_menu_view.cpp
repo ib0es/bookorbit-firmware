@@ -1,5 +1,5 @@
 #include "book_menu_view.h"
-#include "../../hal/storage.h"
+#include "../../platform/hal/storage.h"
 #include "../i18n.h"
 #include "../kit/ui_kit.h"
 #include "../../core/book_formats.h"

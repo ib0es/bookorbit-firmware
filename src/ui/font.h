@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-#include "../hal/display.h"
+#include "../platform/hal/display.h"
 
 namespace bookfonts { struct Font; }
 

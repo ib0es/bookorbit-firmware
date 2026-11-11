@@ -1,6 +1,6 @@
 #include "orientation.h"
 
-#include "../hal/display.h"
+#include "../platform/hal/display.h"
 #include "../reader/reader.h"
 #include "../ui/kit/ui_kit.h"
 

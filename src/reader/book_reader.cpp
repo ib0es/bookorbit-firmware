@@ -12,9 +12,9 @@
 #include <text/hyph_en_us.h>
 #include "engine/hyph_ru.h"
 
-#include "../hal/battery.h"
-#include "../hal/display.h"
-#include "../hal/mem_stats.h"
+#include "../platform/hal/battery.h"
+#include "../platform/hal/display.h"
+#include "../platform/hal/mem_stats.h"
 #include "../core/progress_sync.h"
 #include "../services/sync_clock.h"
 #include "../ui/font.h"

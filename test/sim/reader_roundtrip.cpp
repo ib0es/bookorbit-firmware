@@ -12,8 +12,8 @@
 #include "InputManager.h"
 #include "EInkDisplay.h"
 #include "SDCardManager.h"
-#include "hal/storage.h"
-#include "hal/display.h"
+#include "platform/hal/storage.h"
+#include "platform/hal/display.h"
 #include "ui/font.h"
 #include "reader/reader.h"
 

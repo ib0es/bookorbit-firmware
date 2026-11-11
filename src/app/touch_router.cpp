@@ -4,7 +4,7 @@
 #include "screens/screens.h"
 #include "../reader/reader.h"
 #include "orientation.h"
-#include "../hal/display.h"
+#include "../platform/hal/display.h"
 #include "../ui/views/library_view.h"
 #include "../ui/views/reader_menu_view.h"
 #include "../ui/font.h"

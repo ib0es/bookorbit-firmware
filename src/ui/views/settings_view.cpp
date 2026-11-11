@@ -2,10 +2,10 @@
 #include "settings_view.h"
 #include "../i18n.h"
 #include "../kit/ui_kit.h"
-#include "../../hal/frontlight.h"
-#include "../../hal/imu.h"
-#include "../../hal/usb_msc.h"
-#include "../../hal/buttons.h"
+#include "../../platform/hal/frontlight.h"
+#include "../../platform/hal/imu.h"
+#include "../../platform/hal/usb_msc.h"
+#include "../../platform/hal/buttons.h"
 
 using namespace uikit;
 

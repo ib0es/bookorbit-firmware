@@ -1,6 +1,6 @@
 #include "buttons.h"
 #include <BoardConfig.h>
-#include "../ui/kit/ui_kit.h"
+#include "../../ui/kit/ui_kit.h"
 
 ButtonManager Buttons;
 

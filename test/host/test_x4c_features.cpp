@@ -2,8 +2,8 @@
 // (PowerPolicy idle deep sleep guard + X4C AppConfig/settings layout).
 // Run: test/host/run.sh
 #include "app/app_state.h"
-#include "hal/frontlight.h"
-#include "hal/storage.h"
+#include "platform/hal/frontlight.h"
+#include "platform/hal/storage.h"
 #include "core/power_policy.h"
 
 #include <cstdio>

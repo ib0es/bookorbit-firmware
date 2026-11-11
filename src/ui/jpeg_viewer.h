@@ -2,8 +2,8 @@
 
 #include <Arduino.h>
 #include "tjpgd_compat.h"
-#include "../hal/display.h"
-#include "../hal/storage.h"
+#include "../platform/hal/display.h"
+#include "../platform/hal/storage.h"
 
 enum CoverFitMode {
     COVER_FIT_SCALE = 0, // Fit within bounds, preserve aspect ratio, letterbox

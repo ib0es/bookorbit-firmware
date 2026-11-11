@@ -1,7 +1,7 @@
 #include "progress_store.h"
 #include <ArduinoJson.h>
 #include <SDCardManager.h>
-#include "../hal/storage.h"
+#include "../platform/hal/storage.h"
 #include "../storage/json_file.h"
 
 namespace {

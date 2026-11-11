@@ -10,7 +10,7 @@
 // (left third = previous page, right third = next page, middle = book menu).
 
 #include "app_state.h"
-#include "../hal/buttons.h"
+#include "../platform/hal/buttons.h"
 
 namespace TouchRouter {
 
