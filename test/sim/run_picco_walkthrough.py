@@ -30,9 +30,9 @@ RMENU_TOC, RMENU_FONT, RMENU_MARKS = "T240,200;", "T240,278;", "T240,354;"
 RMENU_SYNC, RMENU_RESUME, RMENU_CLOSE = "T240,430;", "T240,506;", "T240,582;"
 MARKS_THIS_PAGE = "T240,90;"   # first row of the Bookmarks screen
 APPEAR_TYPEFACE, APPEAR_SIZE = "T240,67;", "T240,103;"   # rows of the Appearance screen
-APPEAR_ORIENTATION = "T240,463;"
+APPEAR_ORIENTATION = "T100,463;"   # on the label: the middle of a value row is its "-" (C5)
 APPEAR_STATUS_BAR = "T240,584;"   # after "Up / Down keys"
-SB_BOTTOM = "T240,211;"   # the last row of the status bar menu
+SB_BOTTOM = "T100,211;"   # the last row of the status bar menu, on its label (the middle is "-")
 # Settings rows (nine of them with the frontlight and the screen orientation)
 SET_LANG, SET_WIFI, SET_SERVER, SET_SLEEP, SET_INFO, SET_LIGHT = "T240,85;", "T240,150;", "T240,215;", "T240,280;", "T240,475;", "T240,605;"
 SET_SYNC = "T240,540;"
@@ -68,7 +68,7 @@ CASES = [
      lambda log, sd: config(sd)["orientation"] == 1 and [p for p, _ in pages(log)][-3:] == [2, 3, 2]),
     ("reader menu: status bar menu, the bottom line off gives the text its room",
      HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + APPEAR_STATUS_BAR + SB_BOTTOM + SB_BOTTOM + TITLE + TITLE + "w",
-     lambda log, sd: config(sd)["sb_bottom"] == 2 and "[Reader] Page" in log.split("TAP_240_211")[-1]),
+     lambda log, sd: config(sd)["sb_bottom"] == 2 and "[Reader] Page" in log.split("TAP_100_211")[-1]),
     ("reader menu: table of contents, tap a chapter",
      HOME_CARD + "w" + READ_MIDDLE + RMENU_TOC + "T240,300;",
      lambda log, sd: len(pages(log)) >= 2 and pages(log)[-1][0] != pages(log)[-2][0]),
@@ -161,6 +161,18 @@ CASES = [
      HOME_CARD + "w" + READ_RIGHT + READ_MIDDLE + RMENU_CLOSE + HOME_CARD,
      lambda log, sd: "Background upload queued" in log and "Background upload cancelled" not in log
                      and "Radio off" not in log, None, {"wifiConnectMs": 8000}),
+    # C5: "-" and "+" beside a value (line spacing: the third row).
+    ("appearance: '-' beside a value steps it down, '+' up (C5)",
+     HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + "T320,140;",
+     lambda log, sd: config(sd).get("line_spacing", 100) < 100),
+    ("appearance: '+' beside a value steps it up (C5)",
+     HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + "T432,140;",
+     lambda log, sd: config(sd).get("line_spacing", 100) > 100),
+    # C1: a bookmark added, then deleted by the "delete" beside it.
+    ("bookmarks: 'delete' beside a bookmark removes it (C1)",
+     HOME_CARD + "w" + READ_RIGHT + READ_MIDDLE + RMENU_MARKS + MARKS_THIS_PAGE
+     + READ_MIDDLE + RMENU_MARKS + "T430,165;",
+     lambda log, sd: "[Bookmarks] added" in log and "[Bookmarks] removed" in log),
     ("power: sleep and wake",
      "P" + "Z",
      lambda log, sd: "Entering Deep Sleep" in log and log.count("drawHomeScreen") >= 2),

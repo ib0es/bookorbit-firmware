@@ -16,7 +16,6 @@ static int s_tocRowsPerPage = 1;
 int tocRowsPerPage() { return s_tocRowsPerPage; }
 
 namespace {
-enum ReaderMenuAction : fi::ActionId { ActionChapter = 1, ActionMenuItem, ActionFontSize, ActionTypeface, ActionAppearance, ActionBookmark, ActionStatusBar };
 }
 
 void drawTocScreen(AppContext& ctx, bool fullRefresh) {
@@ -290,6 +289,37 @@ void drawTypefaceMenuScreen(AppContext& ctx, bool fullRefresh) {
 
 // ------------------------------------------------------------- appearance
 
+namespace {
+// A row "label ... value". On touch boards a stepping row gets "-" and "+"
+// beside its value, so a value can go down by touch too (C5); a tap on the
+// rest of the row still selects it (and steps up).
+void valueRow(Frame& f, Rect row, const char* label, const char* val, bool isSel, bool stepping,
+              fi::ActionId rowAction, int16_t index) {
+    if (isSel) fill(row, Color::Black, 4);
+    const Color ink = isSel ? Color::White : Color::Black;
+    Rect in = insetX(row, 10);
+    const int16_t vw = (int16_t)(textWidth(FontBody, val) + 4);
+    f.hit(row, rowAction, index);
+    if (stepping && touchUi()) {
+        const int16_t bw = (int16_t)std::min<int>(row.height + 8, 52);
+        Rect plus{(int16_t)(in.right() - bw), (int16_t)(row.y + 3), bw, (int16_t)(row.height - 6)};
+        Rect value{(int16_t)(plus.x - 8 - vw), in.y, vw, in.height};
+        Rect minus{(int16_t)(value.x - 8 - bw), plus.y, bw, plus.height};
+        for (const Rect& b : { minus, plus }) frameRect(b, ink, 1, 4);
+        text(minus, "-", FontLarge, ink, TextAlign::Center);
+        text(plus, "+", FontLarge, ink, TextAlign::Center);
+        text(value, val, FontBody, ink, TextAlign::Center);
+        text(Rect{in.x, in.y, (int16_t)(minus.x - in.x - 8), in.height}, label, FontBody, ink);
+        f.hit(minus, ActionValueLess, index);
+        f.hit(plus, ActionValueMore, index);
+    } else {
+        text(Rect{(int16_t)(in.right() - vw), in.y, vw, in.height}, val, FontBody, ink, TextAlign::Right);
+        text(Rect{in.x, in.y, (int16_t)(in.width - vw - 8), in.height}, label, FontBody, ink);
+    }
+    if (!isSel) hline((int16_t)(row.x + 6), (int16_t)(row.right() - 6), (int16_t)(row.bottom() - 1));
+}
+}  // namespace
+
 void drawAppearanceScreen(AppContext& ctx, bool fullRefresh) {
     Pass pass;
     Frame& f = pass.frame();
@@ -313,16 +343,10 @@ void drawAppearanceScreen(AppContext& ctx, bool fullRefresh) {
     if (Appearance::COUNT > perPage) setListPager(Appearance::COUNT, perPage);
     for (int i = first; i < Appearance::COUNT && i < first + perPage; i++) {
         Rect row = takeTop(area, rowH);
-        const bool isSel = i == sel;
-        if (isSel) fill(row, Color::Black, 4);
-        const Color ink = isSel ? Color::White : Color::Black;
-        Rect in = insetX(row, 10);
         Appearance::value(ctx.config, i, val, sizeof(val));
-        const int16_t vw = (int16_t)(textWidth(FontBody, val) + 4);
-        text(Rect{(int16_t)(in.right() - vw), in.y, vw, in.height}, val, FontBody, ink, TextAlign::Right);
-        text(Rect{in.x, in.y, (int16_t)(in.width - vw - 8), in.height}, Appearance::label(i), FontBody, ink);
-        if (!isSel) hline((int16_t)(row.x + 6), (int16_t)(row.right() - 6), (int16_t)(row.bottom() - 1));
-        f.hit(row, ActionAppearance, (int16_t)i);
+        // The typeface and status bar rows open a list; the others step.
+        const bool stepping = i != Appearance::TYPEFACE && i != Appearance::STATUS_BAR;
+        valueRow(f, row, Appearance::label(i), val, i == sel, stepping, ActionAppearance, (int16_t)i);
         takeTop(area, 2);
     }
     // The settings as they will look: size, typeface, line spacing, margins.
@@ -351,16 +375,8 @@ void drawStatusBarScreen(AppContext& ctx, bool fullRefresh) {
     char val[64];
     for (int i = 0; i < StatusBarMenu::COUNT; i++) {
         Rect row = takeTop(area, rowH);
-        const bool isSel = i == sel;
-        if (isSel) fill(row, Color::Black, 4);
-        const Color ink = isSel ? Color::White : Color::Black;
-        Rect in = insetX(row, 10);
         StatusBarMenu::value(ctx.config, i, val, sizeof(val));
-        const int16_t vw = (int16_t)(textWidth(FontBody, val) + 4);
-        text(Rect{(int16_t)(in.right() - vw), in.y, vw, in.height}, val, FontBody, ink, TextAlign::Right);
-        text(Rect{in.x, in.y, (int16_t)(in.width - vw - 8), in.height}, StatusBarMenu::label(i), FontBody, ink);
-        if (!isSel) hline((int16_t)(row.x + 6), (int16_t)(row.right() - 6), (int16_t)(row.bottom() - 1));
-        f.hit(row, ActionStatusBar, (int16_t)i);
+        valueRow(f, row, StatusBarMenu::label(i), val, i == sel, /*stepping=*/true, ActionStatusBar, (int16_t)i);
         takeTop(area, 2);
     }
     present(fullRefresh);
@@ -405,7 +421,16 @@ void drawBookmarksScreen(AppContext& ctx, bool fullRefresh) {
             } else {   // from the server, its place not worked out yet: no percent
                 snprintf(title, sizeof(title), "%s", b.chapter.c_str());
             }
-            card(f, takeTop(area, rowH), title, b.snippet.c_str(), nullptr, sel == i, ActionBookmark, (int16_t)i);
+            Rect r = takeTop(area, rowH);
+            if (touchUi()) {   // a "delete" target beside the card (C1): no LEFT key here
+                const int16_t dw = (int16_t)std::min<int>(rowH, 96);
+                Rect del{(int16_t)(r.right() - dw), r.y, dw, r.height};
+                r.width = (int16_t)(r.width - dw - kGap);
+                frameRect(del, Color::Black, 1, 4);
+                text(del, tr(MsgId::KEY_DELETE), FontSmall, Color::Black, TextAlign::Center, 2);
+                f.hit(del, ActionBookmarkDelete, (int16_t)i);
+            }
+            card(f, r, title, b.snippet.c_str(), nullptr, sel == i, ActionBookmark, (int16_t)i);
         }
         takeTop(area, kGap);
     }

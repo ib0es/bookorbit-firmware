@@ -578,8 +578,10 @@ void handleBookmarksEvent(AppContext& ctx, const ButtonEvent& event) {
                 returnToReading(ctx);
             }
             break;
-        case Action::Prev:
+        case Action::Prev:     // LEFT, or the "delete" beside a bookmark on touch boards
+        case Action::Delete:
             if (sel > 0 && sel <= Bookmarks.count()) {
+                Serial.printf("[Bookmarks] removed #%d\n", sel);
                 Bookmarks.remove(sel - 1);
                 Bookmarks.save();
                 if (sel > Bookmarks.count()) sel = Bookmarks.count();
