@@ -284,6 +284,12 @@ CASES = [
      lambda sd: (merge_config(sd, token="tok-0"),
                  server(sd, {"percent": 0.3, "updatedAt": "NOW-100", "expireToken": True})), {},
      OPEN_BOOK + READER_MENU + "DDDC" + "w", token_saved),
+    # B5: the clock's minute redraw is not a page. A full refresh every 2 pages;
+    # the book opens (page 1) and the minute changes during the wait.
+    ("status bar: the clock's minute redraw does not count towards the full refresh (B5)",
+     lambda sd: merge_config(sd, sb_clock=True, full_refresh_every=2), {"SIM_RTC_UTC": "1794391199"},
+     OPEN_BOOK + "w",
+     lambda log, sd: "Page drawn" in after(log, ">>> wait") and "FULL" not in after(log, ">>> wait")),
     ("status bar: clock and UTC+3 saved and active from RTC",
      None, {"SIM_RTC_UTC": "1794391200"},
      OPEN_BOOK + APPEARANCE + "U" + "C" + "UU" + "C" + "D" + "RRRRRR" + "BB",

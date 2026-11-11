@@ -2105,6 +2105,12 @@ static void drawPageProblem(const char* why) {
     text(takeTop(area, wrappedHeight(why, FontBody, area.width, 3)), why, FontBody, Color::Black, uikit::TextAlign::Center, 3);
 }
 
+void BookReader::redrawForStatusBar() {
+    _statusBarRedraw = true;
+    renderCurrentPage();
+    _statusBarRedraw = false;
+}
+
 void BookReader::renderCurrentPage() {
     if (!_opened) return;
     TurnedUi turned(frameRotation());
@@ -2215,8 +2221,9 @@ void BookReader::renderCurrentPage() {
     }
     // A full refresh every _fullEvery pages, counted from the first one: opening a
     // book from the (light) menus no longer costs a 3.8 s full refresh.
-    _renderedPages++;
-    const bool full = _forceFull || (_fullEvery > 0 && _renderedPages % _fullEvery == 0);
+    // A redraw for the status bar (the clock) is not a page: not counted.
+    if (!_statusBarRedraw) _renderedPages++;
+    const bool full = _forceFull || (!_statusBarRedraw && _fullEvery > 0 && _renderedPages % _fullEvery == 0);
     _forceFull = false;
     const uint32_t tEnd = millis();
     // Where the time goes: finding the page (layout, cache), its record, the text, the images.

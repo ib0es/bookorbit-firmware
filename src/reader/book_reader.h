@@ -87,6 +87,9 @@ public:
     String textAt(int spine, uint32_t chars, size_t maxBytes = 100);
     bool goToPosition(const String& cfi, const String& xpath, float percent, int page);
     void renderCurrentPage();
+    // The same page drawn again for its status bar (the clock): not a page turn,
+    // so it does not count towards the periodic full refresh.
+    void redrawForStatusBar();
     int renderFailures() const { return _renderFailures; }   // pages that could not be drawn (tests, logs)
 
     int getFontSize() const { return _fontSize; }
@@ -353,6 +356,7 @@ private:
     uint32_t _cfiChars = UINT32_MAX;
     String _cfi;
     int _renderedPages = 0;
+    bool _statusBarRedraw = false;   // renderCurrentPage() called by redrawForStatusBar()
     bool _forceFull = false;
     int _renderFailures = 0;
 };

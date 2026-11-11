@@ -289,7 +289,7 @@ void AppController::loop() {
                 _lastClockMinute = curMin;
             } else if (curMin >= 0 && curMin != _lastClockMinute) {
                 _lastClockMinute = curMin;
-                redrawCurrentScreen(false);
+                Reader.redrawForStatusBar();   // not a page turn: no periodic full refresh (B5)
             }
         }
     } else {
