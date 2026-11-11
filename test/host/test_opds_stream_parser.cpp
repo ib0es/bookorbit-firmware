@@ -1,5 +1,5 @@
 // Host unit tests for OpdsStreamParser.  Run: test/host/run.sh
-#include "net/opds_stream_parser.h"
+#include "core/opds_stream_parser.h"
 
 #include <cstdio>
 #include <string>

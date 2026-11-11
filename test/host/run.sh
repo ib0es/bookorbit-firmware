@@ -19,15 +19,15 @@ build() {   # name sources...
     (cd "$OUT/$name" && $CXX $FLAGS "$@" -o "$OUT/$name/test")
 }
 build i18n     "$ROOT/test/host/test_i18n.cpp" "$ROOT/src/ui/i18n.cpp"
-build opds     "$ROOT/test/host/test_opds_stream_parser.cpp" "$ROOT/src/net/opds_stream_parser.cpp" "$ROOT/src/net/book_formats.cpp"
-build formats  "$ROOT/test/host/test_book_formats.cpp" "$ROOT/src/net/book_formats.cpp"
+build opds     "$ROOT/test/host/test_opds_stream_parser.cpp" "$ROOT/src/core/opds_stream_parser.cpp" "$ROOT/src/core/book_formats.cpp"
+build formats  "$ROOT/test/host/test_book_formats.cpp" "$ROOT/src/core/book_formats.cpp"
 build textutil "$ROOT/test/host/test_text_utils.cpp"
 build jsonwr   "$ROOT/test/host/test_json_writer.cpp"
-build cfi      "$ROOT/test/host/test_epub_cfi.cpp" "$ROOT/src/reader/epub_cfi.cpp"
-build cfimap   "$ROOT/test/host/test_cfi_map.cpp" "$ROOT/src/reader/cfi_map.cpp" "$ROOT/src/reader/epub_cfi.cpp"
-build progress "$ROOT/test/host/test_progress_sync.cpp" "$ROOT/src/services/progress_sync.cpp" "$ROOT/src/services/time_utils.cpp"
-build protocol "$ROOT/test/host/test_bookorbit_protocol.cpp" "$ROOT/src/net/bookorbit_protocol.cpp" "$ROOT/src/services/time_utils.cpp"
-build x3sens   "$ROOT/test/host/test_x3_sensors.cpp" "$ROOT/src/services/time_utils.cpp" "$ROOT/src/app/auto_rotate.cpp"
+build cfi      "$ROOT/test/host/test_epub_cfi.cpp" "$ROOT/src/core/epub_cfi.cpp"
+build cfimap   "$ROOT/test/host/test_cfi_map.cpp" "$ROOT/src/core/cfi_map.cpp" "$ROOT/src/core/epub_cfi.cpp"
+build progress "$ROOT/test/host/test_progress_sync.cpp" "$ROOT/src/core/progress_sync.cpp" "$ROOT/src/core/time_utils.cpp"
+build protocol "$ROOT/test/host/test_bookorbit_protocol.cpp" "$ROOT/src/core/bookorbit_protocol.cpp" "$ROOT/src/core/time_utils.cpp"
+build x3sens   "$ROOT/test/host/test_x3_sensors.cpp" "$ROOT/src/core/time_utils.cpp" "$ROOT/src/core/auto_rotate.cpp"
 build x4pro    "$ROOT/test/host/test_x4pro_features.cpp"
 build x4c      -I"$ROOT/include" -DFREEINK_DEVICE_X4CLASSIC=1 -DFREEINK_CAP_USB_MSC=1 "$ROOT/test/host/test_x4c_features.cpp" "$ROOT/src/app/app_state.cpp" "$ROOT/src/ui/i18n.cpp"
 # FreeInkBook (the layout engine) for the tests that check against it: vendored C
@@ -49,7 +49,7 @@ build_fib fb2 "$ROOT/test/host/test_fb2_to_epub.cpp" "$ROOT/src/convert/fb2_to_e
 build_fib mobi "$ROOT/test/host/test_mobi_to_epub.cpp" "$ROOT/src/convert/mobi_to_epub.cpp" "$ROOT/src/convert/fb2_to_epub.cpp" "$ROOT/src/convert/zip_writer.cpp"
 build_fib txt "$ROOT/test/host/test_txt_to_epub.cpp" "$ROOT/src/convert/txt_to_epub.cpp" "$ROOT/src/convert/fb2_to_epub.cpp" "$ROOT/src/convert/zip_writer.cpp"
 build_fib ttf "$ROOT/test/host/test_ttf_font.cpp" "$ROOT/src/reader/engine/ttf_book_font.cpp" "$ROOT/src/reader/fonts/builtin_font.cpp"
-build_fib counter "$ROOT/test/host/test_engine_text_counter.cpp" "$ROOT/src/reader/engine/engine_text_counter.cpp" "$ROOT/src/reader/epub_cfi.cpp"
+build_fib counter "$ROOT/test/host/test_engine_text_counter.cpp" "$ROOT/src/reader/engine/engine_text_counter.cpp" "$ROOT/src/core/epub_cfi.cpp"
 
 rc=0
 echo "== I18n";              "$OUT/i18n/test" || rc=1

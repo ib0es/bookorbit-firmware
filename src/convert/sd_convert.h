@@ -14,7 +14,7 @@ constexpr int kFb2ConverterVersion = 7;
 // AZW3/KF8 books on their own (7: their markup kept as it is, with a CFI map).
 constexpr int kKf8ConverterVersion = 7;
 
-// In the cache directory of a converted FB2: its CFI map (reader/cfi_map.h).
+// In the cache directory of a converted FB2: its CFI map (core/cfi_map.h).
 constexpr const char* kCfiMapName = "cfimap.txt";
 
 // True for the formats read through a converted EPUB: FB2, TXT, MOBI/AZW/AZW3.

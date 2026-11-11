@@ -35,8 +35,8 @@ def build(out):
             ("TtfFont.cpp", "Gpos.cpp", "Gsub.cpp")]
     subprocess.check_call(["c++"] + flags + inc + [HERE + "/fb2conv.cpp", ROOT + "/src/convert/fb2_to_epub.cpp", ROOT + "/src/convert/mobi_to_epub.cpp",
                            ROOT + "/src/convert/zip_writer.cpp"] + core + objs + ["-o", out + "/fb2conv"])
-    subprocess.check_call(["c++"] + flags + [HERE + "/cfimap_cli.cpp", ROOT + "/src/reader/cfi_map.cpp",
-                           ROOT + "/src/reader/epub_cfi.cpp", "-o", out + "/cfimap"])
+    subprocess.check_call(["c++"] + flags + [HERE + "/cfimap_cli.cpp", ROOT + "/src/core/cfi_map.cpp",
+                           ROOT + "/src/core/epub_cfi.cpp", "-o", out + "/cfimap"])
 
 def norm(t):
     return re.sub(r"[\s ]+", "", t or "")[:14]

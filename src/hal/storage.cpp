@@ -4,7 +4,7 @@
 #include <ArduinoJson.h>
 #include <algorithm>
 #include "../net/bookorbit_client.h"
-#include "../net/book_formats.h"
+#include "../core/book_formats.h"
 #include "../storage/json_file.h"
 #include "../platform/device.h"
 #include <Preferences.h>

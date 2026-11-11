@@ -1,6 +1,6 @@
 // CFIs of FB2 books converted here <-> the web reader's (foliate-js). Run: test/host/run.sh
 // The converter's maps against real foliate are checked by tools/fb2_cfi_check.py.
-#include "reader/cfi_map.h"
+#include "core/cfi_map.h"
 
 #include <cstdio>
 #include <cstring>

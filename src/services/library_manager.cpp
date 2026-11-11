@@ -1,12 +1,12 @@
 #include "library_manager.h"
-#include "progress_sync.h"
+#include "../core/progress_sync.h"
 #include "sync_clock.h"
 #include "../reader/reader.h"
 #include "../convert/sd_convert.h"
 #include "../reader/book_reader.h"
 #include "../ui/jpeg_viewer.h"
 #include "../net/bookorbit_client.h"
-#include "../net/book_formats.h"
+#include "../core/book_formats.h"
 #include "../ui/i18n.h"
 #include <algorithm>
 #include <functional>

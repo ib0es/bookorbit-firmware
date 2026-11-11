@@ -595,7 +595,7 @@ private:
     // images are pointed at the EPUB's files), so a CFI means the same place
     // in both; a part longer than kHardSplit goes on in more files, a long text
     // run is cut in pieces in one <div> for the engine, and the CFI map says
-    // where those stand (reader/cfi_map.h, "cfimap 2").
+    // where those stand (core/cfi_map.h, "cfimap 2").
     struct KfOpen {
         std::string name;       // as written
         std::string open;       // its start tag, without its id (written again in a new file or piece)

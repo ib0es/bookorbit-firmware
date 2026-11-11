@@ -3,7 +3,7 @@
 #include "../../services/library_manager.h"
 #include "../i18n.h"
 #include "../kit/ui_kit.h"
-#include "../../net/book_formats.h"
+#include "../../core/book_formats.h"
 #include <string>
 #include <vector>
 

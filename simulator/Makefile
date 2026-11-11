@@ -39,7 +39,7 @@ SRCS_CXX = \
     src/main.cpp \
     src/app/app_state.cpp \
     src/app/app_controller.cpp \
-    src/app/auto_rotate.cpp \
+    src/core/auto_rotate.cpp \
     src/app/orientation.cpp \
     src/app/touch_router.cpp \
     src/app/screens/home_screen.cpp \
@@ -54,11 +54,11 @@ SRCS_CXX = \
     src/services/power_service.cpp \
     src/services/bookmarks.cpp \
     src/services/sync_service.cpp \
-    src/services/progress_sync.cpp \
+    src/core/progress_sync.cpp \
     src/services/progress_store.cpp \
     src/services/sync_clock.cpp \
-    src/services/time_utils.cpp \
-    src/net/book_formats.cpp \
+    src/core/time_utils.cpp \
+    src/core/book_formats.cpp \
     src/ui/views/status_modal.cpp \
     src/ui/views/home_view.cpp \
     src/ui/views/catalog_view.cpp \
@@ -95,8 +95,8 @@ SRCS_CXX = \
     src/convert/txt_to_epub.cpp \
     src/convert/sd_convert.cpp \
     src/reader/engine/engine_text_counter.cpp \
-    src/reader/epub_cfi.cpp \
-    src/reader/cfi_map.cpp \
+    src/core/epub_cfi.cpp \
+    src/core/cfi_map.cpp \
     simulator/lib_adafruit_gfx/Adafruit_GFX.cpp \
     freeink-sdk/libs/book/FreeInkBook/src/FreeInkBook.cpp \
     freeink-sdk/libs/book/FreeInkBook/src/BookCatalog.cpp \

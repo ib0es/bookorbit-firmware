@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 #include "app_state.h"
-#include "auto_rotate.h"
+#include "../core/auto_rotate.h"
 #include "../hal/buttons.h"
 
 // Top-level application loop: boot sequence, event routing and power rules.

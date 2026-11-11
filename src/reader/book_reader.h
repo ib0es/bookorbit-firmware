@@ -29,8 +29,8 @@
 
 #include "config.h"
 #include "chapter_item.h"
-#include "epub_cfi.h"
-#include "cfi_map.h"
+#include "../core/epub_cfi.h"
+#include "../core/cfi_map.h"
 #include "engine/bitmap_book_font.h"
 #include "engine/ttf_book_font.h"
 #include "engine/sd_book_storage.h"

@@ -8,7 +8,7 @@
 
 #include <Arduino.h>
 #include <deque>
-#include "progress_sync.h"
+#include "../core/progress_sync.h"
 
 struct BookProgressRecord {
     int fileId = 0;          // Book Orbit file id (used for uploads), 0 = unknown

@@ -9,15 +9,15 @@ import argparse, glob, gzip, json, os, subprocess, sys, tempfile
 
 # The code that decides, stores and transfers reading progress.
 TARGETS = [
-    "src/services/progress_sync.cpp",
-    "src/services/time_utils.cpp",
+    "src/core/progress_sync.cpp",
+    "src/core/time_utils.cpp",
     "src/services/sync_clock.cpp",
     "src/services/progress_store.cpp",
     "src/services/sync_service.cpp",
-    "src/net/bookorbit_protocol.cpp",
-    "src/net/opds_stream_parser.cpp",
-    "src/net/book_formats.cpp",
-    "src/reader/epub_cfi.cpp",
+    "src/core/bookorbit_protocol.cpp",
+    "src/core/opds_stream_parser.cpp",
+    "src/core/book_formats.cpp",
+    "src/core/epub_cfi.cpp",
     "src/reader/engine/engine_text_counter.cpp",
 ]
 # Shown for information, not counted: the HTTP/Wi-Fi transport also serves the

@@ -19,7 +19,7 @@
 #include <cstdint>
 #include <string>
 
-#include "../epub_cfi.h"
+#include "../../core/epub_cfi.h"
 
 class EngineTextCounter : public EpubCfi::TextSink {
 public:

@@ -1,6 +1,6 @@
 // Host unit tests for X4 Pro helpers (FrontlightPolicy, LightSleepPolicy). Run: test/host/run.sh
-#include "hal/frontlight_policy.h"
-#include "services/light_sleep_policy.h"
+#include "core/frontlight_policy.h"
+#include "core/light_sleep_policy.h"
 
 #include <cstdio>
 

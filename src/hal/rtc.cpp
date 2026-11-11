@@ -1,5 +1,5 @@
 #include "rtc.h"
-#include "../services/time_utils.h"
+#include "../core/time_utils.h"
 
 namespace {
 constexpr uint32_t kMinValidUtc = 1672531200UL;  // 2023-01-01T00:00:00Z

@@ -1,10 +1,10 @@
 #include "bookorbit_client.h"
 #include <ArduinoJson.h>
 #include "../hal/storage.h"
-#include "opds_stream_parser.h"
-#include "bookorbit_protocol.h"
+#include "../core/opds_stream_parser.h"
+#include "../core/bookorbit_protocol.h"
 #include "../services/sync_clock.h"
-#include "../services/time_utils.h"
+#include "../core/time_utils.h"
 #include "config.h"
 #include <base64.h>
 #include <esp_wifi.h>

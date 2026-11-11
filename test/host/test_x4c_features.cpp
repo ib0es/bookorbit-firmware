@@ -4,7 +4,7 @@
 #include "app/app_state.h"
 #include "hal/frontlight.h"
 #include "hal/storage.h"
-#include "services/power_policy.h"
+#include "core/power_policy.h"
 
 #include <cstdio>
 #include <cstring>

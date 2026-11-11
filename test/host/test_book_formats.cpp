@@ -1,5 +1,5 @@
 // Host unit tests for BookFormats.  Run: test/host/run.sh
-#include "net/book_formats.h"
+#include "core/book_formats.h"
 
 #include <cstdio>
 #include <string>

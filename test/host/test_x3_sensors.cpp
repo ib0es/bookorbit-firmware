@@ -1,7 +1,7 @@
 // Host unit tests for pure time/calendar formatting and IMU auto-rotate filter.
 // Run: test/host/run.sh
-#include "services/time_utils.h"
-#include "app/auto_rotate.h"
+#include "core/time_utils.h"
+#include "core/auto_rotate.h"
 
 #include <cstdio>
 #include <cstring>

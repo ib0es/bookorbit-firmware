@@ -4,7 +4,7 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <vector>
-#include "bookorbit_protocol.h"
+#include "../core/bookorbit_protocol.h"
 
 // One format (file) of a catalog book. `url` is empty for the canonical download
 // address "/api/v1/opds/<bookId>/download?fileId=<fileId>" (most formats), so a
