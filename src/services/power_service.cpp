@@ -1,6 +1,9 @@
 #include "power_service.h"
 #include "../ui/kit/ui_kit.h"
 #include <esp_sleep.h>
+#if defined(ESP_PLATFORM)
+#include <esp_system.h>   // esp_restart
+#endif
 #include <PowerManager.h>
 #include <BoardConfig.h>
 #include "../hal/display.h"
@@ -19,6 +22,28 @@
 #include "../ui/text_utils.h"
 
 RTC_DATA_ATTR static int rtcSavedState = STATE_HOME;
+// RTC memory keeps it through a software restart. A magic value: after power-on it is garbage.
+RTC_DATA_ATTR static uint32_t rtcOpenBookAfterRestart = 0;
+static constexpr uint32_t kOpenBookMagic = 0x0B00C0DE;
+
+bool PowerService::restartIntoLastBook() {
+#if defined(ESP_PLATFORM)
+    Serial.println("[Power] Not enough memory to open the book: restarting into it.");
+    rtcOpenBookAfterRestart = kOpenBookMagic;
+    rtcSavedState = STATE_READING;
+    Serial.flush();
+    esp_restart();
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool PowerService::takeRestartIntoBook() {
+    const bool yes = rtcOpenBookAfterRestart == kOpenBookMagic;
+    rtcOpenBookAfterRestart = 0;
+    return yes;
+}
 
 void PowerService::handleAccidentalWakeup() {
     esp_sleep_wakeup_cause_t wakeupCause = esp_sleep_get_wakeup_cause();

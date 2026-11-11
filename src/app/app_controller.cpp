@@ -114,7 +114,9 @@ void AppController::setup() {
     auto& lib = LibraryManager::getInstance();
     // Woken up in a book: the page comes first, the library scan (the card's
     // folders and catalog.json) when the book is left (LibraryManager::ensureScanned).
-    const bool resumeBook = isWakeFromSleep && PowerService::getSavedRtcState() == STATE_READING;
+    // Restarted to open a book that did not fit in the cut-up heap: as after sleep.
+    const bool restartedIntoBook = PowerService::takeRestartIntoBook();
+    const bool resumeBook = (isWakeFromSleep || restartedIntoBook) && PowerService::getSavedRtcState() == STATE_READING;
     if (!resumeBook) lib.scanLocalBooks();
     lib.initLastBook();
     MemStats::mark("library");

@@ -249,6 +249,7 @@
   "READER_OPEN_ERR_L1": "No se pudo abrir el archivo del libro.",
   "READER_OPEN_ERR_L2": "Compruebe el formato del archivo.",
   "READER_OPEN_ERR_FOOTER": "[OK] - Cerrar",
+  "READER_OPEN_ERR_MEMORY": "No hay memoria suficiente: suspenda y despierte el dispositivo e inténtelo de nuevo.",
   "READER_PAGE_ERR_TITLE": "No se pudo mostrar esta página.",
   "READER_PAGE_ERR_MEMORY": "No hay memoria suficiente. Pase la página o vuelva a abrir el libro.",
   "READER_PAGE_ERR_BROKEN": "El capítulo puede estar dañado. Pase la página para seguir.",

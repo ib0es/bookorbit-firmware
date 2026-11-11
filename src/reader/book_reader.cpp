@@ -552,7 +552,16 @@ bool BookReader::openBook(const String& filePath) {
     Storage.mkdir(_cache.dir().c_str());
 
     if (!openContainer()) {
+        // An index that could not be built or loaded for want of one big enough
+        // block is a memory problem, not a broken book: it opens after a restart.
+        const MemStats::Snapshot m = MemStats::now();
+        if (m.largestBlock < kInflateBytes + kIndexScratchBytes) _noMemory = true;
+        Serial.printf("[Reader] Cannot open the book's index (%s; free %u KB, largest block %u KB)\n",
+                      _noMemory ? "short of memory" : "unreadable", (unsigned)(m.freeBytes / 1024),
+                      (unsigned)(m.largestBlock / 1024));
+        const bool noMemory = _noMemory;
         closeBook();
+        _noMemory = noMemory;
         return false;
     }
     setupLayout();
