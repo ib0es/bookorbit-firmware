@@ -1,0 +1,234 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  discover:
+    name: Discover Targets
+    runs-on: ubuntu-latest
+    outputs:
+      firmware_targets: ${{ steps.targets.outputs.firmware_targets }}
+      sim_targets: ${{ steps.targets.outputs.sim_targets }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Detect firmware and simulator targets
+        id: targets
+        run: |
+          python3 - <<'EOF'
+          import configparser
+          import json
+          import os
+          import pathlib
+          import re
+
+          cfg = configparser.ConfigParser(interpolation=None)
+          cfg.read("platformio.ini")
+          firmware_targets = [s[4:] for s in cfg.sections() if s.startswith("env:")]
+          if not firmware_targets:
+              raise SystemExit("No [env:*] targets found in platformio.ini")
+
+          mk = pathlib.Path("test/sim/Makefile").read_text(encoding="utf-8")
+          sim_targets = ["x4"]
+          if "DEVICE),x3" in mk:
+              sim_targets.append("x3")
+          if re.search(r"^picco-test:", mk, re.M):
+              sim_targets.append("picco")
+          if re.search(r"^x4c-test:", mk, re.M):
+              sim_targets.append("x4c")
+          if re.search(r"^x4pro-test:", mk, re.M):
+              sim_targets.append("x4pro")
+
+          out_path = os.environ["GITHUB_OUTPUT"]
+          with open(out_path, "a", encoding="utf-8") as f:
+              f.write(f"firmware_targets={json.dumps(firmware_targets)}\n")
+              f.write(f"sim_targets={json.dumps(sim_targets)}\n")
+
+          print("Firmware targets:", firmware_targets)
+          print("Simulator test targets:", sim_targets)
+          EOF
+
+  firmware:
+    name: Firmware (${{ matrix.target }})
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJson(needs.discover.outputs.firmware_targets) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache PlatformIO packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-${{ hashFiles('**/platformio.ini') }}
+          restore-keys: |
+            pio-${{ runner.os }}-
+
+      - name: Install PlatformIO
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade platformio
+
+      - name: Build firmware (${{ matrix.target }})
+        run: pio run -e ${{ matrix.target }}
+
+  web-flasher:
+    name: Web Flasher
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: 'web-flasher/package-lock.json'
+
+      - name: Build Web Flasher
+        working-directory: web-flasher
+        run: |
+          npm ci
+          npm run build
+
+  host-tests:
+    name: Host Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache PlatformIO packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-${{ hashFiles('**/platformio.ini') }}
+          restore-keys: |
+            pio-${{ runner.os }}-
+
+      - name: Install PlatformIO dependencies for tests
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade platformio
+          pio pkg install -e x4
+
+      - name: Run host unit tests
+        run: ./test/host/run.sh
+
+  sim-tests:
+    name: Simulator Tests (${{ matrix.device }})
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        device: ${{ fromJson(needs.discover.outputs.sim_targets) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache PlatformIO packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-${{ hashFiles('**/platformio.ini') }}
+          restore-keys: |
+            pio-${{ runner.os }}-
+
+      - name: Install PlatformIO dependencies for simulator
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade platformio
+          pio pkg install -e x4
+
+      - name: Run headless simulator tests (${{ matrix.device }})
+        run: |
+          case "${{ matrix.device }}" in
+            x4)
+              make -j"$(nproc)" -f test/sim/Makefile test
+              ;;
+            x3)
+              make -j"$(nproc)" -f test/sim/Makefile DEVICE=x3 test
+              ;;
+            picco)
+              make -j"$(nproc)" -f test/sim/Makefile picco-test
+              ;;
+            x4c)
+              make -j"$(nproc)" -f test/sim/Makefile x4c-test
+              ;;
+            x4pro)
+              make -j"$(nproc)" -f test/sim/Makefile x4pro-test
+              ;;
+            *)
+              echo "Unknown simulator test target: ${{ matrix.device }}"
+              exit 1
+              ;;
+          esac
+
+  ci-pass:
+    name: All Platform Builds & Tests
+    if: always()
+    needs: [discover, firmware, web-flasher, host-tests, sim-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all required checks passed
+        run: |
+          declare -A results=(
+            ["discover"]="${{ needs.discover.result }}"
+            ["firmware"]="${{ needs.firmware.result }}"
+            ["web-flasher"]="${{ needs.web-flasher.result }}"
+            ["host-tests"]="${{ needs.host-tests.result }}"
+            ["sim-tests"]="${{ needs.sim-tests.result }}"
+          )
+
+          failed=0
+          for job in discover firmware web-flasher host-tests sim-tests; do
+            res="${results[$job]}"
+            echo "${job}: ${res}"
+            if [ "$res" != "success" ]; then
+              failed=1
+            fi
+          done
+
+          if [ "$failed" -ne 0 ]; then
+            echo "One or more required platform builds or tests did not succeed."
+            exit 1
+          fi
