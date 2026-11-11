@@ -25,6 +25,7 @@
 #include "../../ui/views/status_modal.h"
 #include "../../ui/views/settings_view.h"
 #include "../../ui/i18n.h"
+#include "../../services/usb_msc_session.h"
 
 namespace {
 
@@ -404,7 +405,7 @@ void executeUsbMscSetting(AppContext& ctx, int index) {
             Modal.showMessage(tr(MsgId::USB_MSC_MENU_TITLE), tr(MsgId::USB_MSC_DISABLED_L1), tr(MsgId::USB_MSC_DISABLED_L2));
             return;
         }
-        if (!UsbMsc.beginSession(ctx)) {
+        if (!UsbMscSession::begin(ctx)) {
             Modal.showMessage(tr(MsgId::COMMON_ERROR), tr(MsgId::USB_MSC_ERR_NO_SD), "");
             return;
         }
@@ -420,7 +421,7 @@ void executeUsbMscSetting(AppContext& ctx, int index) {
 }
 
 void exitUsbMscScreen(AppContext& ctx) {
-    UsbMsc.exitSession(ctx);
+    UsbMscSession::exit(ctx);
     if (ctx.currentState == STATE_USB_MSC) {
         ctx.currentState = STATE_SETTINGS;
     }

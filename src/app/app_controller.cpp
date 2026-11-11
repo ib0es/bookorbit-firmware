@@ -34,6 +34,7 @@
 #include "../ui/views/settings_view.h"
 #include "../ui/views/reader_menu_view.h"
 #include "../ui/views/book_menu_view.h"
+#include "../services/usb_msc_session.h"
 
 namespace {
 AppContext* g_ctxForKeys = nullptr;
@@ -80,6 +81,7 @@ void AppController::setup() {
     BoardConfig::releaseSdRail();
     Battery.begin();
     Buttons.begin();
+    Buttons.setTouchMapper(uikit::touchToLogical);
     MemStats::mark("battery, buttons");
     // FreeInk's bring-up order for boards whose SD card shares the display SPI
     // bus (X4/X3): board/controller detection, then the SD card, then the
@@ -231,7 +233,7 @@ void AppController::loop() {
         if (event.id == BTN_POWER) {
             if (_ctx.currentState == STATE_USB_MSC) {
                 if (event.action == ACTION_CLICK) {
-                    UsbMsc.exitSession(_ctx);
+                    UsbMscSession::exit(_ctx);
                     redrawCurrentScreen(true);
                 }
                 return;

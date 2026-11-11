@@ -1,15 +1,6 @@
 #include "usb_msc.h"
 
 #include "storage.h"
-#include "../../net/bookorbit_client.h"
-#include "../../reader/reader.h"
-#include "../../services/library_manager.h"
-#include "../../services/power_service.h"
-#include "../../services/sync_service.h"
-
-#if defined(ESP_PLATFORM)
-#include <esp_system.h>
-#endif
 
 UsbMscHelper UsbMsc;
 
@@ -21,18 +12,9 @@ bool UsbMscHelper::present() const {
 #endif
 }
 
-bool UsbMscHelper::beginSession(AppContext& ctx) {
+bool UsbMscHelper::start() {
 #if defined(FREEINK_CAP_USB_MSC) && FREEINK_CAP_USB_MSC
     if (_active) return true;
-
-    SyncService::cancelBackground();
-    BookOrbit.disconnectWiFi();
-    Reader.stopBackground();
-    if (Reader.isOpened()) {
-        LibraryManager::getInstance().flushReaderPosition();
-        Reader.closeBook();
-    }
-    ctx.config.save();
 
     FsBlockDeviceInterface* rawDev = Storage.detachForUsbMsc();
     if (!rawDev) {
@@ -50,15 +32,10 @@ bool UsbMscHelper::beginSession(AppContext& ctx) {
 #endif
 
     if (!_msc.begin(rawDev)) {
-#if !defined(ESP_PLATFORM)
-        Storage.begin();
-#else
+#if defined(ESP_PLATFORM)
         Serial.begin(115200);
-        Serial.println("[USB-MSC] UsbMassStorage::begin failed; restarting to recover FS.");
-        Serial.flush();
-        PowerService::setSavedRtcState(STATE_SETTINGS);
-        esp_restart();
 #endif
+        Serial.println("[USB-MSC] UsbMassStorage::begin failed.");
         return false;
     }
 
@@ -66,33 +43,16 @@ bool UsbMscHelper::beginSession(AppContext& ctx) {
     _lastState = _msc.state();
     return true;
 #else
-    (void)ctx;
     return false;
 #endif
 }
 
-void UsbMscHelper::exitSession(AppContext& ctx) {
-#if defined(FREEINK_CAP_USB_MSC) && FREEINK_CAP_USB_MSC
+void UsbMscHelper::stop() {
     if (_active) {
         _msc.end();
         _active = false;
     }
     _lastState = freeink::UsbMassStorageState::Idle;
-
-#if defined(ESP_PLATFORM)
-    // Switching PHY back from TinyUSB OTG to USB Serial/JTAG and cleanly
-    // remounting FsVolume requires a soft reset.
-    PowerService::setSavedRtcState(STATE_SETTINGS);
-    delay(80);
-    esp_restart();
-#else
-    Storage.begin();
-    LibraryManager::getInstance().scanLocalBooks();
-    ctx.currentState = STATE_SETTINGS;
-#endif
-#else
-    (void)ctx;
-#endif
 }
 
 freeink::UsbMassStorageState UsbMscHelper::state() const {

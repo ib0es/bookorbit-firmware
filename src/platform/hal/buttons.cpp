@@ -1,6 +1,5 @@
 #include "buttons.h"
 #include <BoardConfig.h>
-#include "../../ui/kit/ui_kit.h"
 
 ButtonManager Buttons;
 
@@ -92,17 +91,19 @@ void ButtonManager::update() {
         Serial.println("[Buttons] Event: HOME_KEY LONG -> READER MENU");
     } else {
         float nx, ny;
-        if (_freeinkInput.hasTouch() && _freeinkInput.wasTouchTap(nx, ny)) {
+        if (_touchMapper && _freeinkInput.hasTouch() && _freeinkInput.wasTouchTap(nx, ny)) {
             // Panel-native normalized -> logical portrait pixels of the UI.
-            const freeink::ui::Point p = freeink::ui::touchToLogical(uikit::device(), nx, ny);
+            struct { int16_t x, y; } p;
+            _touchMapper(nx, ny, p.x, p.y);
             _pendingEvent = { BTN_TAP, ACTION_CLICK, p.x, p.y };
             _hasPendingEvent = true;
             Serial.printf("[Buttons] Event: TAP %d,%d\n", p.x, p.y);
-        } else if (_freeinkInput.hasTouch()) {
+        } else if (_touchMapper && _freeinkInput.hasTouch()) {
             float x0, y0, x1, y1;
             if (_freeinkInput.wasSwipe(x0, y0, x1, y1)) {
-                const freeink::ui::Point a = freeink::ui::touchToLogical(uikit::device(), x0, y0);
-                const freeink::ui::Point b = freeink::ui::touchToLogical(uikit::device(), x1, y1);
+                struct { int16_t x, y; } a, b;
+                _touchMapper(x0, y0, a.x, a.y);
+                _touchMapper(x1, y1, b.x, b.y);
                 const int dx = b.x - a.x, dy = b.y - a.y;
                 ButtonId id;
                 if (abs(dx) >= abs(dy)) id = dx < 0 ? BTN_SWIPE_LEFT : BTN_SWIPE_RIGHT;
