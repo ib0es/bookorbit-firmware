@@ -11,6 +11,7 @@
 //    "expireToken":true,     -> the next Bearer request answers 401 once ("PUT": the next PUT)
 //    "deviceHeap":5000,      -> ESP.getFreeHeap() on the "device" (memory guards)
 //    "wifiDown":true,        -> Wi-Fi connections fail
+//    "wifiConnectMs":3000,   -> Wi-Fi connects that long after begin()
 //    "backOnWifi":true,      -> BACK is pressed while Wi-Fi connects (once)
 //    "backOn":"/download",   -> BACK is pressed when a request path contains this (once)
 //    "failPut":true,         -> progress uploads answer HTTP 500
@@ -400,9 +401,10 @@ void pump() {
     }
 }
 
-bool wifiBegin() {
+bool wifiBegin(uint32_t& connectMs) {
     JsonDocument st;
     loadState(st);
+    connectMs = st["wifiConnectMs"] | 0;
     if (st["backOnWifi"] | false) {
         st.remove("backOnWifi");
         saveState(st);
