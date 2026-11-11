@@ -64,18 +64,8 @@ button:active { background: #333; }
 <input type='password' name='wifi_pass' value='' placeholder='%PASS_HINT%'>
 </div>
 <hr style='border:none; border-top:1px solid #eee; margin:20px 0;'>
-<div class='form-group' style='margin-bottom:12px;'>
-<label style='display:flex; align-items:center; font-weight:normal; cursor:pointer;'>
-<input type='checkbox' name='sync_on_boot' value='1' %SYNC_BOOT_CHECKED% style='width:18px; height:18px; margin-right:10px; cursor:pointer;'>
-Sync on boot
-</label>
-</div>
-<div class='form-group' style='margin-bottom:12px;'>
-<label style='display:flex; align-items:center; font-weight:normal; cursor:pointer;'>
-<input type='checkbox' name='sync_on_sleep' value='1' %SYNC_SLEEP_CHECKED% style='width:18px; height:18px; margin-right:10px; cursor:pointer;'>
-Sync before sleep
-</label>
-</div>
+<label>%LBL_SYNC%</label>
+%SYNC_TOGGLES%
 <button type='submit'>%BTN_SAVE%</button>
 </form>
 <div class='footer'>%HTML_FOOTER%</div>
@@ -137,16 +127,19 @@ static void drawPortalScreen(const char* apPass) {
     frameRect(area, Color::Black, 2);
     Rect in = insetXY(area, 14, 18);
 
-    struct Step { const char* badge; MsgId title; MsgId value; bool boxed; };
+    struct Step { MsgId title; MsgId value; bool boxed; };
     const Step steps[3] = {
-        { "STEP 1", MsgId::WEB_STEP1_TITLE, MsgId::WEB_STEP1_SSID, true },
-        { "STEP 2", MsgId::WEB_STEP2_TITLE, MsgId::WEB_STEP2_URL, true },
-        { "STEP 3", MsgId::WEB_STEP3_TITLE, MsgId::WEB_STEP3_DESC, false },
+        { MsgId::WEB_STEP1_TITLE, MsgId::WEB_STEP1_SSID, true },
+        { MsgId::WEB_STEP2_TITLE, MsgId::WEB_STEP2_URL, true },
+        { MsgId::WEB_STEP3_TITLE, MsgId::WEB_STEP3_DESC, false },
     };
+    int stepNo = 0;
     for (const Step& st : steps) {
         Rect band = takeTop(in, (int16_t)(lineHeight(FontBody) + 10));
         fill(band, Color::Black, 4);
-        text(insetX(band, 10), st.badge, FontBody, Color::White);
+        char badge[24];
+        snprintf(badge, sizeof(badge), tr(MsgId::WEB_STEP_BADGE_FMT), ++stepNo);
+        text(insetX(band, 10), badge, FontBody, Color::White);
         takeTop(in, 8);
         const int16_t th = wrappedHeight(tr(st.title), FontSmall, in.width, 2);
         text(takeTop(in, th), tr(st.title), FontSmall, Color::Black, TextAlign::Left, 2);
@@ -179,8 +172,12 @@ bool WebConfigManager::runPortal(AppConfig& cfg) {
     String& wifiSsid = cfg.wifiSsid;
     String& wifiPass = cfg.wifiPass;
     String& authToken = cfg.authToken;
-    bool& syncOnBoot = cfg.syncOnBoot;
-    bool& syncOnSleep = cfg.syncOnSleep;
+    // The four moments of the Synchronization settings, as checkboxes.
+    struct Toggle { const char* name; bool& value; MsgId label; };
+    Toggle toggles[4] = { { "sync_on_close", cfg.syncOnClose, MsgId::SYNC_ITEM_CLOSE },
+                          { "sync_on_sleep", cfg.syncOnSleep, MsgId::SYNC_ITEM_SLEEP },
+                          { "sync_on_wake", cfg.syncOnWake, MsgId::SYNC_ITEM_WAKE },
+                          { "sync_on_boot", cfg.syncOnBoot, MsgId::SYNC_ITEM_BOOT } };
 
     Serial.println("[WebConfig] Starting Web Configuration Portal...");
 
@@ -241,8 +238,19 @@ bool WebConfigManager::runPortal(AppConfig& cfg) {
         page.replace("%SERVER_URL%", htmlEscape(serverUrl));
         page.replace("%USERNAME%", htmlEscape(username));
         page.replace("%WIFI_SSID%", htmlEscape(wifiSsid));
-        page.replace("%SYNC_BOOT_CHECKED%", syncOnBoot ? "checked" : "");
-        page.replace("%SYNC_SLEEP_CHECKED%", syncOnSleep ? "checked" : "");
+        page.replace("%LBL_SYNC%", htmlEscape(tr(MsgId::WEB_HTML_SYNC_HEADING)));
+        String boxes;
+        for (const Toggle& t : toggles) {
+            boxes += "<div class='form-group' style='margin-bottom:12px;'><label style='display:flex; align-items:center; "
+                     "font-weight:normal; cursor:pointer;'><input type='checkbox' name='";
+            boxes += t.name;
+            boxes += "' value='1' ";
+            boxes += t.value ? "checked " : "";
+            boxes += "style='width:18px; height:18px; margin-right:10px; cursor:pointer;'>";
+            boxes += htmlEscape(tr(t.label));
+            boxes += "</label></div>\n";
+        }
+        page.replace("%SYNC_TOGGLES%", boxes);
         server.send(200, "text/html; charset=utf-8", page);
     });
 
@@ -260,8 +268,7 @@ bool WebConfigManager::runPortal(AppConfig& cfg) {
         if (server.hasArg("wifi_pass") && server.arg("wifi_pass").length() > 0) wifiPass = server.arg("wifi_pass");
         else if (wifiSsid != oldSsid) wifiPass = "";
 
-        syncOnBoot = server.hasArg("sync_on_boot");
-        syncOnSleep = server.hasArg("sync_on_sleep");
+        for (Toggle& t : toggles) t.value = server.hasArg(t.name);
 
         authToken = "";
 
