@@ -52,6 +52,7 @@ struct AppConfig {
     bool bookStyles = true;
     bool focusReading = false;
     bool sharpImages = false;    // pictures: threshold instead of dithering
+    bool upDownTurnPages = false;   // reading: UP/DOWN turn pages (else they jump chapters)
     // Orientations, a quarter turn a step: 0 portrait, 1 landscape, 2 portrait upside
     // down, 3 landscape upside down. The interface (Settings) and the book on top
     // of it (Appearance): the pages are turned by both.

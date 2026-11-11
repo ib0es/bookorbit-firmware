@@ -26,6 +26,7 @@ enum Row : int {
     IMAGES,
     ORIENTATION,
     FULL_REFRESH,
+    UPDOWN_KEYS,    // UP / DOWN while reading: chapters or pages
     STATUS_BAR,     // opens the status bar menu
     COUNT
 };
