@@ -1920,6 +1920,13 @@ bool BookReader::nextPage() {
     return true;
 }
 
+bool BookReader::atEnd() {
+    if (!_opened || !resolve()) return false;
+    buildUntilPages((uint32_t)_page + 2);
+    if (_loadedSpine != _spine && !resolve()) return false;
+    return _spine + 1 >= (int)_spines.size() && _page + 1 >= (int)curCount();
+}
+
 bool BookReader::prevPage() {
     if (!_opened || !resolve()) return false;
     if (_page > 0) {

@@ -121,6 +121,12 @@ def subfolder_book(sd):
 def russian(sd):
     merge_config(sd, language="ru")
 
+def short_book_last(sd):
+    # The one-page TXT book is the book on the card's home screen.
+    json.dump({"filePath": "/books/Тестовая книга.txt", "title": "Тестовая книга", "author": "",
+               "coverPath": "", "progress": 0, "page": 1, "totalPages": 1},
+              open(os.path.join(sd, "books", "last_book.json"), "w"), ensure_ascii=False)
+
 def upside_down(sd):
     merge_config(sd, ui_orientation=2)
 
@@ -244,6 +250,14 @@ CASES = [
      OPEN_BOOK + READER_MENU + "C" + "R" + "L", toc_pages),
     ("reader: BACK after a chapter jump closes the book, the jump is saved (B6)", None, {},
      OPEN_BOOK + "R" + "D" + "B", jump_then_close),
+    ("reader: past the last page, 'end of book'; BACK stays on the page (U2)", short_book_last, {},
+     OPEN_BOOK + "R" + "B",
+     lambda log, sd: "[Reader] End of the book" in log and "Page 1/1" in after(log, ">>> BACK")
+                     and "drawHomeScreen" not in after(log, ">>> BACK")),
+    ("reader: past the last page, 'end of book'; OK closes the book (U2)", short_book_last, {},
+     OPEN_BOOK + "R" + "C",
+     lambda log, sd: "[Reader] End of the book" in log and "drawHomeScreen" in after(log, ">>> CONFIRM")
+                     and log.count("drawHomeScreen finished") == 2),
     ("reader: UP/DOWN turn pages when set so (U4)", updown_pages, {}, OPEN_BOOK + "DD", updown_turns),
     ("appearance: the Up/Down keys row switches to pages (U4)", None, {},
      OPEN_BOOK + APPEARANCE + "UU" + "R" + "B",
