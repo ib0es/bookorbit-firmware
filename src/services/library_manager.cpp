@@ -1122,13 +1122,19 @@ void LibraryManager::rebuildRows() {
         for (int i : files) rows.push_back(i);
         for (const auto& it : looseFiles) addFolder(it);
     } else {
-        // "/books": all books, downloaded or completed (master order: SD first, then the catalog).
+        // "/books": all books, downloaded or completed: the ones on the card, then
+        // the ones only on the server, each by title (was the order of the card
+        // scan, then the catalog's).
         for (int i = 0; i < (int)masterBooks.size(); i++) {
             const BookItem& b = masterBooks[i];
             if (currentFilter == FILTER_DOWNLOADED && !b.anyOnCard()) continue;
             if (currentFilter == FILTER_COMPLETED ? !isCompleted(b) : !visible(b)) continue;
             rows.push_back(i);
         }
+        std::stable_sort(rows.begin(), rows.end(), [&](int a, int b) {
+            const bool ca = masterBooks[a].anyOnCard(), cb = masterBooks[b].anyOnCard();
+            return ca != cb ? ca : byTitle(a, b);
+        });
     }
 
     if (selectedBookIndex >= (int)rows.size()) selectedBookIndex = rows.empty() ? 0 : (int)rows.size() - 1;
