@@ -2,6 +2,7 @@
 #include <ArduinoJson.h>
 #include <SDCardManager.h>
 #include "../hal/storage.h"
+#include "../storage/json_file.h"
 
 namespace {
 
@@ -27,10 +28,11 @@ bool ProgressStore::load() {
     _records.clear();
     _modified = false;
     _readOnly = false;
-    if (!Storage.isAvailable() || !Storage.exists(kPath)) return false;
+    if (!Storage.isAvailable()) return false;
 
     JsonDocument doc;
-    const DeserializationError err = readJsonFile(kPath, doc);
+    const DeserializationError err = JsonFile::read(kPath, doc);
+    if (err == DeserializationError::EmptyInput && !Storage.exists(kPath)) return false;   // none yet
     if (err == DeserializationError::NoMemory) {
         // The file is fine, the heap is not: never write a shorter list over it.
         Serial.println("[Progress] progress.json does not fit in memory now: positions are not saved this session.");
@@ -39,7 +41,7 @@ bool ProgressStore::load() {
     }
     if (err) {
         Serial.println("[Progress] progress.json is corrupt, starting empty (the old file is kept as .bad).");
-        keepUnreadableFile(kPath);
+        JsonFile::keepUnreadable(kPath);
         return false;
     }
     for (JsonObjectConst o : doc["books"].as<JsonArrayConst>()) {
@@ -80,13 +82,7 @@ bool ProgressStore::save() {
         if (r.state.hasBase) writePos(o["base"].to<JsonObject>(), r.state.base);
         if (r.state.baseServerUpdatedAt) o["baseUpdatedAt"] = r.state.baseServerUpdatedAt;
     }
-    if (doc.overflowed()) {
-        Serial.println("[Progress] Not enough memory to save progress.json: the file on the card is kept.");
-        return false;
-    }
-    String out;
-    serializeJson(doc, out);
-    bool ok = SDCardManager::getInstance().writeFile(kPath, out);
+    const bool ok = JsonFile::write(kPath, doc);
     if (ok) _modified = false;
     return ok;
 }
