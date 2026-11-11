@@ -75,6 +75,15 @@ CASES = [
                      and "MSC_c]" in log and "MSC_a]" in log and "MSC_e]" in log and "MSC_d]" in log and "MSC_i]" in log
                      and pages(log)),
 
+    # B8: in USB mode with no computer (never connected here) for the idle timeout
+    # (3 s in this case), the mode is left; the usual idle sleep follows.
+    ("usb-msc: no computer for the idle timeout leaves the mode, then the device sleeps (B8)",
+     SETTINGS + "UCC" + "www",
+     lambda log, sd: "Detaching filesystem" in log
+                     and "No computer for the idle timeout: leaving USB mass storage" in log
+                     and log.count("MicroSD mounted successfully") == 2
+                     and "Entering Deep Sleep" in after(log, "leaving USB mass storage"),
+     None, {"SIM_SLEEP_TIMEOUT_MS": "3000", "SIM_USB": "0"}),
     ("usb-msc: POWER exits USB-MSC safely without sleeping, then POWER sleeps/wakes normally",
      SETTINGS + "UCC" + "P" + "B" + "PZ",
      lambda log, sd: "Detaching filesystem" in log
