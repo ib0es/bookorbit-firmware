@@ -11,8 +11,8 @@
 #include "../../ui/i18n.h"
 #include "../../ui/kit/ui_kit.h"
 #include "../../core/book_formats.h"
-#include "../../platform/device.h"
 #include "../../ui/text_utils.h"
+#include "../../ui/actions.h"
 
 namespace {
 
@@ -272,8 +272,8 @@ void handleEvent(AppContext& ctx, const ButtonEvent& event) {
 
     // Held down: a row at a time, then a page at a time after a few repeats.
     const int step = event.repeat >= 4 ? std::max(1, libraryRowsPerPage()) : 1;
-    switch (event.id) {
-        case BTN_DOWN:
+    switch (Actions::onRow(event, [] { return bookMenuBook() != nullptr; })) {
+        case Action::Down:
             if (count > 0) {
                 const int at = lib.selectedBookIndex;
                 // A repeat stops at the end of the list instead of wrapping around.
@@ -281,26 +281,22 @@ void handleEvent(AppContext& ctx, const ButtonEvent& event) {
                 if (lib.selectedBookIndex != at) drawLibraryScreen(ctx);
             }
             break;
-        case BTN_UP:
+        case Action::Up:
             if (count > 0) {
                 const int at = lib.selectedBookIndex;
                 lib.selectedBookIndex = event.repeat ? std::max(at - step, 0) : (at - 1 + count) % count;
                 if (lib.selectedBookIndex != at) drawLibraryScreen(ctx);
             }
             break;
-        case BTN_CONFIRM:
-            // No LEFT key (Picco, X4 Pro): OK on a book opens its menu (Read first),
-            // the same as a tap. Folders still open directly.
-            if (Platform::kDevice.okOpensBookMenu && bookMenuBook()) { openBookMenu(ctx); break; }
+        case Action::Select:
+        case Action::Next:
             openSelected(ctx);
             break;
-        case BTN_RIGHT:
-            openSelected(ctx);
-            break;
-        case BTN_LEFT:
+        case Action::Menu:     // OK on a book where there is no LEFT key (Picco, X4 Pro), as a tap
+        case Action::Prev:
             openBookMenu(ctx);
             break;
-        case BTN_BACK:
+        case Action::Back:
             goBack(ctx);
             break;
         default:
@@ -339,22 +335,22 @@ void handleBookMenuEvent(AppContext& ctx, const ButtonEvent& event) {
     int& sel = ctx.selectedBookMenuIndex;
     if (sel >= n) sel = n - 1;
 
-    switch (event.id) {
-        case BTN_DOWN:
+    switch (Actions::of(event)) {
+        case Action::Down:
             sel = (sel + 1) % n;
             drawBookMenuScreen(ctx, false);
             return;
-        case BTN_UP:
+        case Action::Up:
             sel = (sel - 1 + n) % n;
             drawBookMenuScreen(ctx, false);
             return;
-        case BTN_BACK:
-        case BTN_LEFT:
+        case Action::Back:
+        case Action::Prev:
             ctx.currentState = STATE_LIBRARY;
             drawLibraryScreen(ctx);
             return;
-        case BTN_CONFIRM:
-        case BTN_RIGHT:
+        case Action::Select:
+        case Action::Next:
             break;
         default:
             return;
