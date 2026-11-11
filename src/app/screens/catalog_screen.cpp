@@ -6,32 +6,33 @@
 #include "../../ui/views/home_view.h"
 #include "../../ui/keyboard_ui.h"
 #include "../../ui/i18n.h"
+#include "../../ui/actions.h"
 
 namespace CatalogScreen {
 
 void handleEvent(AppContext& ctx, const ButtonEvent& event) {
     if (event.action != ACTION_CLICK) return;
 
-    switch (event.id) {
-        case BTN_DOWN:
+    switch (Actions::of(event)) {
+        case Action::Down:
             ctx.selectedCatalogIndex = (ctx.selectedCatalogIndex + 1) % NUM_CATALOG_ITEMS;
             drawCatalogScreen(ctx, false);
             break;
 
-        case BTN_UP:
+        case Action::Up:
             ctx.selectedCatalogIndex = (ctx.selectedCatalogIndex - 1 + NUM_CATALOG_ITEMS) % NUM_CATALOG_ITEMS;
             drawCatalogScreen(ctx, false);
             break;
 
-        case BTN_BACK:
-        case BTN_LEFT:   // the footer hint offers BACK/LEFT
+        case Action::Back:
+        case Action::Prev:   // the footer hint offers BACK/LEFT
             ctx.currentState = STATE_HOME;
             ctx.selectedHomeIndex = 1; // Return to Catalog option on Home
             drawHomeScreen(ctx, false);
             break;
 
-        case BTN_CONFIRM:
-        case BTN_RIGHT: {
+        case Action::Select:
+        case Action::Next: {
             auto& lib = LibraryManager::getInstance();
             switch (ctx.selectedCatalogIndex) {
                 case 0: { // Search

@@ -292,15 +292,16 @@ void handleReadingEvent(AppContext& ctx, const ButtonEvent& event) {
 
 void handleTocEvent(AppContext& ctx, const ButtonEvent& event) {
     if (event.action != ACTION_CLICK) return;
+    const Action key = Actions::of(event);
     auto& lib = LibraryManager::getInstance();
 
-    if (event.id == BTN_DOWN || event.id == BTN_UP || event.id == BTN_LEFT || event.id == BTN_RIGHT) {
+    if (key == Action::Down || key == Action::Up || key == Action::Prev || key == Action::Next) {
         const int prev = ctx.selectedTocIndex;
         const int perPage = std::max(1, tocRowsPerPage());   // as many rows as the last drawing fitted
         const int n = Reader.getChapterCount();
         // UP/DOWN a row (a page at a time once held for a while), LEFT/RIGHT a page.
-        const bool byPage = event.id == BTN_LEFT || event.id == BTN_RIGHT || event.repeat >= 4;
-        const bool down = event.id == BTN_DOWN || event.id == BTN_RIGHT;
+        const bool byPage = key == Action::Prev || key == Action::Next || event.repeat >= 4;
+        const bool down = key == Action::Down || key == Action::Next;
         int to = prev;
         if (byPage) to = down ? (prev / perPage + 1) * perPage : (prev / perPage - (prev % perPage == 0 ? 1 : 0)) * perPage;
         else to = down ? prev + 1 : prev - 1;
@@ -309,14 +310,14 @@ void handleTocEvent(AppContext& ctx, const ButtonEvent& event) {
             const bool pageChanged = (prev / perPage != ctx.selectedTocIndex / perPage);
             drawTocScreen(ctx, pageChanged && uikit::periodicFullRefresh());
         }
-    } else if (event.id == BTN_CONFIRM) {
+    } else if (key == Action::Select) {
         if (Reader.getChapterCount() > 0) {
             rememberJumpBack();
             Reader.goToChapter(ctx.selectedTocIndex);
             lib.recordReaderMove(true, true);
         }
         returnToReading(ctx);
-    } else if (event.id == BTN_BACK) {
+    } else if (key == Action::Back) {
         ctx.currentState = STATE_READER_MENU;
         drawReaderMenuScreen(ctx, uikit::periodicFullRefresh());
     }
@@ -324,25 +325,25 @@ void handleTocEvent(AppContext& ctx, const ButtonEvent& event) {
 
 void handleMenuEvent(AppContext& ctx, const ButtonEvent& event) {
     if (event.action != ACTION_CLICK) return;
-    switch (event.id) {
-        case BTN_DOWN:
+    switch (Actions::of(event)) {
+        case Action::Down:
             ctx.selectedReaderMenuIndex = (ctx.selectedReaderMenuIndex + 1) % NUM_READER_MENU_ITEMS;
             drawReaderMenuScreen(ctx, false);
             break;
-        case BTN_UP:
+        case Action::Up:
             ctx.selectedReaderMenuIndex = (ctx.selectedReaderMenuIndex - 1 + NUM_READER_MENU_ITEMS) % NUM_READER_MENU_ITEMS;
             drawReaderMenuScreen(ctx, false);
             break;
-        case BTN_LEFT:
+        case Action::Prev:
             returnToReading(ctx);
             break;
-        case BTN_RIGHT:
+        case Action::Next:
             executeMenuAction(ctx, ctx.selectedReaderMenuIndex);
             break;
-        case BTN_CONFIRM:
+        case Action::Select:
             executeMenuAction(ctx, ctx.selectedReaderMenuIndex);
             break;
-        case BTN_BACK:
+        case Action::Back:
             returnToReading(ctx);
             break;
         default:
@@ -353,17 +354,17 @@ void handleMenuEvent(AppContext& ctx, const ButtonEvent& event) {
 void handleFontMenuEvent(AppContext& ctx, const ButtonEvent& event) {
     if (event.action != ACTION_CLICK) return;
     int& sel = ctx.selectedFontIndex;
-    switch (event.id) {
-        case BTN_DOWN:
+    switch (Actions::of(event)) {
+        case Action::Down:
             sel = (sel + 1) % FontEngine::kSizeCount;
             drawFontMenuScreen(ctx, false);
             break;
-        case BTN_UP:
+        case Action::Up:
             sel = (sel - 1 + FontEngine::kSizeCount) % FontEngine::kSizeCount;
             drawFontMenuScreen(ctx, false);
             break;
-        case BTN_CONFIRM:
-        case BTN_RIGHT:
+        case Action::Select:
+        case Action::Next:
             // Chosen: back to Appearance (laid out once, when it is left).
             if (sel != ctx.config.readerFontSize) {
                 ctx.config.readerFontSize = sel;
@@ -372,8 +373,8 @@ void handleFontMenuEvent(AppContext& ctx, const ButtonEvent& event) {
             ctx.currentState = STATE_APPEARANCE_MENU;
             drawAppearanceScreen(ctx, false);
             break;
-        case BTN_BACK:
-        case BTN_LEFT:
+        case Action::Back:
+        case Action::Prev:
             ctx.currentState = STATE_APPEARANCE_MENU;
             drawAppearanceScreen(ctx, false);
             break;
@@ -401,17 +402,17 @@ void handleTypefaceMenuEvent(AppContext& ctx, const ButtonEvent& event) {
     const auto& fams = typefaceFamilies(false);
     const int n = 1 + (int)fams.size();
     int& sel = ctx.selectedTypefaceIndex;
-    switch (event.id) {
-        case BTN_DOWN:
+    switch (Actions::of(event)) {
+        case Action::Down:
             sel = (sel + 1) % n;
             drawTypefaceMenuScreen(ctx, false);
             break;
-        case BTN_UP:
+        case Action::Up:
             sel = (sel - 1 + n) % n;
             drawTypefaceMenuScreen(ctx, false);
             break;
-        case BTN_CONFIRM:
-        case BTN_RIGHT: {
+        case Action::Select:
+        case Action::Next: {
             String family;   // "" = built-in
             if (sel > 0 && sel <= (int)fams.size()) {
                 const FontStore::Family& fam = fams[sel - 1];
@@ -446,8 +447,8 @@ void handleTypefaceMenuEvent(AppContext& ctx, const ButtonEvent& event) {
             drawAppearanceScreen(ctx, false);
             break;
         }
-        case BTN_BACK:
-        case BTN_LEFT:
+        case Action::Back:
+        case Action::Prev:
             ctx.currentState = STATE_APPEARANCE_MENU;
             drawAppearanceScreen(ctx, false);
             break;
@@ -470,35 +471,36 @@ static void openTypefaces(AppContext& ctx) {
 
 void handleAppearanceEvent(AppContext& ctx, const ButtonEvent& event) {
     if (event.action != ACTION_CLICK) return;
+    const Action key = Actions::onValue(Actions::of(event));
     int& sel = ctx.selectedAppearanceIndex;
-    switch (event.id) {
-        case BTN_DOWN:
+    switch (key) {
+        case Action::Down:
             sel = (sel + 1) % Appearance::COUNT;
             drawAppearanceScreen(ctx, false);
             break;
-        case BTN_UP:
+        case Action::Up:
             sel = (sel - 1 + Appearance::COUNT) % Appearance::COUNT;
             drawAppearanceScreen(ctx, false);
             break;
-        case BTN_LEFT:
-        case BTN_RIGHT:
-        case BTN_CONFIRM:
-            if (sel == Appearance::TYPEFACE && event.id != BTN_LEFT) {
+        case Action::Less:
+        case Action::More:
+        case Action::Select:
+            if (sel == Appearance::TYPEFACE && key != Action::Less) {
                 openTypefaces(ctx);
-            } else if (sel == Appearance::STATUS_BAR && event.id != BTN_LEFT) {
+            } else if (sel == Appearance::STATUS_BAR && key != Action::Less) {
                 ctx.selectedStatusBarIndex = 0;
                 ctx.currentState = STATE_STATUSBAR_MENU;
                 drawStatusBarScreen(ctx, false);
-            } else if (sel == Appearance::SIZE && event.id == BTN_CONFIRM) {
+            } else if (sel == Appearance::SIZE && key == Action::Select) {
                 ctx.selectedFontIndex = ctx.config.readerFontSize;
                 ctx.currentState = STATE_FONT_MENU;
                 drawFontMenuScreen(ctx, false);
-            } else if (Appearance::step(ctx.config, sel, event.id == BTN_LEFT ? -1 : 1)) {
+            } else if (Appearance::step(ctx.config, sel, key == Action::Less ? -1 : 1)) {
                 ctx.config.save();
                 drawAppearanceScreen(ctx, false);   // (the book turns when the menus are left)
             }
             break;
-        case BTN_BACK:
+        case Action::Back:
             returnToReading(ctx);   // laid out once, with everything changed here
             break;
         default:
@@ -508,24 +510,25 @@ void handleAppearanceEvent(AppContext& ctx, const ButtonEvent& event) {
 
 void handleStatusBarEvent(AppContext& ctx, const ButtonEvent& event) {
     if (event.action != ACTION_CLICK) return;
+    const Action key = Actions::onValue(Actions::of(event));
     int& sel = ctx.selectedStatusBarIndex;
-    switch (event.id) {
-        case BTN_DOWN:
+    switch (key) {
+        case Action::Down:
             sel = (sel + 1) % StatusBarMenu::COUNT;
             drawStatusBarScreen(ctx, false);
             break;
-        case BTN_UP:
+        case Action::Up:
             sel = (sel - 1 + StatusBarMenu::COUNT) % StatusBarMenu::COUNT;
             drawStatusBarScreen(ctx, false);
             break;
-        case BTN_LEFT:
-        case BTN_RIGHT:
-        case BTN_CONFIRM:
-            StatusBarMenu::step(ctx.config, sel, event.id == BTN_LEFT ? -1 : 1);
+        case Action::Less:
+        case Action::More:
+        case Action::Select:
+            StatusBarMenu::step(ctx.config, sel, key == Action::Less ? -1 : 1);
             ctx.config.save();
             drawStatusBarScreen(ctx, false);
             break;
-        case BTN_BACK:
+        case Action::Back:
             ctx.currentState = STATE_APPEARANCE_MENU;
             drawAppearanceScreen(ctx, false);
             break;
@@ -538,17 +541,17 @@ void handleBookmarksEvent(AppContext& ctx, const ButtonEvent& event) {
     if (event.action != ACTION_CLICK) return;
     const int n = 1 + Bookmarks.count();
     int& sel = ctx.selectedBookmarkIndex;
-    switch (event.id) {
-        case BTN_DOWN:
+    switch (Actions::of(event)) {
+        case Action::Down:
             sel = (sel + 1) % n;
             drawBookmarksScreen(ctx, false);
             break;
-        case BTN_UP:
+        case Action::Up:
             sel = (sel - 1 + n) % n;
             drawBookmarksScreen(ctx, false);
             break;
-        case BTN_CONFIRM:
-        case BTN_RIGHT:
+        case Action::Select:
+        case Action::Next:
             if (sel == 0) {
                 // This page's: removed if there is one, else added.
                 const int here = bookmarkOnPage();
@@ -584,7 +587,7 @@ void handleBookmarksEvent(AppContext& ctx, const ButtonEvent& event) {
                 returnToReading(ctx);
             }
             break;
-        case BTN_LEFT:
+        case Action::Prev:
             if (sel > 0 && sel <= Bookmarks.count()) {
                 Bookmarks.remove(sel - 1);
                 Bookmarks.save();
@@ -592,7 +595,7 @@ void handleBookmarksEvent(AppContext& ctx, const ButtonEvent& event) {
                 drawBookmarksScreen(ctx, false);
             }
             break;
-        case BTN_BACK:
+        case Action::Back:
             ctx.currentState = STATE_READER_MENU;
             drawReaderMenuScreen(ctx, false);
             break;
