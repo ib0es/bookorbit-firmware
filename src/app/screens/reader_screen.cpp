@@ -21,6 +21,7 @@
 #include "../../reader/font_store.h"
 #include "../../ui/i18n.h"
 #include "../../ui/kit/ui_kit.h"
+#include "../../platform/device.h"
 
 namespace {
 
@@ -231,13 +232,9 @@ bool resumeLastBook(AppContext& ctx) {
     return true;
 }
 
-// Picco and X4 Pro have only up/down keys (no left/right): there they turn
-// pages, and chapters are reached through the table of contents.
-#if (defined(FREEINK_DEVICE_PICCO) && FREEINK_DEVICE_PICCO) || (defined(FREEINK_DEVICE_X4PRO) && FREEINK_DEVICE_X4PRO)
-constexpr bool kUpDownTurnPages = true;
-#else
-constexpr bool kUpDownTurnPages = false;
-#endif
+// Boards with only up/down keys (no left/right) turn pages with them; chapters
+// are reached through the table of contents.
+constexpr bool kUpDownTurnPages = Platform::kDevice.upDownTurnPages;
 
 void handleReadingEvent(AppContext& ctx, const ButtonEvent& event) {
     // GT911 capacitive Home key long press opens the reader menu directly while reading.

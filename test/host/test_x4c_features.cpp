@@ -48,7 +48,10 @@ static void testPowerPolicyIdleDeepSleep() {
 
 static void testX4ClassicDefaultsAndSettingsLayout() {
     AppConfig cfg;
-    CHECK(strcmp(DEVICE_NAME, "XTEINK-X4C-BookOrbit") == 0);
+    // The X4 Classic profile (src/platform/devices/x4c.h).
+    CHECK(strcmp(Platform::kDevice.name, "XTEINK X4 CLASSIC") == 0);
+    CHECK(!Platform::kDevice.touch && !Platform::kDevice.touchOnly);
+    CHECK(!Platform::kDevice.upDownTurnPages && !Platform::kDevice.okOpensBookMenu);
     CHECK(cfg.autoRotate == true);
     CHECK(cfg.usbMscEnabled == true);
 

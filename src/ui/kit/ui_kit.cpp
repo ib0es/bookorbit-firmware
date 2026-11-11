@@ -1,7 +1,7 @@
 #include "ui_kit.h"
 #include "../i18n.h"
 
-#include <BoardConfig.h>  // FREEINK_CAP_TOUCH
+#include "../../platform/device.h"
 
 #include <algorithm>
 #include <new>
@@ -197,21 +197,9 @@ ListPager listPager() { return g_pager; }
 
 bool backTapped(int16_t x, int16_t y) { return g_backBand.contains(x, y); }
 
-bool touchOnly() {
-#if (defined(FREEINK_DEVICE_PICCO) && FREEINK_DEVICE_PICCO) || (defined(FREEINK_DEVICE_X4PRO) && FREEINK_DEVICE_X4PRO)
-    return true;
-#else
-    return false;
-#endif
-}
+bool touchOnly() { return Platform::kDevice.touchOnly; }
 
-bool touchUi() {
-#if defined(FREEINK_CAP_TOUCH) && FREEINK_CAP_TOUCH || defined(UI_FAKE_FRONTLIGHT)
-    return true;
-#else
-    return false;
-#endif
-}
+bool touchUi() { return Platform::kDevice.touch; }
 
 bool hitTest(int16_t x, int16_t y, fi::ActionId& action, int16_t& value) {
     const fi::Interaction* items = g_hits.data();
@@ -345,12 +333,12 @@ Rect topBar(Frame& f, const char* title) {
     const int16_t batW = 92;
     battery(f, Rect{(int16_t)(inner.right() - batW), inner.y, batW, inner.height}, Color::White);
     Rect titleR{inner.x, inner.y, (int16_t)(inner.width - batW - kGap), inner.height};
-#if defined(FREEINK_CAP_TOUCH) && FREEINK_CAP_TOUCH || defined(UI_FAKE_FRONTLIGHT)
-    // Touch boards: the bar is the BACK control, so show it.
-    text(Rect{titleR.x, titleR.y, 22, titleR.height}, "\xE2\x97\x80", FontBody, Color::White);  // U+25C0
-    titleR.x = (int16_t)(titleR.x + 26);
-    titleR.width = (int16_t)(titleR.width - 26);
-#endif
+    if (Platform::kDevice.touch) {
+        // Touch boards: the bar is the BACK control, so show it.
+        text(Rect{titleR.x, titleR.y, 22, titleR.height}, "\xE2\x97\x80", FontBody, Color::White);  // U+25C0
+        titleR.x = (int16_t)(titleR.x + 26);
+        titleR.width = (int16_t)(titleR.width - 26);
+    }
     text(titleR, title, FontTitle, Color::White);
     g_backBand = bar;
     return area;
@@ -390,12 +378,11 @@ Rect footerHints(Frame&, Rect area, const char* line1, const char* line2) {
 
 Rect keyHints(Frame& f, Rect area, const KeyLabels& keys, const char* info) {
     if (touchOnly()) return footerHints(f, area, info ? info : "x", nullptr);   // replaced by the touch hints
-    // Centres of the keys along the bottom edge of a 480 px wide portrait
-    // screen (measured on the X4: two rockers of two keys). The tabs stand at
-    // the keys wherever the screen is turned: along the top (upside down: the
-    // keys in the other order, LEFT and RIGHT swapped, see keysReversed()), or
-    // down a side in landscape.
-    static const int16_t kCentre[4] = {96, 178, 279, 370};
+    // The tabs stand at the keys (the device profile's centres along the bottom
+    // edge) wherever the screen is turned: along the top (upside down: the keys
+    // in the other order, LEFT and RIGHT swapped, see keysReversed()), or down a
+    // side in landscape.
+    const int16_t* kCentre = Platform::kDevice.keyCentres;
     const int edge = keyEdge();
     const char* labels[4] = {keys.back, keys.ok, edge == 1 ? keys.right : keys.left, edge == 1 ? keys.left : keys.right};
     const int16_t W = width(), H = height();
@@ -544,19 +531,7 @@ Rect modalPanel(const char* title, int16_t w, int16_t h) {
     return insetXY(area, 18, 10);
 }
 
-const char* deviceDisplayName() {
-#if defined(FREEINK_DEVICE_PICCO) && FREEINK_DEVICE_PICCO
-    return "BOOX PICCO";
-#elif defined(FREEINK_DEVICE_X4PRO) && FREEINK_DEVICE_X4PRO
-    return "XTEINK X4 PRO";
-#elif defined(FREEINK_DEVICE_X4CLASSIC) && FREEINK_DEVICE_X4CLASSIC
-    return "XTEINK X4 CLASSIC";
-#elif defined(FREEINK_DEVICE_X3) && FREEINK_DEVICE_X3
-    return "XTEINK X3";
-#else
-    return "XTEINK X4";
-#endif
-}
+const char* deviceDisplayName() { return Platform::kDevice.name; }
 
 // ---------------------------------------------------------------------------
 namespace icon {

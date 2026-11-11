@@ -6,6 +6,7 @@
 #include "../net/bookorbit_client.h"
 #include "../net/book_formats.h"
 #include "../storage/json_file.h"
+#include "../platform/device.h"
 #include <Preferences.h>
 
 StorageManager Storage;
@@ -17,10 +18,10 @@ bool StorageManager::begin() {
 
     // SD rail power. Profiles that declare it (X3: GPIO13 active-high; X4 Classic
     // and X4 Pro: active-low SDMMC enables) are left to SDCardManager, which
-    // knows the polarity and the power cycle. The C3 X4 profile leaves it
-    // unassigned although the board has the same GPIO13 switch as the X3.
-    if (BoardConfig::ACTIVE.sd.powerEnable < 0) {
-        const int8_t sdPower = 13;
+    // knows the polarity and the power cycle. The device profile names the
+    // switch an SDK profile leaves unassigned (the C3 X4's GPIO13, active-high).
+    if (BoardConfig::ACTIVE.sd.powerEnable < 0 && Platform::kDevice.sdPowerPin >= 0) {
+        const int8_t sdPower = Platform::kDevice.sdPowerPin;
         gpio_hold_dis((gpio_num_t)sdPower);
         pinMode(sdPower, OUTPUT);
         digitalWrite(sdPower, HIGH);

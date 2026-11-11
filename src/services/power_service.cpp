@@ -30,6 +30,7 @@
 #include "../app/app_controller.h"
 #include "../hal/buttons.h"
 #include "../ui/text_utils.h"
+#include "../platform/device.h"
 
 namespace {
 uint32_t s_lastBatteryCheck = 0;
@@ -174,11 +175,7 @@ void PowerService::idleWaitOrLightSleep(AppContext& ctx) {
 #endif
 
     LightSleepPolicy::Inputs in;
-#if defined(FREEINK_GT911_INT_WAKE) && FREEINK_GT911_INT_WAKE
-    in.featureBuilt = true;
-#else
-    in.featureBuilt = false;
-#endif
+    in.featureBuilt = Platform::kDevice.touchWake;
     in.settingEnabled = ctx.config.touchWakeEnabled;
     in.touchWakeIrqPin = irqPin;
     in.wifiOff = (WiFi.getMode() == WIFI_OFF);
