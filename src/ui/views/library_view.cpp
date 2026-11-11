@@ -217,4 +217,9 @@ void drawLibraryScreen(AppContext& ctx, bool fullRefresh) {
 
     present(fullRefresh);
     Serial.printf("[UI] drawLibraryScreen finished in %lu ms.\n", millis() - t0);
+    if (total > 0) {   // what is selected, for the logs (and the walkthrough tests)
+        const BookItem& sel = lib.rowAt(lib.selectedBookIndex);
+        Serial.printf("[UI] Library row %d/%d: '%s' %s\n", lib.selectedBookIndex + 1, total, sel.title.c_str(),
+                      sel.isDirectory ? "folder" : sel.isDownloaded ? "on card" : "cloud");
+    }
 }

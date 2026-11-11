@@ -21,6 +21,7 @@ build() {   # name sources...
 build i18n     "$ROOT/test/host/test_i18n.cpp" "$ROOT/src/ui/i18n.cpp"
 build opds     "$ROOT/test/host/test_opds_stream_parser.cpp" "$ROOT/src/net/opds_stream_parser.cpp" "$ROOT/src/net/book_formats.cpp"
 build formats  "$ROOT/test/host/test_book_formats.cpp" "$ROOT/src/net/book_formats.cpp"
+build textutil "$ROOT/test/host/test_text_utils.cpp"
 build cfi      "$ROOT/test/host/test_epub_cfi.cpp" "$ROOT/src/reader/epub_cfi.cpp"
 build cfimap   "$ROOT/test/host/test_cfi_map.cpp" "$ROOT/src/reader/cfi_map.cpp" "$ROOT/src/reader/epub_cfi.cpp"
 build progress "$ROOT/test/host/test_progress_sync.cpp" "$ROOT/src/services/progress_sync.cpp" "$ROOT/src/services/time_utils.cpp"
@@ -50,6 +51,7 @@ rc=0
 echo "== I18n";              "$OUT/i18n/test" || rc=1
 echo "== OpdsStreamParser";  "$OUT/opds/test" || rc=1
 echo "== BookFormats";       "$OUT/formats/test" || rc=1
+echo "== utf8Prefix";        "$OUT/textutil/test" || rc=1
 echo "== EpubCfi";          "$OUT/cfi/test" | tail -1 || rc=1
 echo "== CfiMap";           "$OUT/cfimap/test" | grep -v "^ *pub\|^ *loc" | tail -40 || rc=1
 echo "== ProgressSync";      "$OUT/progress/test" > "$OUT/progress.log" || rc=1; tail -1 "$OUT/progress.log"; [ $rc = 0 ] || cat "$OUT/progress.log"

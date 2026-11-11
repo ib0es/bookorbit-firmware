@@ -38,6 +38,7 @@ void handleEvent(AppContext& ctx, const ButtonEvent& event) {
                     String query = lib.searchQuery;
                     if (KeyboardUI::show(tr(MsgId::CATALOG_SEARCH_TITLE), tr(MsgId::CATALOG_SEARCH_HINT), query, KB_MODE_TEXT)) {
                         lib.searchQuery = query;
+                        Serial.printf("[Library] Search '%s'\n", query.c_str());
                         lib.currentFilter = FILTER_SEARCH;
                         lib.currentFolder = "@search";
                         lib.selectedBookIndex = 0;
