@@ -118,9 +118,9 @@ public:
     void rebuildFilteredIndices();
     // Picks up books copied to / removed from the card since the master scan.
     void refreshLocalFiles();
-    // The home screen's books (up to 4). Kept until the library, the current book
-    // or a position changes: building it checks a dozen cover files on the card,
-    // and the home screen asked for it on every key press.
+    // The home screen's books (up to 4). Their covers are looked up on the card
+    // once until something changes (recentCover): that is a dozen file checks per
+    // book, and the home screen asks on every key press.
     std::vector<RecentBookInfo> getRecentBooks();
     // Something shown on the home screen changed (positions, covers, the list).
     void touch() {
@@ -164,6 +164,11 @@ public:
     // of books deleted before deleteBookArtifacts cleaned everything up.
     void cleanOrphanFiles();
     void updateLastBookAfterDeletion(const String& deletedPath);
+
+    // resolveCoverPath(..., allowExtract) remembered in a small static table (no
+    // heap: long-lived strings scattered by the home screen split the big free
+    // block a book's index needs, and a book did not open right after a download).
+    String recentCover(const String& filePath, const String& title, const String& coverPath);
 
     void initLastBook();
     bool saveLastBook();        // last_book.json + progress.json
@@ -218,9 +223,6 @@ private:
     bool _scanned = false;
     bool _countsDirty = true;
     uint32_t _gen = 1;
-    uint32_t _recentGen = 0;
-    String _recentLast;
-    std::vector<RecentBookInfo> _recent;
     int _unsavedMoves = 0;
     uint32_t _firstUnsavedAt = 0;
     void buildMaster();

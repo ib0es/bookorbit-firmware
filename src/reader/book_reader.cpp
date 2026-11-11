@@ -425,15 +425,17 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
         LayoutOptions o;
         int size = -1, width = -1, height = -1;
         const char* text = nullptr;
-        String family;
+        uint32_t family = 0;   // a hash of the name: no String kept for good
         bool styles = false;
         int16_t pageHeight = 0;
     };
     static Cut s_cut;
+    uint32_t familyKey = 2166136261u;
+    for (size_t i = 0; i < _family.length(); i++) familyKey = (familyKey ^ (uint8_t)_family[i]) * 16777619u;
     static size_t s_cap = 40 * 1024;
     const bool cutKnown = s_cut.o == o && s_cut.size == sizeIndex && s_cut.width == p.pageWidth &&
                           s_cut.height == height && s_cut.text == text &&
-                          s_cut.family == _family && s_cut.styles == (p.stylesheet != nullptr);
+                          s_cut.family == familyKey && s_cut.styles == (p.stylesheet != nullptr);
     const size_t kCaps[] = {(size_t)40 * 1024, (size_t)52 * 1024, (size_t)64 * 1024};
     for (size_t cap : kCaps) {
         if (cap < s_cap) continue;
@@ -488,7 +490,7 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
             s_cut.width = p.pageWidth;
             s_cut.height = height;
             s_cut.text = text;
-            s_cut.family = _family;
+            s_cut.family = familyKey;
             s_cut.styles = p.stylesheet != nullptr;
             s_cut.pageHeight = q.pageHeight;
             break;
