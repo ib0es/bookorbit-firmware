@@ -140,10 +140,13 @@ public:
         uint8_t pages = 0;     // 0 page in the book, 1 page in the chapter, 2 none
         bool percent = false;  // how much of the book is read
         bool battery = true;
+        bool clock = false;
+        int16_t utcOffsetMin = 0;
         uint8_t bottom = 0;    // 0 chapter title and progress bar, 1 the bar, 2 nothing
-        bool topShown() const { return top != 2 || pages != 2 || percent || battery; }
+        bool topShown() const { return top != 2 || pages != 2 || percent || clock || battery; }
         bool operator==(const StatusBar& o) const {
-            return top == o.top && pages == o.pages && percent == o.percent && battery == o.battery && bottom == o.bottom;
+            return top == o.top && pages == o.pages && percent == o.percent && clock == o.clock &&
+                   utcOffsetMin == o.utcOffsetMin && battery == o.battery && bottom == o.bottom;
         }
     };
     bool setStatusBar(const StatusBar& bar);

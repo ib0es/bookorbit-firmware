@@ -19,6 +19,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BIN = os.environ.get("X4_HEADLESS") or os.path.join(ROOT, "test/sim/build-x4/x4_headless")
+SCREEN_W = 528 if (os.environ.get("DEVICE") == "x3" or "build-x3" in BIN) else 480
+
+
+def kb_tap(x, y):
+    return f"T{round(x * SCREEN_W / 480)},{y};"
 
 ALL_BOOKS = "DC" + "DC"            # home -> catalog -> "All books"
 OPEN_BOOK = "C"                    # home: the book on the card
@@ -207,9 +212,9 @@ CASES = [
      SETTINGS_FILE + "X" + "C" + "w", reload_applies),
     ("settings file: save writes config.json (U7)", None, {}, SETTINGS_FILE + "D" + "C", saved_file),
     ("keyboard: search typed in Cyrillic (U2)", russian, {},
-     "DC" + "[T215,385;T177,265;T100,385;T430,448;]" + "C", search_cyrillic),
+     "DC" + "[" + kb_tap(215, 385) + kb_tap(177, 265) + kb_tap(100, 385) + kb_tap(430, 448) + "]" + "C", search_cyrillic),
     ("keyboard: backspace removes a whole Cyrillic letter (U2)", russian, {},
-     "DC" + "[T215,385;T177,265;T278,448;T430,448;]" + "C", search_backspace),
+     "DC" + "[" + kb_tap(215, 385) + kb_tap(177, 265) + kb_tap(278, 448) + kb_tap(430, 448) + "]" + "C", search_backspace),
     ("library: a book in a subfolder gets a cache of its own (B13)", subfolder_book, {},
      "DC" + "DDDDD" + "C" + "D" + "C" + "D" + "C", subfolder_cache),
     ("download: the book is in place and no .part is left (B5)", fake_server({"progress": []}), {},
@@ -220,6 +225,18 @@ CASES = [
      lambda sd: (merge_config(sd, token="tok-0"),
                  server(sd, {"percent": 0.3, "updatedAt": "NOW-100", "expireToken": True})), {},
      OPEN_BOOK + READER_MENU + "DDDC" + "w", token_saved),
+    ("status bar: clock and UTC+3 saved and active from RTC",
+     None, {"SIM_RTC_UTC": "1794391200"},
+     OPEN_BOOK + APPEARANCE + "U" + "C" + "UU" + "C" + "D" + "RRRRRR" + "BB",
+     lambda log, sd: "[RTC] Ready" in log and "[Clock] Restored from RTC" in log
+                     and cfg(sd).get("sb_clock") is True and cfg(sd).get("utc_offset_min") == 180
+                     and "Page drawn" in after(log, ">>> BACK")),
+    ("imu: auto-rotate tilts on sustained gravity and sleeps when disabled",
+     None if ("build-x3" in BIN or os.environ.get("DEVICE") == "x3") else (lambda sd: merge_config(sd, auto_rotate=True)),
+     {"SIM_IMU_PRESENT": "1"},
+     "A-1.0,0.0,0.0;w" + SETTINGS + "UC",
+     lambda log, sd: "[IMU] Ready" in log and "[App] Auto-rotated UI 0 -> 1" in log
+                     and "[IMU] Put to sleep" in log and cfg(sd).get("auto_rotate") is False),
 ]
 
 def run_case(case):

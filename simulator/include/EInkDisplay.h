@@ -34,7 +34,9 @@ public:
         memset(_fb, colorByte, getBufferSize());
     }
 
-    const char* getControllerName() const { return "SSD1677 (Simulated)"; }
+    const char* getControllerName() const {
+        return _w == 792 ? "UC8253 (Simulated)" : "SSD1677 (Simulated)";
+    }
 
     void displayBuffer(RefreshMode mode) {
         if (s_callback) s_callback(_fb, (int)mode);

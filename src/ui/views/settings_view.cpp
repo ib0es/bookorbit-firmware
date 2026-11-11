@@ -3,6 +3,7 @@
 #include "../i18n.h"
 #include "../kit/ui_kit.h"
 #include "../../hal/frontlight.h"
+#include "../../hal/imu.h"
 
 using namespace uikit;
 
@@ -52,7 +53,13 @@ SettingItemDef getSettingItemDef(const AppContext& ctx, int index) {
     if (index == orientationSettingIndex()) {   // the interface (a book turns on top of it: Appearance)
         static const MsgId k[] = {MsgId::APPEAR_ORIENT_PORTRAIT, MsgId::APPEAR_ORIENT_LANDSCAPE,
                                   MsgId::APPEAR_ORIENT_PORTRAIT_FLIPPED, MsgId::APPEAR_ORIENT_LANDSCAPE_FLIPPED};
-        return { tr(MsgId::SETTINGS_ITEM_ORIENTATION), tr(k[ctx.config.uiOrientation & 3]), tr(MsgId::SETTINGS_TAG_SCREEN) };
+        const char* cur = tr(k[ctx.config.uiOrientation & 3]);
+        String val = cur;
+        if (BoardImu.present() && ctx.config.autoRotate) {
+            val = tr(MsgId::SETTINGS_ORIENT_AUTO_FMT);
+            val.replace("%s", cur);
+        }
+        return { tr(MsgId::SETTINGS_ITEM_ORIENTATION), val, tr(MsgId::SETTINGS_TAG_SCREEN) };
     }
     switch (index) {
         case 0:

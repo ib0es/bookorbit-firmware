@@ -14,4 +14,5 @@ public:
         const char* v = getenv("SIM_USB");
         return v && *v == '1';
     }
+    static bool loadDesignCapacity() { return false; }
 };

@@ -1,6 +1,7 @@
 #include "time_utils.h"
 
 #include <cctype>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
@@ -15,6 +16,81 @@ int64_t utcFromCivil(int y, int m, int d, int hh, int mm, int ss) {
     const unsigned doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
     const int64_t days = era * 146097 + (int64_t)doe - 719468;
     return days * 86400 + hh * 3600 + mm * 60 + ss;
+}
+
+CivilDateTime civilFromUtc(int64_t utc) {
+    // Howard Hinnant's civil_from_days paired with Euclidean time-of-day split.
+    int64_t days = utc / 86400;
+    int64_t rem = utc % 86400;
+    if (rem < 0) {
+        rem += 86400;
+        days -= 1;
+    }
+    const int64_t z = days + 719468;
+    const int64_t era = (z >= 0 ? z : z - 146096) / 146097;
+    const unsigned doe = (unsigned)(z - era * 146097);
+    const unsigned yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    const int64_t y = (int64_t)yoe + era * 400;
+    const unsigned doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    const unsigned mp = (5 * doy + 2) / 153;
+    const unsigned d = doy - (153 * mp + 2) / 5 + 1;
+    const unsigned m = mp + (mp < 10 ? 3 : -9);
+    int wd = (int)((days + 4) % 7);
+    if (wd < 0) wd += 7;
+    return CivilDateTime{
+        (int)(y + (m <= 2)),
+        (int)m,
+        (int)d,
+        (int)(rem / 3600),
+        (int)((rem % 3600) / 60),
+        (int)(rem % 60),
+        wd,
+    };
+}
+
+int clampUtcOffset(int offsetMin) {
+    if (offsetMin < -720) return -720;
+    if (offsetMin > 840) return 840;
+    return offsetMin;
+}
+
+int stepUtcOffset(int offsetMin, int dir) {
+    constexpr int kMin = -720;
+    constexpr int kMax = 840;
+    constexpr int kStep = 30;
+    constexpr int kCount = (kMax - kMin) / kStep + 1;  // 53 values: -12:00..+14:00
+    const int clamped = clampUtcOffset(offsetMin);
+    int idx = (clamped - kMin + (kStep / 2)) / kStep;
+    idx = (idx + (dir > 0 ? 1 : kCount - 1)) % kCount;
+    return kMin + idx * kStep;
+}
+
+void formatUtcOffset(int offsetMin, char* buf, size_t len) {
+    if (!buf || len == 0) return;
+    offsetMin = clampUtcOffset(offsetMin);
+    if (offsetMin == 0) {
+        snprintf(buf, len, "UTC+0");
+        return;
+    }
+    const char sign = offsetMin < 0 ? '-' : '+';
+    const int absM = offsetMin < 0 ? -offsetMin : offsetMin;
+    const int h = absM / 60;
+    const int m = absM % 60;
+    if (m == 0) {
+        snprintf(buf, len, "UTC%c%d", sign, h);
+    } else {
+        snprintf(buf, len, "UTC%c%d:%02d", sign, h, m);
+    }
+}
+
+bool formatClockHHMM(int64_t utc, int utcOffsetMin, char* buf, size_t len) {
+    if (!buf || len == 0) return false;
+    buf[0] = '\0';
+    if (utc <= 0) return false;
+    const int64_t localSec = utc + (int64_t)clampUtcOffset(utcOffsetMin) * 60;
+    const CivilDateTime c = civilFromUtc(localSec);
+    snprintf(buf, len, "%02d:%02d", c.hour, c.minute);
+    return true;
 }
 
 static bool readInt(const char*& p, int digits, int& out) {

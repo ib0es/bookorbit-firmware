@@ -26,6 +26,7 @@ build cfi      "$ROOT/test/host/test_epub_cfi.cpp" "$ROOT/src/reader/epub_cfi.cp
 build cfimap   "$ROOT/test/host/test_cfi_map.cpp" "$ROOT/src/reader/cfi_map.cpp" "$ROOT/src/reader/epub_cfi.cpp"
 build progress "$ROOT/test/host/test_progress_sync.cpp" "$ROOT/src/services/progress_sync.cpp" "$ROOT/src/services/time_utils.cpp"
 build protocol "$ROOT/test/host/test_bookorbit_protocol.cpp" "$ROOT/src/net/bookorbit_protocol.cpp" "$ROOT/src/services/time_utils.cpp"
+build x3sens   "$ROOT/test/host/test_x3_sensors.cpp" "$ROOT/src/services/time_utils.cpp" "$ROOT/src/app/auto_rotate.cpp"
 # FreeInkBook (the layout engine) for the tests that check against it: vendored C
 # libraries once, the C++ core with each test.
 FIB="$ROOT/freeink-sdk/libs/book/FreeInkBook"
@@ -56,6 +57,7 @@ echo "== EpubCfi";          "$OUT/cfi/test" | tail -1 || rc=1
 echo "== CfiMap";           "$OUT/cfimap/test" | grep -v "^ *pub\|^ *loc" | tail -40 || rc=1
 echo "== ProgressSync";      "$OUT/progress/test" > "$OUT/progress.log" || rc=1; tail -1 "$OUT/progress.log"; [ $rc = 0 ] || cat "$OUT/progress.log"
 echo "== BookOrbitProtocol"; "$OUT/protocol/test" | grep -v "^[a-zA-Z/]* *$" || rc=1
+echo "== X3Sensors";         "$OUT/x3sens/test" || rc=1
 echo "== FB2 to EPUB";       "$OUT/fb2/test" "$ROOT/test/books" || rc=1
 echo "== MOBI to EPUB";      "$OUT/mobi/test" "$ROOT/test/books" || rc=1
 echo "== TXT to EPUB";       "$OUT/txt/test" "$ROOT/test/books" || rc=1

@@ -50,24 +50,33 @@
 #define OPDS_MIN_FREE_HEAP         (6 * 1024)   // emergency stop only: with a book open the C3 can be at ~12-25KB during sync
 
 // Device Settings
+#if defined(FREEINK_DEVICE_X3) && FREEINK_DEVICE_X3 && !(defined(FREEINK_DEVICE_X4) && FREEINK_DEVICE_X4)
+#define DEVICE_NAME                "XTEINK-X3-BookOrbit"
+#elif defined(FREEINK_DEVICE_X4CLASSIC) && FREEINK_DEVICE_X4CLASSIC
+#define DEVICE_NAME                "XTEINK-X4C-BookOrbit"
+#elif defined(FREEINK_DEVICE_X4PRO) && FREEINK_DEVICE_X4PRO
+#define DEVICE_NAME                "XTEINK-X4PRO-BookOrbit"
+#elif defined(FREEINK_DEVICE_PICCO) && FREEINK_DEVICE_PICCO
+#define DEVICE_NAME                "BOOX-PICCO-BookOrbit"
+#else
 #define DEVICE_NAME                "XTEINK-X4-BookOrbit"
+#endif
 #define DEFAULT_LANGUAGE           "en"
 #define FULL_REFRESH_EVERY_PAGES   5    // Trigger a full E-Ink refresh every N pages to eliminate ghosting
 #ifndef SLEEP_TIMEOUT_MS
 #define SLEEP_TIMEOUT_MS           (5 * 60 * 1000) // Deep sleep after 5 minutes of inactivity
 #endif
 
-// Display Controller Override:
+// Display Controller Override (X4 only; X3 autodetects UC8253 vs UC8279d via Display.detectBoard()):
 // 0 = AUTO (auto-detect via NVS and hardware BUSY probe)
-// 1 = Force UC8179 (UltraChip, most common on X4 production batches)
-// 2 = Force SSD1677 (Solomon Systech)
+// 1 = Force SSD1677/UC8179 primary controller on X4
 #define DISPLAY_CONTROLLER_FORCE   1
 
 // Display Rotation:
-// 3 = Portrait upright (standard X4, USB-C at bottom, 480x800)
+// 3 = Portrait upright (default, 480x800 on X4 / 528x792 on X3)
 // 1 = Portrait inverted (180 deg upside-down)
-// 0 = Landscape (800x480)
-// 2 = Landscape inverted (800x480)
+// 0 = Landscape (800x480 on X4 / 792x528 on X3)
+// 2 = Landscape inverted
 #ifndef DISPLAY_ROTATION
 #define DISPLAY_ROTATION           3
 #endif

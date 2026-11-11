@@ -46,9 +46,9 @@ public:
     static bool glyph(int index, uint32_t cp, GlyphInfo& out);   // false: not in the font
 
     // Draw string with word wrapping
-    // Wraps within `maxWidth` px from x; stops before a line would start below maxY
-    // (-1: the bottom of the screen less 40 px). Returns the y under the last line.
-    int drawString(int x, int y, const char* text, EPDColor color = EPD_BLACK, int scale = 1, int maxWidth = 480,
+    // Wraps within `maxWidth` px from x (-1: remaining display width); stops before
+    // a line would start below maxY (-1: bottom less 40 px). Returns the y under the last line.
+    int drawString(int x, int y, const char* text, EPDColor color = EPD_BLACK, int scale = 1, int maxWidth = -1,
                    int maxY = -1);
 
     // Book page typography: centered headings, bold via overstrike, paragraph indents, and \f break
