@@ -22,15 +22,20 @@
 #include "../ui/text_utils.h"
 
 RTC_DATA_ATTR static int rtcSavedState = STATE_HOME;
-// RTC memory keeps it through a software restart. A magic value: after power-on it is garbage.
-RTC_DATA_ATTR static uint32_t rtcOpenBookAfterRestart = 0;
+// Kept through a software restart: RTC_DATA_ATTR variables are loaded again by the
+// bootloader at every boot except a deep-sleep wake-up (the first version lost the
+// flag and the restart ended on the home screen); RTC_NOINIT_ATTR ones are not.
+// Never initialised: a magic value tells the flag from power-on garbage.
+#ifndef RTC_NOINIT_ATTR
+#define RTC_NOINIT_ATTR
+#endif
+RTC_NOINIT_ATTR static uint32_t rtcOpenBookAfterRestart;
 static constexpr uint32_t kOpenBookMagic = 0x0B00C0DE;
 
 bool PowerService::restartIntoLastBook() {
 #if defined(ESP_PLATFORM)
     Serial.println("[Power] Not enough memory to open the book: restarting into it.");
     rtcOpenBookAfterRestart = kOpenBookMagic;
-    rtcSavedState = STATE_READING;
     Serial.flush();
     esp_restart();
     return true;

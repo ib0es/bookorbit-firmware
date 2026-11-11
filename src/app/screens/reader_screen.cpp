@@ -145,11 +145,12 @@ bool openBook(AppContext& ctx, const String& path, const String& title, const St
             lib.lastBook.coverPath = coverPath;
             lib.lastBook.fileId = fileId;
             lib.lastBook.docId = docId;
-            if (!store.find(fileId, path)) {   // never opened here: the server's position
-                lib.lastBook.progress = progress;
-                lib.lastBook.page = page > 0 ? page : 1;
-                lib.lastBook.xpath = xpath;
-            }
+            // This book's position (the previous book's stayed in lastBook): the
+            // record, if it has one, wins when it is resumed after the restart.
+            lib.lastBook.progress = progress;
+            lib.lastBook.page = page > 0 ? page : 1;
+            lib.lastBook.xpath = xpath;
+            lib.lastBook.totalPages = 1;
             lib.saveLastBook();
             PowerService::restartIntoLastBook();
             Modal.showMessage(tr(MsgId::COMMON_ERROR), tr(MsgId::READER_OPEN_ERR_L1),
