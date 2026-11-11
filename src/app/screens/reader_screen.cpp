@@ -86,7 +86,8 @@ void executeMenuAction(AppContext& ctx, int index) {
             commitFontSize(ctx);  // chapter page numbers depend on the font
             if (Reader.hasChapters()) {
                 ctx.currentState = STATE_TOC;
-                ctx.selectedTocIndex = Reader.getCurrentChapterIndex();
+                // Before the first chapter (a title page) there is no current one: the first row.
+                ctx.selectedTocIndex = std::max(0, Reader.getCurrentChapterIndex());
                 drawTocScreen(ctx, uikit::periodicFullRefresh());
             } else {
                 Modal.showMessage(tr(MsgId::READER_TOC_TITLE), tr(MsgId::READER_TOC_NOT_FOUND_L1), tr(MsgId::READER_TOC_NOT_FOUND_L2), "", "",
