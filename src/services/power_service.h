@@ -38,6 +38,10 @@ public:
     // Enters deep sleep if the device has been idle for SLEEP_TIMEOUT_MS on battery.
     static void sleepIfIdle(AppContext& ctx);
 
+    // Sleeps cleanly between loop ticks: on builds/configs with GT911 INT wake
+    // enabled and when safe, enters bounded ESP32-S3 light sleep; otherwise waits ~10 ms.
+    static void idleWaitOrLightSleep(AppContext& ctx);
+
     // Once a minute: at a critical charge (two readings in a row, on battery)
     // the position is saved and the device goes to sleep with a message.
     static void checkBattery(AppContext& ctx);

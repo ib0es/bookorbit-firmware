@@ -21,6 +21,7 @@
 #include "EInkDisplay.h"
 #include "Imu.h"
 #include "SDCardManager.h"
+#include "UsbMassStorage.h"
 #include "hal/display.h"
 #include "esp_sleep.h"
 
@@ -92,6 +93,7 @@ static void applyNested(const NestedStep& s) {
     switch (s.kind) {
         case 'U': g_label = "n_UP"; printf(">>> (nested) UP\n"); InputManager::simPress(InputManager::BTN_UP); g_pressed = InputManager::BTN_UP; break;
         case 'D': g_label = "n_DOWN"; printf(">>> (nested) DOWN\n"); InputManager::simPress(InputManager::BTN_DOWN); g_pressed = InputManager::BTN_DOWN; break;
+        case 'k': g_label = "n_HOME_TAP"; printf(">>> (nested) HOME_TAP\n"); InputManager::simHomeKeyTap(); break;
         case 'T': {
             char lbl[32]; snprintf(lbl, sizeof(lbl), "n_TAP_%d_%d", s.a, s.b); g_label = lbl; printf(">>> (nested) %s\n", lbl);
             InputManager::simTap((float)s.b / EPD_WIDTH, (float)(EPD_HEIGHT - 1 - s.a) / EPD_HEIGHT);
@@ -109,7 +111,7 @@ static size_t queueNested(const std::string& script, size_t i) {
     for (++i; i < script.size() && script[i] != ']'; ++i) {
         const char c = script[i];
         int a = 0, b = 0, cc = 0, d = 0, n = 0;
-        if (c == 'U' || c == 'D') g_nested.push_back({c, 0, 0, 0, 0});
+        if (c == 'U' || c == 'D' || c == 'k') g_nested.push_back({c, 0, 0, 0, 0});
         else if (c == 'T' && sscanf(script.c_str() + i + 1, "%d,%d;%n", &a, &b, &n) == 2) { g_nested.push_back({c, a, b, 0, 0}); i += n; }
         else if (c == 'W' && sscanf(script.c_str() + i + 1, "%d,%d,%d,%d;%n", &a, &b, &cc, &d, &n) == 4) { g_nested.push_back({c, a, b, cc, d}); i += n; }
     }
@@ -159,6 +161,7 @@ int main(int argc, char** argv) {
             } break;
             case 'S': { std::string r=std::string(argv[2]); std::rename((r+"/server_next.json").c_str(), (r+"/server.json").c_str()); printf(">>> SERVER UPDATED\n"); } break;
             case 'Z': g_label = "wake"; printf(">>> SLEEP + WAKE (setup again)\n");
+                freeink::UsbMassStorage::simReset();
                 g_simWakeCause = ESP_SLEEP_WAKEUP_TIMER; setup(); g_simWakeCause = ESP_SLEEP_WAKEUP_UNDEFINED; break;
             case 'T': {  // T<x>,<y>; = tap at logical (portrait) coordinates
                 int x = 0, y = 0, n = 0;
@@ -192,6 +195,24 @@ int main(int argc, char** argv) {
                 }
             } break;
             case 'w': g_label = "wait"; printf(">>> wait 2.2s\n"); { uint32_t t = millis(); while (millis() - t < 2200) loop(); } break;
+            case 'k': g_label = "HOME_TAP"; printf(">>> HOME_TAP\n"); InputManager::simHomeKeyTap(); run(3); break;
+            case 'K': g_label = "HOME_LONG"; printf(">>> HOME_LONG\n"); InputManager::simHomeKeyLongPress(); run(3); break;
+            case 'M': {
+                const char ms = (i + 1 < script.size()) ? script[++i] : 'w';
+                freeink::UsbMassStorageState st = freeink::UsbMassStorageState::WaitingForHost;
+                switch (ms) {
+                    case 'c': st = freeink::UsbMassStorageState::Connected; break;
+                    case 'a': st = freeink::UsbMassStorageState::Accessed; break;
+                    case 'e': st = freeink::UsbMassStorageState::Ejected; break;
+                    case 'd': st = freeink::UsbMassStorageState::Disconnected; break;
+                    case 'i': st = freeink::UsbMassStorageState::IoError; break;
+                    default:  st = freeink::UsbMassStorageState::WaitingForHost; break;
+                }
+                freeink::UsbMassStorage::simSetState(st);
+                char lbl[24]; snprintf(lbl, sizeof(lbl), "MSC_%c", ms);
+                g_label = lbl; printf(">>> USB_MSC_STATE %c\n", ms);
+                run(3);
+            } break;
             default: break;
         }
     }

@@ -198,7 +198,7 @@ ListPager listPager() { return g_pager; }
 bool backTapped(int16_t x, int16_t y) { return g_backBand.contains(x, y); }
 
 bool touchOnly() {
-#if defined(FREEINK_DEVICE_PICCO) && FREEINK_DEVICE_PICCO
+#if (defined(FREEINK_DEVICE_PICCO) && FREEINK_DEVICE_PICCO) || (defined(FREEINK_DEVICE_X4PRO) && FREEINK_DEVICE_X4PRO)
     return true;
 #else
     return false;

@@ -44,7 +44,7 @@ TARGETS = {
         "chip": "esp32s3",
         "name": "Book Orbit for Xteink X4 Pro",
         "device": "Xteink X4 Pro",
-        "desc": "ESP32-S3 (8MB PSRAM), GT911 touch screen + frontlight",
+        "desc": "ESP32-S3 (8MB PSRAM), GT911 touch + Home key, dual frontlight, USB-MSC, BM8563 RTC",
     },
     "picco": {
         "chip": "esp32s3",

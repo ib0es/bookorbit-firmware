@@ -288,8 +288,8 @@ void handleEvent(AppContext& ctx, const ButtonEvent& event) {
             }
             break;
         case BTN_CONFIRM:
-#if defined(FREEINK_DEVICE_PICCO) && FREEINK_DEVICE_PICCO
-            // Picco has no LEFT key: OK on a book opens its menu (Read first),
+#if (defined(FREEINK_DEVICE_PICCO) && FREEINK_DEVICE_PICCO) || (defined(FREEINK_DEVICE_X4PRO) && FREEINK_DEVICE_X4PRO)
+            // Picco / X4 Pro have no LEFT key: OK on a book opens its menu (Read first),
             // the same as a tap. Folders still open directly.
             if (bookMenuBook()) { openBookMenu(ctx); break; }
 #endif

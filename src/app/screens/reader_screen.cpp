@@ -231,15 +231,22 @@ bool resumeLastBook(AppContext& ctx) {
     return true;
 }
 
-// Picco has only up/down keys (no left/right): there they turn pages, and
-// chapters are reached through the table of contents.
-#if defined(FREEINK_DEVICE_PICCO) && FREEINK_DEVICE_PICCO
+// Picco and X4 Pro have only up/down keys (no left/right): there they turn
+// pages, and chapters are reached through the table of contents.
+#if (defined(FREEINK_DEVICE_PICCO) && FREEINK_DEVICE_PICCO) || (defined(FREEINK_DEVICE_X4PRO) && FREEINK_DEVICE_X4PRO)
 constexpr bool kUpDownTurnPages = true;
 #else
 constexpr bool kUpDownTurnPages = false;
 #endif
 
 void handleReadingEvent(AppContext& ctx, const ButtonEvent& event) {
+    // GT911 capacitive Home key long press opens the reader menu directly while reading.
+    if (event.id == BTN_BACK && event.action == ACTION_LONG_PRESS) {
+        ctx.currentState = STATE_READER_MENU;
+        ctx.selectedReaderMenuIndex = 0;
+        drawReaderMenuScreen(ctx, false);
+        return;
+    }
     if (event.action != ACTION_CLICK) return;
     auto& lib = LibraryManager::getInstance();
 

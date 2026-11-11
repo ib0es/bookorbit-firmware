@@ -54,6 +54,14 @@ public:
     // True once after the switch moved; consumed by the call.
     bool takeLightSwitchChange() { bool c = _lightSwitchChanged; _lightSwitchChanged = false; return c; }
 
+    bool hasTouch() const { return _freeinkInput.hasTouch(); }
+    bool hasHomeKey() const;
+    bool isTouchPressed() const { return _freeinkInput.isTouchPressed(); }
+    bool isHomeKeyDown() const { return _freeinkInput.isHomeKeyDown(); }
+    bool isDebouncePending() const { return _freeinkInput.isDebouncePending(); }
+    int8_t touchWakeIrqPin() const { return _freeinkInput.touchWakeIrqPin(); }
+    bool touchWakeIrqActiveLow() const { return _freeinkInput.touchWakeIrqActiveLow(); }
+
 private:
     InputManager _freeinkInput;
     ButtonEvent _pendingEvent;

@@ -83,6 +83,10 @@ bool translate(AppContext& ctx, const ButtonEvent& tap, ButtonEvent& out) {
         case STATE_SYNC_SETTINGS:     ctx.selectedSyncSettingIndex = value; break;
         case STATE_SLEEP_COVER_SETTINGS: ctx.selectedSleepCoverIndex = value; break;
         case STATE_SD_SETTINGS:       ctx.selectedSdSettingIndex = value; break;
+        case STATE_USB_MSC_SETTINGS:  ctx.selectedUsbMscIndex = value; break;
+        case STATE_USB_MSC:
+            SettingsScreen::handleUsbMscTap(ctx, action);
+            return false;
         case STATE_FRONTLIGHT_SETTINGS:  // sliders handle the tap themselves
             SettingsScreen::handleFrontlightTap(ctx, action, value, tap.x);
             return false;
@@ -119,6 +123,7 @@ int* pagedSelection(AppContext& ctx) {
         case STATE_SYNC_SETTINGS:        return &ctx.selectedSyncSettingIndex;
         case STATE_SLEEP_COVER_SETTINGS: return &ctx.selectedSleepCoverIndex;
         case STATE_SD_SETTINGS:          return &ctx.selectedSdSettingIndex;
+        case STATE_USB_MSC_SETTINGS:     return &ctx.selectedUsbMscIndex;
         case STATE_READER_MENU:          return &ctx.selectedReaderMenuIndex;
         case STATE_BOOK_MENU:            return &ctx.selectedBookMenuIndex;
         case STATE_APPEARANCE_MENU:      return &ctx.selectedAppearanceIndex;

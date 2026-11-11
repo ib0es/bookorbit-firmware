@@ -34,6 +34,8 @@ public:
     StorageManager();
 
     bool begin();
+    void shutdown();
+    FsBlockDeviceInterface* detachForUsbMsc();
     bool isAvailable() const;
 
     uint64_t totalBytes() const;

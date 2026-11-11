@@ -18,7 +18,7 @@ BUILD ?= test/sim/build-picco
 DEVFLAGS := -DFREEINK_DEVICE_PICCO=1 -DUI_FAKE_FRONTLIGHT=1 -DSIM_KEYS_UP_DOWN_POWER_ONLY=1
 else ifeq ($(DEVICE),x4pro)
 BUILD ?= test/sim/build-x4pro
-DEVFLAGS := -DFREEINK_DEVICE_X4PRO=1 -DUI_FAKE_FRONTLIGHT=1
+DEVFLAGS := -DFREEINK_DEVICE_X4PRO=1 -DFREEINK_CAP_TOUCH=1 -DFREEINK_CAP_USB_MSC=1 -DFREEINK_GT911_INT_WAKE=1 -DUI_FAKE_FRONTLIGHT=1 -DSIM_KEYS_UP_DOWN_POWER_ONLY=1
 else ifeq ($(DEVICE),x3)
 BUILD ?= test/sim/build-x3
 DEVFLAGS := -DFREEINK_DEVICE_X3=1
@@ -86,6 +86,10 @@ test: all
 picco-test:
 	$(MAKE) -f test/sim/Makefile DEVICE=picco all
 	PICCO_HEADLESS=test/sim/build-picco/x4_headless python3 test/sim/run_picco_walkthrough.py
+
+x4pro-test:
+	$(MAKE) -f test/sim/Makefile DEVICE=x4pro all
+	X4PRO_HEADLESS=test/sim/build-x4pro/x4_headless python3 test/sim/run_x4pro_walkthrough.py
 
 coverage:
 	test/coverage.sh

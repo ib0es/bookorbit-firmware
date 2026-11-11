@@ -247,6 +247,7 @@ inline void gpio_deep_sleep_hold_dis() {}
 class HardwareSerial : public Stream {
 public:
     void begin(unsigned long) {}
+    void end() {}
     void setTxTimeoutMs(uint32_t) {}
     size_t write(uint8_t b) override { putchar(b); return 1; }
     int available() override { return 0; }

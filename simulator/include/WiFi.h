@@ -11,8 +11,9 @@ public:
 
 class WiFiClass {
 public:
-    void mode(wifi_mode_t) {}
-    void disconnect() {}
+    void mode(wifi_mode_t m) { _mode = m; }
+    wifi_mode_t getMode() const { return _mode; }
+    void disconnect() { _mode = WIFI_OFF; }
     int status() { return 3; }
     int RSSI() { return -55; }
     int scanNetworks(bool async = false, bool show_hidden = false) { return 2; }
@@ -21,6 +22,9 @@ public:
     wifi_auth_mode_t encryptionType(int i) { return (i == 0) ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN; }
     void scanDelete() {}
     IPAddress localIP() { return IPAddress(); }
+
+private:
+    wifi_mode_t _mode = WIFI_OFF;
 };
 
 inline WiFiClass WiFi;

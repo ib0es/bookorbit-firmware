@@ -25,7 +25,9 @@ enum AppState {
     STATE_APPEARANCE_MENU,
     STATE_BOOKMARKS,
     STATE_STATUSBAR_MENU,
-    STATE_SD_SETTINGS
+    STATE_SD_SETTINGS,
+    STATE_USB_MSC_SETTINGS,
+    STATE_USB_MSC
 };
 
 struct AppConfig {
@@ -79,6 +81,8 @@ struct AppConfig {
     int frontlightWarm = 50;   // 0 = cool .. 100 = warm
     AppLanguage language = AppLanguage::EN;
     bool hideCompleted = false;
+    bool usbMscEnabled = true;
+    bool touchWakeEnabled = true;
 
     bool load();
     bool save();
@@ -86,15 +90,21 @@ struct AppConfig {
 
 const int NUM_HOME_ITEMS = 4;      // 0=Recent, 1=Catalog, 2=Settings, 3=Sync
 const int NUM_CATALOG_ITEMS = 9;   // Search, All, Libraries, Authors, Series, Folders, Downloaded, Completed, Toggle Hide Completed
-const int NUM_SETTINGS_ITEMS = 8;  // + 1 (frontlight) on boards that have one, see settingsItemCount()
+const int NUM_SETTINGS_ITEMS = 8;  // base count before optional Frontlight, USB-MSC, Touch Wake
+bool hasUsbMscSetting();
+bool hasTouchWakeSetting();
 int settingsItemCount();
-// The page orientation row: the last one (after the frontlight where there is one).
-inline int orientationSettingIndex() { return settingsItemCount() - 1; }
+// The page orientation row keeps indices 0..8 identical across boards; board
+// capabilities (USB-MSC, Touch Wake) follow after it.
+int orientationSettingIndex();
+int usbMscSettingIndex();
+int touchWakeSettingIndex();
 const int NUM_WIFI_SETTINGS_ITEMS = 6;
 const int NUM_SERVER_SETTINGS_ITEMS = 4;
 const int NUM_SYNC_SETTINGS_ITEMS = 4;
 const int NUM_SLEEP_COVER_ITEMS = 3;
 const int NUM_SD_SETTINGS_ITEMS = 2;   // reload / save /config.json
+const int NUM_USB_MSC_ITEMS = 2;       // connect / enable-disable toggle
 const int NUM_READER_MENU_ITEMS = 6;
 
 struct AppContext {
@@ -119,5 +129,6 @@ struct AppContext {
     int selectedSyncSettingIndex = 0;
     int selectedSleepCoverIndex = 0;
     int selectedSdSettingIndex = 0;
+    int selectedUsbMscIndex = 0;
     uint32_t lastActivityTime = 0;
 };

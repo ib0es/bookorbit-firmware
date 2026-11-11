@@ -4,6 +4,8 @@
 #include "../kit/ui_kit.h"
 #include "../../hal/frontlight.h"
 #include "../../hal/imu.h"
+#include "../../hal/usb_msc.h"
+#include "../../hal/buttons.h"
 
 using namespace uikit;
 
@@ -50,6 +52,20 @@ void drawCardScreen(const AppContext& ctx, const char* title, ItemDefFn def, int
 }
 
 SettingItemDef getSettingItemDef(const AppContext& ctx, int index) {
+    if (index == usbMscSettingIndex()) {
+        return {
+            tr(MsgId::SETTINGS_ITEM_USB_MSC),
+            ctx.config.usbMscEnabled ? tr(MsgId::SETTINGS_USB_MSC_ON_SUB) : tr(MsgId::SETTINGS_USB_MSC_OFF_SUB),
+            tr(MsgId::SETTINGS_TAG_USB)
+        };
+    }
+    if (index == touchWakeSettingIndex()) {
+        return {
+            tr(MsgId::SETTINGS_ITEM_TOUCH_WAKE),
+            ctx.config.touchWakeEnabled ? tr(MsgId::SETTINGS_TOUCH_WAKE_ON) : tr(MsgId::SETTINGS_TOUCH_WAKE_OFF),
+            tr(MsgId::SETTINGS_TAG_SLEEP_LIGHT)
+        };
+    }
     if (index == orientationSettingIndex()) {   // the interface (a book turns on top of it: Appearance)
         static const MsgId k[] = {MsgId::APPEAR_ORIENT_PORTRAIT, MsgId::APPEAR_ORIENT_LANDSCAPE,
                                   MsgId::APPEAR_ORIENT_PORTRAIT_FLIPPED, MsgId::APPEAR_ORIENT_LANDSCAPE_FLIPPED};
@@ -194,6 +210,21 @@ SettingItemDef getSdSettingItemDef(const AppContext&, int index) {
     return { tr(MsgId::SETTINGS_ITEM_SAVE_SD), tr(MsgId::SETTINGS_ITEM_SAVE_SD_SUB), tr(MsgId::SETTINGS_TAG_SD) };
 }
 
+SettingItemDef getUsbMscSettingItemDef(const AppContext& ctx, int index) {
+    if (index == 0) {
+        return {
+            tr(MsgId::USB_MSC_ITEM_CONNECT),
+            ctx.config.usbMscEnabled ? tr(MsgId::USB_MSC_CONNECT_SUB_READY) : tr(MsgId::USB_MSC_CONNECT_SUB_OFF),
+            ctx.config.usbMscEnabled ? tr(MsgId::USB_MSC_TAG_GO) : tr(MsgId::USB_MSC_MODE_OFF)
+        };
+    }
+    return {
+        tr(MsgId::USB_MSC_ITEM_TOGGLE),
+        ctx.config.usbMscEnabled ? tr(MsgId::USB_MSC_MODE_ON) : tr(MsgId::USB_MSC_MODE_OFF),
+        tr(MsgId::SETTINGS_TAG_USB)
+    };
+}
+
 const LangDef LANG_DEFS[(size_t)AppLanguage::COUNT] = {
     { AppLanguage::EN, "English", "English (Default)" },
     { AppLanguage::RU, "Русский", "Русский язык" },
@@ -238,6 +269,54 @@ void drawSyncSettingsScreen(AppContext& ctx, bool fullRefresh) {
 void drawSdSettingsScreen(AppContext& ctx, bool fullRefresh) {
     drawCardScreen(ctx, tr(MsgId::SD_SETTINGS_TITLE), getSdSettingItemDef, NUM_SD_SETTINGS_ITEMS, ctx.selectedSdSettingIndex,
                    tr(MsgId::SETTINGS_HINT_NAV), tr(MsgId::SETTINGS_HINT_BACK), fullRefresh, "drawSdSettingsScreen");
+}
+
+void drawUsbMscSettingsScreen(AppContext& ctx, bool fullRefresh) {
+    drawCardScreen(ctx, tr(MsgId::USB_MSC_MENU_TITLE), getUsbMscSettingItemDef, NUM_USB_MSC_ITEMS, ctx.selectedUsbMscIndex,
+                   tr(MsgId::SETTINGS_HINT_NAV), tr(MsgId::SETTINGS_HINT_BACK), fullRefresh, "drawUsbMscSettingsScreen");
+}
+
+void drawUsbMscScreen(const AppContext& ctx, bool fullRefresh) {
+    (void)ctx;
+    Pass pass;
+    Frame& f = pass.frame();
+    clear();
+    Rect area = topBar(f, tr(MsgId::USB_MSC_SCREEN_TITLE));
+    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_DONE), tr(MsgId::KEY_BACK), tr(MsgId::KEY_DONE)});
+    area = insetXY(area, kMargin, 16);
+
+    const char* statusStr = tr(MsgId::USB_MSC_STATE_WAIT);
+    switch (UsbMsc.state()) {
+        case freeink::UsbMassStorageState::Connected:    statusStr = tr(MsgId::USB_MSC_STATE_CONN); break;
+        case freeink::UsbMassStorageState::Accessed:     statusStr = tr(MsgId::USB_MSC_STATE_ACCESS); break;
+        case freeink::UsbMassStorageState::Ejected:      statusStr = tr(MsgId::USB_MSC_STATE_EJECT); break;
+        case freeink::UsbMassStorageState::Disconnected: statusStr = tr(MsgId::USB_MSC_STATE_DISC); break;
+        case freeink::UsbMassStorageState::IoError:      statusStr = tr(MsgId::USB_MSC_STATE_ERR); break;
+        case freeink::UsbMassStorageState::Idle:
+        default:                                         statusStr = tr(MsgId::USB_MSC_STATE_WAIT); break;
+    }
+
+    const int16_t boxH = (int16_t)(lineHeight(FontTitle) + 32);
+    Rect box = takeTop(area, boxH);
+    frameRect(box, Color::Black, 2);
+    text(insetXY(box, 12, 8), statusStr, FontTitle, Color::Black, TextAlign::Center, 2);
+    takeTop(area, 16);
+
+    const char* hints[2] = { tr(MsgId::USB_MSC_HINT_L1), tr(MsgId::USB_MSC_HINT_L2) };
+    for (const char* hint : hints) {
+        if (!hint || !*hint) continue;
+        const int16_t lh = wrappedHeight(hint, FontBody, area.width, 3);
+        text(takeTop(area, lh), hint, FontBody, Color::Black, TextAlign::Left, 3);
+        takeTop(area, 12);
+    }
+
+    const int16_t btnH = (int16_t)(lineHeight(FontBody) + 26);
+    Rect btn = takeBottom(area, btnH);
+    fill(btn, Color::Black, 4);
+    text(btn, tr(MsgId::USB_MSC_BTN_EXIT), FontBody, Color::White, TextAlign::Center);
+    f.hit(btn, 1, 0);
+
+    present(fullRefresh);
 }
 
 void drawLanguageSettingsScreen(AppContext& ctx, bool fullRefresh) {
@@ -316,6 +395,19 @@ void drawFrontlightScreen(AppContext& ctx, bool fullRefresh) {
         f.hit(plus, 3, (int16_t)r);
         f.hit(Rect{track.x, ctl.y, track.width, ctl.height}, 4, (int16_t)r);
     }
+    if (touchUi() && !Buttons.hasLightSwitch()) {
+        const int16_t btnH = (int16_t)(lineHeight(FontBody) + 24);
+        if (area.height >= btnH) {
+            const bool isOn = ctx.config.frontlight > 0;
+            Rect btn = takeTop(area, btnH);
+            if (isOn) fill(btn, Color::Black, 4);
+            else frameRect(btn, Color::Black, 2);
+            String label = String(tr(MsgId::KEY_ON_OFF)) + ": " +
+                           (isOn ? tr(MsgId::APPEAR_ON) : tr(MsgId::SETTINGS_FRONTLIGHT_OFF));
+            text(btn, label.c_str(), FontBody, isOn ? Color::White : Color::Black, TextAlign::Center);
+            f.hit(btn, 5, 0);
+        }
+    }
     present(fullRefresh);
 }
 
@@ -357,3 +449,8 @@ void updateSleepCoverSettingsItem(AppContext& ctx, int) { drawSleepCoverSettings
 void updateSdSettingsSelection(AppContext& ctx, int prevIndex, int newIndex) {
     if (prevIndex != newIndex) drawSdSettingsScreen(ctx, false);
 }
+
+void updateUsbMscSettingsSelection(AppContext& ctx, int prevIndex, int newIndex) {
+    if (prevIndex != newIndex) drawUsbMscSettingsScreen(ctx, false);
+}
+void updateUsbMscSettingsItem(AppContext& ctx, int) { drawUsbMscSettingsScreen(ctx, false); }
