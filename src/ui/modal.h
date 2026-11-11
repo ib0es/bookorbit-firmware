@@ -51,6 +51,13 @@ public:
 
     bool isActive() const { return _active; }
 
+    // Remaining ms until a timed message auto-closes, or 0 if inactive/untimed.
+    uint32_t remainingAutoCloseMs() const {
+        if (!_active || _kind != Kind::Message || _autoCloseMs == 0) return 0;
+        const uint32_t elapsed = millis() - _openedAt;
+        return elapsed >= _autoCloseMs ? 1 : (_autoCloseMs - elapsed);
+    }
+
     // Returns true if the event was consumed by an open modal.
     bool handleEvent(const ButtonEvent& event);
 

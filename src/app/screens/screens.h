@@ -54,6 +54,9 @@ void handleSyncSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleSleepCoverSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleLanguageSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleSdSettingsEvent(AppContext& ctx, const ButtonEvent& event);
+void handleUsbMscSettingsEvent(AppContext& ctx, const ButtonEvent& event);
+void handleUsbMscEvent(AppContext& ctx, const ButtonEvent& event);
+void handleUsbMscTap(AppContext& ctx, int action);
 void handleFrontlightEvent(AppContext& ctx, const ButtonEvent& event);
 // Touch on the frontlight screen (hit action/value from settings_view, tap x).
 void handleFrontlightTap(AppContext& ctx, int action, int value, int16_t x);

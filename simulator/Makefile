@@ -17,6 +17,10 @@ CXXFLAGS += $(FIB_INCLUDES)
 DEVICE ?= x4
 ifeq ($(DEVICE),x3)
 CXXFLAGS += -DFREEINK_DEVICE_X3=1
+else ifeq ($(DEVICE),x4pro)
+CXXFLAGS += -DFREEINK_DEVICE_X4PRO=1 -DFREEINK_CAP_TOUCH=1 -DFREEINK_CAP_USB_MSC=1 -DFREEINK_GT911_INT_WAKE=1 -DUI_FAKE_FRONTLIGHT=1
+else ifeq ($(DEVICE),picco)
+CXXFLAGS += -DFREEINK_DEVICE_PICCO=1 -DFREEINK_CAP_TOUCH=1 -DUI_FAKE_FRONTLIGHT=1
 endif
 CXXFLAGS += $(shell sdl2-config --cflags)
 
@@ -66,6 +70,7 @@ SRCS_CXX = \
     src/hal/buttons.cpp \
     src/hal/display.cpp \
     src/hal/storage.cpp \
+    src/hal/usb_msc.cpp \
     src/hal/mem_stats.cpp \
     src/ui/i18n.cpp \
     src/ui/kit/ui_kit.cpp \
@@ -121,6 +126,12 @@ SRCS_C = \
 ifeq ($(DEVICE),x3)
 BUILD_DIR = simulator/build-x3
 TARGET = simulator/x3_simulator
+else ifeq ($(DEVICE),x4pro)
+BUILD_DIR = simulator/build-x4pro
+TARGET = simulator/x4pro_simulator
+else ifeq ($(DEVICE),picco)
+BUILD_DIR = simulator/build-picco
+TARGET = simulator/picco_simulator
 else
 BUILD_DIR = simulator/build
 TARGET = simulator/x4_simulator
@@ -145,7 +156,7 @@ $(BUILD_DIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -rf simulator/build simulator/build-x3 simulator/x4_simulator simulator/x3_simulator
+	rm -rf simulator/build simulator/build-x3 simulator/build-x4pro simulator/build-picco simulator/x4_simulator simulator/x3_simulator simulator/x4pro_simulator simulator/picco_simulator
 
 run: $(TARGET)
 	./$(TARGET)

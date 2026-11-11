@@ -1,27 +1,55 @@
 #include "power_service.h"
 #include "../ui/kit/ui_kit.h"
 #include <cstdlib>
+#include <ctime>
 #include <esp_sleep.h>
 #if defined(ESP_PLATFORM)
 #include <esp_system.h>   // esp_restart
+#include <driver/gpio.h>
 #endif
+#include <WiFi.h>
 #include <PowerManager.h>
 #include <BoardConfig.h>
 #include "../hal/display.h"
 #include "../hal/battery.h"
 #include "../hal/imu.h"
 #include "../hal/frontlight.h"
+#include "../hal/storage.h"
+#include "../hal/usb_msc.h"
 #include "../ui/font.h"
 #include "../ui/jpeg_viewer.h"
+#include "../ui/modal.h"
 #include "../ui/views/status_modal.h"
 #include "../ui/i18n.h"
 #include "library_manager.h"
+#include "light_sleep_policy.h"
 #include "sync_service.h"
 #include "../reader/reader.h"
 #include "../net/bookorbit_client.h"
 #include "../app/app_controller.h"
 #include "../hal/buttons.h"
 #include "../ui/text_utils.h"
+
+namespace {
+uint32_t s_lastBatteryCheck = 0;
+
+uint32_t batteryCheckIntervalMs() {
+#if defined(ESP_PLATFORM)
+    return 60000;
+#else   // the headless tests shorten it
+    static const uint32_t kEveryMs = getenv("SIM_BATTERY_CHECK_MS") ? (uint32_t)atoi(getenv("SIM_BATTERY_CHECK_MS")) : 60000;
+    return kEveryMs;
+#endif
+}
+
+bool isUsbCdcConnected() {
+#if defined(ESP_PLATFORM) && defined(ARDUINO_USB_MODE) && ARDUINO_USB_MODE && defined(ARDUINO_USB_CDC_ON_BOOT) && ARDUINO_USB_CDC_ON_BOOT
+    return Serial.isConnected();
+#else
+    return false;
+#endif
+}
+}  // namespace
 
 RTC_DATA_ATTR static int rtcSavedState = STATE_HOME;
 // Kept through a software restart: RTC_DATA_ATTR variables are loaded again by the
@@ -98,24 +126,121 @@ void PowerService::noteActivity() {
 }
 
 void PowerService::sleepIfIdle(AppContext& ctx) {
+    if (UsbMsc.active()) return;
     if (!Battery.isCharging() && (millis() - ctx.lastActivityTime >= SLEEP_TIMEOUT_MS)) {
         Serial.println("[Power] Idle timeout reached.");
         enterDeepSleep(ctx);
     }
 }
 
-void PowerService::checkBattery(AppContext& ctx) {
+void PowerService::idleWaitOrLightSleep(AppContext& ctx) {
+    const uint32_t now = millis();
+    const uint32_t idleMs = now - ctx.lastActivityTime;
+    const int8_t irqPin = Buttons.touchWakeIrqPin();
+    const bool irqActiveLow = Buttons.touchWakeIrqActiveLow();
+
+    bool gpioAlreadyAsserted = false;
 #if defined(ESP_PLATFORM)
-    constexpr uint32_t kEveryMs = 60000;
-#else   // the headless tests shorten it
-    static const uint32_t kEveryMs = getenv("SIM_BATTERY_CHECK_MS") ? (uint32_t)atoi(getenv("SIM_BATTERY_CHECK_MS")) : 60000;
+    const int irqActiveLevel = irqActiveLow ? 0 : 1;
+    if (irqPin >= 0 && gpio_get_level(static_cast<gpio_num_t>(irqPin)) == irqActiveLevel) {
+        gpioAlreadyAsserted = true;
+    }
+    const auto& bi = BoardConfig::ACTIVE.input;
+    const struct { int8_t pin; int activeLevel; } wakeButtons[] = {
+        { bi.up, 0 }, { bi.down, 0 }, { bi.left, 0 },
+        { bi.right, 0 }, { bi.confirm, 0 }, { bi.back, 0 },
+        { bi.power, bi.powerActiveHigh ? 1 : 0 },
+    };
+    for (const auto& wb : wakeButtons) {
+        if (wb.pin >= 0 && gpio_get_level(static_cast<gpio_num_t>(wb.pin)) == wb.activeLevel) {
+            gpioAlreadyAsserted = true;
+        }
+    }
 #endif
+
+    LightSleepPolicy::Inputs in;
+#if defined(FREEINK_GT911_INT_WAKE) && FREEINK_GT911_INT_WAKE
+    in.featureBuilt = true;
+#else
+    in.featureBuilt = false;
+#endif
+    in.settingEnabled = ctx.config.touchWakeEnabled;
+    in.touchWakeIrqPin = irqPin;
+    in.wifiOff = (WiFi.getMode() == WIFI_OFF);
+    in.syncBgActive = SyncService::backgroundActive();
+    in.readerBgActive = Reader.backgroundActive();
+    in.usbMscActive = UsbMsc.active();
+    in.debouncePending = Buttons.isDebouncePending();
+    in.touchPressed = Buttons.isTouchPressed();
+    in.homeKeyDown = Buttons.isHomeKeyDown();
+    in.usbSerialConnected = isUsbCdcConnected();
+    in.irqAlreadyAsserted = gpioAlreadyAsserted;
+    in.idleMs = idleMs;
+
+    if (!LightSleepPolicy::canEnter(in)) {
+        delay(10);
+        return;
+    }
+
+    LightSleepPolicy::WakeTiming wt;
+    wt.onBattery = !Battery.isCharging();
+    wt.idleMs = idleMs;
+    wt.sleepTimeoutMs = SLEEP_TIMEOUT_MS;
+    wt.batteryCheckIntervalMs = batteryCheckIntervalMs();
+    wt.msSinceBatteryCheck = now - s_lastBatteryCheck;
+    wt.modalRemainingMs = Modal.remainingAutoCloseMs();
+    if (ctx.currentState == STATE_READING && !Modal.isActive() && idleMs < 2500) {
+        wt.waitingPrelayout = true;
+        wt.msToPrelayout = 2500 - idleMs;
+    }
+    if (ctx.currentState == STATE_READING && ctx.config.sbClock && !Modal.isActive()) {
+        wt.readingClockActive = true;
+        time_t nowSec = time(nullptr);
+        if (nowSec > 1600000000L) {
+            const uint32_t secIntoMin = static_cast<uint32_t>(nowSec % 60);
+            wt.msToNextMinute = (60u - secIntoMin) * 1000u + 50u;
+        }
+    }
+
+    const uint32_t waitMs = LightSleepPolicy::nextWakeDelayMs(wt);
+#if defined(ESP_PLATFORM)
+    if (waitMs < 50) {
+        delay(10);
+        return;
+    }
+    gpio_wakeup_enable(static_cast<gpio_num_t>(irqPin),
+                       irqActiveLow ? GPIO_INTR_LOW_LEVEL : GPIO_INTR_HIGH_LEVEL);
+    for (const auto& wb : wakeButtons) {
+        if (wb.pin >= 0 && wb.pin != irqPin) {
+            gpio_wakeup_enable(static_cast<gpio_num_t>(wb.pin),
+                               wb.activeLevel ? GPIO_INTR_HIGH_LEVEL : GPIO_INTR_LOW_LEVEL);
+        }
+    }
+    esp_sleep_enable_gpio_wakeup();
+    esp_sleep_enable_timer_wakeup(static_cast<uint64_t>(waitMs) * 1000ULL);
+    esp_light_sleep_start();
+    for (const auto& wb : wakeButtons) {
+        if (wb.pin >= 0 && wb.pin != irqPin) {
+            gpio_wakeup_disable(static_cast<gpio_num_t>(wb.pin));
+        }
+    }
+    gpio_wakeup_disable(static_cast<gpio_num_t>(irqPin));
+    esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_GPIO);
+    esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_TIMER);
+#else
+    (void)irqActiveLow;
+    (void)waitMs;
+    delay(10);
+#endif
+}
+
+void PowerService::checkBattery(AppContext& ctx) {
+    const uint32_t kEveryMs = batteryCheckIntervalMs();
     constexpr int kCriticalPercent = 3;
-    static uint32_t s_lastCheck = 0;
     static int s_lowReadings = 0;
     const uint32_t now = millis();
-    if (now - s_lastCheck < kEveryMs) return;
-    s_lastCheck = now;
+    if (now - s_lastBatteryCheck < kEveryMs) return;
+    s_lastBatteryCheck = now;
     // A failed gauge read reports 0 % and 0 V: only a real voltage counts.
     const int pct = Battery.getPercentage();
     const float volts = Battery.getVoltage();
@@ -247,6 +372,9 @@ void PowerService::enterDeepSleep(AppContext& ctx) {
 
     // Power down display controller
     Display.sleep();
+
+    // Flush and shut down SD card / storage cleanly before cutting power rails
+    Storage.shutdown();
 
     // Turn off Wi-Fi
     BookOrbit.disconnectWiFi();

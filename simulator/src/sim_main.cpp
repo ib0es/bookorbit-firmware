@@ -26,6 +26,9 @@ static bool s_running = true;
 static bool s_needsRender = true;
 static bool s_sdlReady = false;
 static uint32_t s_pixelBuf[EPD_WIDTH * EPD_HEIGHT]; // 800 x 480 raw buffer
+static bool s_mouseDown = false;
+static int s_mouseDownX = 0;
+static int s_mouseDownY = 0;
 
 // Physical dimensions
 static const int SCREEN_W = EPD_HEIGHT;  // portrait: 480 (X4) / 528 (X3)
@@ -122,6 +125,12 @@ void simPumpEvents() {
                 case SDLK_SPACE:
                     InputManager::simPress(InputManager::BTN_POWER);
                     break;
+                case SDLK_h:
+                    InputManager::simHomeKeyTap();
+                    break;
+                case SDLK_j:
+                    InputManager::simHomeKeyLongPress();
+                    break;
                 default:
                     break;
             }
@@ -153,6 +162,22 @@ void simPumpEvents() {
                     break;
                 default:
                     break;
+            }
+        } else if (InputManager::s_touchEnabled && evt.type == SDL_MOUSEBUTTONDOWN && evt.button.button == SDL_BUTTON_LEFT) {
+            s_mouseDown = true;
+            s_mouseDownX = evt.button.x < 0 ? 0 : (evt.button.x >= SCREEN_W ? SCREEN_W - 1 : evt.button.x);
+            s_mouseDownY = evt.button.y < 0 ? 0 : (evt.button.y >= SCREEN_H ? SCREEN_H - 1 : evt.button.y);
+        } else if (InputManager::s_touchEnabled && evt.type == SDL_MOUSEBUTTONUP && evt.button.button == SDL_BUTTON_LEFT && s_mouseDown) {
+            s_mouseDown = false;
+            const int ux = evt.button.x < 0 ? 0 : (evt.button.x >= SCREEN_W ? SCREEN_W - 1 : evt.button.x);
+            const int uy = evt.button.y < 0 ? 0 : (evt.button.y >= SCREEN_H ? SCREEN_H - 1 : evt.button.y);
+            const int dx = ux - s_mouseDownX;
+            const int dy = uy - s_mouseDownY;
+            if (dx * dx + dy * dy >= 30 * 30) {
+                InputManager::simSwipe((float)s_mouseDownY / EPD_WIDTH, (float)(EPD_HEIGHT - 1 - s_mouseDownX) / EPD_HEIGHT,
+                                       (float)uy / EPD_WIDTH, (float)(EPD_HEIGHT - 1 - ux) / EPD_HEIGHT);
+            } else {
+                InputManager::simTap((float)uy / EPD_WIDTH, (float)(EPD_HEIGHT - 1 - ux) / EPD_HEIGHT);
             }
         }
     }
@@ -192,7 +217,11 @@ int main(int argc, char* argv[]) {
     }
 
     char winTitle[64];
-#if defined(FREEINK_DEVICE_X3) && FREEINK_DEVICE_X3 && !(defined(FREEINK_DEVICE_X4) && FREEINK_DEVICE_X4)
+#if defined(FREEINK_DEVICE_X4PRO) && FREEINK_DEVICE_X4PRO
+    snprintf(winTitle, sizeof(winTitle), "XTEINK X4 PRO - Book Orbit Simulator (%dx%d)", SCREEN_W, SCREEN_H);
+#elif defined(FREEINK_DEVICE_PICCO) && FREEINK_DEVICE_PICCO
+    snprintf(winTitle, sizeof(winTitle), "ONYX BOOX PICCO - Book Orbit Simulator (%dx%d)", SCREEN_W, SCREEN_H);
+#elif defined(FREEINK_DEVICE_X3) && FREEINK_DEVICE_X3 && !(defined(FREEINK_DEVICE_X4) && FREEINK_DEVICE_X4)
     snprintf(winTitle, sizeof(winTitle), "XTEINK X3 - Book Orbit Simulator (%dx%d)", SCREEN_W, SCREEN_H);
 #else
     snprintf(winTitle, sizeof(winTitle), "XTEINK X4 - Book Orbit Simulator (%dx%d)", SCREEN_W, SCREEN_H);

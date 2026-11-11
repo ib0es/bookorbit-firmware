@@ -3,6 +3,7 @@
 #include "../app_controller.h"
 #include <WiFi.h>
 #include "../../hal/battery.h"
+#include "../../hal/buttons.h"
 #include "../../hal/rtc.h"
 #include "../../hal/imu.h"
 #include "../../hal/mem_stats.h"
@@ -10,6 +11,8 @@
 #include "../../services/time_utils.h"
 #include "../../ui/kit/ui_kit.h"
 #include "../../hal/frontlight.h"
+#include "../../hal/frontlight_policy.h"
+#include "../../hal/usb_msc.h"
 #include "../../hal/display.h"
 #include "../../net/bookorbit_client.h"
 #include "../../net/web_config.h"
@@ -89,6 +92,17 @@ bool cancelledDuringTest(AppContext& ctx, AppState returnState) {
 
 // ---------------------------------------------------------------- main settings
 void executeSetting(AppContext& ctx, int index) {
+    if (index == usbMscSettingIndex()) {
+        ctx.currentState = STATE_USB_MSC_SETTINGS;
+        drawUsbMscSettingsScreen(ctx, false);
+        return;
+    }
+    if (index == touchWakeSettingIndex()) {
+        ctx.config.touchWakeEnabled = !ctx.config.touchWakeEnabled;
+        ctx.config.save();
+        updateSettingsItem(ctx, index);
+        return;
+    }
     if (index == orientationSettingIndex()) {
         // Cycle: (when IMU present) Auto -> Portrait -> Landscape -> Portrait flipped -> Landscape flipped -> Auto
         if (BoardImu.present()) {
@@ -185,6 +199,15 @@ void executeSetting(AppContext& ctx, int index) {
                     imuBuf[0] = '\0';
                 }
                 if (imuBuf[0]) controller += String("  ·  ") + imuBuf;
+            }
+            if (Buttons.hasTouch() || Buttons.hasHomeKey()) {
+                controller += Buttons.hasHomeKey() ? "  ·  Touch+Home" : "  ·  Touch";
+            }
+            if (hasTouchWakeSetting()) {
+                controller += ctx.config.touchWakeEnabled ? "  ·  INT-Wake:On" : "  ·  INT-Wake:Off";
+            }
+            if (hasUsbMscSetting()) {
+                controller += ctx.config.usbMscEnabled ? "  ·  USB-MSC:On" : "  ·  USB-MSC:Off";
             }
             Modal.showInfo(infoTitle, tr(MsgId::SETTINGS_INFO_FW), batLine, MemStats::summary(), controller,
                            tr(MsgId::SETTINGS_INFO_FOOTER));
@@ -374,6 +397,36 @@ void executeSleepCoverSetting(AppContext& ctx, int index) {
     updateSleepCoverSettingsItem(ctx, index);
 }
 
+// ---------------------------------------------------------------- USB MSC settings
+void executeUsbMscSetting(AppContext& ctx, int index) {
+    if (index == 0) {
+        if (!ctx.config.usbMscEnabled) {
+            Modal.showMessage(tr(MsgId::USB_MSC_MENU_TITLE), tr(MsgId::USB_MSC_DISABLED_L1), tr(MsgId::USB_MSC_DISABLED_L2));
+            return;
+        }
+        if (!UsbMsc.beginSession(ctx)) {
+            Modal.showMessage(tr(MsgId::COMMON_ERROR), tr(MsgId::USB_MSC_ERR_NO_SD), "");
+            return;
+        }
+        ctx.currentState = STATE_USB_MSC;
+        drawUsbMscScreen(ctx, true);
+        return;
+    }
+    if (index == 1) {
+        ctx.config.usbMscEnabled = !ctx.config.usbMscEnabled;
+        ctx.config.save();
+        updateUsbMscSettingsItem(ctx, index);
+    }
+}
+
+void exitUsbMscScreen(AppContext& ctx) {
+    UsbMsc.exitSession(ctx);
+    if (ctx.currentState == STATE_USB_MSC) {
+        ctx.currentState = STATE_SETTINGS;
+    }
+    drawSettingsScreen(ctx, true);
+}
+
 }  // namespace
 
 namespace SettingsScreen {
@@ -386,6 +439,24 @@ void handleSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
 void handleSdSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
     handleMenu(ctx, event, ctx.selectedSdSettingIndex, NUM_SD_SETTINGS_ITEMS, updateSdSettingsSelection,
                executeSdSetting, STATE_SETTINGS, drawSettingsScreen, false);
+}
+
+void handleUsbMscSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
+    handleMenu(ctx, event, ctx.selectedUsbMscIndex, NUM_USB_MSC_ITEMS, updateUsbMscSettingsSelection,
+               executeUsbMscSetting, STATE_SETTINGS, drawSettingsScreen, false);
+}
+
+void handleUsbMscEvent(AppContext& ctx, const ButtonEvent& event) {
+    if (event.action != ACTION_CLICK) return;
+    if (event.id == BTN_CONFIRM || event.id == BTN_BACK || event.id == BTN_LEFT) {
+        exitUsbMscScreen(ctx);
+    }
+}
+
+void handleUsbMscTap(AppContext& ctx, int action) {
+    if (action == 1) {
+        exitUsbMscScreen(ctx);
+    }
 }
 
 void handleWifiSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
@@ -453,10 +524,16 @@ void handleLanguageSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
 }  // namespace SettingsScreen
 
 namespace {
+int s_rememberedFrontlight = 50;
+
 void setFrontlight(AppContext& ctx, int row, int value) {
     value = value < 0 ? 0 : (value > 100 ? 100 : value);
-    if (row == 0) ctx.config.frontlight = value;
-    else ctx.config.frontlightWarm = value;
+    if (row == 0) {
+        if (value > 0) s_rememberedFrontlight = value;
+        ctx.config.frontlight = value;
+    } else {
+        ctx.config.frontlightWarm = value;
+    }
     Frontlight.apply(ctx.config.frontlight, ctx.config.frontlightWarm);
     drawFrontlightScreen(ctx, false);
 }
@@ -482,7 +559,7 @@ void handleFrontlightEvent(AppContext& ctx, const ButtonEvent& event) {
             setFrontlight(ctx, sel, frontlightValue(ctx, sel) + 10);
             break;
         case BTN_CONFIRM:  // light on/off
-            setFrontlight(ctx, 0, ctx.config.frontlight > 0 ? 0 : 50);
+            setFrontlight(ctx, 0, FrontlightPolicy::toggleLevel(ctx.config.frontlight, s_rememberedFrontlight));
             break;
         case BTN_BACK:
             ctx.config.save();
@@ -495,6 +572,11 @@ void handleFrontlightEvent(AppContext& ctx, const ButtonEvent& event) {
 }
 
 void handleFrontlightTap(AppContext& ctx, int action, int value, int16_t x) {
+    if (action == 5) {
+        ctx.selectedFrontlightIndex = 0;
+        setFrontlight(ctx, 0, FrontlightPolicy::toggleLevel(ctx.config.frontlight, s_rememberedFrontlight));
+        return;
+    }
     if (value < 0 || value >= frontlightRows()) return;
     ctx.selectedFrontlightIndex = value;
     int v = 0;

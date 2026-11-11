@@ -145,6 +145,12 @@ struct BoardConfig_SD {
 };
 
 struct BoardConfig_Input {
+    int8_t back;
+    int8_t confirm;
+    int8_t left;
+    int8_t right;
+    int8_t up;
+    int8_t down;
     int8_t power;
     bool powerActiveHigh;
 };
@@ -155,10 +161,19 @@ struct BoardConfig_Type {
 };
 
 struct BoardConfig {
-    static inline BoardConfig_Type ACTIVE = { { 13, true, 40000000u }, { 3, false } };
+    static inline BoardConfig_Type ACTIVE = { { 13, true, 40000000u }, { -1, -1, -1, -1, 0, 7, 3, false } };
     static void holdPowerRails() {}
     static void releaseSdRail() {}
+    static bool hasHomeKey() {
+#if defined(FREEINK_DEVICE_X4PRO) && FREEINK_DEVICE_X4PRO
+        return true;
+#else
+        return false;
+#endif
+    }
 };
+
+class FsBlockDeviceInterface {};
 
 class SDCardManager {
 public:
@@ -181,8 +196,15 @@ public:
         return _rootDir + "/" + p;
     }
 
-    bool begin() { return true; }
-    bool ready() const { return true; }
+    bool begin() { _detached = false; return true; }
+    bool ready() const { return !_detached; }
+    void shutdown() { _detached = true; }
+    FsBlockDeviceInterface* detachFilesystemForRawAccess() {
+        if (_detached) return nullptr;
+        _detached = true;
+        static FsBlockDeviceInterface s_simBlockDev;
+        return &s_simBlockDev;
+    }
     uint64_t sdTotalBytes() const { return (uint64_t)16 * 1024 * 1024 * 1024; }
 
     bool ensureDirectoryExists(const char* path) {
@@ -309,4 +331,5 @@ public:
 private:
     SDCardManager() : _rootDir("./sdcard") {}
     std::string _rootDir;
+    bool _detached = false;
 };

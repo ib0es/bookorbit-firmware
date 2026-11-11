@@ -39,6 +39,8 @@ public:
         simInputPolled();
         _tapNow = s_tapQueued; _tapNowX = s_tapX; _tapNowY = s_tapY; s_tapQueued = false;
         _swipeNow = s_swipeQueued; for (int k = 0; k < 4; k++) _swipeNowP[k] = s_swipeP[k]; s_swipeQueued = false;
+        _homeTapNow = s_homeTapQueued; s_homeTapQueued = false;
+        _homeLongNow = s_homeLongQueued; s_homeLongQueued = false;
         for (int i = 0; i < BTN_COUNT; i++) {
             _prevPressed[i] = _pressed[i];
             _pressed[i] = s_simState[i];
@@ -92,16 +94,41 @@ public:
     // Touch: a tap in normalized panel-native coordinates (like the real
     // InputManager), queued by the headless script ('T' x,y) and reported by
     // the next update().
+#if (defined(FREEINK_CAP_TOUCH) && FREEINK_CAP_TOUCH) || (defined(FREEINK_DEVICE_X4PRO) && FREEINK_DEVICE_X4PRO) || \
+    (defined(FREEINK_DEVICE_PICCO) && FREEINK_DEVICE_PICCO)
+    static inline bool s_touchEnabled = true;
+#else
     static inline bool s_touchEnabled = false;
+#endif
     static inline bool s_tapQueued = false;
     static inline float s_tapX = 0, s_tapY = 0;
     static void simTap(float nx, float ny) { s_touchEnabled = true; s_tapQueued = true; s_tapX = nx; s_tapY = ny; }
     bool hasTouch() const { return s_touchEnabled; }
+    bool isTouchPressed() const { return false; }
+    bool isDebouncePending() const { return false; }
     bool wasTouchTap(float& nx, float& ny) const {
         if (!_tapNow) return false;
         nx = _tapNowX; ny = _tapNowY;
         return true;
     }
+
+    // GT911 capacitive Home Key & INT light-sleep wake (X4 Pro).
+    static inline bool s_homeTapQueued = false;
+    static inline bool s_homeLongQueued = false;
+    static inline bool s_homeDown = false;
+    static void simHomeKeyTap() { s_homeTapQueued = true; }
+    static void simHomeKeyLongPress() { s_homeLongQueued = true; }
+    bool wasHomeKeyTapped() const { return _homeTapNow; }
+    bool wasHomeKeyLongPressed() const { return _homeLongNow; }
+    bool isHomeKeyDown() const { return s_homeDown; }
+    int8_t touchWakeIrqPin() const {
+#if defined(FREEINK_GT911_INT_WAKE) && FREEINK_GT911_INT_WAKE
+        return 10;
+#else
+        return -1;
+#endif
+    }
+    bool touchWakeIrqActiveLow() const { return true; }
 
     // Swipe in normalized panel-native coordinates ('W' in the headless script).
     static inline bool s_swipeQueued = false;
@@ -124,4 +151,6 @@ private:
     uint32_t _powerPressStart;
     bool _tapNow = false;
     float _tapNowX = 0, _tapNowY = 0;
+    bool _homeTapNow = false;
+    bool _homeLongNow = false;
 };

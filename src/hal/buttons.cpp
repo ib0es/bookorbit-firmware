@@ -1,4 +1,5 @@
 #include "buttons.h"
+#include <BoardConfig.h>
 #include "../ui/kit/ui_kit.h"
 
 ButtonManager Buttons;
@@ -7,12 +8,23 @@ ButtonManager::ButtonManager() : _hasPendingEvent(false), _powerLongPressFired(f
     _pendingEvent = { BTN_NONE, ACTION_NONE };
 }
 
+bool ButtonManager::hasHomeKey() const {
+    return BoardConfig::hasHomeKey();
+}
+
 void ButtonManager::begin() {
     _freeinkInput.begin();
-    Serial.printf("[Buttons] FreeInk InputManager initialized, touch: %s\n",
-                  _freeinkInput.hasTouch() ? "on" : "off");
+    Serial.printf("[Buttons] FreeInk InputManager initialized, touch: %s, homeKey: %s\n",
+                  _freeinkInput.hasTouch() ? "on" : "off",
+                  hasHomeKey() ? "on" : "off");
     if (_freeinkInput.hasToggleSwitch())
         Serial.printf("[Buttons] Light switch at boot: %s\n", _freeinkInput.isToggleSwitchOn() ? "on" : "off");
+#if defined(FREEINK_GT911_INT_WAKE) && FREEINK_GT911_INT_WAKE
+    Serial.printf("[Buttons] GT911 INT wake: %s (pin=%d, active=%s)\n",
+                  _freeinkInput.touchWakeIrqPin() >= 0 ? "armed" : "unavailable",
+                  (int)_freeinkInput.touchWakeIrqPin(),
+                  _freeinkInput.touchWakeIrqActiveLow() ? "LOW" : "HIGH");
+#endif
 }
 
 void ButtonManager::update() {
@@ -70,6 +82,14 @@ void ButtonManager::update() {
         _pendingEvent = { BTN_POWER, ACTION_CLICK };
         _hasPendingEvent = true;
         Serial.println("[Buttons] Event: CLICK POWER");
+    } else if (_freeinkInput.wasHomeKeyTapped()) {
+        _pendingEvent = { BTN_BACK, ACTION_CLICK };
+        _hasPendingEvent = true;
+        Serial.println("[Buttons] Event: HOME_KEY TAP -> BACK");
+    } else if (_freeinkInput.wasHomeKeyLongPressed()) {
+        _pendingEvent = { BTN_BACK, ACTION_LONG_PRESS };
+        _hasPendingEvent = true;
+        Serial.println("[Buttons] Event: HOME_KEY LONG -> READER MENU");
     } else {
         float nx, ny;
         if (_freeinkInput.hasTouch() && _freeinkInput.wasTouchTap(nx, ny)) {
@@ -117,7 +137,7 @@ bool ButtonManager::isPressed(ButtonId id) {
     switch (id) {
         case BTN_POWER:   return _freeinkInput.isPressed(InputManager::BTN_POWER);
         case BTN_CONFIRM: return _freeinkInput.isPressed(InputManager::BTN_CONFIRM);
-        case BTN_BACK:    return _freeinkInput.isPressed(InputManager::BTN_BACK);
+        case BTN_BACK:    return _freeinkInput.isPressed(InputManager::BTN_BACK) || _freeinkInput.isHomeKeyDown();
         case BTN_LEFT:    return _freeinkInput.isPressed(InputManager::BTN_LEFT);
         case BTN_RIGHT:   return _freeinkInput.isPressed(InputManager::BTN_RIGHT);
         case BTN_UP:      return _freeinkInput.isPressed(InputManager::BTN_UP);

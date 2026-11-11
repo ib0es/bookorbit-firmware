@@ -17,6 +17,7 @@
 #include "../hal/imu.h"
 #include "../hal/frontlight.h"
 #include "../hal/storage.h"
+#include "../hal/usb_msc.h"
 #include "../services/sync_clock.h"
 #include "../ui/font.h"
 #include "../ui/modal.h"
@@ -167,6 +168,13 @@ void AppController::setup() {
     syncAfterWake();
     Buttons.clearEvents();
     _ctx.lastActivityTime = millis();
+    Serial.printf("[BOOT] device=%s ctrl=%s touch=%d homeKey=%d usbMsc=%d intWake=%d\n",
+                  uikit::deviceDisplayName(),
+                  Display.getControllerName(),
+                  Buttons.hasTouch() ? 1 : 0,
+                  Buttons.hasHomeKey() ? 1 : 0,
+                  UsbMsc.present() ? 1 : 0,
+                  Buttons.touchWakeIrqPin());
 }
 
 void AppController::applyConfig() {
@@ -219,6 +227,13 @@ void AppController::loop() {
                       (unsigned long)tEvent);
 
         if (event.id == BTN_POWER) {
+            if (_ctx.currentState == STATE_USB_MSC) {
+                if (event.action == ACTION_CLICK) {
+                    UsbMsc.exitSession(_ctx);
+                    redrawCurrentScreen(true);
+                }
+                return;
+            }
             // Power key: manual sleep (also while a dialog is open)
             PowerService::enterDeepSleep(_ctx);
             return;
@@ -291,6 +306,10 @@ void AppController::loop() {
         _lastClockMinute = -1;
     }
 
+    if (_ctx.currentState == STATE_USB_MSC && UsbMsc.pollStateChanged()) {
+        drawUsbMscScreen(_ctx, false);
+    }
+
     // Auto deep sleep on inactivity (only when on battery, never while plugged into USB)
     PowerService::sleepIfIdle(_ctx);
     // An almost flat battery: save and sleep before the board browns out.
@@ -319,7 +338,7 @@ void AppController::loop() {
         if (worked) return;
     }
 
-    delay(10);
+    PowerService::idleWaitOrLightSleep(_ctx);
 }
 
 void AppController::dispatch(const ButtonEvent& event) {
@@ -344,6 +363,8 @@ void AppController::dispatch(const ButtonEvent& event) {
         case STATE_SYNC_SETTINGS:     SettingsScreen::handleSyncSettingsEvent(_ctx, event); break;
         case STATE_SLEEP_COVER_SETTINGS: SettingsScreen::handleSleepCoverSettingsEvent(_ctx, event); break;
         case STATE_SD_SETTINGS:       SettingsScreen::handleSdSettingsEvent(_ctx, event); break;
+        case STATE_USB_MSC_SETTINGS:  SettingsScreen::handleUsbMscSettingsEvent(_ctx, event); break;
+        case STATE_USB_MSC:           SettingsScreen::handleUsbMscEvent(_ctx, event); break;
         case STATE_SYNCING:           break;
     }
 }
@@ -370,6 +391,8 @@ void AppController::redrawCurrentScreen(bool fullRefresh) {
         case STATE_SYNC_SETTINGS:     drawSyncSettingsScreen(_ctx, fullRefresh); break;
         case STATE_SLEEP_COVER_SETTINGS: drawSleepCoverSettingsScreen(_ctx, fullRefresh); break;
         case STATE_SD_SETTINGS:       drawSdSettingsScreen(_ctx, fullRefresh); break;
+        case STATE_USB_MSC_SETTINGS:  drawUsbMscSettingsScreen(_ctx, fullRefresh); break;
+        case STATE_USB_MSC:           drawUsbMscScreen(_ctx, fullRefresh); break;
         case STATE_SYNCING:           break;
     }
 }

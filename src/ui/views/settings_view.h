@@ -26,6 +26,11 @@ void updateSleepCoverSettingsItem(AppContext& ctx, int index);
 void drawSdSettingsScreen(AppContext& ctx, bool fullRefresh = false);
 void updateSdSettingsSelection(AppContext& ctx, int prevIndex, int newIndex);
 
+void drawUsbMscSettingsScreen(AppContext& ctx, bool fullRefresh = false);
+void updateUsbMscSettingsSelection(AppContext& ctx, int prevIndex, int newIndex);
+void updateUsbMscSettingsItem(AppContext& ctx, int index);
+void drawUsbMscScreen(const AppContext& ctx, bool fullRefresh = false);
+
 void drawLanguageSettingsScreen(AppContext& ctx, bool fullRefresh = false);
 void updateLanguageSettingsSelection(AppContext& ctx, int prevIndex, int newIndex);
 void updateLanguageSettingsItem(AppContext& ctx, int index);

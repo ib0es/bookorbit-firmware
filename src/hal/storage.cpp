@@ -77,8 +77,13 @@ bool StorageManager::begin() {
 
     SDCardManager& sd = SDCardManager::getInstance();
 
-    // Probe at 40 MHz (fastest for X4), then 20 MHz, then 10 MHz
     bool ok = false;
+#if defined(FREEINK_SD_SDMMC) && FREEINK_SD_SDMMC
+    // Native SDMMC mounts at bus width/clock internally; SPI frequency probing
+    // is skipped.
+    ok = sd.begin();
+#else
+    // Probe at 40 MHz (fastest for X4), then 20 MHz, then 10 MHz
     for (uint32_t freq : {40000000u, 20000000u, 10000000u}) {
         BoardConfig::ACTIVE.sd.spiHz = freq;
         if (sd.begin()) {
@@ -87,6 +92,7 @@ bool StorageManager::begin() {
         }
         delay(20);
     }
+#endif
 
     if (!ok) {
         Serial.println("[Storage] Warning: MicroSD mount failed via SDCardManager!");
@@ -96,6 +102,14 @@ bool StorageManager::begin() {
     Serial.printf("[Storage] MicroSD mounted successfully. Size: %llu MB\n", totalBytes() / (1024 * 1024));
     ensureDirectories();
     return true;
+}
+
+void StorageManager::shutdown() {
+    SDCardManager::getInstance().shutdown();
+}
+
+FsBlockDeviceInterface* StorageManager::detachForUsbMsc() {
+    return SDCardManager::getInstance().detachFilesystemForRawAccess();
 }
 
 bool StorageManager::isAvailable() const {
@@ -313,6 +327,8 @@ bool StorageManager::loadConfig(AppConfig& cfg) {
                 boolIn("sb_battery", cfg.sbBattery);
                 boolIn("sb_clock", cfg.sbClock);
                 intIn("utc_offset_min", cfg.utcOffsetMin, -720, 840);
+                boolIn("usb_msc", cfg.usbMscEnabled);
+                boolIn("touch_wake", cfg.touchWakeEnabled);
 
                 if (doc["language"].is<const char*>()) {
                     cfg.language = I18n::languageFromCode(doc["language"].as<String>());
@@ -415,6 +431,8 @@ bool StorageManager::saveConfig(const AppConfig& cfg) {
     doc["sb_battery"] = cfg.sbBattery;
     doc["sb_clock"] = cfg.sbClock;
     doc["utc_offset_min"] = cfg.utcOffsetMin;
+    doc["usb_msc"] = cfg.usbMscEnabled;
+    doc["touch_wake"] = cfg.touchWakeEnabled;
     doc["full_refresh_every"] = cfg.fullRefreshEvery;
     doc["language"] = I18n::getLanguageCode(cfg.language);
     if (doc.overflowed()) {
