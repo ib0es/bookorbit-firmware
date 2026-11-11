@@ -545,9 +545,14 @@ bool BookReader::openBook(const String& filePath) {
     _cfiMap.clear();
     if (convert::needsConversion(filePath)) {
         const String mapPath = cacheDirFor(filePath) + "/" + convert::kCfiMapName;
-        if (Storage.exists(mapPath.c_str())) {
-            const String text = SDCardManager::getInstance().readFile(mapPath.c_str());
-            if (!_cfiMap.parse(text.c_str(), text.length())) Serial.printf("[CFI] %s: not a map\n", mapPath.c_str());
+        // Read whole (SDCardManager::readFile stops at 50 KB: a long FB2's map was cut).
+        FsFile f = Storage.open(mapPath.c_str(), O_RDONLY);
+        if (f) {
+            std::string text(f.size(), '\0');
+            const size_t got = text.empty() ? 0 : (size_t)f.read(&text[0], text.size());
+            f.close();
+            if (got != text.size() || !_cfiMap.parse(text.data(), text.size()))
+                Serial.printf("[CFI] %s: not a map\n", mapPath.c_str());
         }
     }
     Storage.mkdir("/cache");
