@@ -35,15 +35,8 @@
 #include "../ui/views/reader_menu_view.h"
 #include "../ui/views/book_menu_view.h"
 #include "../services/usb_msc_session.h"
+#include "input.h"
 
-namespace {
-AppContext* g_ctxForKeys = nullptr;
-bool keysUpsideDown() {
-    if (!g_ctxForKeys || uikit::touchOnly()) return false;
-    const int o = g_ctxForKeys->currentState == STATE_READING ? Reader.orientation() : g_ctxForKeys->config.uiOrientation;
-    return (o & 3) == 2;
-}
-}  // namespace
 
 void AppController::setup() {
     // 0. Disable any surviving deep-sleep pin holds from previous sleep cycle
@@ -81,7 +74,7 @@ void AppController::setup() {
     BoardConfig::releaseSdRail();
     Battery.begin();
     Buttons.begin();
-    Buttons.setTouchMapper(uikit::touchToLogical);
+    Input::install(_ctx);
     MemStats::mark("battery, buttons");
     // FreeInk's bring-up order for boards whose SD card shares the display SPI
     // bus (X4/X3): board/controller detection, then the SD card, then the
@@ -117,7 +110,6 @@ void AppController::setup() {
     _ctx.config.load();
     Frontlight.begin();
     if (Buttons.hasLightSwitch()) Frontlight.setEnabled(Buttons.lightSwitchOn());
-    g_ctxForKeys = &_ctx;
     applyConfig();
     Reader.setBookmarkProbe([](int spine, uint32_t from, uint32_t to) { return Bookmarks.findIn(spine, from, to) >= 0; });
     MemStats::mark("config, frontlight, reader");
@@ -249,12 +241,6 @@ void AppController::loop() {
             } else if (event.id >= BTN_SWIPE_LEFT && event.id <= BTN_SWIPE_DOWN) {
                 ButtonEvent translated;
                 if (TouchRouter::translateSwipe(_ctx, event, translated)) dispatch(translated);
-            } else if (keysUpsideDown() && (event.id == BTN_LEFT || event.id == BTN_RIGHT)) {
-                // The screen upside down: the front keys are at the top, in the other order
-                // (reading: as the book is turned; elsewhere as the interface is).
-                ButtonEvent turned = event;
-                turned.id = event.id == BTN_LEFT ? BTN_RIGHT : BTN_LEFT;
-                dispatch(turned);
             } else {
                 dispatch(event);
             }

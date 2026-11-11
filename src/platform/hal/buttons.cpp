@@ -129,6 +129,7 @@ bool ButtonManager::getEvent(ButtonEvent& event) {
         } else if (event.repeat == 0) {
             _heldKey = BTN_NONE;
         }
+        if (_keyRemap) event.id = _keyRemap(event.id);
         return true;
     }
     return false;
