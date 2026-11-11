@@ -90,7 +90,8 @@ void drawTocScreen(AppContext& ctx, bool fullRefresh) {
     }
 
     present(fullRefresh);
-    Serial.printf("[UI] drawTocScreen finished in %lu ms.\n", millis() - t0);
+    Serial.printf("[UI] drawTocScreen finished in %lu ms (row %d/%d, %d a page).\n", millis() - t0,
+                  ctx.selectedTocIndex + 1, total, perPage);
 }
 
 void drawReaderMenuScreen(AppContext& ctx, bool fullRefresh) {

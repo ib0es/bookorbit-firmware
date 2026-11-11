@@ -6,6 +6,7 @@
 //         S = server edit (renames <sd>/server_next.json to server.json),
 //         Z = sleep and wake up (setup() runs again, RAM state is rebuilt from the SD card),
 //         H<key> = hold an arrow key (U D L R) for 3 s (its auto-repeat),
+//         X = card edit: renames <sd>/config_next.json to config.json ("Reload from SD"),
 //         T<x>,<y>; tap, W<x0>,<y0>,<x1>,<y1>; swipe (logical portrait coordinates),
 //         [ ... ] = steps for a screen that runs its own input loop (keyboard, Wi-Fi
 //         list, web portal): queued first, then fed to that loop as it polls.
@@ -138,6 +139,11 @@ int main(int argc, char** argv) {
             case 'C': click(InputManager::BTN_CONFIRM, "CONFIRM"); break;
             case 'B': click(InputManager::BTN_BACK, "BACK"); break;
             case 'P': click(InputManager::BTN_POWER, "POWER"); break;
+            case 'X': {
+                std::string r = std::string(argv[2]);
+                std::rename((r + "/config_next.json").c_str(), (r + "/config.json").c_str());
+                printf(">>> CONFIG ON THE CARD REPLACED\n");
+            } break;
             case 'H': {  // H<key>: hold for 3 s
                 const char k = i + 1 < script.size() ? script[++i] : 'D';
                 const InputManager::Button b = k == 'U' ? InputManager::BTN_UP : k == 'L' ? InputManager::BTN_LEFT

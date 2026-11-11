@@ -76,6 +76,7 @@ $(BUILD)/%.o: %.c
 
 test: all
 	X4_HEADLESS=$(BUILD)/x4_headless python3 test/sim/run_sync_scenarios.py
+	X4_HEADLESS=$(BUILD)/x4_headless python3 test/sim/run_x4_walkthrough.py
 	@tmp=$$(mktemp -d) && cp -R simulator/sdcard/. $$tmp/ && cp test/sim/config.json $$tmp/config.json && \
 	  $(BUILD)/reader_roundtrip $$tmp  "/books/Alice in Wonderland.epub" "/books/01. Frankenstein (1818).epub" "/books/Тестовая книга.txt" "/books/Pride and Prejudice.epub" | grep -v '^\['; \
 	  rc=$${PIPESTATUS[0]}; rm -rf $$tmp; exit $$rc

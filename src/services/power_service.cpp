@@ -1,5 +1,6 @@
 #include "power_service.h"
 #include "../ui/kit/ui_kit.h"
+#include <cstdlib>
 #include <esp_sleep.h>
 #if defined(ESP_PLATFORM)
 #include <esp_system.h>   // esp_restart
@@ -103,7 +104,11 @@ void PowerService::sleepIfIdle(AppContext& ctx) {
 }
 
 void PowerService::checkBattery(AppContext& ctx) {
+#if defined(ESP_PLATFORM)
     constexpr uint32_t kEveryMs = 60000;
+#else   // the headless tests shorten it
+    static const uint32_t kEveryMs = getenv("SIM_BATTERY_CHECK_MS") ? (uint32_t)atoi(getenv("SIM_BATTERY_CHECK_MS")) : 60000;
+#endif
     constexpr int kCriticalPercent = 3;
     static uint32_t s_lastCheck = 0;
     static int s_lowReadings = 0;
