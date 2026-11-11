@@ -53,6 +53,17 @@ int main() {
     assert(I18n::languageFromCode("de") == AppLanguage::EN);
     assert(I18n::languageFromCode("unknown") == AppLanguage::EN);
 
+    // 5b. Button-only USB-MSC exit hints differ from touch prompts
+    I18n::setLanguage(AppLanguage::EN);
+    assert(strcmp(tr(MsgId::USB_MSC_HINT_L2_KEYS), "Safely eject on PC, then press OK or Back to reboot") == 0);
+    assert(strcmp(tr(MsgId::USB_MSC_KEYS_EXIT), "OK / Back: Disconnect & Reboot") == 0);
+    I18n::setLanguage(AppLanguage::RU);
+    assert(strcmp(tr(MsgId::USB_MSC_HINT_L2_KEYS), "Извлеките диск на ПК и нажмите OK или Назад") == 0);
+    assert(strcmp(tr(MsgId::USB_MSC_KEYS_EXIT), "OK / Назад: Отключить и перезагрузить") == 0);
+    I18n::setLanguage(AppLanguage::ES);
+    assert(strcmp(tr(MsgId::USB_MSC_HINT_L2_KEYS), "Expulse el disco y pulse OK o Atrás para reiniciar") == 0);
+    assert(strcmp(tr(MsgId::USB_MSC_KEYS_EXIT), "OK / Atrás: Desconectar y reiniciar") == 0);
+
     // 6. Test indices
     assert(strcmp(I18n::getLanguageCode(static_cast<AppLanguage>(0)), "en") == 0);
     assert(strcmp(I18n::getLanguageName(static_cast<AppLanguage>(0)), "English") == 0);

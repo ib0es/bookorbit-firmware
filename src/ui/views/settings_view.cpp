@@ -302,7 +302,10 @@ void drawUsbMscScreen(const AppContext& ctx, bool fullRefresh) {
     text(insetXY(box, 12, 8), statusStr, FontTitle, Color::Black, TextAlign::Center, 2);
     takeTop(area, 16);
 
-    const char* hints[2] = { tr(MsgId::USB_MSC_HINT_L1), tr(MsgId::USB_MSC_HINT_L2) };
+    const char* hints[2] = {
+        tr(MsgId::USB_MSC_HINT_L1),
+        tr(touchUi() ? MsgId::USB_MSC_HINT_L2 : MsgId::USB_MSC_HINT_L2_KEYS),
+    };
     for (const char* hint : hints) {
         if (!hint || !*hint) continue;
         const int16_t lh = wrappedHeight(hint, FontBody, area.width, 3);
@@ -310,11 +313,23 @@ void drawUsbMscScreen(const AppContext& ctx, bool fullRefresh) {
         takeTop(area, 12);
     }
 
-    const int16_t btnH = (int16_t)(lineHeight(FontBody) + 26);
-    Rect btn = takeBottom(area, btnH);
-    fill(btn, Color::Black, 4);
-    text(btn, tr(MsgId::USB_MSC_BTN_EXIT), FontBody, Color::White, TextAlign::Center);
-    f.hit(btn, 1, 0);
+    if (touchUi()) {
+        const int16_t btnH = (int16_t)(lineHeight(FontBody) + 26);
+        Rect btn = takeBottom(area, btnH);
+        fill(btn, Color::Black, 4);
+        text(btn, tr(MsgId::USB_MSC_BTN_EXIT), FontBody, Color::White, TextAlign::Center);
+        f.hit(btn, 1, 0);
+    } else {
+        // Button-only boards (no touchscreen): render an outlined hardware-key cue
+        // without a touch hit area or solid-black touch CTA.
+        const char* exitHint = tr(MsgId::USB_MSC_KEYS_EXIT);
+        const int16_t innerW = (int16_t)std::max<int>(40, area.width - 24);
+        const int16_t boxTextH = wrappedHeight(exitHint, FontBody, innerW, 2);
+        const int16_t btnH = std::max<int16_t>((int16_t)(lineHeight(FontBody) + 26), (int16_t)(boxTextH + 16));
+        Rect boxArea = takeBottom(area, btnH);
+        frameRect(boxArea, Color::Black, 1, 4);
+        text(insetXY(boxArea, 12, 4), exitHint, FontBody, Color::Black, TextAlign::Center, 2);
+    }
 
     present(fullRefresh);
 }

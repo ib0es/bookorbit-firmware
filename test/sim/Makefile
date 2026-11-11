@@ -16,6 +16,9 @@ ifeq ($(DEVICE),picco)
 # L, R, C and B script steps in this build).
 BUILD ?= test/sim/build-picco
 DEVFLAGS := -DFREEINK_DEVICE_PICCO=1 -DUI_FAKE_FRONTLIGHT=1 -DSIM_KEYS_UP_DOWN_POWER_ONLY=1
+else ifeq ($(DEVICE),x4c)
+BUILD ?= test/sim/build-x4c
+DEVFLAGS := -DFREEINK_DEVICE_X4CLASSIC=1 -DFREEINK_CAP_USB_MSC=1
 else ifeq ($(DEVICE),x4pro)
 BUILD ?= test/sim/build-x4pro
 DEVFLAGS := -DFREEINK_DEVICE_X4PRO=1 -DFREEINK_CAP_TOUCH=1 -DFREEINK_CAP_USB_MSC=1 -DFREEINK_GT911_INT_WAKE=1 -DUI_FAKE_FRONTLIGHT=1 -DSIM_KEYS_UP_DOWN_POWER_ONLY=1
@@ -91,6 +94,10 @@ x4pro-test:
 	$(MAKE) -f test/sim/Makefile DEVICE=x4pro all
 	X4PRO_HEADLESS=test/sim/build-x4pro/x4_headless python3 test/sim/run_x4pro_walkthrough.py
 
+x4c-test:
+	$(MAKE) -f test/sim/Makefile DEVICE=x4c all
+	X4C_HEADLESS=test/sim/build-x4c/x4_headless python3 test/sim/run_x4c_walkthrough.py
+
 coverage:
 	test/coverage.sh
 
@@ -99,4 +106,4 @@ clean:
 
 -include $(shell find $(BUILD) -name '*.d' 2>/dev/null)
 
-.PHONY: all test coverage clean
+.PHONY: all test picco-test x4pro-test x4c-test coverage clean

@@ -161,7 +161,11 @@ struct BoardConfig_Type {
 };
 
 struct BoardConfig {
+#if defined(FREEINK_DEVICE_X4CLASSIC) && FREEINK_DEVICE_X4CLASSIC
+    static inline BoardConfig_Type ACTIVE = { { 6, false, 40000000u }, { 9, 8, 5, 2, 0, 7, 3, false } };
+#else
     static inline BoardConfig_Type ACTIVE = { { 13, true, 40000000u }, { -1, -1, -1, -1, 0, 7, 3, false } };
+#endif
     static void holdPowerRails() {}
     static void releaseSdRail() {}
     static bool hasHomeKey() {
