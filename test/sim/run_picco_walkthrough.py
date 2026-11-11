@@ -31,12 +31,13 @@ RMENU_SYNC, RMENU_RESUME, RMENU_CLOSE = "T240,430;", "T240,506;", "T240,582;"
 MARKS_THIS_PAGE = "T240,90;"   # first row of the Bookmarks screen
 APPEAR_TYPEFACE, APPEAR_SIZE = "T240,67;", "T240,103;"   # rows of the Appearance screen
 APPEAR_ORIENTATION = "T240,463;"
-APPEAR_STATUS_BAR = "T240,535;"
+APPEAR_STATUS_BAR = "T240,584;"   # after "Up / Down keys"
 SB_BOTTOM = "T240,211;"   # the last row of the status bar menu
-# Settings rows (ten of them with the screen orientation, 65 px apart)
+# Settings rows (nine of them with the frontlight and the screen orientation)
 SET_LANG, SET_WIFI, SET_SERVER, SET_SLEEP, SET_INFO, SET_LIGHT = "T240,85;", "T240,150;", "T240,215;", "T240,280;", "T240,475;", "T240,605;"
 SET_SYNC = "T240,540;"
 SET_ORIENTATION = "T240,670;"
+SET_ORIENTATION_LANDSCAPE = "T290,400;"   # the same row once the screen is turned (nine rows, two pages)
 
 def pages(log):
     return [tuple(map(int, m)) for m in re.findall(r"\[Reader\] Page (\d+)/(\d+)", log)]
@@ -112,9 +113,9 @@ CASES = [
      HOME_SETTINGS + SET_SYNC + "T240,240;" + BACK + BACK + "P" + "Z" + "ww",
      lambda log, sd: "Background sync queued" in log and re.search(r"Background sync (done|failed) in", log)),
     ("settings: screen orientation turns the whole interface, a quarter turn a tap",
-     HOME_SETTINGS + SET_ORIENTATION + SET_ORIENTATION,
+     HOME_SETTINGS + SET_ORIENTATION + SET_ORIENTATION_LANDSCAPE,
      lambda log, sd: config(sd)["ui_orientation"] == 2 and config(sd).get("orientation", 0) == 0
-                     and "drawSettingsScreen" in log.split("TAP_240_670")[-1]),
+                     and "drawSettingsScreen" in log.split("TAP_290_400")[-1]),
     ("settings: frontlight + button",
      HOME_SETTINGS + SET_LIGHT + "T442,124;" + BACK,
      lambda log, sd: "[Light] brightness 10%" in log and config(sd)["frontlight"] == 10),
