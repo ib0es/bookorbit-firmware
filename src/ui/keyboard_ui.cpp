@@ -8,28 +8,48 @@
 #include "ui/kit/ui_kit.h"
 
 // -----------------------------------------------------------------------------
-// Keyboard Character Layers (12 characters per row, 4 rows = 48 keys per layer)
+// Keyboard layouts: 4 rows of 12 keys each, UTF-8 (a key is one character).
+// The UI fonts carry ASCII, Latin-1 and Cyrillic: every key here is drawable.
 // -----------------------------------------------------------------------------
-static const char* const LAYER0_ROWS[4] = {
-    "1234567890-=",
-    "qwertyuiop[]",
-    "asdfghjkl;'\\",
-    "zxcvbnm,./_@"
+struct Layout {
+    const char* rows[4];
+    const char* shifted[4];
+    MsgId name;          // shown in the status line
+    const char* label;   // on the layout key ("next layout")
 };
 
-static const char* const LAYER1_ROWS[4] = {
-    "!@#$%^&*()_+",
-    "QWERTYUIOP{}",
-    "ASDFGHJKL:\"|",
-    "ZXCVBNM<>?~`"
+static const Layout kLayouts[] = {
+    {{"1234567890-=", "qwertyuiop[]", "asdfghjkl;'\\", "zxcvbnm,./_@"},
+     {"!@#$%^&*()_+", "QWERTYUIOP{}", "ASDFGHJKL:\"|", "ZXCVBNM<>?~`"}, MsgId::KEYBOARD_LAYER_LOWER, "abc"},
+    {{"1234567890-.", "йцукенгшщзхъ", "фывапролджэ,", "ячсмитьбюё_@"},
+     {"!\"#;%:?*()_+", "ЙЦУКЕНГШЩЗХЪ", "ФЫВАПРОЛДЖЭ,", "ЯЧСМИТЬБЮЁ_@"}, MsgId::KEYBOARD_LAYER_CYR, "абв"},
+    {{"1234567890¿¡", "áéíóúüñçàèìò", "ùâêîôûäëïöß'", "£«»¢§°\"-_.,@"},
+     {"1234567890¿¡", "ÁÉÍÓÚÜÑÇÀÈÌÒ", "ÙÂÊÎÔÛÄËÏÖß'", "£«»¢§°\"-_.,@"}, MsgId::KEYBOARD_LAYER_ACC, "áéñ"},
+    {{"1234567890!?", "@#$%^&*()-_+", "=[]{}\\|;:'\"~", "<>,./`:;!?-_"},
+     {"1234567890!?", "@#$%^&*()-_+", "=[]{}\\|;:'\"~", "<>,./`:;!?-_"}, MsgId::KEYBOARD_LAYER_SYM, "#+="},
 };
+static constexpr int kLayoutCount = sizeof(kLayouts) / sizeof(kLayouts[0]);
+static constexpr int kSymbolLayout = 3;
 
-static const char* const LAYER2_ROWS[4] = {
-    "1234567890!?",
-    "@#$%^&*()-_+",
-    "=[]{}\\|;:'\"~",
-    "<>,./`:;!?-_"
-};
+// The 12 keys of a row as separate UTF-8 characters.
+static void splitRow(const char* row, char out[12][5]) {
+    const char* p = row;
+    for (int k = 0; k < 12; k++) {
+        int n = 0;
+        if (*p) {
+            out[k][n++] = *p++;
+            while (*p && ((uint8_t)*p & 0xC0) == 0x80 && n < 4) out[k][n++] = *p++;
+        }
+        out[k][n] = '\0';
+    }
+}
+
+// Removes the last UTF-8 character.
+static void eraseLast(String& s) {
+    int at = (int)s.length() - 1;
+    while (at > 0 && ((uint8_t)s[at] & 0xC0) == 0x80) at--;
+    if (at >= 0) s.remove(at);
+}
 
 struct ActionBtnDef {
     int x;
@@ -41,14 +61,23 @@ struct ActionBtnDef {
 bool KeyboardUI::show(const String& title, const String& subtitle, String& inOutText, KeyboardMode mode) {
     int selRow = 1;
     int selCol = 0;
-    int layer = 0; // 0 = Lowercase, 1 = Uppercase, 2 = Symbols
+    // Text in the interface's language starts in its alphabet; logins, passwords
+    // and addresses in Latin letters.
+    int layout = (mode == KB_MODE_TEXT && I18n::getLanguage() == AppLanguage::RU) ? 1 : 0;
+    bool shift = false;
     String currentText = inOutText;
+    char keyText[48][5];
+    auto loadKeys = [&]() {
+        const Layout& l = kLayouts[layout];
+        for (int r = 0; r < 4; r++) splitRow(shift ? l.shifted[r] : l.rows[r], &keyText[r * 12]);
+    };
+    loadKeys();
 
     // Action Row Buttons Configuration (Row 4, 6 buttons aligned with 12 keys above)
     // Width: 64 + 2 + 64 + 2 + 108 + 2 + 56 + 2 + 82 + 2 + 80 = 464px. Margins: 8px left, 8px right.
     const ActionBtnDef actionBtns[6] = {
         { 8,   64,  "A/a",    1 },
-        { 74,  64,  "123#",   1 },
+        { 74,  64,  "abc",    1 },
         { 140, 108, tr(MsgId::KEYBOARD_BTN_SPACE), 1 },
         { 250, 56,  "< ⌫",   1 },
         { 308, 82,  tr(MsgId::KEYBOARD_BTN_CANCEL), 0 },
@@ -77,6 +106,7 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
         String visibleStr = currentText + "_";
         if (textWidth(FontBody, visibleStr.c_str()) > maxTextW) {
             for (int cut = 1; cut < (int)currentText.length(); cut++) {
+                if (((uint8_t)currentText[cut] & 0xC0) == 0x80) continue;   // inside a character
                 String testStr = "..." + currentText.substring(cut) + "_";
                 if (textWidth(FontBody, testStr.c_str()) <= maxTextW) {
                     visibleStr = testStr;
@@ -89,26 +119,19 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
         // 3. Length and layer status
         Rect info = insetX(takeTop(area, (int16_t)(lineHeight(FontSmall) + 8)), 4);
         char lenBuf[64];
-        snprintf(lenBuf, sizeof(lenBuf), tr(MsgId::KEYBOARD_LEN_FMT), (int)currentText.length());
-        const char* layerDesc = (layer == 0) ? tr(MsgId::KEYBOARD_LAYER_LOWER)
-                                             : ((layer == 1) ? tr(MsgId::KEYBOARD_LAYER_UPPER)
-                                                             : tr(MsgId::KEYBOARD_LAYER_SYM));
+        int chars = 0;   // characters, not bytes
+        for (size_t i = 0; i < currentText.length(); i++) chars += ((uint8_t)currentText[i] & 0xC0) != 0x80;
+        snprintf(lenBuf, sizeof(lenBuf), tr(MsgId::KEYBOARD_LEN_FMT), chars);
+        const char* layerDesc = (shift && layout == 0) ? tr(MsgId::KEYBOARD_LAYER_UPPER) : tr(kLayouts[layout].name);
         text(info, lenBuf, FontSmall);
         text(info, layerDesc, FontSmall, Color::Black, TextAlign::Right);
         takeTop(area, 12);
 
         // 4. Character grid (12 x 4)
-        const char* const* currentRows = (layer == 0) ? LAYER0_ROWS : ((layer == 1) ? LAYER1_ROWS : LAYER2_ROWS);
-        static char labels[48][2];
         fi::KeyGridKey keys[48];
-        for (int r = 0; r < 4; r++) {
-            for (int c = 0; c < 12; c++) {
-                const int i = r * 12 + c;
-                labels[i][0] = currentRows[r][c];
-                labels[i][1] = '\0';
-                keys[i].label = labels[i];
-                keys[i].value = (int16_t)i;
-            }
+        for (int i = 0; i < 48; i++) {
+            keys[i].label = keyText[i];
+            keys[i].value = (int16_t)i;
         }
         const int16_t keyH = 54, gapY = 8;
         fi::KeyGridProps kp;
@@ -135,8 +158,8 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
             Rect btn{x, row.y, w, row.height};
             x = (int16_t)(x + w + 2);
             const char* label = actionBtns[b].label;
-            if (b == 0) label = (layer == 1) ? "a/A" : "A/a";
-            else if (b == 1) label = (layer == 2) ? "ABC" : "123#";
+            if (b == 0) label = shift ? "a/A" : "A/a";
+            else if (b == 1) label = kLayouts[(layout + 1) % kLayoutCount].label;   // the one it switches to
             const bool sel = (selRow == 4 && selCol == b);
             const fi::FontId font = actionBtns[b].fontScale == 0 ? FontSmall : FontBody;
             if (sel) fill(btn, Color::Black, 3);
@@ -203,26 +226,28 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
                     renderKeyboard();
                 } else if (event.id == BTN_CONFIRM) {
                     if (selRow < 4) {
-                        const char* const* currentRows = (layer == 0) ? LAYER0_ROWS : ((layer == 1) ? LAYER1_ROWS : LAYER2_ROWS);
-                        char ch = currentRows[selRow][selCol];
-                        if (ch != '\0') {
+                        const char* ch = keyText[selRow * 12 + selCol];
+                        if (*ch) {
                             currentText += ch;
                             renderKeyboard();
                         }
                     } else {
                         // Action row buttons (0..5)
                         if (selCol == 0) { // A/a Shift toggle
-                            layer = (layer == 1) ? 0 : 1;
+                            shift = !shift && layout != kSymbolLayout;
+                            loadKeys();
                             renderKeyboard();
-                        } else if (selCol == 1) { // 123# Symbols toggle
-                            layer = (layer == 2) ? 0 : 2;
+                        } else if (selCol == 1) { // the next layout: Latin, Cyrillic, accents, symbols
+                            layout = (layout + 1) % kLayoutCount;
+                            if (layout == kSymbolLayout) shift = false;
+                            loadKeys();
                             renderKeyboard();
                         } else if (selCol == 2) { // Space
                             currentText += ' ';
                             renderKeyboard();
                         } else if (selCol == 3) { // Backspace
                             if (currentText.length() > 0) {
-                                currentText.remove(currentText.length() - 1);
+                                eraseLast(currentText);
                                 renderKeyboard();
                             }
                         } else if (selCol == 4) { // Cancel
@@ -234,16 +259,12 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
                     }
                 } else if (event.id == BTN_BACK) {
                     if (currentText.length() > 0) {
-                        currentText.remove(currentText.length() - 1);
+                        eraseLast(currentText);
                         renderKeyboard();
                     } else {
                         // Empty string + back = cancel
                         return false;
                     }
-                }
-            } else if (event.action == ACTION_LONG_PRESS) {
-                if (event.id == BTN_BACK) {
-                    return false; // Long press back cancels immediately
                 }
             }
         }

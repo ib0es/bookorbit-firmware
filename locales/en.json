@@ -458,6 +458,8 @@
   "KEYBOARD_LAYER_LOWER": "[abc] lowercase",
   "KEYBOARD_LAYER_UPPER": "[ABC] UPPERCASE",
   "KEYBOARD_LAYER_SYM": "[123#] symbols",
+  "KEYBOARD_LAYER_CYR": "[абв] Cyrillic",
+  "KEYBOARD_LAYER_ACC": "[áéñ] accents",
   "READER_TOC_NOT_FOUND_L1": "No chapters or sections",
   "READER_TOC_NOT_FOUND_L2": "found in this book.",
   "MODAL_DEFAULT_BACK": "[BACK] - Back",

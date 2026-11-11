@@ -458,6 +458,8 @@
   "KEYBOARD_LAYER_LOWER": "[abc] minúsculas",
   "KEYBOARD_LAYER_UPPER": "[ABC] MAYÚSCULAS",
   "KEYBOARD_LAYER_SYM": "[123#] símbolos",
+  "KEYBOARD_LAYER_CYR": "[абв] cirílico",
+  "KEYBOARD_LAYER_ACC": "[áéñ] acentos",
   "READER_TOC_NOT_FOUND_L1": "No se encontraron capítulos",
   "READER_TOC_NOT_FOUND_L2": "o secciones en este libro.",
   "MODAL_DEFAULT_BACK": "[BACK] - Atrás",
