@@ -211,14 +211,15 @@ bool StorageManager::loadConfig(AppConfig& cfg) {
             DeserializationError error = JsonFile::read("/config.json", doc);
             if (!error) {
                 if (doc["wifi_ssid"].is<const char*>()) { cfg.wifiSsid = doc["wifi_ssid"].as<String>(); cfg.wifiSsid.trim(); }
-                if (doc["wifi_pass"].is<const char*>()) { cfg.wifiPass = doc["wifi_pass"].as<String>(); cfg.wifiPass.trim(); }
+                // Passwords as typed: spaces in them are significant (names and addresses are trimmed).
+                if (doc["wifi_pass"].is<const char*>()) cfg.wifiPass = doc["wifi_pass"].as<String>();
                 if (doc["server_url"].is<const char*>()) { cfg.serverHost = doc["server_url"].as<String>(); cfg.serverHost.trim(); }
 
                 if (doc["username"].is<const char*>()) { cfg.bookOrbitUser = doc["username"].as<String>(); cfg.bookOrbitUser.trim(); }
                 else if (doc["user"].is<const char*>()) { cfg.bookOrbitUser = doc["user"].as<String>(); cfg.bookOrbitUser.trim(); }
 
-                if (doc["password"].is<const char*>()) { cfg.bookOrbitPass = doc["password"].as<String>(); cfg.bookOrbitPass.trim(); }
-                else if (doc["pass"].is<const char*>()) { cfg.bookOrbitPass = doc["pass"].as<String>(); cfg.bookOrbitPass.trim(); }
+                if (doc["password"].is<const char*>()) cfg.bookOrbitPass = doc["password"].as<String>();
+                else if (doc["pass"].is<const char*>()) cfg.bookOrbitPass = doc["pass"].as<String>();
 
                 if (doc["token"].is<const char*>()) { cfg.authToken = doc["token"].as<String>(); cfg.authToken.trim(); }
 
