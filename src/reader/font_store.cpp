@@ -5,10 +5,7 @@
 #include <algorithm>
 
 #include "../hal/storage.h"
-
-#if defined(ESP_PLATFORM)
-#include <esp_partition.h>
-#endif
+#include "../platform/font_partition.h"
 
 namespace FontStore {
 
@@ -89,33 +86,9 @@ String familyOf(const String& stem, int* nameStyle) {
     return stem;
 }
 
-#if defined(ESP_PLATFORM)
-const esp_partition_t* partition() {
-    static const esp_partition_t* p =
-        esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, nullptr);
-    return p;
-}
-esp_partition_mmap_handle_t s_map = 0;
 const uint8_t* s_base = nullptr;
 
-bool readHeader(Header& h) {
-    const esp_partition_t* p = partition();
-    return p && esp_partition_read(p, 0, &h, sizeof(h)) == ESP_OK && valid(h, capacity());
-}
-#else
-// The simulator: the partition is a file on the card, read into memory when mapped.
-constexpr const char* kSimFile = "/.fontpart.bin";
-constexpr uint32_t kSimCapacity = 0x360000 - kHeaderBytes;
-uint8_t* s_base = nullptr;
-
-bool readHeader(Header& h) {
-    FsFile f = Storage.open(kSimFile, O_RDONLY);
-    if (!f) return false;
-    const bool ok = f.read(&h, sizeof(h)) == (int)sizeof(h);
-    f.close();
-    return ok && valid(h, capacity());
-}
-#endif
+bool readHeader(Header& h) { return FontPartition::read(0, &h, sizeof(h)) && valid(h, capacity()); }
 
 Header s_header{};
 bool s_mapped = false;
@@ -123,12 +96,8 @@ bool s_mapped = false;
 }  // namespace
 
 uint32_t capacity() {
-#if defined(ESP_PLATFORM)
-    const esp_partition_t* p = partition();
-    return p && p->size > kHeaderBytes ? p->size - kHeaderBytes : 0;
-#else
-    return kSimCapacity;
-#endif
+    const uint32_t size = FontPartition::capacity();
+    return size > kHeaderBytes ? size - kHeaderBytes : 0;
 }
 
 std::vector<Family> scanCard() {
@@ -202,25 +171,8 @@ bool install(const Family& family, ProgressFn progress, void* user) {
     h.checksum = checksumOf(h);
     const uint32_t total = at;
 
-#if defined(ESP_PLATFORM)
-    const esp_partition_t* p = partition();
-    if (!p) return false;
     // The header goes first (erased: no family), then the faces, then the header.
-    const uint32_t eraseBytes = (total + 4095) & ~4095u;
-    if (esp_partition_erase_range(p, 0, 4096) != ESP_OK) return false;
-    for (uint32_t e = 4096; e < eraseBytes; e += 64 * 1024) {
-        const uint32_t n = std::min<uint32_t>(64 * 1024, eraseBytes - e);
-        if (esp_partition_erase_range(p, e, n) != ESP_OK) return false;
-        if (progress) progress(user, (int)(300ull * e / eraseBytes));
-    }
-#else
-    FsFile out = Storage.open(kSimFile, O_RDWR | O_CREAT | O_TRUNC);
-    if (!out) return false;
-    {
-        static const uint8_t zero[256] = {0};
-        for (uint32_t z = 0; z < kHeaderBytes; z += sizeof(zero)) out.write(zero, sizeof(zero));
-    }
-#endif
+    if (!FontPartition::erase(total, progress, user)) return false;
     uint8_t buf[2048];
     uint32_t done = 0;
     for (int s = 0; s < 4; s++) {
@@ -236,15 +188,10 @@ bool install(const Family& family, ProgressFn progress, void* user) {
             }
             uint32_t w = (uint32_t)n;
             while (w & 3) buf[w++] = 0;   // writes in whole words
-#if defined(ESP_PLATFORM)
-            if (esp_partition_write(p, off, buf, w) != ESP_OK) {
+            if (!FontPartition::write(off, buf, w)) {
                 f.close();
                 return false;
             }
-#else
-            out.seek(off);
-            out.write(buf, w);
-#endif
             off += w;
             left -= (uint32_t)n;
             done += (uint32_t)n;
@@ -252,13 +199,8 @@ bool install(const Family& family, ProgressFn progress, void* user) {
         }
         f.close();
     }
-#if defined(ESP_PLATFORM)
-    if (esp_partition_write(p, 0, &h, sizeof(h)) != ESP_OK) return false;
-#else
-    out.seek(0);
-    out.write((const uint8_t*)&h, sizeof(h));
-    out.close();
-#endif
+    if (!FontPartition::write(0, &h, sizeof(h))) return false;
+    FontPartition::finish();
     Serial.printf("[Fonts] %s installed: %u KB in %lu ms\n", family.name.c_str(), (unsigned)(total / 1024),
                   (unsigned long)(millis() - t0));
     if (progress) progress(user, 1000);
@@ -271,22 +213,8 @@ bool map() {
     if (!readHeader(h)) return false;
     uint32_t end = 0;
     for (const auto& f : h.faces) end = std::max(end, f.offset + f.length);
-#if defined(ESP_PLATFORM)
-    const void* ptr = nullptr;
-    if (esp_partition_mmap(partition(), 0, end, ESP_PARTITION_MMAP_DATA, &ptr, &s_map) != ESP_OK) return false;
-    s_base = static_cast<const uint8_t*>(ptr);
-#else
-    FsFile f = Storage.open(kSimFile, O_RDONLY);
-    if (!f) return false;
-    s_base = (uint8_t*)malloc(end);
-    const bool ok = s_base && f.read(s_base, end) == (int)end;
-    f.close();
-    if (!ok) {
-        free(s_base);
-        s_base = nullptr;
-        return false;
-    }
-#endif
+    s_base = FontPartition::map(end);
+    if (!s_base) return false;
     s_header = h;
     s_mapped = true;
     return true;
@@ -294,12 +222,7 @@ bool map() {
 
 void unmap() {
     if (!s_mapped) return;
-#if defined(ESP_PLATFORM)
-    esp_partition_munmap(s_map);
-    s_map = 0;
-#else
-    free(s_base);
-#endif
+    FontPartition::unmap();
     s_base = nullptr;
     s_mapped = false;
 }

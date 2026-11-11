@@ -1,12 +1,7 @@
 #include "power_service.h"
 #include "../ui/kit/ui_kit.h"
 #include <cstdlib>
-#include <ctime>
 #include <esp_sleep.h>
-#if defined(ESP_PLATFORM)
-#include <esp_system.h>   // esp_restart
-#include <driver/gpio.h>
-#endif
 #include <WiFi.h>
 #include <PowerManager.h>
 #include <BoardConfig.h>
@@ -31,39 +26,14 @@
 #include "../hal/buttons.h"
 #include "../ui/text_utils.h"
 #include "../platform/device.h"
+#include "../platform/system.h"
 
 namespace {
 uint32_t s_lastBatteryCheck = 0;
 
-uint32_t batteryCheckIntervalMs() {
-#if defined(ESP_PLATFORM)
-    return 60000;
-#else   // the headless tests shorten it
-    static const uint32_t kEveryMs = getenv("SIM_BATTERY_CHECK_MS") ? (uint32_t)atoi(getenv("SIM_BATTERY_CHECK_MS")) : 60000;
-    return kEveryMs;
-#endif
-}
-
-uint32_t sleepTimeoutMs() {
-#if defined(ESP_PLATFORM)
-    return SLEEP_TIMEOUT_MS;
-#else
-    const char* v = std::getenv("SIM_SLEEP_TIMEOUT_MS");
-    const long ms = (v && *v) ? std::atol(v) : 0;
-    return ms > 0 ? static_cast<uint32_t>(ms) : SLEEP_TIMEOUT_MS;
-#endif
-}
-
-bool isUsbCdcConnected() {
-#if defined(ESP_PLATFORM) && defined(ARDUINO_USB_MODE) && ARDUINO_USB_MODE && defined(ARDUINO_USB_CDC_ON_BOOT) && ARDUINO_USB_CDC_ON_BOOT
-    return Serial.isConnected();
-#elif !defined(ESP_PLATFORM)
-    const char* v = std::getenv("SIM_USB_SERIAL");
-    return v && *v == '1';
-#else
-    return false;
-#endif
-}
+uint32_t batteryCheckIntervalMs() { return Platform::batteryCheckIntervalMs(); }
+uint32_t sleepTimeoutMs() { return Platform::sleepTimeoutMs(); }
+bool isUsbCdcConnected() { return Platform::usbSerialConnected(); }
 }  // namespace
 
 RTC_DATA_ATTR static int rtcSavedState = STATE_HOME;
@@ -78,15 +48,10 @@ RTC_NOINIT_ATTR static uint32_t rtcOpenBookAfterRestart;
 static constexpr uint32_t kOpenBookMagic = 0x0B00C0DE;
 
 bool PowerService::restartIntoLastBook() {
-#if defined(ESP_PLATFORM)
+    if (!Platform::restartSupported()) return false;
     Serial.println("[Power] Not enough memory to open the book: restarting into it.");
     rtcOpenBookAfterRestart = kOpenBookMagic;
-    Serial.flush();
-    esp_restart();
-    return true;
-#else
-    return false;
-#endif
+    Platform::restart();
 }
 
 bool PowerService::takeRestartIntoBook() {
@@ -155,24 +120,7 @@ void PowerService::idleWaitOrLightSleep(AppContext& ctx) {
     const int8_t irqPin = Buttons.touchWakeIrqPin();
     const bool irqActiveLow = Buttons.touchWakeIrqActiveLow();
 
-    bool gpioAlreadyAsserted = false;
-#if defined(ESP_PLATFORM)
-    const int irqActiveLevel = irqActiveLow ? 0 : 1;
-    if (irqPin >= 0 && gpio_get_level(static_cast<gpio_num_t>(irqPin)) == irqActiveLevel) {
-        gpioAlreadyAsserted = true;
-    }
-    const auto& bi = BoardConfig::ACTIVE.input;
-    const struct { int8_t pin; int activeLevel; } wakeButtons[] = {
-        { bi.up, 0 }, { bi.down, 0 }, { bi.left, 0 },
-        { bi.right, 0 }, { bi.confirm, 0 }, { bi.back, 0 },
-        { bi.power, bi.powerActiveHigh ? 1 : 0 },
-    };
-    for (const auto& wb : wakeButtons) {
-        if (wb.pin >= 0 && gpio_get_level(static_cast<gpio_num_t>(wb.pin)) == wb.activeLevel) {
-            gpioAlreadyAsserted = true;
-        }
-    }
-#endif
+    const bool gpioAlreadyAsserted = Platform::wakeInputActive(irqPin, irqActiveLow);
 
     LightSleepPolicy::Inputs in;
     in.featureBuilt = Platform::kDevice.touchWake;
@@ -207,43 +155,14 @@ void PowerService::idleWaitOrLightSleep(AppContext& ctx) {
     }
     if (ctx.currentState == STATE_READING && ctx.config.sbClock && !Modal.isActive()) {
         wt.readingClockActive = true;
-        time_t nowSec = time(nullptr);
+        const time_t nowSec = Platform::systemTime();
         if (nowSec > 1600000000L) {
             const uint32_t secIntoMin = static_cast<uint32_t>(nowSec % 60);
             wt.msToNextMinute = (60u - secIntoMin) * 1000u + 50u;
         }
     }
 
-    const uint32_t waitMs = LightSleepPolicy::nextWakeDelayMs(wt);
-#if defined(ESP_PLATFORM)
-    if (waitMs < 50) {
-        delay(10);
-        return;
-    }
-    gpio_wakeup_enable(static_cast<gpio_num_t>(irqPin),
-                       irqActiveLow ? GPIO_INTR_LOW_LEVEL : GPIO_INTR_HIGH_LEVEL);
-    for (const auto& wb : wakeButtons) {
-        if (wb.pin >= 0 && wb.pin != irqPin) {
-            gpio_wakeup_enable(static_cast<gpio_num_t>(wb.pin),
-                               wb.activeLevel ? GPIO_INTR_HIGH_LEVEL : GPIO_INTR_LOW_LEVEL);
-        }
-    }
-    esp_sleep_enable_gpio_wakeup();
-    esp_sleep_enable_timer_wakeup(static_cast<uint64_t>(waitMs) * 1000ULL);
-    esp_light_sleep_start();
-    for (const auto& wb : wakeButtons) {
-        if (wb.pin >= 0 && wb.pin != irqPin) {
-            gpio_wakeup_disable(static_cast<gpio_num_t>(wb.pin));
-        }
-    }
-    gpio_wakeup_disable(static_cast<gpio_num_t>(irqPin));
-    esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_GPIO);
-    esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_TIMER);
-#else
-    (void)irqActiveLow;
-    (void)waitMs;
-    delay(10);
-#endif
+    Platform::lightSleep(LightSleepPolicy::nextWakeDelayMs(wt), irqPin, irqActiveLow);
 }
 
 void PowerService::checkBattery(AppContext& ctx) {

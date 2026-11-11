@@ -35,6 +35,7 @@ LDFLAGS += $(shell sdl2-config --libs)
 SRCS_CXX = \
     simulator/src/sim_main.cpp \
     simulator/src/net_sim.cpp \
+    simulator/src/platform_sim.cpp \
     src/main.cpp \
     src/app/app_state.cpp \
     src/app/app_controller.cpp \
