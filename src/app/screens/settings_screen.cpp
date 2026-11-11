@@ -64,13 +64,14 @@ void handleMenu(AppContext& ctx, const ButtonEvent& event, int& selected, int co
 void editField(AppContext& ctx, const char* title, const String& prompt, String& field, KeyboardMode mode,
                RedrawFn redraw, const String& savedLine1, bool showValue,
                void (*beforeSave)(AppContext&) = nullptr) {
+    // The list shows the new value: no "Saved" message to wait out (1.5 s and two refreshes).
+    (void)savedLine1;
+    (void)showValue;
     if (KeyboardUI::show(title, prompt, field, mode)) {
         if (beforeSave) beforeSave(ctx);
         ctx.config.save();
-        Modal.showMessage(tr(MsgId::COMMON_SAVED), savedLine1, showValue ? field : String(""), "", "", 1500, /*fullRedraw=*/false);
-    } else {
-        redraw(ctx, false);
     }
+    redraw(ctx, false);
 }
 
 // Returns true (and has already redrawn the screen) if the user pressed BACK during a network step.
@@ -207,11 +208,8 @@ void executeWifiSetting(AppContext& ctx, int index) {
                      (ctx.config.wifiSsid.length() > 0 ? ctx.config.wifiSsid.c_str() : tr(MsgId::WIFI_KB_PASS_NONE)));
             if (KeyboardUI::show(tr(MsgId::WIFI_KB_PASS_TITLE), String(promptBuf), ctx.config.wifiPass, KB_MODE_PASSWORD)) {
                 ctx.config.save();
-                Modal.showMessage(tr(MsgId::WIFI_KB_PASS_SAVED_TITLE), tr(MsgId::WIFI_KB_PASS_SAVED_L1),
-                                  ctx.config.wifiPass.length() > 0 ? tr(MsgId::WIFI_KB_PASS_SAVED_L2) : tr(MsgId::WIFI_KB_PASS_OPEN), "", "", 1500, false);
-            } else {
-                drawWifiSettingsScreen(ctx, false);
             }
+            drawWifiSettingsScreen(ctx, false);   // the row shows the (masked) password or "open"
             break;
         }
         case 3:
@@ -376,10 +374,10 @@ void handleLanguageSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
             ctx.config.language = newLang;
             I18n::setLanguage(newLang);
             ctx.config.save();
-            char msg[64];
-            snprintf(msg, sizeof(msg), tr(MsgId::LANG_SAVED_MSG_FMT), I18n::getLanguageName(newLang));
+            // The settings, already in the new language, are the confirmation.
             ctx.currentState = STATE_SETTINGS;
-            Modal.showMessage(tr(MsgId::LANG_SAVED_TITLE), String(msg), "", "", "", 1500, false);
+            LibraryManager::getInstance().touch();   // the home screen's texts too
+            drawSettingsScreen(ctx, false);
             break;
         }
         case BTN_BACK:

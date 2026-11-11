@@ -16,6 +16,7 @@
 #include "bookmarks.h"
 #include "sync_clock.h"
 #include "../ui/text_utils.h"
+#include "power_service.h"
 
 bool SyncService::s_syncCancelled = false;
 uint32_t SyncService::s_lastProgressTime = 0;
@@ -351,7 +352,7 @@ bool SyncService::downloadBook(AppContext& ctx, BookItem& book, AppState returnS
     const String url = book.downloadUrl();
     if (url.length() == 0) {
         drawStatusModal(tr(MsgId::COMMON_ERROR), tr(MsgId::SYNC_ERR_FILE_NOT_FOUND), "");
-        delay(2000);
+        PowerService::waitOrKey(2000);
         return false;
     }
 
@@ -368,7 +369,7 @@ bool SyncService::downloadBook(AppContext& ctx, BookItem& book, AppState returnS
     if (cancelled()) return false;
     if (!wifi) {
         drawStatusModal(tr(MsgId::WIFI_ERR_TITLE), tr(MsgId::WIFI_TEST_ERR_L1), tr(MsgId::WIFI_ERR_CHECK_SETTINGS));
-        delay(2000);
+        PowerService::waitOrKey(2000);
         return false;
     }
 
@@ -412,7 +413,7 @@ bool SyncService::downloadBook(AppContext& ctx, BookItem& book, AppState returnS
     if (cancelled()) return false;
     if (!ok) {
         drawStatusModal(tr(MsgId::COMMON_ERROR), tr(MsgId::SYNC_DOWNLOAD_ERR_L1), tr(MsgId::SYNC_DOWNLOAD_ERR_L2));
-        delay(2000);
+        PowerService::waitOrKey(2000);
         return false;
     }
     return true;
@@ -430,7 +431,7 @@ void returnFromSync(AppContext& ctx, AppState prevState) {
 void showConfigError(AppContext& ctx, AppState prevState, const char* what, const char* line1, const char* line2) {
     Serial.printf("[Sync] Not configured: %s\n", what);
     drawStatusModal(tr(MsgId::SYNC_CONFIG_ERR_TITLE), line1, line2);
-    delay(2000);
+    PowerService::waitOrKey(2000);
     SyncService::showState(ctx, prevState);
 }
 
@@ -570,7 +571,7 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
         }
         Serial.println("[Sync] Wi-Fi connection failed.");
         drawStatusModal(tr(MsgId::WIFI_ERR_TITLE), tr(MsgId::SYNC_ERR_WIFI_CONNECT_L1), tr(MsgId::SYNC_ERR_WIFI_CONNECT_L2));
-        delay(1800);
+        PowerService::waitOrKey(1800);
         lib.scanLocalBooks();
         returnFromSync(ctx, prevState);
         return;
@@ -630,7 +631,7 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
             snprintf(l2, sizeof(l2), tr(MsgId::SYNC_CATALOG_PARSE_FMT2), (unsigned)(ci.heapStart / 1024),
                      (unsigned)(ci.heapMin / 1024), ci.streamError);
             drawStatusModal(tr(MsgId::SYNC_CATALOG_PARSE_ERR_TITLE), l1, l2, tr(MsgId::SYNC_CATALOG_KEPT));
-            delay(4000);
+            PowerService::waitOrKey(4000);
             catalog.clear();
             Storage.loadCatalog(catalog);
         } else if (ci.truncated) {
@@ -690,11 +691,11 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
         char catInfo[64];
         snprintf(catInfo, sizeof(catInfo), tr(MsgId::SYNC_FOUND_BOOKS_FMT), (int)catalog.size());
         drawStatusModal(tr(MsgId::SYNC_SUCCESS_TITLE), catInfo, tr(MsgId::SYNC_CATALOG_UPDATED_L2));
-        delay(800);
+        PowerService::waitOrKey(800);
     } else {
         Serial.println("[Sync] Book Orbit server not reachable or catalog fetch failed!");
         drawStatusModal(tr(MsgId::SYNC_SERVER_UNREACHABLE_TITLE), tr(MsgId::SYNC_SERVER_UNREACHABLE_L1), tr(MsgId::SYNC_SERVER_UNREACHABLE_L2));
-        delay(1800);
+        PowerService::waitOrKey(1800);
     }
 
     // The fetched catalog is on the card now: free it (and the per-book results)

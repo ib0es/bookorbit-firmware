@@ -96,6 +96,16 @@ void PowerService::checkBattery(AppContext& ctx) {
     s_lowReadings = 0;
 }
 
+void PowerService::waitOrKey(uint32_t ms) {
+    Buttons.clearEvents();
+    const uint32_t t0 = millis();
+    ButtonEvent event;
+    while (millis() - t0 < ms) {
+        if (pollModalEvent(event) && event.action == ACTION_CLICK) break;
+    }
+    Buttons.clearEvents();
+}
+
 bool PowerService::pollModalEvent(ButtonEvent& event) {
     AppContext& ctx = AppController::getInstance().getContext();
 
