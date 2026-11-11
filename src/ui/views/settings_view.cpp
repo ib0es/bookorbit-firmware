@@ -83,11 +83,9 @@ SettingItemDef getSettingItemDef(const AppContext& ctx, int index) {
                 : (ctx.config.sleepCoverFitMode == 0 ? String(tr(MsgId::SLEEP_COVER_MODE_FIT)) : String(tr(MsgId::SLEEP_COVER_MODE_FILL)));
             return { tr(MsgId::SETTINGS_ITEM_SLEEP_COVER), sleepVal, tr(MsgId::SETTINGS_TAG_SLEEP) };
         }
-        case 4:
-            return { tr(MsgId::SETTINGS_ITEM_RELOAD_SD), tr(MsgId::SETTINGS_ITEM_RELOAD_SD_SUB), tr(MsgId::SETTINGS_TAG_SD) };
-        case 5:
-            return { tr(MsgId::SETTINGS_ITEM_SAVE_SD), tr(MsgId::SETTINGS_ITEM_SAVE_SD_SUB), tr(MsgId::SETTINGS_TAG_SD) };
-        case 7: {   // Synchronization submenu: what is on, in a few words
+        case 4:   // reload / save: a submenu (service actions, not settings of their own)
+            return { tr(MsgId::SETTINGS_ITEM_SD_FILE), tr(MsgId::SETTINGS_ITEM_SD_FILE_SUB), tr(MsgId::SETTINGS_TAG_SD) };
+        case 6: {   // Synchronization submenu: what is on, in a few words
             String on;
             const struct { bool v; MsgId m; } parts[4] = {
                 { ctx.config.syncOnClose, MsgId::SYNC_SHORT_CLOSE }, { ctx.config.syncOnSleep, MsgId::SYNC_SHORT_SLEEP },
@@ -100,13 +98,13 @@ SettingItemDef getSettingItemDef(const AppContext& ctx, int index) {
             if (!on.length()) on = tr(MsgId::SETTINGS_SYNC_NONE);
             return { tr(MsgId::SETTINGS_ITEM_SYNC), on, tr(MsgId::SETTINGS_TAG_SYNC) };
         }
-        case 8: {
+        case 7: {
             char v[48];
             if (ctx.config.frontlight <= 0) snprintf(v, sizeof(v), "%s", tr(MsgId::SETTINGS_FRONTLIGHT_OFF));
             else snprintf(v, sizeof(v), tr(MsgId::SETTINGS_FRONTLIGHT_FMT), ctx.config.frontlight, ctx.config.frontlightWarm);
             return { tr(MsgId::SETTINGS_ITEM_FRONTLIGHT), String(v), tr(MsgId::SETTINGS_TAG_LIGHT) };
         }
-        case 6:
+        case 5:
         default:
         {
             String sub = tr(MsgId::SETTINGS_ITEM_DEVICE_INFO_SUB);
@@ -192,6 +190,11 @@ SettingItemDef getSleepCoverSettingItemDef(const AppContext& ctx, int index) {
     }
 }
 
+SettingItemDef getSdSettingItemDef(const AppContext&, int index) {
+    if (index == 0) return { tr(MsgId::SETTINGS_ITEM_RELOAD_SD), tr(MsgId::SETTINGS_ITEM_RELOAD_SD_SUB), tr(MsgId::SETTINGS_TAG_SD) };
+    return { tr(MsgId::SETTINGS_ITEM_SAVE_SD), tr(MsgId::SETTINGS_ITEM_SAVE_SD_SUB), tr(MsgId::SETTINGS_TAG_SD) };
+}
+
 const LangDef LANG_DEFS[(size_t)AppLanguage::COUNT] = {
     { AppLanguage::EN, "English", "English (Default)" },
     { AppLanguage::RU, "Русский", "Русский язык" },
@@ -231,6 +234,11 @@ void drawSyncSettingsScreen(AppContext& ctx, bool fullRefresh) {
     drawCardScreen(ctx, tr(MsgId::SYNC_TITLE), getSyncSettingItemDef, NUM_SYNC_SETTINGS_ITEMS,
                    ctx.selectedSyncSettingIndex, tr(MsgId::SYNC_HINT_NAV), tr(MsgId::SYNC_HINT_BACK), fullRefresh,
                    "drawSyncSettingsScreen");
+}
+
+void drawSdSettingsScreen(AppContext& ctx, bool fullRefresh) {
+    drawCardScreen(ctx, tr(MsgId::SD_SETTINGS_TITLE), getSdSettingItemDef, NUM_SD_SETTINGS_ITEMS, ctx.selectedSdSettingIndex,
+                   tr(MsgId::SETTINGS_HINT_NAV), tr(MsgId::SETTINGS_HINT_BACK), fullRefresh, "drawSdSettingsScreen");
 }
 
 void drawLanguageSettingsScreen(AppContext& ctx, bool fullRefresh) {
@@ -346,3 +354,7 @@ void updateSleepCoverSettingsSelection(AppContext& ctx, int prevIndex, int newIn
     if (prevIndex != newIndex) drawSleepCoverSettingsScreen(ctx, false);
 }
 void updateSleepCoverSettingsItem(AppContext& ctx, int) { drawSleepCoverSettingsScreen(ctx, false); }
+
+void updateSdSettingsSelection(AppContext& ctx, int prevIndex, int newIndex) {
+    if (prevIndex != newIndex) drawSdSettingsScreen(ctx, false);
+}

@@ -81,6 +81,7 @@ bool translate(AppContext& ctx, const ButtonEvent& tap, ButtonEvent& out) {
         case STATE_STATUSBAR_MENU:    ctx.selectedStatusBarIndex = value; break;
         case STATE_SYNC_SETTINGS:     ctx.selectedSyncSettingIndex = value; break;
         case STATE_SLEEP_COVER_SETTINGS: ctx.selectedSleepCoverIndex = value; break;
+        case STATE_SD_SETTINGS:       ctx.selectedSdSettingIndex = value; break;
         case STATE_FRONTLIGHT_SETTINGS:  // sliders handle the tap themselves
             SettingsScreen::handleFrontlightTap(ctx, action, value, tap.x);
             return false;

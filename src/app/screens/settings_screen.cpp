@@ -99,12 +99,12 @@ void executeSetting(AppContext& ctx, int index) {
             ctx.selectedLanguageIndex = (int)ctx.config.language;
             drawLanguageSettingsScreen(ctx, false);
             break;
-        case 7:  // Synchronization submenu
+        case 6:  // Synchronization submenu
             ctx.currentState = STATE_SYNC_SETTINGS;
             ctx.selectedSyncSettingIndex = 0;
             drawSyncSettingsScreen(ctx, false);
             break;
-        case 8:  // Frontlight (only listed on boards that have one)
+        case 7:  // Frontlight (only listed on boards that have one)
             ctx.currentState = STATE_FRONTLIGHT_SETTINGS;
             ctx.selectedFrontlightIndex = 0;
             drawFrontlightScreen(ctx, false);
@@ -130,7 +130,29 @@ void executeSetting(AppContext& ctx, int index) {
             }
             drawSleepCoverSettingsScreen(ctx, false);
             break;
-        case 4:  // Reload from SD
+        case 4:  // Settings file: reload / save
+            ctx.currentState = STATE_SD_SETTINGS;
+            ctx.selectedSdSettingIndex = 0;
+            drawSdSettingsScreen(ctx, false);
+            break;
+        case 5: {  // System info
+            char batStr[64];
+            snprintf(batStr, sizeof(batStr), tr(MsgId::SETTINGS_INFO_BATTERY_FMT), Battery.getPercentage(), Battery.getVoltage());
+            MemStats::log("device info");
+            String infoTitle = tr(MsgId::SETTINGS_INFO_TITLE);
+            infoTitle.replace("%DEVICE%", uikit::deviceDisplayName());
+            String controller = tr(MsgId::SETTINGS_INFO_DISPLAY);
+            controller.replace("%CTRL%", Display.getControllerName());
+            Modal.showInfo(infoTitle, tr(MsgId::SETTINGS_INFO_FW), batStr, MemStats::summary(), controller, tr(MsgId::SETTINGS_INFO_FOOTER));
+            break;
+        }
+    }
+}
+
+// ---------------------------------------------------------------- settings file
+void executeSdSetting(AppContext& ctx, int index) {
+    switch (index) {
+        case 0:  // Reload from SD
             if (ctx.config.load()) {
                 // Everything in the file takes effect (an open book is laid out again once).
                 AppController::getInstance().applyConfig();
@@ -144,7 +166,7 @@ void executeSetting(AppContext& ctx, int index) {
                                   tr(MsgId::SETTINGS_MODAL_SD_LOAD_ERR_L2));
             }
             break;
-        case 5:  // Save to SD
+        case 1:  // Save to SD
             if (ctx.config.save()) {
                 Modal.showMessage(tr(MsgId::SETTINGS_MODAL_SD_SAVE_OK_TITLE),
                                   tr(MsgId::SETTINGS_MODAL_SD_SAVE_OK_L1),
@@ -155,17 +177,6 @@ void executeSetting(AppContext& ctx, int index) {
                                   tr(MsgId::SETTINGS_MODAL_SD_SAVE_ERR_L2));
             }
             break;
-        case 6: {  // System info
-            char batStr[64];
-            snprintf(batStr, sizeof(batStr), tr(MsgId::SETTINGS_INFO_BATTERY_FMT), Battery.getPercentage(), Battery.getVoltage());
-            MemStats::log("device info");
-            String infoTitle = tr(MsgId::SETTINGS_INFO_TITLE);
-            infoTitle.replace("%DEVICE%", uikit::deviceDisplayName());
-            String controller = tr(MsgId::SETTINGS_INFO_DISPLAY);
-            controller.replace("%CTRL%", Display.getControllerName());
-            Modal.showInfo(infoTitle, tr(MsgId::SETTINGS_INFO_FW), batStr, MemStats::summary(), controller, tr(MsgId::SETTINGS_INFO_FOOTER));
-            break;
-        }
     }
 }
 
@@ -326,6 +337,11 @@ namespace SettingsScreen {
 void handleSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
     handleMenu(ctx, event, ctx.selectedSettingIndex, settingsItemCount(), updateSettingsSelection,
                executeSetting, STATE_HOME, drawHomeScreen, false);
+}
+
+void handleSdSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
+    handleMenu(ctx, event, ctx.selectedSdSettingIndex, NUM_SD_SETTINGS_ITEMS, updateSdSettingsSelection,
+               executeSdSetting, STATE_SETTINGS, drawSettingsScreen, false);
 }
 
 void handleWifiSettingsEvent(AppContext& ctx, const ButtonEvent& event) {

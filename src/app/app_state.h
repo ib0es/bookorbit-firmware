@@ -24,7 +24,8 @@ enum AppState {
     STATE_TYPEFACE_MENU,
     STATE_APPEARANCE_MENU,
     STATE_BOOKMARKS,
-    STATE_STATUSBAR_MENU
+    STATE_STATUSBAR_MENU,
+    STATE_SD_SETTINGS
 };
 
 struct AppConfig {
@@ -74,7 +75,7 @@ struct AppConfig {
 
 const int NUM_HOME_ITEMS = 4;      // 0=Recent, 1=Catalog, 2=Settings, 3=Sync
 const int NUM_CATALOG_ITEMS = 9;   // Search, All, Libraries, Authors, Series, Folders, Downloaded, Completed, Toggle Hide Completed
-const int NUM_SETTINGS_ITEMS = 9;  // + 1 (frontlight) on boards that have one, see settingsItemCount()
+const int NUM_SETTINGS_ITEMS = 8;  // + 1 (frontlight) on boards that have one, see settingsItemCount()
 int settingsItemCount();
 // The page orientation row: the last one (after the frontlight where there is one).
 inline int orientationSettingIndex() { return settingsItemCount() - 1; }
@@ -82,6 +83,7 @@ const int NUM_WIFI_SETTINGS_ITEMS = 6;
 const int NUM_SERVER_SETTINGS_ITEMS = 4;
 const int NUM_SYNC_SETTINGS_ITEMS = 4;
 const int NUM_SLEEP_COVER_ITEMS = 3;
+const int NUM_SD_SETTINGS_ITEMS = 2;   // reload / save /config.json
 const int NUM_READER_MENU_ITEMS = 6;
 
 struct AppContext {
@@ -105,5 +107,6 @@ struct AppContext {
     int selectedBookmarkIndex = 0;   // 0 = add/remove this page's, then the bookmarks
     int selectedSyncSettingIndex = 0;
     int selectedSleepCoverIndex = 0;
+    int selectedSdSettingIndex = 0;
     uint32_t lastActivityTime = 0;
 };
