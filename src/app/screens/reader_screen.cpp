@@ -25,16 +25,6 @@
 
 namespace {
 
-// Where the reader was before the last jump (a chapter, the table of contents,
-// a bookmark): BACK in the book goes back there once instead of closing it.
-bool s_hasJumpBack = false;
-BookReader::Position s_jumpBack;
-
-void rememberJumpBack() {
-    s_jumpBack = Reader.position();
-    s_hasJumpBack = true;
-}
-
 // The menus only change the settings; the book is laid out again once, when
 // they are left (not on every step through the sizes and spacings).
 void commitFontSize(AppContext& ctx) {
@@ -73,7 +63,6 @@ void closeBookAndGoHome(AppContext& ctx, bool fullRefresh) {
     const String path = lib.lastBook.filePath;
     Reader.closeBook();
     Bookmarks.clear();
-    s_hasJumpBack = false;
     Reader.setFontSize(ctx.config.readerFontSize);  // closed: no pagination, used by the next open
     lib.ensureScanned();   // woken up straight into the book: the library was not scanned yet
     ctx.currentState = STATE_HOME;
@@ -163,7 +152,6 @@ bool openBook(AppContext& ctx, const String& path, const String& title, const St
         }
         return false;
     }
-    s_hasJumpBack = false;
     Bookmarks.load(path);
     placeBookmarks(Bookmarks);
     MemStats::log("book opened");
@@ -251,24 +239,14 @@ void handleReadingEvent(AppContext& ctx, const ButtonEvent& event) {
         case Action::Prev:
             if (Reader.prevPage()) lib.recordReaderMove(false, false);
             break;
-        case Action::Down: {
-            const BookReader::Position before = Reader.position();
-            if (Reader.nextChapter()) {
-                s_jumpBack = before;
-                s_hasJumpBack = true;
-                lib.recordReaderMove(true, true);
-            }
+        // A jump (a chapter here, the table of contents, a bookmark) is saved at
+        // once; BACK closes the book from wherever it is (no going back, B6).
+        case Action::Down:
+            if (Reader.nextChapter()) lib.recordReaderMove(true, true);
             break;
-        }
-        case Action::Up: {
-            const BookReader::Position before = Reader.position();
-            if (Reader.prevChapter()) {
-                s_jumpBack = before;
-                s_hasJumpBack = true;
-                lib.recordReaderMove(true, true);
-            }
+        case Action::Up:
+            if (Reader.prevChapter()) lib.recordReaderMove(true, true);
             break;
-        }
         case Action::Select:
             ctx.currentState = STATE_READER_MENU;
             ctx.selectedReaderMenuIndex = 0;
@@ -276,13 +254,6 @@ void handleReadingEvent(AppContext& ctx, const ButtonEvent& event) {
             drawReaderMenuScreen(ctx, uikit::periodicFullRefresh());
             break;
         case Action::Back:
-            if (s_hasJumpBack) {   // back to where the jump started (once), not out of the book
-                s_hasJumpBack = false;
-                Reader.goTo(s_jumpBack);
-                lib.recordReaderMove(true, true);
-                Reader.renderCurrentPage();
-                break;
-            }
             closeBookAndGoHome(ctx, false);
             break;
         default:
@@ -312,7 +283,6 @@ void handleTocEvent(AppContext& ctx, const ButtonEvent& event) {
         }
     } else if (key == Action::Select) {
         if (Reader.getChapterCount() > 0) {
-            rememberJumpBack();
             Reader.goToChapter(ctx.selectedTocIndex);
             lib.recordReaderMove(true, true);
         }
@@ -573,8 +543,7 @@ void handleBookmarksEvent(AppContext& ctx, const ButtonEvent& event) {
                 returnToReading(ctx);   // the ribbon shows on the page
             } else if (sel <= Bookmarks.count()) {
                 const Bookmark& b = Bookmarks.items()[sel - 1];
-                rememberJumpBack();
-                if (!b.placed()) {
+                    if (!b.placed()) {
                     // From the server and not placed yet (its chapter could not be read).
                     if (!Reader.setPageByCfi(b.cfi, 0.0f)) break;
                 } else {
