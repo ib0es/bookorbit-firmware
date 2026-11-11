@@ -73,8 +73,10 @@ void drawBookMenuScreen(AppContext& ctx, bool fullRefresh) {
     BookMenuAction items[BOOK_MENU_MAX];
     const int n = bookMenuItems(*book, items);
     if (ctx.selectedBookMenuIndex >= n) ctx.selectedBookMenuIndex = n - 1;
-    const int16_t cardH = (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 22);
-    for (int i = 0; i < n; i++) {
+    // A landscape screen: tighter cards, then a page at a time.
+    const CardList l = cardList(area, n, ctx.selectedBookMenuIndex,
+                                (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 22));
+    for (int i = l.first; i < n && i < l.first + l.perPage; i++) {
         MsgId title, sub;
         switch (items[i]) {
             case BOOK_MENU_READ:     title = MsgId::BOOK_MENU_READ;     sub = MsgId::BOOK_MENU_READ_SUB; break;
@@ -84,9 +86,9 @@ void drawBookMenuScreen(AppContext& ctx, bool fullRefresh) {
             case BOOK_MENU_DELETE:   title = MsgId::BOOK_MENU_DELETE;   sub = MsgId::BOOK_MENU_DELETE_SUB; break;
             default:                 title = MsgId::BOOK_MENU_BACK;     sub = MsgId::BOOK_MENU_BACK_SUB; break;
         }
-        card(f, takeTop(area, cardH), tr(title), tr(sub), nullptr, i == ctx.selectedBookMenuIndex,
+        card(f, takeTop(area, l.cardH), tr(title), tr(sub), nullptr, i == ctx.selectedBookMenuIndex,
              ActionBookMenuItem, (int16_t)i);
-        takeTop(area, kGap);
+        takeTop(area, l.gap);
     }
     const uint32_t t1 = millis();
     present(fullRefresh);

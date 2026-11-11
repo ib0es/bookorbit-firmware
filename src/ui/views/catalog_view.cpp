@@ -52,20 +52,14 @@ void drawCatalogScreen(AppContext& ctx, bool fullRefresh) {
     area = insetXY(area, kMargin, 8);
 
     const int count = NUM_CATALOG_ITEMS;
-    int16_t cardH = (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 16);
-    int16_t gap = 4;
-    const int16_t minCardH = (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 4);
-    if (count > 0 && count * (cardH + gap) > area.height) {
-        gap = 3;
-        cardH = (int16_t)(area.height / count - gap);
-        if (cardH < minCardH) cardH = minCardH;
-    }
-
-    for (int i = 0; i < count; i++) {
+    // Nine cards: tighter in portrait, a page at a time on a landscape screen.
+    const CardList l = cardList(area, count, ctx.selectedCatalogIndex,
+                                (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 16), 4);
+    for (int i = l.first; i < count && i < l.first + l.perPage; i++) {
         CatalogItemDef item = getCatalogItemDef(ctx, i);
-        card(f, takeTop(area, cardH), item.title, item.value.c_str(), item.tag,
+        card(f, takeTop(area, l.cardH), item.title, item.value.c_str(), item.tag,
              i == ctx.selectedCatalogIndex, 1, (int16_t)i);
-        takeTop(area, gap);
+        takeTop(area, l.gap);
     }
 
     present(fullRefresh);

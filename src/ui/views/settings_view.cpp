@@ -34,19 +34,11 @@ void drawCardScreen(const AppContext& ctx, const char* title, ItemDefFn def, int
     (void)hintBack;
     area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_SELECT), tr(MsgId::KEY_BACK), tr(MsgId::KEY_SELECT)});
     area = insetXY(area, kMargin, 10);
-    int16_t cardH = (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 22);
-    int16_t gap = kGap;
     // Long lists (the main settings with a frontlight, touch hints taking more
-    // room) shrink the cards' padding so every item stays on screen.
-    const int16_t minCardH = (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 6);
-    if (count > 0 && count * (cardH + gap) > area.height) {
-        gap = 4;
-        cardH = (int16_t)(area.height / count - gap);
-        if (cardH < minCardH) cardH = minCardH;
-    }
-    // Still too many (a landscape screen): the page of the list the selection is on.
-    const int perPage = std::max(1, (int)((area.height + gap) / (cardH + gap)));
-    const int first = count > perPage ? (selected / perPage) * perPage : 0;
+    // room) get tighter cards; a landscape screen shows a page at a time.
+    const CardList l = cardList(area, count, selected, (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 22));
+    const int16_t cardH = l.cardH, gap = l.gap;
+    const int first = l.first, perPage = l.perPage;
     for (int i = first; i < count && i < first + perPage; i++) {
         SettingItemDef item = def(ctx, i);
         card(f, takeTop(area, cardH), item.title, item.value.c_str(), item.tag, i == selected, 1, (int16_t)i);

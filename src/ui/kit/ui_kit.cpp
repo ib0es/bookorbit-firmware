@@ -23,6 +23,7 @@ fi::DisplayTarget* g_target = nullptr;
 fi::DeviceContext g_device{};
 fi::InteractionBuffer<kMaxHits> g_hits;
 Rect g_backBand{};  // title bar of the last topBar() screen
+ListPager g_pager{};  // the paged list of the last drawn screen
 
 // Serves the symbol glyphs (arrows, check mark, dashes...) that the Carlito
 // tables lack, at the pixel size of the font that asked (its yAdvance).
@@ -186,7 +187,13 @@ bool periodicFullRefresh() {
     return (++n % 8) == 0;
 }
 
-Pass::Pass() : frame_(target(), device(), input_, g_hits) { g_backBand = Rect{}; }
+Pass::Pass() : frame_(target(), device(), input_, g_hits) {
+    g_backBand = Rect{};
+    g_pager = ListPager{};
+}
+
+void setListPager(int count, int perPage) { g_pager = ListPager{count, perPage}; }
+ListPager listPager() { return g_pager; }
 
 bool backTapped(int16_t x, int16_t y) { return g_backBand.contains(x, y); }
 
@@ -458,6 +465,23 @@ void pill(Rect r, const char* label, bool dark, bool onInverted) {
     }
 }
 
+int16_t cardMinHeight() { return (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 8); }
+
+CardList cardList(Rect area, int count, int selected, int16_t roomyH, int16_t roomyGap) {
+    CardList l{roomyH, roomyGap, 0, count};
+    if (count > 0 && count * (roomyH + roomyGap) > area.height) {
+        l.gap = 4;
+        l.cardH = (int16_t)std::max<int>(cardMinHeight(), area.height / count - l.gap);
+    }
+    l.perPage = std::max(1, (int)((area.height + l.gap) / (l.cardH + l.gap)));
+    if (count > l.perPage) {
+        if (selected < 0) selected = 0;
+        l.first = (selected / l.perPage) * l.perPage;
+        setListPager(count, l.perPage);
+    }
+    return l;
+}
+
 void card(Frame& f, Rect r, const char* title, const char* subtitle, const char* tag, bool selected,
           fi::ActionId action, int16_t value) {
     const Color ink = selected ? Color::White : Color::Black;
@@ -467,18 +491,25 @@ void card(Frame& f, Rect r, const char* title, const char* subtitle, const char*
         fill(r, Color::White);
         frameRect(r, Color::Black, 1);
     }
-    Rect inner = insetXY(r, 12, 8);
+    const int16_t th = lineHeight(FontTitle);
+    const int16_t sh = lineHeight(FontSmall);
+    const bool hasSub = subtitle && *subtitle;
+    // Roomy cards keep 8 px above the title; a tight one (a long list, a
+    // landscape screen) shares what is left so the second line stays inside.
+    const int16_t need = (int16_t)(th + (hasSub ? 4 + sh : 0));
+    const int16_t padY = (int16_t)std::max(1, std::min(8, (r.height - need) / 2));
+    Rect inner{(int16_t)(r.x + 12), (int16_t)(r.y + padY), (int16_t)(r.width - 24), (int16_t)(r.height - 2 * padY)};
     int16_t tagW = 0;
     if (tag && *tag) {
         tagW = pillWidth(tag);
-        const int16_t ph = (int16_t)(lineHeight(FontSmall) + 6);
+        const int16_t ph = (int16_t)std::min<int>(sh + 6, inner.height);
         pill(Rect{(int16_t)(inner.right() - tagW), inner.y, tagW, ph}, tag, true, selected);
     }
-    const int16_t th = lineHeight(FontTitle);
     Rect titleR{inner.x, inner.y, (int16_t)(inner.width - tagW - (tagW ? kGap : 0)), th};
     text(titleR, title, FontTitle, ink);
-    if (subtitle && *subtitle) {
-        Rect sub{inner.x, (int16_t)(inner.y + th + 4), inner.width, (int16_t)(inner.bottom() - inner.y - th - 4)};
+    if (hasSub) {
+        const int16_t sy = (int16_t)(inner.y + th + (r.height >= need + 16 ? 4 : 2));
+        Rect sub{inner.x, sy, inner.width, (int16_t)std::max<int>(sh, inner.bottom() - sy)};
         text(sub, subtitle, FontSmall, ink, TextAlign::Left, 1);
     }
     if (action != fi::NO_ACTION) f.hit(r, action, value);
