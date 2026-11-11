@@ -137,15 +137,26 @@ CASES = [
     ("home: a tap cancels a running sync",
      "[T240,400;]" + HOME_SYNC + "ww",
      lambda log, sd: "Operation aborted by user" in log),
+    # Landscape: the home rows sit beside the book card (stacked they were below
+    # the screen). Taps in the panel's portrait coordinates: the Settings row.
+    ("home in landscape: the Settings row is on screen and opens by tap",
+     "T285,620;",
+     lambda log, sd: "drawSettingsScreen" in log, {"ui_orientation": 1}),
+    ("home in landscape (the other way): Sync now is on screen",
+     "T250,200;",
+     lambda log, sd: "[Sync]" in log or "SYNC" in log or "Wi-Fi" in log, {"ui_orientation": 3}),
     ("power: sleep and wake",
      "P" + "Z",
      lambda log, sd: "Entering Deep Sleep" in log and log.count("drawHomeScreen") >= 2),
 ]
 
-def run(script):
+def run(script, config=None):
     sd = tempfile.mkdtemp(); shutil.rmtree(sd)
     shutil.copytree(os.path.join(ROOT, "simulator/sdcard"), sd)
     shutil.copy(os.path.join(ROOT, "test/sim/config.json"), os.path.join(sd, "config.json"))
+    if config:   # settings the case starts with (merged into config.json)
+        p = os.path.join(sd, "config.json")
+        c = json.load(open(p)); c.update(config); json.dump(c, open(p, "w"))
     frames = tempfile.mkdtemp()
     try:
         res = subprocess.run([BIN, frames, sd, script], capture_output=True, text=True, timeout=240)
@@ -155,8 +166,9 @@ def run(script):
 
 def main():
     failed = 0
-    for name, script, check in CASES:
-        code, log, sd = run(script)
+    for case in CASES:
+        name, script, check = case[:3]
+        code, log, sd = run(script, case[3] if len(case) > 3 else None)
         problems = []
         if "KEY_NOT_ON_DEVICE" in log: problems.append("used a key Picco does not have")
         if "STUCK" in log: problems.append("stuck in a screen's input loop")
