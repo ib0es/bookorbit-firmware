@@ -190,6 +190,21 @@ bool BookOrbitClient::updateBookProgress(const String& serverHost, const String&
     return true;
 }
 
+bool BookOrbitClient::fetchBookmarks(const String&, const String&, const String&, String&,
+                                     int, int, std::vector<BookOrbitProtocol::Bookmark>& out) {
+    out.clear();
+    return true;
+}
+
+int BookOrbitClient::createBookmark(const String&, const String&, const String&, String&,
+                                    int, int, const String&, const String&) {
+    return 1;
+}
+
+bool BookOrbitClient::deleteBookmark(const String&, const String&, const String&, String&, int, int) {
+    return true;
+}
+
 String BookOrbitClient::buildUrl(const String& host, const String& path) {
     return host + path;
 }

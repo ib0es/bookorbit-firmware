@@ -132,6 +132,7 @@ int FontEngine::getTextWidth(const char* text, int scale) {
 int FontEngine::drawString(int x, int y, const char* text, EPDColor color, int scale, int maxWidth, int maxY) {
     if (!text || !*text) return y;
     if (!_initialized) begin(Display);
+    if (maxWidth < 0) maxWidth = Display.width() - x;
 
     selectFont(scale);
         _color = (color == EPD_BLACK) ? 0 : 1;

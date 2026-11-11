@@ -3,7 +3,11 @@
 #include "../app_controller.h"
 #include <WiFi.h>
 #include "../../hal/battery.h"
+#include "../../hal/rtc.h"
+#include "../../hal/imu.h"
 #include "../../hal/mem_stats.h"
+#include "../../services/sync_clock.h"
+#include "../../services/time_utils.h"
 #include "../../ui/kit/ui_kit.h"
 #include "../../hal/frontlight.h"
 #include "../../hal/display.h"
@@ -86,8 +90,21 @@ bool cancelledDuringTest(AppContext& ctx, AppState returnState) {
 // ---------------------------------------------------------------- main settings
 void executeSetting(AppContext& ctx, int index) {
     if (index == orientationSettingIndex()) {
-        // The screen a quarter turn on; an open book is laid out again for it.
-        ctx.config.uiOrientation = (ctx.config.uiOrientation + 1) & 3;
+        // Cycle: (when IMU present) Auto -> Portrait -> Landscape -> Portrait flipped -> Landscape flipped -> Auto
+        if (BoardImu.present()) {
+            if (ctx.config.autoRotate) {
+                ctx.config.autoRotate = false;
+                ctx.config.uiOrientation = 0;
+            } else if ((ctx.config.uiOrientation & 3) == 3) {
+                ctx.config.autoRotate = true;
+            } else {
+                ctx.config.uiOrientation = (ctx.config.uiOrientation + 1) & 3;
+            }
+            BoardImu.setActive(ctx.config.autoRotate);
+            AppController::getInstance().resetAutoRotate();
+        } else {
+            ctx.config.uiOrientation = (ctx.config.uiOrientation + 1) & 3;
+        }
         ctx.config.save();
         applyOrientation(ctx.config.uiOrientation, ctx.config.orientation);   // the book's pages turn with it
         drawSettingsScreen(ctx, true);
@@ -136,14 +153,41 @@ void executeSetting(AppContext& ctx, int index) {
             drawSdSettingsScreen(ctx, false);
             break;
         case 5: {  // System info
-            char batStr[64];
+            char batStr[128];
             snprintf(batStr, sizeof(batStr), tr(MsgId::SETTINGS_INFO_BATTERY_FMT), Battery.getPercentage(), Battery.getVoltage());
+            String batLine = batStr;
+            if (BoardRtc.present()) {
+                char clk[16], tz[16], rtcBuf[64];
+                if (SyncClock::formatLocalTime(ctx.config.utcOffsetMin, clk, sizeof(clk))) {
+                    TimeUtils::formatUtcOffset(ctx.config.utcOffsetMin, tz, sizeof(tz));
+                    String tStr = String(clk) + " " + tz;
+                    snprintf(rtcBuf, sizeof(rtcBuf), tr(MsgId::SETTINGS_INFO_RTC_FMT), tStr.c_str());
+                } else {
+                    snprintf(rtcBuf, sizeof(rtcBuf), "%s", tr(MsgId::SETTINGS_INFO_RTC_UNSET));
+                }
+                batLine += String("  ·  ") + rtcBuf;
+            }
             MemStats::log("device info");
             String infoTitle = tr(MsgId::SETTINGS_INFO_TITLE);
             infoTitle.replace("%DEVICE%", uikit::deviceDisplayName());
             String controller = tr(MsgId::SETTINGS_INFO_DISPLAY);
             controller.replace("%CTRL%", Display.getControllerName());
-            Modal.showInfo(infoTitle, tr(MsgId::SETTINGS_INFO_FW), batStr, MemStats::summary(), controller, tr(MsgId::SETTINGS_INFO_FOOTER));
+            if (BoardImu.present()) {
+                char imuBuf[64];
+                float ax = 0.0f, ay = 0.0f, az = 0.0f;
+                if (BoardImu.active() && BoardImu.readAccel(ax, ay, az)) {
+                    snprintf(imuBuf, sizeof(imuBuf), tr(MsgId::SETTINGS_INFO_IMU_FMT), ax, ay, az);
+                } else if (!BoardImu.active()) {
+                    snprintf(imuBuf, sizeof(imuBuf), "%s", tr(MsgId::SETTINGS_INFO_IMU_OFF));
+                } else if (BoardImu.hasLastSample()) {
+                    snprintf(imuBuf, sizeof(imuBuf), tr(MsgId::SETTINGS_INFO_IMU_FMT), BoardImu.lastAx(), BoardImu.lastAy(), BoardImu.lastAz());
+                } else {
+                    imuBuf[0] = '\0';
+                }
+                if (imuBuf[0]) controller += String("  ·  ") + imuBuf;
+            }
+            Modal.showInfo(infoTitle, tr(MsgId::SETTINGS_INFO_FW), batLine, MemStats::summary(), controller,
+                           tr(MsgId::SETTINGS_INFO_FOOTER));
             break;
         }
     }

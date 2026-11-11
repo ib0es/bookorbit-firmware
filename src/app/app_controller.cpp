@@ -13,8 +13,11 @@
 #include "../hal/display.h"
 #include "../hal/buttons.h"
 #include "../hal/battery.h"
+#include "../hal/rtc.h"
+#include "../hal/imu.h"
 #include "../hal/frontlight.h"
 #include "../hal/storage.h"
+#include "../services/sync_clock.h"
 #include "../ui/font.h"
 #include "../ui/modal.h"
 #include "../ui/kit/ui_kit.h"
@@ -73,6 +76,7 @@ void AppController::setup() {
     // the touch controller is unpowered when InputManager probes it, and touch
     // stays disabled for the whole session.
     BoardConfig::holdPowerRails();
+    BoardConfig::releaseSdRail();
     Battery.begin();
     Buttons.begin();
     MemStats::mark("battery, buttons");
@@ -86,6 +90,13 @@ void AppController::setup() {
     Display.detectBoard();
     Storage.begin();
     MemStats::mark("SD card");
+    BoardRtc.begin();
+    SyncClock::initFromRtc();
+    BoardImu.begin();
+    _autoRotate.reset();
+    _lastImuPollMs = 0;
+    _lastClockCheckMs = 0;
+    _lastClockMinute = -1;
     Display.begin();
     // A key pressed while the panel refreshes (a full refresh blocks ~3.8 s) is
     // caught then and answered right after, not lost.
@@ -162,6 +173,8 @@ void AppController::applyConfig() {
     const AppConfig& c = _ctx.config;
     I18n::setLanguage(c.language);
     Frontlight.apply(c.frontlight, c.frontlightWarm);
+    BoardImu.setActive(c.autoRotate);
+    _autoRotate.reset();
     Reader.setFullRefreshEvery(c.fullRefreshEvery);
     Reader.setSharpImages(c.sharpImages);
     Reader.setFontFamily(c.readerFont);
@@ -182,6 +195,7 @@ static uint32_t s_restUntil = 0;
 
 void AppController::loop() {
     Buttons.update();
+    Battery.tick();
     SyncService::tickBackground(_ctx);
 
     if (Buttons.takeLightSwitchChange()) {
@@ -235,6 +249,47 @@ void AppController::loop() {
     }
 
     Modal.tick();
+
+    // Auto-rotate from IMU when enabled (paused while modals or sync dialogs are open).
+    if (_ctx.config.autoRotate && BoardImu.active() && !Modal.isActive() && !SyncService::backgroundActive()) {
+        const uint32_t nowMs = millis();
+        if (nowMs - _lastImuPollMs >= 250) {
+            _lastImuPollMs = nowMs;
+            float ax = 0.0f, ay = 0.0f, az = 0.0f;
+            if (BoardImu.readAccel(ax, ay, az)) {
+                const ImuCalibration cal{_ctx.config.imuRot, _ctx.config.imuFlipX, _ctx.config.imuFlipY};
+                const int nextOrient = _autoRotate.update(ax, ay, az, _ctx.config.uiOrientation, nowMs, cal);
+                if (nextOrient >= 0 && nextOrient != _ctx.config.uiOrientation) {
+                    Serial.printf("[App] Auto-rotated UI %d -> %d (ax=%.2f ay=%.2f az=%.2f)\n",
+                                  _ctx.config.uiOrientation, nextOrient, ax, ay, az);
+                    _ctx.config.uiOrientation = nextOrient;
+                    applyOrientation(_ctx.config.uiOrientation, _ctx.config.orientation);
+                    _ctx.lastActivityTime = nowMs;
+                    redrawCurrentScreen(true);
+                }
+            }
+        }
+    } else {
+        _autoRotate.reset();
+    }
+
+    // Refresh reader status bar on minute boundaries when the clock is enabled.
+    if (_ctx.currentState == STATE_READING && _ctx.config.sbClock && !Modal.isActive() &&
+        !SyncService::backgroundActive()) {
+        const uint32_t nowMs = millis();
+        if (nowMs - _lastClockCheckMs >= 1000) {
+            _lastClockCheckMs = nowMs;
+            const int32_t curMin = SyncClock::currentLocalMinute(_ctx.config.utcOffsetMin);
+            if (_lastClockMinute < 0) {
+                _lastClockMinute = curMin;
+            } else if (curMin >= 0 && curMin != _lastClockMinute) {
+                _lastClockMinute = curMin;
+                redrawCurrentScreen(false);
+            }
+        }
+    } else {
+        _lastClockMinute = -1;
+    }
 
     // Auto deep sleep on inactivity (only when on battery, never while plugged into USB)
     PowerService::sleepIfIdle(_ctx);

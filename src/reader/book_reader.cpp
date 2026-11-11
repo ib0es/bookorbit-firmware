@@ -16,6 +16,7 @@
 #include "../hal/display.h"
 #include "../hal/mem_stats.h"
 #include "../services/progress_sync.h"
+#include "../services/sync_clock.h"
 #include "../ui/font.h"
 #include "../ui/i18n.h"
 #include "../ui/kit/ui_kit.h"
@@ -2012,6 +2013,10 @@ void BookReader::drawStatusBar() {
         if (_bar.pages == 0) add(String(getCurrentPage()) + "/" + String(getTotalPages()));
         if (_bar.pages == 1) add(String(_page + 1) + "/" + String((unsigned)curCount()));
         if (_bar.percent) add(String((int)(getProgress() * 100.0f)) + "%");
+        if (_bar.clock) {
+            char clk[8];
+            if (SyncClock::formatLocalTime(_bar.utcOffsetMin, clk, sizeof(clk))) add(String(clk));
+        }
         Rect topBand{left, 4, (int16_t)(right - left), 24};
         int16_t rw = 0;
         if (_bar.battery) {   // the battery glyph with its percentage, at the right

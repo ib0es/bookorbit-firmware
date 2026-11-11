@@ -19,6 +19,7 @@
 #include "Arduino.h"
 #include "InputManager.h"
 #include "EInkDisplay.h"
+#include "Imu.h"
 #include "SDCardManager.h"
 #include "hal/display.h"
 #include "esp_sleep.h"
@@ -179,6 +180,15 @@ int main(int argc, char** argv) {
                     char lbl[48]; snprintf(lbl, sizeof(lbl), "SWIPE_%d_%d_%d_%d", x0, y0, x1, y1);
                     g_label = lbl; printf(">>> %s\n", lbl);
                     run(3);
+                }
+            } break;
+            case 'A': {  // A<ax>,<ay>,<az>; = simulate IMU acceleration (g)
+                float ax = 0, ay = -1, az = 0;
+                int n = 0;
+                if (sscanf(script.c_str() + i + 1, "%f,%f,%f;%n", &ax, &ay, &az, &n) == 3 && n > 0) {
+                    i += n;
+                    freeink::Imu::simSetAccel(ax, ay, az);
+                    printf(">>> IMU_ACCEL %.2f,%.2f,%.2f\n", ax, ay, az);
                 }
             } break;
             case 'w': g_label = "wait"; printf(">>> wait 2.2s\n"); { uint32_t t = millis(); while (millis() - t < 2200) loop(); } break;

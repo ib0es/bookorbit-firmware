@@ -9,6 +9,7 @@
 #include <BoardConfig.h>
 #include "../hal/display.h"
 #include "../hal/battery.h"
+#include "../hal/imu.h"
 #include "../hal/frontlight.h"
 #include "../ui/font.h"
 #include "../ui/jpeg_viewer.h"
@@ -254,6 +255,7 @@ void PowerService::enterDeepSleep(AppContext& ctx) {
     freeink::PowerManager::waitForPowerButtonRelease();
     freeink::PowerManager::armPowerButtonWakeup();
     Frontlight.prepareForSleep();
+    BoardImu.sleep();
     freeink::PowerManager::powerDownRailsForSleep();
     freeink::PowerManager::deepSleep();
 

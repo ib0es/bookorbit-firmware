@@ -191,8 +191,14 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    char winTitle[64];
+#if defined(FREEINK_DEVICE_X3) && FREEINK_DEVICE_X3 && !(defined(FREEINK_DEVICE_X4) && FREEINK_DEVICE_X4)
+    snprintf(winTitle, sizeof(winTitle), "XTEINK X3 - Book Orbit Simulator (%dx%d)", SCREEN_W, SCREEN_H);
+#else
+    snprintf(winTitle, sizeof(winTitle), "XTEINK X4 - Book Orbit Simulator (%dx%d)", SCREEN_W, SCREEN_H);
+#endif
     s_window = SDL_CreateWindow(
-        "XTEINK X4 - Book Orbit Simulator (480x800)",
+        winTitle,
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
         SCREEN_W,

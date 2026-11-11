@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include "app_state.h"
+#include "auto_rotate.h"
 #include "../hal/buttons.h"
 
 // Top-level application loop: boot sequence, event routing and power rules.
@@ -26,10 +27,16 @@ public:
     // Redraws the screen belonging to the current AppState.
     void redrawCurrentScreen(bool fullRefresh);
 
+    void resetAutoRotate() { _autoRotate.reset(); }
+
 private:
     AppController() = default;
 
     void dispatch(const ButtonEvent& event);
 
     AppContext _ctx;
+    AutoRotateTracker _autoRotate;
+    uint32_t _lastImuPollMs = 0;
+    uint32_t _lastClockCheckMs = 0;
+    int32_t _lastClockMinute = -1;
 };

@@ -59,10 +59,21 @@ struct AppConfig {
     // of it (Appearance): the pages are turned by both.
     int uiOrientation = 0;
     int orientation = 0;
+    // IMU auto-rotate: enabled by default only on X3 (QMI8658).
+#if defined(FREEINK_DEVICE_X3) && FREEINK_DEVICE_X3 && !(defined(FREEINK_DEVICE_X4) && FREEINK_DEVICE_X4)
+    bool autoRotate = true;
+#else
+    bool autoRotate = false;
+#endif
+    int imuRot = 0;              // 0..3 quarter-turns for hardware IMU axis alignment
+    bool imuFlipX = false;
+    bool imuFlipY = false;
     // Status bar: top left 0 book title, 1 chapter, 2 none; page number 0 in the
     // book, 1 in the chapter, 2 none; bottom 0 chapter and progress bar, 1 bar, 2 none.
     int sbTop = 0, sbPages = 0, sbBottom = 0;
     bool sbPercent = false, sbBattery = true;
+    bool sbClock = false;
+    int utcOffsetMin = 0;        // -720..+840 (-12:00..+14:00), shown when sbClock is on
     int fullRefreshEvery = 5;    // pages, 0 = never
     int frontlight = 0;        // 0..100 %, 0 = off (boards with a frontlight)
     int frontlightWarm = 50;   // 0 = cool .. 100 = warm

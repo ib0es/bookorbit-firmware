@@ -11,7 +11,7 @@
 
 namespace StatusBarMenu {
 
-enum Row : int { TOP, PAGES, PERCENT, BATTERY, BOTTOM, COUNT };
+enum Row : int { TOP, PAGES, PERCENT, BATTERY, BOTTOM, CLOCK, TIMEZONE, COUNT };
 
 const char* label(int row);
 const char* value(const AppConfig& cfg, int row, char* buf, size_t len);

@@ -4,6 +4,8 @@
 **/build-cov/
 test/build-cov-host/
 simulator/x4_simulator
+simulator/x3_simulator
+simulator/build-*/
 test/host/run
 *.o
 *.a

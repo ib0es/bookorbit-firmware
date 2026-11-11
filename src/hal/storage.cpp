@@ -302,11 +302,17 @@ bool StorageManager::loadConfig(AppConfig& cfg) {
                 boolIn("updown_pages", cfg.upDownTurnPages);
                 intIn("orientation", cfg.orientation, 0, 3);
                 intIn("ui_orientation", cfg.uiOrientation, 0, 3);
+                boolIn("auto_rotate", cfg.autoRotate);
+                intIn("imu_rot", cfg.imuRot, 0, 3);
+                boolIn("imu_flip_x", cfg.imuFlipX);
+                boolIn("imu_flip_y", cfg.imuFlipY);
                 intIn("sb_top", cfg.sbTop, 0, 2);
                 intIn("sb_pages", cfg.sbPages, 0, 2);
                 intIn("sb_bottom", cfg.sbBottom, 0, 2);
                 boolIn("sb_percent", cfg.sbPercent);
                 boolIn("sb_battery", cfg.sbBattery);
+                boolIn("sb_clock", cfg.sbClock);
+                intIn("utc_offset_min", cfg.utcOffsetMin, -720, 840);
 
                 if (doc["language"].is<const char*>()) {
                     cfg.language = I18n::languageFromCode(doc["language"].as<String>());
@@ -398,11 +404,17 @@ bool StorageManager::saveConfig(const AppConfig& cfg) {
     doc["updown_pages"] = cfg.upDownTurnPages;
     doc["orientation"] = cfg.orientation;
     doc["ui_orientation"] = cfg.uiOrientation;
+    doc["auto_rotate"] = cfg.autoRotate;
+    doc["imu_rot"] = cfg.imuRot;
+    doc["imu_flip_x"] = cfg.imuFlipX;
+    doc["imu_flip_y"] = cfg.imuFlipY;
     doc["sb_top"] = cfg.sbTop;
     doc["sb_pages"] = cfg.sbPages;
     doc["sb_bottom"] = cfg.sbBottom;
     doc["sb_percent"] = cfg.sbPercent;
     doc["sb_battery"] = cfg.sbBattery;
+    doc["sb_clock"] = cfg.sbClock;
+    doc["utc_offset_min"] = cfg.utcOffsetMin;
     doc["full_refresh_every"] = cfg.fullRefreshEvery;
     doc["language"] = I18n::getLanguageCode(cfg.language);
     if (doc.overflowed()) {

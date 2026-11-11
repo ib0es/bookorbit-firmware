@@ -157,6 +157,7 @@ struct BoardConfig_Type {
 struct BoardConfig {
     static inline BoardConfig_Type ACTIVE = { { 13, true, 40000000u }, { 3, false } };
     static void holdPowerRails() {}
+    static void releaseSdRail() {}
 };
 
 class SDCardManager {

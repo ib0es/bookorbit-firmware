@@ -14,6 +14,10 @@ FIB_INCLUDES := -DFREEINK_BOOK_SMALL=1 -I$(FIB)/include -I$(FIB)/third_party/exp
     -I$(FIB)/third_party/libunibreak -I$(FIB)/third_party/pngle -I$(FIB)/third_party/stb \
     -Ifreeink-sdk/libs/font/FreeInkFont/include -Ifreeink-sdk/libs/font/FreeInkFont/third_party/stb
 CXXFLAGS += $(FIB_INCLUDES)
+DEVICE ?= x4
+ifeq ($(DEVICE),x3)
+CXXFLAGS += -DFREEINK_DEVICE_X3=1
+endif
 CXXFLAGS += $(shell sdl2-config --cflags)
 
 CFLAGS += -O2
@@ -28,6 +32,7 @@ SRCS_CXX = \
     src/main.cpp \
     src/app/app_state.cpp \
     src/app/app_controller.cpp \
+    src/app/auto_rotate.cpp \
     src/app/orientation.cpp \
     src/app/touch_router.cpp \
     src/app/screens/home_screen.cpp \
@@ -55,6 +60,8 @@ SRCS_CXX = \
     src/ui/views/reader_menu_view.cpp \
     src/ui/views/book_menu_view.cpp \
     src/hal/battery.cpp \
+    src/hal/rtc.cpp \
+    src/hal/imu.cpp \
     src/hal/frontlight.cpp \
     src/hal/buttons.cpp \
     src/hal/display.cpp \
@@ -111,8 +118,13 @@ SRCS_C = \
     freeink-sdk/libs/book/FreeInkBook/src/vendor/tjpgd_impl.c \
     freeink-sdk/libs/font/FreeInkFont/src/FontAlloc.c
 
+ifeq ($(DEVICE),x3)
+BUILD_DIR = simulator/build-x3
+TARGET = simulator/x3_simulator
+else
 BUILD_DIR = simulator/build
 TARGET = simulator/x4_simulator
+endif
 
 OBJS = $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(SRCS_CXX)) \
        $(patsubst %.c, $(BUILD_DIR)/%.o, $(SRCS_C))
@@ -133,7 +145,7 @@ $(BUILD_DIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -rf $(BUILD_DIR) $(TARGET)
+	rm -rf simulator/build simulator/build-x3 simulator/x4_simulator simulator/x3_simulator
 
 run: $(TARGET)
 	./$(TARGET)
