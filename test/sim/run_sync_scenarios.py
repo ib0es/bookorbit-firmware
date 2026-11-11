@@ -254,7 +254,7 @@ LOG_SCENARIOS = [
      [r"Found book: Alice in Wonderland \(id=1, fileId=101, 4 formats", r"Catalog metadata saved \(3 books\)"],
      [r"format FB2", r"download\?fileId=111"]),
     ("saved catalog of older firmware: its address still downloads",
-     {}, None, "DC" + "DC" + "UC" + "w",
+     {}, None, "DC" + "DC" + "UUC" + "w",   # cloud books last, by title: Moby Dick, The Time Machine
      [r"GET /api/v1/download/103 -> 200", r"Book /books/Moby Dick.epub downloaded successfully"], []),
     # Every format the server lists is readable now (FB2, MOBI and AZW3 through a
     # conversion): choosing one downloads it. The fake file is no real AZW3: the
