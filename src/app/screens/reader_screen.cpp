@@ -23,6 +23,7 @@
 #include "../../ui/i18n.h"
 #include "../../ui/kit/ui_kit.h"
 #include "../../ui/actions.h"
+#include "../../services/wifi_session.h"
 
 namespace {
 
@@ -122,6 +123,7 @@ bool openBook(AppContext& ctx, const String& path, const String& title, const St
     auto& store = ProgressStore::instance();
     Buttons.clearEvents();
     Serial.printf("[Reader] Opening book: %s (file %d)\n", path.c_str(), fileId);
+    WifiSession::giveMemoryToReader();   // B9: no upload or radio while the index is built (small tier)
     if (!Reader.openBook(path)) {
         const auto why = (convert::ConvertProblem)Reader.lastConvertProblem();
         if (why == convert::ConvertProblem::Drm || why == convert::ConvertProblem::Unsupported) {

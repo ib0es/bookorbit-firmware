@@ -7,7 +7,7 @@ enum wifi_mode_t { WIFI_OFF = 0, WIFI_STA = 1, WIFI_AP = 2, WIFI_AP_STA = 3 };
 enum wifi_auth_mode_t { WIFI_AUTH_OPEN = 0, WIFI_AUTH_WPA2_PSK = 3 };
 enum { WL_IDLE_STATUS = 0, WL_CONNECTED = 3, WL_DISCONNECTED = 6 };
 
-namespace FakeNet { bool wifiBegin(); }   // test/sim/fake_bookorbit.cpp
+namespace FakeNet { bool wifiBegin(uint32_t& connectMs); }   // test/sim/fake_bookorbit.cpp
 
 class IPAddress {
 public:
@@ -27,9 +27,14 @@ public:
     void mode(wifi_mode_t m) { _mode = m; if (m == WIFI_OFF) _connected = false; }
     wifi_mode_t getMode() { return _mode; }
     void setSleep(bool) {}
-    void begin(const char* ssid, const char*) { _ssid = ssid ? ssid : ""; _connected = FakeNet::wifiBegin(); }
+    void begin(const char* ssid, const char*) {
+        _ssid = ssid ? ssid : "";
+        uint32_t connectMs = 0;
+        _connected = FakeNet::wifiBegin(connectMs);
+        _connectedAt = millis() + connectMs;
+    }
     void disconnect(bool = false, bool = false) { _connected = false; }
-    int status() { return _connected ? WL_CONNECTED : WL_DISCONNECTED; }
+    int status() { return _connected && (int32_t)(millis() - _connectedAt) >= 0 ? WL_CONNECTED : WL_DISCONNECTED; }
     String SSID() { return String(_ssid.c_str()); }
     int RSSI() { return -55; }
     IPAddress localIP() { return _connected ? IPAddress(192, 168, 1, 150) : IPAddress(); }
@@ -43,6 +48,7 @@ public:
     bool softAPdisconnect(bool = false) { return true; }
 private:
     wifi_mode_t _mode = WIFI_OFF;
+    uint32_t _connectedAt = 0;
     bool _connected = false;
     std::string _ssid;
 };

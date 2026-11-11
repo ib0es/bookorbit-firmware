@@ -157,15 +157,21 @@ CASES = [
      HOME_CARD + "w" + READ_MIDDLE + RMENU_SYNC + "w",
      lambda log, sd: "[WiFi] The reader keeps its memory" in log and "Reader memory given up" not in log
      and "[Mem] sync: Wi-Fi up" in log),
+    ("memory (large tier): opening a book leaves the background upload running (B9)",
+     HOME_CARD + "w" + READ_RIGHT + READ_MIDDLE + RMENU_CLOSE + HOME_CARD,
+     lambda log, sd: "Background upload queued" in log and "Background upload cancelled" not in log
+                     and "Radio off" not in log, None, {"wifiConnectMs": 8000}),
     ("power: sleep and wake",
      "P" + "Z",
      lambda log, sd: "Entering Deep Sleep" in log and log.count("drawHomeScreen") >= 2),
 ]
 
-def run(script, config=None):
+def run(script, config=None, srv=None):
     sd = tempfile.mkdtemp(); shutil.rmtree(sd)
     shutil.copytree(os.path.join(ROOT, "simulator/sdcard"), sd)
     shutil.copy(os.path.join(ROOT, "test/sim/config.json"), os.path.join(sd, "config.json"))
+    if srv is not None:   # the fake server's state (test/sim/fake_bookorbit.cpp)
+        json.dump(srv, open(os.path.join(sd, "server.json"), "w"))
     if config:   # settings the case starts with (merged into config.json)
         p = os.path.join(sd, "config.json")
         c = json.load(open(p)); c.update(config); json.dump(c, open(p, "w"))
@@ -180,7 +186,7 @@ def main():
     failed = 0
     for case in CASES:
         name, script, check = case[:3]
-        code, log, sd = run(script, case[3] if len(case) > 3 else None)
+        code, log, sd = run(script, case[3] if len(case) > 3 else None, case[4] if len(case) > 4 else None)
         problems = []
         if "KEY_NOT_ON_DEVICE" in log: problems.append("used a key Picco does not have")
         if "STUCK" in log: problems.append("stuck in a screen's input loop")

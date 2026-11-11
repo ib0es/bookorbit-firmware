@@ -258,6 +258,12 @@ CASES = [
      OPEN_BOOK + "R" + "C",
      lambda log, sd: "[Reader] End of the book" in log and "drawHomeScreen" in after(log, ">>> CONFIRM")
                      and log.count("drawHomeScreen finished") == 2),
+    # B9: a book opened while the upload of the one just closed is still connecting.
+    ("reader: opening a book cancels the background upload and turns Wi-Fi off (B9)",
+     lambda sd: server(sd, {"wifiConnectMs": 8000}), {}, OPEN_BOOK + "RRR" + "B" + "C",
+     lambda log, sd: "Background upload queued" in log
+                     and "Background upload cancelled" in after(log, ">>> CONFIRM")
+                     and "Radio off: the book needs the memory" in after(log, ">>> CONFIRM")),
     ("reader: UP/DOWN turn pages when set so (U4)", updown_pages, {}, OPEN_BOOK + "DD", updown_turns),
     ("appearance: the Up/Down keys row switches to pages (U4)", None, {},
      OPEN_BOOK + APPEARANCE + "UU" + "R" + "B",
