@@ -46,6 +46,7 @@ const char* label(int row) {
         case IMAGES: return tr(MsgId::APPEAR_IMAGES);
         case ORIENTATION: return tr(MsgId::APPEAR_ORIENTATION);
         case FULL_REFRESH: return tr(MsgId::APPEAR_FULL_REFRESH);
+        case UPDOWN_KEYS: return tr(MsgId::APPEAR_UPDOWN_KEYS);
         case STATUS_BAR: return tr(MsgId::APPEAR_STATUS_BAR);
     }
     return "";
@@ -78,6 +79,9 @@ const char* value(const AppConfig& cfg, int row, char* buf, size_t len) {
             if (cfg.fullRefreshEvery <= 0) snprintf(buf, len, "%s", tr(MsgId::APPEAR_REFRESH_NEVER));
             else snprintf(buf, len, tr(MsgId::APPEAR_REFRESH_FMT), cfg.fullRefreshEvery);
             break;
+        case UPDOWN_KEYS:
+            snprintf(buf, len, "%s", tr(cfg.upDownTurnPages ? MsgId::APPEAR_UPDOWN_PAGES : MsgId::APPEAR_UPDOWN_CHAPTERS));
+            break;
         case STATUS_BAR: snprintf(buf, len, "%s", "\xE2\x96\xB6"); break;   // a menu of its own
         default: buf[0] = 0;
     }
@@ -98,6 +102,7 @@ bool step(AppConfig& cfg, int row, int dir) {
         case BOOK_STYLES: cfg.bookStyles = !cfg.bookStyles; return true;
         case FOCUS_READING: cfg.focusReading = !cfg.focusReading; return true;
         case IMAGES: cfg.sharpImages = !cfg.sharpImages; return true;
+        case UPDOWN_KEYS: cfg.upDownTurnPages = !cfg.upDownTurnPages; return true;
         case ORIENTATION: cfg.orientation = (cfg.orientation + (dir > 0 ? 1 : 3)) & 3; return true;
         case FULL_REFRESH: {
             // "never" sits after the largest
