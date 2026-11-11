@@ -21,7 +21,7 @@
 #include "../../reader/font_store.h"
 #include "../../ui/i18n.h"
 #include "../../ui/kit/ui_kit.h"
-#include "../../platform/device.h"
+#include "../../ui/actions.h"
 
 namespace {
 
@@ -232,35 +232,26 @@ bool resumeLastBook(AppContext& ctx) {
     return true;
 }
 
-// Boards with only up/down keys (no left/right) turn pages with them; chapters
-// are reached through the table of contents.
-constexpr bool kUpDownTurnPages = Platform::kDevice.upDownTurnPages;
-
 void handleReadingEvent(AppContext& ctx, const ButtonEvent& event) {
-    // GT911 capacitive Home key long press opens the reader menu directly while reading.
-    if (event.id == BTN_BACK && event.action == ACTION_LONG_PRESS) {
+    // Boards with only up/down keys (no left/right) turn pages with them; chapters
+    // are reached through the table of contents (Actions::reading).
+    const Action action = Actions::reading(event, ctx.config.upDownTurnPages);
+    if (action == Action::Menu) {   // a held BACK / capacitive Home key: the reader menu at once
         ctx.currentState = STATE_READER_MENU;
         ctx.selectedReaderMenuIndex = 0;
         drawReaderMenuScreen(ctx, false);
         return;
     }
-    if (event.action != ACTION_CLICK) return;
     auto& lib = LibraryManager::getInstance();
 
-    ButtonId id = event.id;
-    if (kUpDownTurnPages || ctx.config.upDownTurnPages) {
-        if (id == BTN_DOWN) id = BTN_RIGHT;
-        else if (id == BTN_UP) id = BTN_LEFT;
-    }
-
-    switch (id) {
-        case BTN_RIGHT:
+    switch (action) {
+        case Action::Next:
             if (Reader.nextPage()) lib.recordReaderMove(/*withXPath=*/false, /*persist=*/false);
             break;
-        case BTN_LEFT:
+        case Action::Prev:
             if (Reader.prevPage()) lib.recordReaderMove(false, false);
             break;
-        case BTN_DOWN: {
+        case Action::Down: {
             const BookReader::Position before = Reader.position();
             if (Reader.nextChapter()) {
                 s_jumpBack = before;
@@ -269,7 +260,7 @@ void handleReadingEvent(AppContext& ctx, const ButtonEvent& event) {
             }
             break;
         }
-        case BTN_UP: {
+        case Action::Up: {
             const BookReader::Position before = Reader.position();
             if (Reader.prevChapter()) {
                 s_jumpBack = before;
@@ -278,13 +269,13 @@ void handleReadingEvent(AppContext& ctx, const ButtonEvent& event) {
             }
             break;
         }
-        case BTN_CONFIRM:
+        case Action::Select:
             ctx.currentState = STATE_READER_MENU;
             ctx.selectedReaderMenuIndex = 0;
             // A fast refresh (0.5 s instead of 3.8 s); every 8th screen change is a full one.
             drawReaderMenuScreen(ctx, uikit::periodicFullRefresh());
             break;
-        case BTN_BACK:
+        case Action::Back:
             if (s_hasJumpBack) {   // back to where the jump started (once), not out of the book
                 s_hasJumpBack = false;
                 Reader.goTo(s_jumpBack);

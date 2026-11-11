@@ -6,6 +6,7 @@
 #include "ui/font.h"
 #include "ui/i18n.h"
 #include "ui/kit/ui_kit.h"
+#include "actions.h"
 
 // -----------------------------------------------------------------------------
 // Keyboard layouts: 4 rows of 12 keys each, UTF-8 (a key is one character).
@@ -194,7 +195,8 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
                 }
             }
             if (event.action == ACTION_CLICK) {
-                if (event.id == BTN_UP) {
+                const Action key = Actions::of(event);
+                if (key == Action::Up) {
                     if (selRow == 0) {
                         selRow = 4;
                         selCol = selCol / 2;
@@ -205,7 +207,7 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
                         selRow--;
                     }
                     renderKeyboard();
-                } else if (event.id == BTN_DOWN) {
+                } else if (key == Action::Down) {
                     if (selRow == 4) {
                         selRow = 0;
                         selCol = selCol * 2;
@@ -216,15 +218,15 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
                         selRow++;
                     }
                     renderKeyboard();
-                } else if (event.id == BTN_LEFT) {
+                } else if (key == Action::Prev) {
                     int maxCols = (selRow == 4) ? 6 : 12;
                     selCol = (selCol - 1 + maxCols) % maxCols;
                     renderKeyboard();
-                } else if (event.id == BTN_RIGHT) {
+                } else if (key == Action::Next) {
                     int maxCols = (selRow == 4) ? 6 : 12;
                     selCol = (selCol + 1) % maxCols;
                     renderKeyboard();
-                } else if (event.id == BTN_CONFIRM) {
+                } else if (key == Action::Select) {
                     if (selRow < 4) {
                         const char* ch = keyText[selRow * 12 + selCol];
                         if (*ch) {
@@ -257,7 +259,7 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
                             return true;
                         }
                     }
-                } else if (event.id == BTN_BACK) {
+                } else if (key == Action::Back) {
                     if (currentText.length() > 0) {
                         eraseLast(currentText);
                         renderKeyboard();

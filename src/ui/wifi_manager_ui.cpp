@@ -13,6 +13,7 @@
 #include "ui/views/status_modal.h"
 #include "net/bookorbit_client.h"
 #include "../services/wifi_session.h"
+#include "actions.h"
 
 WifiManagerUI WifiUI;
 
@@ -155,8 +156,9 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
             while (true) {
                 ButtonEvent event;
                 if (PowerService::pollModalEvent(event) && event.action == ACTION_CLICK) {
-                    if (event.id == BTN_CONFIRM || event.id == BTN_SWIPE_DOWN) break; // Rescan
-                    if (event.id == BTN_BACK || event.id == BTN_TAP || event.id == BTN_SWIPE_RIGHT) {
+                    const Action key = Actions::of(event);
+                    if (key == Action::Select || event.id == BTN_SWIPE_DOWN) break; // Rescan
+                    if (key == Action::Back || event.id == BTN_TAP || event.id == BTN_SWIPE_RIGHT) {
                         BookOrbit.disconnectWiFi();
                         return false;
                     }
@@ -187,19 +189,20 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
                         event.id = BTN_CONFIRM;
                     }
                 }
-                if (event.id == BTN_DOWN) {
+                const Action key = Actions::of(event);
+                if (key == Action::Down) {
                     selectedIndex = (selectedIndex + 1) % list.size();
                     redraw = true;
-                } else if (event.id == BTN_UP) {
+                } else if (key == Action::Up) {
                     selectedIndex = (selectedIndex - 1 + list.size()) % list.size();
                     redraw = true;
-                } else if (event.id == BTN_LEFT || event.id == BTN_SWIPE_DOWN) {  // swipe down: rescan (touch)
+                } else if (key == Action::Prev || event.id == BTN_SWIPE_DOWN) {  // swipe down: rescan (touch)
                     rescan = true;
                     break;
-                } else if (event.id == BTN_BACK || event.id == BTN_SWIPE_RIGHT) {
+                } else if (key == Action::Back || event.id == BTN_SWIPE_RIGHT) {
                     BookOrbit.disconnectWiFi();
                     return false;
-                } else if (event.id == BTN_CONFIRM || event.id == BTN_RIGHT) {
+                } else if (key == Action::Select || key == Action::Next) {
                     // Selected network
                     ScannedNet chosen = list[selectedIndex];
 

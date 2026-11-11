@@ -83,6 +83,7 @@ SRCS_CXX = \
     src/platform/hal/usb_msc.cpp \
     src/platform/hal/mem_stats.cpp \
     src/ui/i18n.cpp \
+    src/ui/actions.cpp \
     src/ui/kit/ui_kit.cpp \
     freeink-sdk/libs/ui/FreeInkUI/src/FreeInkUI.cpp \
     src/ui/font.cpp \
