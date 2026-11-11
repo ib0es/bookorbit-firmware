@@ -153,6 +153,10 @@ CASES = [
     ("book menu in landscape: swipe up to the second page, Close book",
      "T229,200;wT240,400;W129,400,329,400;T254,400;",
      lambda log, sd: "[Reader] Close" in log and log.rstrip().count("drawHomeScreen") >= 2, {"ui_orientation": 1}),
+    ("memory (large tier): syncing from an open book keeps the reader's layout and font caches",
+     HOME_CARD + "w" + READ_MIDDLE + RMENU_SYNC + "w",
+     lambda log, sd: "[WiFi] The reader keeps its memory" in log and "Reader memory given up" not in log
+     and "[Mem] sync: Wi-Fi up" in log),
     ("power: sleep and wake",
      "P" + "Z",
      lambda log, sd: "Entering Deep Sleep" in log and log.count("drawHomeScreen") >= 2),
