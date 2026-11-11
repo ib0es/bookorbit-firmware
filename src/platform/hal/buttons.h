@@ -48,6 +48,12 @@ public:
     void clearEvents();
     static const char* getName(ButtonId id);
 
+    // Maps a touch given in panel coordinates normalised to 0..1 to logical
+    // pixels of the UI (orientation and size are the UI's business). Taps and
+    // swipes are reported only once one is set.
+    using TouchMapper = void (*)(float nx, float ny, int16_t& x, int16_t& y);
+    void setTouchMapper(TouchMapper mapper) { _touchMapper = mapper; }
+
     // Side slide switch that turns the frontlight on/off (Picco, GPIO6).
     bool hasLightSwitch() const { return _freeinkInput.hasToggleSwitch(); }
     bool lightSwitchOn() const { return _freeinkInput.isToggleSwitchOn(); }
@@ -64,6 +70,7 @@ public:
 
 private:
     InputManager _freeinkInput;
+    TouchMapper _touchMapper = nullptr;
     ButtonEvent _pendingEvent;
     bool _hasPendingEvent;
     bool _powerLongPressFired;

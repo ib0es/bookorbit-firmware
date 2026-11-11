@@ -56,6 +56,9 @@ bool ready();
 
 fi::DisplayTarget& target();
 const fi::DeviceContext& device();
+// A touch in panel coordinates normalised to 0..1 -> logical pixels of the
+// current orientation (the touch mapper of the buttons).
+void touchToLogical(float nx, float ny, int16_t& x, int16_t& y);
 int16_t width();
 int16_t height();
 Rect screen();

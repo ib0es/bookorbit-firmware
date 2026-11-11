@@ -174,6 +174,12 @@ const fi::DeviceContext& device() {
     return g_device;
 }
 
+void touchToLogical(float nx, float ny, int16_t& x, int16_t& y) {
+    const fi::Point p = fi::touchToLogical(device(), nx, ny);
+    x = p.x;
+    y = p.y;
+}
+
 int16_t width() { return device().width; }
 int16_t height() { return device().height; }
 Rect screen() { return device().screen(); }
