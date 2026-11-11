@@ -142,6 +142,29 @@ int16_t pillWidth(const char* label);
 // A settings-style card: bold title, secondary line, optional tag pill.
 void card(Frame& f, Rect r, const char* title, const char* subtitle, const char* tag, bool selected,
           fi::ActionId action = fi::NO_ACTION, int16_t value = 0);
+// The smallest card that still holds its title and secondary line.
+int16_t cardMinHeight();
+
+// A column of `count` cards in `area`: roomy cards when they all fit, tighter
+// ones (down to cardMinHeight) when not, and when even those do not fit (a
+// landscape screen) the page of the list `selected` is on. Records the pager
+// (see listPager) for page swipes.
+struct CardList {
+    int16_t cardH;
+    int16_t gap;
+    int first;     // first item drawn
+    int perPage;   // items on one page
+};
+CardList cardList(Rect area, int count, int selected, int16_t roomyH, int16_t roomyGap = kGap);
+
+// Paging of the list on the last drawn screen (reset by every Pass): how many
+// items and how many fit on one page. count == 0: no paged list on screen.
+struct ListPager {
+    int count;
+    int perPage;
+};
+void setListPager(int count, int perPage);
+ListPager listPager();
 // Battery glyph + percentage, right-aligned in rect.
 void battery(Frame& f, Rect r, Color color);
 // Progress bar with outline (value 0..1000).

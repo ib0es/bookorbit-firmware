@@ -145,6 +145,14 @@ CASES = [
     ("home in landscape (the other way): Sync now is on screen",
      "T250,200;",
      lambda log, sd: "[Sync]" in log or "SYNC" in log or "Wi-Fi" in log, {"ui_orientation": 3}),
+    # Landscape lists: cards keep their second line inside, and what does not fit
+    # is a swipe away (the page swipe moves the selection to the next page).
+    ("catalog in landscape: swipe up to the second page, open Downloaded",
+     "T355,620;W129,400,329,400;T399,400;",
+     lambda log, sd: "drawCatalogScreen" in log and "List /books: 5 rows" in log, {"ui_orientation": 1}),
+    ("book menu in landscape: swipe up to the second page, Close book",
+     "T229,200;wT240,400;W129,400,329,400;T254,400;",
+     lambda log, sd: "[Reader] Close" in log and log.rstrip().count("drawHomeScreen") >= 2, {"ui_orientation": 1}),
     ("power: sleep and wake",
      "P" + "Z",
      lambda log, sd: "Entering Deep Sleep" in log and log.count("drawHomeScreen") >= 2),

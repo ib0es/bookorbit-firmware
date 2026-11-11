@@ -145,17 +145,12 @@ void drawReaderMenuScreen(AppContext& ctx, bool fullRefresh) {
         { tr(MsgId::READER_MENU_ITEM_RESUME), tr(MsgId::READER_MENU_RESUME_SUB), tr(MsgId::READER_MENU_TAG_READ) },
         { tr(MsgId::READER_MENU_ITEM_CLOSE), tr(MsgId::READER_MENU_CLOSE_SUB), tr(MsgId::READER_MENU_TAG_EXIT) },
     };
-    int16_t cardH = (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 22);
-    int16_t gap = kGap;
     const int n = NUM_READER_MENU_ITEMS;
-    if (n * (cardH + gap) > area.height) {   // a landscape screen: tighter, then a page at a time
-        gap = 4;
-        cardH = std::max<int16_t>((int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 6),
-                                  (int16_t)(area.height / n - gap));
-    }
-    const int perPage = std::max(1, (int)((area.height + gap) / (cardH + gap)));
     const int sel = ctx.selectedReaderMenuIndex;
-    const int first = n > perPage ? (sel / perPage) * perPage : 0;
+    // A landscape screen: tighter cards, then a page at a time.
+    const CardList l = cardList(area, n, sel, (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 22));
+    const int16_t cardH = l.cardH, gap = l.gap;
+    const int first = l.first, perPage = l.perPage;
     for (int i = first; i < n && i < first + perPage; i++) {
         card(f, takeTop(area, cardH), items[i].title, items[i].value, items[i].tag, i == sel, ActionMenuItem, (int16_t)i);
         takeTop(area, gap);
@@ -271,6 +266,7 @@ void drawTypefaceMenuScreen(AppContext& ctx, bool fullRefresh) {
     const int16_t rowH = (int16_t)(lineHeight(FontBody) + lineHeight(FontSmall) + 18);
     const int perPage = std::max(1, (int)((area.height - lineHeight(FontSmall) * 2) / (rowH + 6)));
     const int first = (sel / perPage) * perPage;
+    if (n > perPage) setListPager(n, perPage);
     for (int i = first; i < n && i < first + perPage; i++) {
         const bool builtin = i == 0;
         const String name = builtin ? String(Reader.builtinFontName()) : fams[i - 1].name;
@@ -314,6 +310,7 @@ void drawAppearanceScreen(AppContext& ctx, bool fullRefresh) {
     // page of rows the selection is on (a landscape screen).
     const int perPage = std::max(1, (int)(area.height / (rowH + 2)));
     const int first = Appearance::COUNT > perPage ? (sel / perPage) * perPage : 0;
+    if (Appearance::COUNT > perPage) setListPager(Appearance::COUNT, perPage);
     for (int i = first; i < Appearance::COUNT && i < first + perPage; i++) {
         Rect row = takeTop(area, rowH);
         const bool isSel = i == sel;
@@ -395,6 +392,7 @@ void drawBookmarksScreen(AppContext& ctx, bool fullRefresh) {
     const int16_t rowH = (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 22);
     const int perPage = std::max(1, (int)(area.height / (rowH + kGap)));
     const int first = (sel / perPage) * perPage;
+    if (n > perPage) setListPager(n, perPage);
     char title[160];
     for (int i = first; i < n && i < first + perPage; i++) {
         if (i == 0) {

@@ -8,6 +8,7 @@
 #include "../ui/views/library_view.h"
 #include "../ui/views/reader_menu_view.h"
 #include "../ui/font.h"
+#include "../ui/modal.h"
 
 namespace TouchRouter {
 
@@ -106,6 +107,27 @@ bool pageSelection(int& index, int count, int perPage, bool forward) {
     return true;
 }
 
+// The selection of the screens whose list pages through uikit::cardList /
+// setListPager (settings, catalog, the menus).
+int* pagedSelection(AppContext& ctx) {
+    switch (ctx.currentState) {
+        case STATE_CATALOG:              return &ctx.selectedCatalogIndex;
+        case STATE_SETTINGS:             return &ctx.selectedSettingIndex;
+        case STATE_WIFI_SETTINGS:        return &ctx.selectedWifiSettingIndex;
+        case STATE_SERVER_SETTINGS:      return &ctx.selectedServerSettingIndex;
+        case STATE_LANGUAGE_SETTINGS:    return &ctx.selectedLanguageIndex;
+        case STATE_SYNC_SETTINGS:        return &ctx.selectedSyncSettingIndex;
+        case STATE_SLEEP_COVER_SETTINGS: return &ctx.selectedSleepCoverIndex;
+        case STATE_SD_SETTINGS:          return &ctx.selectedSdSettingIndex;
+        case STATE_READER_MENU:          return &ctx.selectedReaderMenuIndex;
+        case STATE_BOOK_MENU:            return &ctx.selectedBookMenuIndex;
+        case STATE_APPEARANCE_MENU:      return &ctx.selectedAppearanceIndex;
+        case STATE_TYPEFACE_MENU:        return &ctx.selectedTypefaceIndex;
+        case STATE_BOOKMARKS:            return &ctx.selectedBookmarkIndex;
+        default:                         return nullptr;
+    }
+}
+
 }  // namespace
 
 bool translateSwipe(AppContext& ctx, const ButtonEvent& swipe, ButtonEvent& out) {
@@ -165,6 +187,12 @@ bool translateSwipe(AppContext& ctx, const ButtonEvent& swipe, ButtonEvent& out)
             drawTocScreen(ctx, uikit::periodicFullRefresh());
         }
         return false;
+    }
+    // Card lists and menus that did not fit on the screen (landscape): a page.
+    const uikit::ListPager pager = uikit::listPager();
+    if (int* sel = pagedSelection(ctx)) {
+        if (pager.count > pager.perPage && pageSelection(*sel, pager.count, pager.perPage, forward))
+            Modal.redrawScreen(false);
     }
     return false;
 }
