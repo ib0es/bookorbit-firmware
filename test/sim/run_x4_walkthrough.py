@@ -162,9 +162,12 @@ def toc_pages(log, sd):
     # Rows count from 1; the contents open on the current chapter, the first row before it.
     return first >= 1 and right == ((first - 1) // per + 1) * per + 1 and left == right - per
 
-def jump_back(log, sd):
+def jump_then_close(log, sd):
+    # B6: BACK after a chapter jump closes the book at once; the jump was saved.
     p = pages(log)
-    return len(p) >= 4 and p[-1] == p[-3] and p[-2] != p[-3] and "drawHomeScreen" in after(log, ">>> BACK")
+    before_back = log[:log.find(">>> BACK")]
+    return (len(p) >= 3 and p[-1] != p[-2] and "Reader] Page" not in after(log, ">>> BACK")
+            and "drawHomeScreen" in after(log, ">>> BACK") and "Last read book saved" in after(before_back, ">>> DOWN"))
 
 def updown_turns(log, sd):
     p = pages(after(log, ">>> DOWN"))
@@ -239,8 +242,8 @@ CASES = [
     ("library: a held DOWN goes faster and stops at the end (U1)", None, {}, ALL_BOOKS + "HD", held_to_end),
     ("contents: RIGHT a page on, LEFT a page back (U1)", None, {},
      OPEN_BOOK + READER_MENU + "C" + "R" + "L", toc_pages),
-    ("reader: BACK after a chapter jump goes back, then closes (U4)", None, {},
-     OPEN_BOOK + "R" + "D" + "B" + "B", jump_back),
+    ("reader: BACK after a chapter jump closes the book, the jump is saved (B6)", None, {},
+     OPEN_BOOK + "R" + "D" + "B", jump_then_close),
     ("reader: UP/DOWN turn pages when set so (U4)", updown_pages, {}, OPEN_BOOK + "DD", updown_turns),
     ("appearance: the Up/Down keys row switches to pages (U4)", None, {},
      OPEN_BOOK + APPEARANCE + "UU" + "R" + "B",
