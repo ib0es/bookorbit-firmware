@@ -261,28 +261,28 @@ LOG_SCENARIOS = [
      [r"format FB2", r"download\?fileId=111"]),
     ("saved catalog of older firmware: its address still downloads",
      {}, None, "DC" + "DC" + "UUC" + "w",   # cloud books last, by title: Moby Dick, The Time Machine
-     [r"GET /api/v1/download/103 -> 200", r"Book /books/Moby Dick.epub downloaded successfully"], []),
+     [r"GET /api/v1/download/103 -> 200", r"Book /books/Moby Dick \[3\]\.epub downloaded successfully"], []),
     # Every format the server lists is readable now (FB2, MOBI and AZW3 through a
     # conversion): choosing one downloads it. The fake file is no real AZW3: the
     # conversion refuses it and the book's format stays.
     ("formats list: an AZW3 is downloaded and converted; a file that is no book is refused",
      {}, None, HOME_SYNC + FORMATS + "DDC" + "w",
-     [r"Formats of 'Alice in Wonderland': 4", r"download\?fileId=121", r"\[Convert\] .*Alice in Wonderland\.azw3"],
+     [r"Formats of 'Alice in Wonderland': 4", r"download\?fileId=121", r"\[Convert\] .*Alice in Wonderland \[1\]\.azw3"],
      [r"cannot be opened yet"]),
     ("formats list: another format is downloaded and opened at its own position",
      {"progress": [{"fileId": 101, "percentage": 40, "updatedAt": "NOW-50"},
                    {"fileId": 131, "percentage": 10, "updatedAt": "NOW-50"}]}, None, HOME_SYNC + FORMATS + "DC" + "w",
-     [r"'Alice in Wonderland': format TXT \(/books/Alice in Wonderland.txt\)",
+     [r"'Alice in Wonderland': format TXT \(/books/Alice in Wonderland \[1\]\.txt\)",
       r"GET /api/v1/opds/1/download\?fileId=131 -> 200",
-      r"Book /books/Alice in Wonderland.txt downloaded successfully",
+      r"Book /books/Alice in Wonderland \[1\]\.txt downloaded successfully",
       r"\[Sync\] 'Alice in Wonderland': local 0\.0% .* server 10\.0% .* -> pull",
       r"Restoring position: .*10\.0%"],
-     [r"server 40\.0% .* -> pull.*\n.*Alice in Wonderland.txt"]),
+     [r"server 40\.0% .* -> pull.*\n.*Alice in Wonderland \[1\]\.txt"]),
     ("the format read last opens from the list; BACK leaves the formats list",
      {}, None, HOME_SYNC + FORMATS + "DCw" + "B" + "C" + "DC" + "D" + "C" + "w" + "B" + "C" + "DC" + "D" + "LDC" + "B",
-     [r"Book /books/Alice in Wonderland.txt downloaded successfully",
+     [r"Book /books/Alice in Wonderland \[1\]\.txt downloaded successfully",
       r"Formats of 'Alice in Wonderland': 4(.|\n)*Formats of 'Alice in Wonderland': 4",
-      r"Opening book: /books/Alice in Wonderland.txt(.|\n)*Opening book: /books/Alice in Wonderland.txt",
+      r"Opening book: /books/Alice in Wonderland \[1\]\.txt(.|\n)*Opening book: /books/Alice in Wonderland \[1\]\.txt",
       r"Formats of 'Alice in Wonderland': 4(.|\n)*List /books: 7 rows"], []),
     # Book menu -> "Sync" (Read, Formats, Sync): only that book, only its active format.
     ("book menu: sync one book",
@@ -347,10 +347,13 @@ BOOKMARK_SCENARIOS = [
 def run_bookmarks(scenario):
     name, server, local, script, check = scenario
     sd = prepare(dict(server), None)
+    # Put on the card under the old name (by title): the book and its bookmarks
+    # move to the server-id name at boot.
     marks = os.path.join(sd, "bookmarks", BOOK + ".epub.json")
     if local is not None:
         os.makedirs(os.path.dirname(marks), exist_ok=True)
         with open(marks, "w") as f: json.dump(local, f, ensure_ascii=False)
+    marks = os.path.join(sd, "bookmarks", BOOK + " [1].epub.json")
     _, log = run(sd, script)
     srv = json.load(open(os.path.join(sd, "server.json"))).get("bookmarks", [])
     loc = json.load(open(marks)) if os.path.exists(marks) else None

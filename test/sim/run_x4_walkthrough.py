@@ -74,6 +74,35 @@ def big_catalog(sd):
 def corrupt_progress(sd):
     open(os.path.join(sd, "books/progress.json"), "w").write('{"version":1,"books":[{"path":')
 
+def same_titles(sd):
+    """Two server books of one title, and the file an older firmware downloaded
+    for them under the title alone (with its cache, bookmarks and position)."""
+    alice = lambda i, f: {"id": str(i), "fileId": f, "title": "Alice in Wonderland", "author": "A%d" % i,
+                          "formats": [{"f": f, "k": 1}], "cover": ""}
+    json.dump([alice(1, 101), alice(9, 909)], open(os.path.join(sd, "books/catalog.json"), "w"))
+    old = "/books/Alice in Wonderland.epub"
+    json.dump({"version": 1, "books": [{"fileId": 909, "bookId": 9, "path": old, "title": "Alice in Wonderland",
+                                        "local": {"p": 0.25}}]}, open(os.path.join(sd, "books/progress.json"), "w"))
+    json.dump({"filePath": old, "title": "Alice in Wonderland", "fileId": 909, "progress": 0.25, "page": 1,
+               "totalPages": 1}, open(os.path.join(sd, "books/last_book.json"), "w"))
+    os.makedirs(os.path.join(sd, "bookmarks"), exist_ok=True)
+    json.dump({"bookmarks": [{"spine": 1, "chars": 0, "percent": 0.02, "chapter": "c", "snippet": "s"}]},
+              open(os.path.join(sd, "bookmarks/Alice in Wonderland.epub.json"), "w"))
+    os.makedirs(os.path.join(sd, "cache/Alice in Wonderland.epub.fib"), exist_ok=True)
+    open(os.path.join(sd, "cache/Alice in Wonderland.epub.fib/marker"), "w").write("x")
+
+def same_titles_split(log, sd):
+    rec = json.load(open(os.path.join(sd, "books/progress.json")))["books"]
+    last = json.load(open(os.path.join(sd, "books/last_book.json")))
+    new = "/books/Alice in Wonderland [9].epub"
+    return (os.path.exists(sd + new) and not os.path.exists(sd + "/books/Alice in Wonderland.epub")
+            and not os.path.exists(sd + "/books/Alice in Wonderland [1].epub")
+            and "Master list: 6 books (2 in the catalog" in log
+            and [r["path"] for r in rec if r.get("fileId") == 909] == [new]
+            and last["filePath"] == new
+            and os.path.exists(os.path.join(sd, "bookmarks/Alice in Wonderland [9].epub.json"))
+            and os.path.exists(os.path.join(sd, "cache/Alice in Wonderland [9].epub.fib/marker")))
+
 def progress_only_tmp(sd):
     """A save cut between replaceFile's remove and rename: only the complete .tmp left."""
     json.dump({"version": 1, "books": [{"fileId": 101, "bookId": 1, "path": "/books/Alice in Wonderland.epub",
@@ -161,11 +190,11 @@ def subfolder_cache(log, sd):
             and "Opening book: /books/Sub/Alice in Wonderland.epub" in log)
 
 def downloaded_no_part(log, sd):
-    return (os.path.exists(os.path.join(sd, "books/The Time Machine.epub"))
+    return (os.path.exists(os.path.join(sd, "books/The Time Machine [2].epub"))
             and "downloaded successfully" in log and not files(sd, "**/*.part"))
 
 def failed_no_part(log, sd):
-    return not files(sd, "**/*.part") and not os.path.exists(os.path.join(sd, "books/The Time Machine.epub"))
+    return not files(sd, "**/*.part") and not os.path.exists(os.path.join(sd, "books/The Time Machine [2].epub"))
 
 def token_saved(log, sd):
     return "refreshing token" in log and cfg(sd).get("token") not in ("", "tok-0")
@@ -228,6 +257,8 @@ CASES = [
      "DC" + "[" + kb_tap(215, 385) + kb_tap(177, 265) + kb_tap(278, 448) + kb_tap(430, 448) + "]" + "C", search_backspace),
     ("library: a book in a subfolder gets a cache of its own (B13)", subfolder_book, {},
      "DC" + "DDDDD" + "C" + "D" + "C" + "D" + "C", subfolder_cache),
+    ("names: two server books of one title get a file each; the old file goes to the one read here",
+     same_titles, {}, "w", same_titles_split),
     ("storage: a save cut before its rename is taken from the .tmp", progress_only_tmp, {}, "w", tmp_taken),
     ("download: the book is in place and no .part is left (B5)", fake_server({"progress": []}), {},
      HOME_SYNC + "B" + ALL_BOOKS + "UC" + "w", downloaded_no_part),
