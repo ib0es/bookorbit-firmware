@@ -1,6 +1,6 @@
 // Host unit tests for the progress sync core and time parsing.  Run: test/host/run.sh
-#include "services/progress_sync.h"
-#include "services/time_utils.h"
+#include "core/progress_sync.h"
+#include "core/time_utils.h"
 
 #include <cstdio>
 #include <string>

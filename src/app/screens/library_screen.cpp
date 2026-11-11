@@ -10,7 +10,7 @@
 #include "../../ui/views/book_menu_view.h"
 #include "../../ui/i18n.h"
 #include "../../ui/kit/ui_kit.h"
-#include "../../net/book_formats.h"
+#include "../../core/book_formats.h"
 #include "../../platform/device.h"
 #include "../../ui/text_utils.h"
 

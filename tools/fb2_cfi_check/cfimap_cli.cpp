@@ -1,6 +1,6 @@
 // Translates CFIs (one per line on stdin) with a CFI map: "pub" (converted EPUB
 // -> web reader) or "loc" (back). Prints the result, "-" when not mapped.
-#include "reader/cfi_map.h"
+#include "core/cfi_map.h"
 
 #include <cstdio>
 #include <iostream>

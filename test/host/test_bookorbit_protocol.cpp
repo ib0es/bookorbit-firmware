@@ -1,7 +1,7 @@
 // Host unit tests for the Book Orbit wire format.  Run: test/host/run.sh
 // Fixtures are real responses of a Book Orbit server (2026-11).
-#include "net/bookorbit_protocol.h"
-#include "services/time_utils.h"
+#include "core/bookorbit_protocol.h"
+#include "core/time_utils.h"
 
 #include <cmath>
 #include <cstdio>

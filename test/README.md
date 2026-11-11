@@ -23,4 +23,4 @@ comment at the top of `test/sim/fake_bookorbit.cpp`.
 `tools/probe_progress.py [bookId]` polls the real server's progress for a book (login
 from `include/secrets.h`) and prints every change, to see what the server really sends.
 
-How progress sync works is described at the top of `src/services/progress_sync.h`.
+How progress sync works is described at the top of `src/core/progress_sync.h`.

@@ -2,7 +2,7 @@
 #include "../hal/mem_stats.h"
 #include "../ui/modal.h"
 #include "../net/bookorbit_client.h"
-#include "../net/book_formats.h"
+#include "../core/book_formats.h"
 #include "../hal/buttons.h"
 #include "../hal/storage.h"
 #include "../ui/views/status_modal.h"
@@ -11,7 +11,7 @@
 #include "../ui/views/settings_view.h"
 #include "../ui/i18n.h"
 #include "../reader/reader.h"
-#include "progress_sync.h"
+#include "../core/progress_sync.h"
 #include "../convert/sd_convert.h"
 #include "bookmarks.h"
 #include "sync_clock.h"
@@ -179,7 +179,7 @@ void resolveServerIds(BookProgressRecord& rec) {
 }
 
 // A CFI means the same thing to the web reader for an EPUB file, and for an FB2
-// or AZW3 once converted here (its CFI map carries them over; reader/cfi_map.h).
+// or AZW3 once converted here (its CFI map carries them over; core/cfi_map.h).
 // Other formats (old MOBI, TXT) are read through an EPUB made from them whose
 // CFIs stay local.
 static bool cfiApplies(const BookProgressRecord& rec) {

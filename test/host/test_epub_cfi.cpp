@@ -1,5 +1,5 @@
 // Host unit tests for EPUB CFI parsing and the XHTML walker.  Run: test/host/run.sh
-#include "reader/epub_cfi.h"
+#include "core/epub_cfi.h"
 
 #include <cstdio>
 #include <cstring>

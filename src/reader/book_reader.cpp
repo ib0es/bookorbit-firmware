@@ -15,7 +15,7 @@
 #include "../hal/battery.h"
 #include "../hal/display.h"
 #include "../hal/mem_stats.h"
-#include "../services/progress_sync.h"
+#include "../core/progress_sync.h"
 #include "../services/sync_clock.h"
 #include "../ui/font.h"
 #include "../ui/i18n.h"
@@ -23,7 +23,7 @@
 #include "../ui/views/status_modal.h"
 #include "config.h"
 #include "engine/engine_text_counter.h"
-#include "epub_cfi.h"
+#include "../core/epub_cfi.h"
 #include "../ui/text_utils.h"
 
 using namespace freeink::book;

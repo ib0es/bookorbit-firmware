@@ -11,7 +11,7 @@
 #include "../../hal/storage.h"
 #include "../../services/library_manager.h"
 #include "../../services/progress_store.h"
-#include "../../services/progress_sync.h"
+#include "../../core/progress_sync.h"
 #include "../../services/sync_service.h"
 #include "../../services/power_service.h"
 #include "../../ui/modal.h"

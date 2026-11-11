@@ -54,7 +54,7 @@ else
 CXXFLAGS += -Itest/sim/stubs_linux
 endif
 
-NET_CXX  := src/net/bookorbit_client.cpp src/net/bookorbit_protocol.cpp src/net/opds_stream_parser.cpp test/sim/fake_bookorbit.cpp
+NET_CXX  := src/net/bookorbit_client.cpp src/core/bookorbit_protocol.cpp src/core/opds_stream_parser.cpp test/sim/fake_bookorbit.cpp
 APP_OBJS := $(patsubst %.cpp,$(BUILD)/%.o,$(SIM_CXX) $(NET_CXX)) $(patsubst %.c,$(BUILD)/%.o,$(SIM_C))
 
 all: $(BUILD)/x4_headless $(BUILD)/reader_roundtrip $(BUILD)/engine_shots

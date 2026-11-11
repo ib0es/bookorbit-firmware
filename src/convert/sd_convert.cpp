@@ -218,7 +218,7 @@ bool ensureConverted(const String& path, const String& cacheDir, String& epubPat
         }
         return false;
     }
-    // FB2: where its files stand in the web reader's layout (CFIs; reader/cfi_map.h).
+    // FB2: where its files stand in the web reader's layout (CFIs; core/cfi_map.h).
     const String mapPath = cacheDir + "/" + kCfiMapName;
     if (stats.cfiMap.empty()) {
         if (Storage.exists(mapPath.c_str())) Storage.remove(mapPath.c_str());
