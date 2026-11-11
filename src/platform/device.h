@@ -23,6 +23,8 @@ namespace Platform { inline constexpr const DeviceProfile& kDevice = kX3Profile;
 namespace Platform { inline constexpr const DeviceProfile& kDevice = kX4Profile; }
 #endif
 
+namespace Platform { inline constexpr const MemoryTier& kMemory = *kDevice.memory; }
+
 // The build flags that compile driver code in (platformio.ini, the SDK's
 // BoardConfig) must agree with the profile.
 #if defined(FREEINK_CAP_USB_MSC) && FREEINK_CAP_USB_MSC
@@ -39,3 +41,10 @@ static_assert(!Platform::kDevice.touchWake, "touchWake needs FREEINK_GT911_INT_W
 static_assert(Platform::kDevice.touch, "FREEINK_CAP_TOUCH is on: the device profile must say touch");
 #endif
 static_assert(!Platform::kDevice.touchOnly || Platform::kDevice.touch, "a touch-only board has touch");
+#if defined(ESP_PLATFORM)
+#if defined(BOARD_HAS_PSRAM)
+static_assert(Platform::kDevice.memory == &kLargeMemory, "a board with PSRAM takes the large memory tier");
+#else
+static_assert(Platform::kDevice.memory == &kSmallMemory, "a board without PSRAM takes the small memory tier");
+#endif
+#endif

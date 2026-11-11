@@ -48,7 +48,7 @@ RTC_NOINIT_ATTR static uint32_t rtcOpenBookAfterRestart;
 static constexpr uint32_t kOpenBookMagic = 0x0B00C0DE;
 
 bool PowerService::restartIntoLastBook() {
-    if (!Platform::restartSupported()) return false;
+    if (!Platform::restartSupported() || !Platform::kMemory.restartWhenOutOfMemory) return false;
     Serial.println("[Power] Not enough memory to open the book: restarting into it.");
     rtcOpenBookAfterRestart = kOpenBookMagic;
     Platform::restart();

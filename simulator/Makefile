@@ -55,6 +55,7 @@ SRCS_CXX = \
     src/services/bookmarks.cpp \
     src/services/sync_service.cpp \
     src/services/usb_msc_session.cpp \
+    src/services/wifi_session.cpp \
     src/core/progress_sync.cpp \
     src/storage/progress_store.cpp \
     src/services/sync_clock.cpp \

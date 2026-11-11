@@ -31,7 +31,7 @@ struct CatalogFetchInfo {
     uint32_t skipped = 0;      // <entry> elements without title/acquisition link
     uint32_t heapStart = 0;    // free heap before the first page
     uint32_t heapMin = 0;      // lowest free heap seen while parsing
-    bool truncated = false;    // stopped by OPDS_MAX_BOOKS / OPDS_MIN_FREE_HEAP
+    bool truncated = false;    // stopped by the memory tier's catalogMaxBooks / OPDS_MIN_FREE_HEAP
     // True when an empty result is trustworthy (the server really has no books).
     bool cleanEmpty() const { return httpCode == 200 && streamError == 0 && bytes > 0 && skipped == 0 && !truncated; }
 };

@@ -2,6 +2,7 @@
 #include "kit/ui_kit.h"
 #include "font.h"
 #include <algorithm>
+#include "../platform/device.h"
 
 struct JpegContext {
     FsFile* file;
@@ -33,28 +34,72 @@ struct JpegContext {
     int curDstY;
 };
 
-// Fast 1-bit RAM cache for current book cover to eliminate SD card/JPEG decoding lag
+// Fast 1-bit RAM cache of cover thumbnails, so the home screen redraws without
+// reading the card or decoding a JPEG. As many as the memory tier allows (one on
+// the C3, the home carousel's on the S3); the least recently drawn one makes room.
 static const int MAX_CACHE_W = 160;
 static const int MAX_CACHE_H = 240;
 static const int CACHE_ROW_BYTES = (MAX_CACHE_W / 8); // 20 bytes
-static uint8_t s_cachedCover[CACHE_ROW_BYTES * MAX_CACHE_H]; // 4800 bytes
-static String s_cachedPath = "";
-static int s_cachedW = 0;
-static int s_cachedH = 0;
-static CoverFitMode s_cachedFit = COVER_FIT_SCALE;
-static bool s_hasCachedCover = false;
+static const int CACHE_BYTES = CACHE_ROW_BYTES * MAX_CACHE_H; // 4800 bytes
+
+namespace {
+struct CoverSlot {
+    uint8_t* bits = nullptr;
+    String path;
+    int w = 0;
+    int h = 0;
+    CoverFitMode fit = COVER_FIT_SCALE;
+    bool valid = false;
+    uint32_t lastUse = 0;
+};
+constexpr int kCoverSlots = Platform::kMemory.coversInRam > 0 ? Platform::kMemory.coversInRam : 1;
+uint8_t s_firstSlotBits[CACHE_BYTES];   // the first slot is static; more come from the heap (PSRAM on the S3)
+CoverSlot s_slots[kCoverSlots];
+uint32_t s_useClock = 0;
+
+CoverSlot* findSlot(const char* filePath, int maxW, int maxH, CoverFitMode fit) {
+    if (!filePath || !*filePath) return nullptr;
+    for (CoverSlot& c : s_slots) {
+        if (c.valid && c.w == maxW && c.h == maxH && c.fit == fit && c.path.equals(filePath)) return &c;
+    }
+    return nullptr;
+}
+
+// A slot to decode a new thumbnail into, cleared to white paper and not valid
+// until commitSlot().
+CoverSlot* takeSlot() {
+    CoverSlot* pick = nullptr;
+    for (int i = 0; i < kCoverSlots; i++) {
+        CoverSlot& c = s_slots[i];
+        if (!c.bits) c.bits = i == 0 ? s_firstSlotBits : (uint8_t*)malloc(CACHE_BYTES);
+        if (!c.bits) continue;
+        if (!c.valid) { pick = &c; break; }
+        if (!pick || c.lastUse < pick->lastUse) pick = &c;
+    }
+    pick->valid = false;
+    memset(pick->bits, 0, CACHE_BYTES);   // 0 = white paper
+    return pick;
+}
+
+void commitSlot(CoverSlot* c, const char* filePath, int maxW, int maxH, CoverFitMode fit) {
+    c->path = filePath;
+    c->w = maxW;
+    c->h = maxH;
+    c->fit = fit;
+    c->valid = true;
+    c->lastUse = ++s_useClock;
+}
+}
 
 void JpegViewer::clearCache() {
-    s_hasCachedCover = false;
-    s_cachedPath = "";
-    s_cachedW = 0;
-    s_cachedH = 0;
-    s_cachedFit = COVER_FIT_SCALE;
+    for (CoverSlot& c : s_slots) {
+        c.valid = false;
+        c.path = "";
+    }
 }
 
 bool JpegViewer::hasCached(const char* filePath, int maxW, int maxH, CoverFitMode fit) {
-    if (!filePath || strlen(filePath) == 0) return false;
-    return s_hasCachedCover && s_cachedPath.equals(filePath) && s_cachedW == maxW && s_cachedH == maxH && s_cachedFit == fit;
+    return findSlot(filePath, maxW, maxH, fit) != nullptr;
 }
 
 // Input function for TJpgDec
@@ -387,9 +432,8 @@ bool JpegViewer::drawBmp(const char* filePath, int x, int y, int maxW, int maxH,
     }
 
     bool isThumbnail = (maxW <= MAX_CACHE_W && maxH <= MAX_CACHE_H);
-    if (isThumbnail) {
-        memset(s_cachedCover, 0, sizeof(s_cachedCover));
-    }
+    CoverSlot* slot = isThumbnail ? takeSlot() : nullptr;
+    uint8_t* thumbBits = slot ? slot->bits : nullptr;
 
     // Fast path: dimensions already match maxW x maxH (e.g. pre-rendered cache)
     if (w == maxW && h == maxH) {
@@ -407,7 +451,7 @@ bool JpegViewer::drawBmp(const char* filePath, int x, int y, int maxW, int maxH,
                     EPDColor c = (pal[bit] > 128) ? EPD_WHITE : EPD_BLACK;
                     Display.drawPixel(px, py, c);
                     if (isThumbnail && c == EPD_BLACK) {
-                        s_cachedCover[row * wb + (col / 8)] |= (1 << (7 - (col % 8)));
+                        thumbBits[row * wb + (col / 8)] |= (1 << (7 - (col % 8)));
                     }
                 }
             } else if (bpp == 8) {
@@ -418,7 +462,7 @@ bool JpegViewer::drawBmp(const char* filePath, int x, int y, int maxW, int maxH,
                     EPDColor c = (gray > threshold) ? EPD_WHITE : EPD_BLACK;
                     Display.drawPixel(px, py, c);
                     if (isThumbnail && c == EPD_BLACK) {
-                        s_cachedCover[row * wb + (col / 8)] |= (1 << (7 - (col % 8)));
+                        thumbBits[row * wb + (col / 8)] |= (1 << (7 - (col % 8)));
                     }
                 }
             } else if (bpp == 24 || bpp == 32) {
@@ -433,7 +477,7 @@ bool JpegViewer::drawBmp(const char* filePath, int x, int y, int maxW, int maxH,
                     EPDColor c = (gray > threshold) ? EPD_WHITE : EPD_BLACK;
                     Display.drawPixel(px, py, c);
                     if (isThumbnail && c == EPD_BLACK) {
-                        s_cachedCover[row * wb + (col / 8)] |= (1 << (7 - (col % 8)));
+                        thumbBits[row * wb + (col / 8)] |= (1 << (7 - (col % 8)));
                     }
                 }
             }
@@ -522,7 +566,7 @@ bool JpegViewer::drawBmp(const char* filePath, int x, int y, int maxW, int maxH,
                         int localX = px - x;
                         int localY = py - y;
                         if (localX >= 0 && localX < maxW && localY >= 0 && localY < maxH) {
-                            s_cachedCover[localY * wb + (localX / 8)] |= (1 << (7 - (localX % 8)));
+                            thumbBits[localY * wb + (localX / 8)] |= (1 << (7 - (localX % 8)));
                         }
                     }
                 }
@@ -538,13 +582,7 @@ bool JpegViewer::drawBmp(const char* filePath, int x, int y, int maxW, int maxH,
         if (errNext) free(errNext);
     }
 
-    if (isThumbnail) {
-        s_cachedPath = filePath;
-        s_cachedW = maxW;
-        s_cachedH = maxH;
-        s_cachedFit = fit;
-        s_hasCachedCover = true;
-    }
+    if (slot) commitSlot(slot, filePath, maxW, maxH, fit);
 
     free(lineBuf);
     f.close();
@@ -555,7 +593,9 @@ bool JpegViewer::drawCover(const char* filePath, int x, int y, int maxW, int max
     if (!filePath || strlen(filePath) == 0) return false;
 
     // 1. RAM cache check for rapid home screen redraws (< 0.5 ms)
-    if (s_hasCachedCover && s_cachedPath.equals(filePath) && s_cachedW == maxW && s_cachedH == maxH && s_cachedFit == fit) {
+    if (CoverSlot* cached = findSlot(filePath, maxW, maxH, fit)) {
+        cached->lastUse = ++s_useClock;
+        const uint8_t* bits = cached->bits;
         int wb = (maxW + 7) / 8;
         for (int row = 0; row < maxH; row++) {
             int py = y + row;
@@ -563,7 +603,7 @@ bool JpegViewer::drawCover(const char* filePath, int x, int y, int maxW, int max
             for (int col = 0; col < maxW; col++) {
                 int byteIdx = rowOffset + (col / 8);
                 int bitIdx = 7 - (col % 8);
-                bool isBlack = (s_cachedCover[byteIdx] & (1 << bitIdx)) != 0;
+                bool isBlack = (bits[byteIdx] & (1 << bitIdx)) != 0;
                 Display.drawPixel(x + col, py, isBlack ? EPD_BLACK : EPD_WHITE);
             }
         }
@@ -652,9 +692,10 @@ bool JpegViewer::drawJpeg(const char* filePath, int x, int y, int maxW, int maxH
 
     bool isThumbnail = (maxW <= MAX_CACHE_W && maxH <= MAX_CACHE_H);
     uint8_t* cacheBuf = nullptr;
+    CoverSlot* slot = nullptr;
     if (isThumbnail) {
-        memset(s_cachedCover, 0, sizeof(s_cachedCover)); // 0 = white paper
-        cacheBuf = s_cachedCover;
+        slot = takeSlot();
+        cacheBuf = slot->bits;
     } else {
         // For sleep screen, allocate temporary 1-bit buffer to write BMP cache
         size_t sleepBufSize = ((maxW + 7) / 8) * maxH;
@@ -769,11 +810,7 @@ bool JpegViewer::drawJpeg(const char* filePath, int x, int y, int maxW, int maxH
         Serial.printf("[JPEG] jd_decomp error: %d\n", res);
     } else {
         if (isThumbnail) {
-            s_cachedPath = filePath;
-            s_cachedW = maxW;
-            s_cachedH = maxH;
-            s_cachedFit = fit;
-            s_hasCachedCover = true;
+            commitSlot(slot, filePath, maxW, maxH, fit);
             Serial.printf("[JPEG] Cover decoded & cached in RAM (%dx%d, %lu ms).\n", maxW, maxH, millis() - t0);
 
             // Write persistent thumbnail BMP to SD card
@@ -783,7 +820,7 @@ bool JpegViewer::drawJpeg(const char* filePath, int x, int y, int maxW, int maxH
             int dot = base.lastIndexOf('.');
             if (dot > 0) base = base.substring(0, dot);
             String bmpThumb = "/covers/" + base + ((fit == COVER_FIT_CROP) ? "_thumb_crop.bmp" : "_thumb_fit.bmp");
-            save1BitBmp(bmpThumb.c_str(), maxW, maxH, s_cachedCover);
+            save1BitBmp(bmpThumb.c_str(), maxW, maxH, slot->bits);
         } else if (cacheBuf) {
             // Write persistent sleep screen BMP to SD card
             String pathStr(filePath);
