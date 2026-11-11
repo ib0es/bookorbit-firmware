@@ -24,6 +24,7 @@
 #include "../../ui/kit/ui_kit.h"
 #include "../../ui/actions.h"
 #include "../../services/wifi_session.h"
+#include "../../platform/device.h"
 
 namespace {
 
@@ -124,7 +125,15 @@ bool openBook(AppContext& ctx, const String& path, const String& title, const St
     Buttons.clearEvents();
     Serial.printf("[Reader] Opening book: %s (file %d)\n", path.c_str(), fileId);
     WifiSession::giveMemoryToReader();   // B9: no upload or radio while the index is built (small tier)
-    if (!Reader.openBook(path)) {
+    bool opened = Reader.openBook(path);
+    if (!opened && Reader.lastFailedForMemory() && Platform::kMemory.restartWhenOutOfMemory) {
+        // P2: right after a download the radio's memory comes back a moment after
+        // Wi-Fi is off. Once more when the heap has settled, before a restart.
+        Serial.println("[Reader] Short of memory: trying again once the heap has settled.");
+        WifiSession::waitForHeapToSettle();
+        opened = Reader.openBook(path);
+    }
+    if (!opened) {
         const auto why = (convert::ConvertProblem)Reader.lastConvertProblem();
         if (why == convert::ConvertProblem::Drm || why == convert::ConvertProblem::Unsupported) {
             Modal.showMessage(tr(MsgId::READER_OPEN_ERR_TITLE), tr(MsgId::READER_OPEN_ERR_L1),
