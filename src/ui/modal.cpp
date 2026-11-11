@@ -11,8 +11,10 @@ void ModalManager::open(Kind kind, const String& title, const String& l1, const 
                         const String& l3, const String& l4, const String& footer) {
     _active = true;
     _kind = kind;
-    _openedAt = millis();
     drawStatusModal(title.c_str(), l1.c_str(), orNull(l2), orNull(l3), orNull(l4), orNull(footer));
+    // Timed from when it is on the panel: the refresh (~0.5 s, a full one 3.8 s)
+    // no longer eats into the time a message is readable.
+    _openedAt = millis();
 }
 
 void ModalManager::showMessage(const String& title, const String& line1, const String& line2,
