@@ -6,6 +6,7 @@
 #include "../services/sync_clock.h"
 #include "../core/time_utils.h"
 #include "config.h"
+#include "../platform/device.h"
 #include <base64.h>
 #include <esp_wifi.h>
 
@@ -393,7 +394,7 @@ bool BookOrbitClient::fetchCatalogFromUrl(const String& serverHost, const String
             const uint32_t heap = ESP.getFreeHeap();
             if (heap < lastCatalog.heapMin) lastCatalog.heapMin = heap;
             // The heap guard never empties the catalog: one entry costs ~1-2 KB.
-            if (outBooks.size() >= OPDS_MAX_BOOKS || (!outBooks.empty() && heap < OPDS_MIN_FREE_HEAP)) {
+            if (outBooks.size() >= Platform::kMemory.catalogMaxBooks || (!outBooks.empty() && heap < OPDS_MIN_FREE_HEAP)) {
                 limitReached = true;
                 lastCatalog.truncated = true;
                 return false;
@@ -446,7 +447,7 @@ bool BookOrbitClient::fetchCatalogFromUrl(const String& serverHost, const String
 
     if (limitReached) {
         Serial.printf("[BookOrbit] Catalog truncated at %u books (limit %u, free heap %u).\n",
-                      (unsigned)outBooks.size(), (unsigned)OPDS_MAX_BOOKS, (unsigned)ESP.getFreeHeap());
+                      (unsigned)outBooks.size(), (unsigned)Platform::kMemory.catalogMaxBooks, (unsigned)ESP.getFreeHeap());
     }
     Serial.printf("[BookOrbit] Parsed %d books from OPDS feed '%s' in %lu ms total (heap start %u, min %u).\n",
                   (int)outBooks.size(), initialUrl.c_str(), millis() - t0, (unsigned)lastCatalog.heapStart, (unsigned)lastCatalog.heapMin);

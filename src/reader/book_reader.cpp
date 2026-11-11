@@ -22,6 +22,7 @@
 #include "../ui/kit/ui_kit.h"
 #include "../ui/views/status_modal.h"
 #include "config.h"
+#include "../platform/device.h"
 #include "engine/engine_text_counter.h"
 #include "../core/epub_cfi.h"
 #include "../ui/text_utils.h"
@@ -54,6 +55,8 @@ constexpr size_t kInflateBytes = 48 * 1024;
 // a background job holds its ~64 KB stops (or finishes) the job first.
 constexpr size_t kTransientBudget = 96 * 1024;       // one inflate stream (window + decompressor)
 constexpr size_t kIndexScratchBytes = 24 * 1024;  // container index build (more for huge books, retried)
+// How far the retries above may grow is the memory tier's (platform/tiers/*.h); the
+// first sizes are the same everywhere, so page caches stay valid across devices.
 constexpr size_t kRenderBytes = 12 * 1024;      // one page's runs and text (first try)
 constexpr size_t kImageBytes = 52 * 1024;       // inflate + decode of a page's images
 constexpr uint32_t kSpineFileMagic = 0x53424946;   // "FIBS"
@@ -95,7 +98,7 @@ bool buildContainerIndex(SdBookSource& src, SdCacheStorage& cache, bool& noMemor
     const uint32_t t0 = millis();
     BookStatus st = BookStatus::OutOfMemory;
     // Record tables grow with the book (~70 KB for a 1,700-chapter omnibus): retried larger.
-    for (size_t cap = kIndexScratchBytes; st == BookStatus::OutOfMemory && cap <= 96 * 1024; cap *= 2) {
+    for (size_t cap = kIndexScratchBytes; st == BookStatus::OutOfMemory && cap <= Platform::kMemory.indexScratchMax; cap *= 2) {
         Buffer parse(kInflateBytes), scratch(cap);
         if (!scratch.p || !parse.p) {
             const MemStats::Snapshot m = MemStats::now();
@@ -848,7 +851,7 @@ bool BookReader::layoutChapter(int spine) {
     BookStatus st = BookStatus::OutOfMemory;
     size_t layoutUsed = 0, parseUsed = 0;
     PageCacheWriter writer;
-    for (size_t cap = kLayoutBytes; st == BookStatus::OutOfMemory && cap <= kLayoutBytes + 32 * 1024; cap += 16 * 1024) {
+    for (size_t cap = kLayoutBytes; st == BookStatus::OutOfMemory && cap <= kLayoutBytes + Platform::kMemory.layoutExtraMax; cap += 16 * 1024) {
         Buffer layoutMem(cap);
         Buffer parseMem(kStoredParseBytes);
         if (!layoutMem.p || !parseMem.p) {
@@ -2126,7 +2129,7 @@ void BookReader::renderCurrentPage() {
     unsigned imageCount = 0;
     // A page record: runs plus text; justified text is many runs. Retried larger
     // when the page does not fit (dense pages need ~15 KB).
-    for (size_t cap = kRenderBytes; cap <= 64 * 1024; cap *= 2) {
+    for (size_t cap = kRenderBytes; cap <= Platform::kMemory.pageRecordMax; cap *= 2) {
         if (_bg && (g_liveTransient + cap > kTransientBudget || MemStats::now().largestBlock < cap + 4096)) {
             Serial.printf("[Reader] Page record of %u B does not fit beside the layout job (held %u B, largest block %u B)\n",
                           (unsigned)cap, (unsigned)g_liveTransient, (unsigned)MemStats::now().largestBlock);

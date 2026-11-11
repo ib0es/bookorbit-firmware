@@ -9,10 +9,10 @@
 #include "ui/font.h"
 #include "ui/keyboard_ui.h"
 #include "ui/i18n.h"
-#include "reader/reader.h"
 #include "ui/kit/ui_kit.h"
 #include "ui/views/status_modal.h"
 #include "net/bookorbit_client.h"
+#include "../services/wifi_session.h"
 
 WifiManagerUI WifiUI;
 
@@ -104,8 +104,7 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
         Serial.println("[WifiUI] Starting Wi-Fi network scan...");
         drawModal(tr(MsgId::WIFI_SCAN_MODAL_TITLE), tr(MsgId::WIFI_SCAN_MODAL_SCANNING), tr(MsgId::WIFI_SCAN_MODAL_WAIT));
 
-        Reader.stopBackground();      // Wi-Fi needs the memory
-        Reader.releaseFontCaches();
+        WifiSession::prepare();
         WiFi.mode(WIFI_STA);
         WiFi.disconnect();
         delay(150);

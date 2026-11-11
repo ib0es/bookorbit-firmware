@@ -39,13 +39,13 @@
 
 // OPDS catalog limits. The feed itself is parsed as a stream (one <entry> in RAM
 // at a time); these bound the resulting in-memory book list on the 400 KB C3.
+// How many books are kept is the memory tier's (src/platform/tiers/*.h).
 // 1 = fast page refreshes return before the panel finishes (~0.3 s earlier), at the
 // cost of a second 48 KB frame buffer kept on the heap for good (no PSRAM on the C3).
 #ifndef EPD_ASYNC_FAST_REFRESH
 #define EPD_ASYNC_FAST_REFRESH     0
 #endif
 
-#define OPDS_MAX_BOOKS             200          // stop adding books after this many
 #define OPDS_MAX_PAGES             20           // follow at most this many rel="next" pages
 #define OPDS_MIN_FREE_HEAP         (6 * 1024)   // emergency stop only: with a book open the C3 can be at ~12-25KB during sync
 

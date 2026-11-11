@@ -6,9 +6,11 @@
 // decides on top of them (which keys there are, what is on by default...).
 
 #include <cstdint>
+#include "memory_tier.h"
 
 struct DeviceProfile {
     const char* name;            // on the sleep screen, device info, web portal
+    const MemoryTier* memory;    // class of chip: platform/tiers/*.h
 
     // ---- input
     bool touch;                  // a touch panel: tap targets, "◀" (BACK) in the title bar

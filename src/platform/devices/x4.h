@@ -1,10 +1,12 @@
 #pragma once
 #include "../device_profile.h"
+#include "../tiers/small.h"
 
 // Xteink X4 (ESP32-C3): seven keys (BACK, OK, LEFT, RIGHT under the screen,
 // UP / DOWN on the side, POWER), no touch, no frontlight.
 inline constexpr DeviceProfile kX4Profile = {
     /*name*/ "XTEINK X4",
+    /*memory*/ &kSmallMemory,
     /*touch*/ false, /*touchOnly*/ false, /*upDownTurnPages*/ false, /*okOpensBookMenu*/ false,
     /*keyCentres*/ {96, 178, 279, 370},   // measured on the X4: two rockers of two keys
     /*autoRotateByDefault*/ false, /*usbMassStorage*/ false, /*touchWake*/ false,
