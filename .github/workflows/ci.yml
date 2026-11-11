@@ -115,6 +115,16 @@ jobs:
           npm ci
           npm run build
 
+  layers:
+    name: Layer Rules
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Device and platform checks only in src/platform; core and platform include downward only
+        run: python3 tools/check_layers.py
+
   host-tests:
     name: Host Unit Tests
     runs-on: ubuntu-latest
@@ -206,7 +216,7 @@ jobs:
   ci-pass:
     name: All Platform Builds & Tests
     if: always()
-    needs: [discover, firmware, web-flasher, host-tests, sim-tests]
+    needs: [discover, firmware, web-flasher, layers, host-tests, sim-tests]
     runs-on: ubuntu-latest
     steps:
       - name: Verify all required checks passed
@@ -215,12 +225,13 @@ jobs:
             ["discover"]="${{ needs.discover.result }}"
             ["firmware"]="${{ needs.firmware.result }}"
             ["web-flasher"]="${{ needs.web-flasher.result }}"
+            ["layers"]="${{ needs.layers.result }}"
             ["host-tests"]="${{ needs.host-tests.result }}"
             ["sim-tests"]="${{ needs.sim-tests.result }}"
           )
 
           failed=0
-          for job in discover firmware web-flasher host-tests sim-tests; do
+          for job in discover firmware web-flasher layers host-tests sim-tests; do
             res="${results[$job]}"
             echo "${job}: ${res}"
             if [ "$res" != "success" ]; then
