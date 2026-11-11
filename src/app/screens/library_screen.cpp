@@ -180,6 +180,14 @@ void deleteBookFile(int masterIdx, const String& path) {
         if (otherOnCard) LibraryManager::chooseFormat(*book);
         lib.updateLastBookAfterDeletion(path);   // off the home carousel too
         lib.rebuildFilteredIndices();
+        // The list puts books on the card first: the book moves to the cloud
+        // ones. The selection follows it (it stayed on the row, now another,
+        // downloaded book, which looked as if the deletion had not taken).
+        if (masterIdx >= 0) {
+            for (int i = 0; i < lib.rowCount(); i++) {
+                if (lib.rowMasterIndex(i) == masterIdx) { lib.selectedBookIndex = i; break; }
+            }
+        }
         Modal.showMessage(tr(MsgId::LIB_DELETE_SUCCESS_TITLE), tr(MsgId::LIB_DELETE_SUCCESS_L1), tr(MsgId::LIB_DELETE_SUCCESS_L2),
                           tr(MsgId::LIB_DELETE_SUCCESS_L3), "", 1600);
     } else {
