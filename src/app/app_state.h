@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include "config.h"
 #include "../ui/i18n.h"
+#include "../platform/device.h"
 
 enum AppState {
     STATE_HOME,
@@ -61,13 +62,8 @@ struct AppConfig {
     // of it (Appearance): the pages are turned by both.
     int uiOrientation = 0;
     int orientation = 0;
-    // IMU auto-rotate: enabled by default on X3 and X4 Classic (QMI8658).
-#if (defined(FREEINK_DEVICE_X3) && FREEINK_DEVICE_X3 && !(defined(FREEINK_DEVICE_X4) && FREEINK_DEVICE_X4)) \
-    || (defined(FREEINK_DEVICE_X4CLASSIC) && FREEINK_DEVICE_X4CLASSIC)
-    bool autoRotate = true;
-#else
-    bool autoRotate = false;
-#endif
+    // IMU auto-rotate: on by default where the device profile says so (X3, X4 Classic).
+    bool autoRotate = Platform::kDevice.autoRotateByDefault;
     int imuRot = 0;              // 0..3 quarter-turns for hardware IMU axis alignment
     bool imuFlipX = false;
     bool imuFlipY = false;

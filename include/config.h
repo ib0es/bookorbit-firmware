@@ -49,18 +49,7 @@
 #define OPDS_MAX_PAGES             20           // follow at most this many rel="next" pages
 #define OPDS_MIN_FREE_HEAP         (6 * 1024)   // emergency stop only: with a book open the C3 can be at ~12-25KB during sync
 
-// Device Settings
-#if defined(FREEINK_DEVICE_X3) && FREEINK_DEVICE_X3 && !(defined(FREEINK_DEVICE_X4) && FREEINK_DEVICE_X4)
-#define DEVICE_NAME                "XTEINK-X3-BookOrbit"
-#elif defined(FREEINK_DEVICE_X4CLASSIC) && FREEINK_DEVICE_X4CLASSIC
-#define DEVICE_NAME                "XTEINK-X4C-BookOrbit"
-#elif defined(FREEINK_DEVICE_X4PRO) && FREEINK_DEVICE_X4PRO
-#define DEVICE_NAME                "XTEINK-X4PRO-BookOrbit"
-#elif defined(FREEINK_DEVICE_PICCO) && FREEINK_DEVICE_PICCO
-#define DEVICE_NAME                "BOOX-PICCO-BookOrbit"
-#else
-#define DEVICE_NAME                "XTEINK-X4-BookOrbit"
-#endif
+// Device Settings (what differs between boards: src/platform/devices/*.h)
 #define DEFAULT_LANGUAGE           "en"
 #define FULL_REFRESH_EVERY_PAGES   5    // Trigger a full E-Ink refresh every N pages to eliminate ghosting
 #ifndef SLEEP_TIMEOUT_MS

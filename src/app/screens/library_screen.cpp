@@ -11,6 +11,7 @@
 #include "../../ui/i18n.h"
 #include "../../ui/kit/ui_kit.h"
 #include "../../net/book_formats.h"
+#include "../../platform/device.h"
 #include "../../ui/text_utils.h"
 
 namespace {
@@ -288,11 +289,9 @@ void handleEvent(AppContext& ctx, const ButtonEvent& event) {
             }
             break;
         case BTN_CONFIRM:
-#if (defined(FREEINK_DEVICE_PICCO) && FREEINK_DEVICE_PICCO) || (defined(FREEINK_DEVICE_X4PRO) && FREEINK_DEVICE_X4PRO)
-            // Picco / X4 Pro have no LEFT key: OK on a book opens its menu (Read first),
+            // No LEFT key (Picco, X4 Pro): OK on a book opens its menu (Read first),
             // the same as a tap. Folders still open directly.
-            if (bookMenuBook()) { openBookMenu(ctx); break; }
-#endif
+            if (Platform::kDevice.okOpensBookMenu && bookMenuBook()) { openBookMenu(ctx); break; }
             openSelected(ctx);
             break;
         case BTN_RIGHT:
