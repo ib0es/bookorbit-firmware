@@ -40,6 +40,16 @@ void log(const char* where) {
     const Snapshot s = now();
     Serial.printf("[Mem] %s: free %u KB, largest block %u KB, min since boot %u KB\n", where,
                   (unsigned)(s.freeBytes / 1024), (unsigned)(s.largestBlock / 1024), (unsigned)(s.minFreeEver / 1024));
+#if defined(ESP_PLATFORM) && defined(BOARD_HAS_PSRAM)
+    // The numbers above count PSRAM too. Wi-Fi, DMA and small blocks (<= 4 KB
+    // with SPIRAM_USE_MALLOC) live in internal RAM: shown apart, to check the
+    // large memory tier on the device.
+    Serial.printf("[Mem] %s: internal free %u KB, largest %u KB, min %u KB; PSRAM free %u KB\n", where,
+                  (unsigned)(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
+                  (unsigned)(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL) / 1024),
+                  (unsigned)(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL) / 1024),
+                  (unsigned)(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024));
+#endif
 }
 
 bool probeEngine(const char* where) {
