@@ -5,56 +5,10 @@
 #include <algorithm>
 #include "../net/bookorbit_client.h"
 #include "../net/book_formats.h"
+#include "../storage/json_file.h"
 #include <Preferences.h>
 
 StorageManager Storage;
-
-namespace {
-// ArduinoJson reader over an open card file, in 512-byte reads.
-struct CardFileReader {
-    FsFile& f;
-    uint8_t buf[512];
-    size_t n = 0, at = 0;
-    explicit CardFileReader(FsFile& file) : f(file) {}
-    bool fill() {
-        if (at < n) return true;
-        const auto r = f.read(buf, sizeof(buf));
-        n = r > 0 ? (size_t)r : 0;
-        at = 0;
-        return n > 0;
-    }
-    int read() { return fill() ? buf[at++] : -1; }
-    size_t readBytes(char* dst, size_t len) {
-        size_t got = 0;
-        while (got < len && fill()) {
-            size_t k = std::min(len - got, n - at);
-            memcpy(dst + got, buf + at, k);
-            at += k;
-            got += k;
-        }
-        return got;
-    }
-};
-}  // namespace
-
-DeserializationError readJsonFile(const char* path, JsonDocument& doc) {
-    doc.clear();
-    if (!Storage.isAvailable() || !Storage.exists(path)) return DeserializationError::EmptyInput;
-    FsFile f = Storage.open(path, O_RDONLY);
-    if (!f) return DeserializationError::EmptyInput;
-    CardFileReader reader(f);
-    const DeserializationError err = deserializeJson(doc, reader);
-    f.close();
-    if (err) Serial.printf("[Storage] %s: %s\n", path, err.c_str());
-    return err;
-}
-
-void keepUnreadableFile(const char* path) {
-    if (!Storage.exists(path)) return;
-    const String bad = String(path) + ".bad";
-    if (Storage.exists(bad.c_str())) Storage.remove(bad.c_str());
-    if (Storage.rename(path, bad.c_str())) Serial.printf("[Storage] Unreadable %s kept as %s\n", path, bad.c_str());
-}
 
 StorageManager::StorageManager() {}
 
@@ -251,10 +205,10 @@ std::vector<DirEntry> StorageManager::listDirectory(const String& path) {
 
 bool StorageManager::loadConfig(AppConfig& cfg) {
     bool sdLoaded = false;
-    if (isAvailable() && exists("/config.json")) {
+    if (isAvailable()) {
         {
             JsonDocument doc;
-            DeserializationError error = readJsonFile("/config.json", doc);
+            DeserializationError error = JsonFile::read("/config.json", doc);
             if (!error) {
                 if (doc["wifi_ssid"].is<const char*>()) { cfg.wifiSsid = doc["wifi_ssid"].as<String>(); cfg.wifiSsid.trim(); }
                 if (doc["wifi_pass"].is<const char*>()) { cfg.wifiPass = doc["wifi_pass"].as<String>(); cfg.wifiPass.trim(); }
@@ -338,8 +292,8 @@ bool StorageManager::loadConfig(AppConfig& cfg) {
 
                 Serial.println("[Storage] Config successfully loaded from MicroSD.");
                 sdLoaded = true;
-            } else if (error != DeserializationError::NoMemory) {
-                keepUnreadableFile("/config.json");   // a new one is written from the NVS copy below
+            } else if (error != DeserializationError::NoMemory && error != DeserializationError::EmptyInput) {
+                JsonFile::keepUnreadable("/config.json");   // a new one is written from the NVS copy below
             }
         }
     }
@@ -435,15 +389,7 @@ bool StorageManager::saveConfig(const AppConfig& cfg) {
     doc["touch_wake"] = cfg.touchWakeEnabled;
     doc["full_refresh_every"] = cfg.fullRefreshEvery;
     doc["language"] = I18n::getLanguageCode(cfg.language);
-    if (doc.overflowed()) {
-        Serial.println("[Storage] Not enough memory to save the config: the file on the card is kept.");
-        return false;
-    }
-
-    String jsonStr;
-    serializeJsonPretty(doc, jsonStr);
-
-    bool ok = SDCardManager::getInstance().writeFile("/config.json", jsonStr);
+    const bool ok = JsonFile::write("/config.json", doc, /*pretty=*/true);
     if (ok) {
         Serial.println("[Storage] Config saved to MicroSD.");
     }
@@ -481,15 +427,7 @@ bool StorageManager::saveCatalog(const std::vector<BookMetadata>& catalog) {
         if (b.xpath.length() > 0) obj["xpath"] = b.xpath;
         if (b.serverUpdatedAt > 0) obj["srvUpdated"] = b.serverUpdatedAt;
     }
-    if (doc.overflowed()) {
-        Serial.println("[Storage] Not enough memory to save the catalog: the file on the card is kept.");
-        return false;
-    }
-
-    String jsonStr;
-    serializeJson(doc, jsonStr);
-
-    bool ok = SDCardManager::getInstance().writeFile("/books/catalog.json", jsonStr);
+    const bool ok = JsonFile::write("/books/catalog.json", doc);
     if (ok) {
         Serial.printf("[Storage] Catalog metadata saved (%d books) to /books/catalog.json\n", (int)catalog.size());
     }
@@ -498,10 +436,10 @@ bool StorageManager::saveCatalog(const std::vector<BookMetadata>& catalog) {
 
 bool StorageManager::loadCatalog(std::vector<BookMetadata>& outCatalog) {
     outCatalog.clear();
-    if (!isAvailable() || !exists("/books/catalog.json")) return false;
+    if (!isAvailable()) return false;
 
     JsonDocument doc;
-    if (readJsonFile("/books/catalog.json", doc)) return false;   // the next sync writes a new one
+    if (JsonFile::read("/books/catalog.json", doc)) return false;   // the next sync writes a new one
 
     JsonArray arr = doc.as<JsonArray>();
     for (JsonObject obj : arr) {
@@ -559,12 +497,7 @@ bool StorageManager::saveLastBook(const LastBookInfo& info) {
     if (info.fileId > 0) doc["fileId"] = info.fileId;
     if (info.docId.length() > 0) doc["docId"] = info.docId;
     if (info.xpath.length() > 0) doc["xpath"] = info.xpath;
-    if (doc.overflowed()) return false;
-
-    String jsonStr;
-    serializeJson(doc, jsonStr);
-
-    bool ok = SDCardManager::getInstance().writeFile("/books/last_book.json", jsonStr);
+    const bool ok = JsonFile::write("/books/last_book.json", doc);
     if (ok) {
         Serial.printf("[Storage] Last read book saved: %s (page %d)\n", info.title.c_str(), info.page);
     }
@@ -572,10 +505,10 @@ bool StorageManager::saveLastBook(const LastBookInfo& info) {
 }
 
 bool StorageManager::loadLastBook(LastBookInfo& outInfo) {
-    if (!isAvailable() || !exists("/books/last_book.json")) return false;
+    if (!isAvailable()) return false;
 
     JsonDocument doc;
-    if (readJsonFile("/books/last_book.json", doc)) return false;
+    if (JsonFile::read("/books/last_book.json", doc)) return false;
 
     if (doc["filePath"].is<const char*>()) outInfo.filePath = doc["filePath"].as<String>();
     if (doc["title"].is<const char*>()) outInfo.title = doc["title"].as<String>();

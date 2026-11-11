@@ -74,6 +74,17 @@ def big_catalog(sd):
 def corrupt_progress(sd):
     open(os.path.join(sd, "books/progress.json"), "w").write('{"version":1,"books":[{"path":')
 
+def progress_only_tmp(sd):
+    """A save cut between replaceFile's remove and rename: only the complete .tmp left."""
+    json.dump({"version": 1, "books": [{"fileId": 101, "bookId": 1, "path": "/books/Alice in Wonderland.epub",
+                                        "title": "Alice in Wonderland", "local": {"p": 0.5}}]},
+              open(os.path.join(sd, "books/progress.json.tmp"), "w"))
+
+def tmp_taken(log, sd):
+    return ("its complete .tmp taken" in log and "Loaded 1 book records" in log
+            and os.path.exists(os.path.join(sd, "books/progress.json"))
+            and not os.path.exists(os.path.join(sd, "books/progress.json.tmp")))
+
 def subfolder_book(sd):
     os.makedirs(os.path.join(sd, "books/Sub"), exist_ok=True)
     shutil.copy(os.path.join(sd, "books/Alice in Wonderland.epub"), os.path.join(sd, "books/Sub/Alice in Wonderland.epub"))
@@ -217,6 +228,7 @@ CASES = [
      "DC" + "[" + kb_tap(215, 385) + kb_tap(177, 265) + kb_tap(278, 448) + kb_tap(430, 448) + "]" + "C", search_backspace),
     ("library: a book in a subfolder gets a cache of its own (B13)", subfolder_book, {},
      "DC" + "DDDDD" + "C" + "D" + "C" + "D" + "C", subfolder_cache),
+    ("storage: a save cut before its rename is taken from the .tmp", progress_only_tmp, {}, "w", tmp_taken),
     ("download: the book is in place and no .part is left (B5)", fake_server({"progress": []}), {},
      HOME_SYNC + "B" + ALL_BOOKS + "UC" + "w", downloaded_no_part),
     ("download: a failed download leaves nothing behind (B5)", fake_server({"progress": []}), {},

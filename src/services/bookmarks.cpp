@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "../hal/storage.h"
+#include "../storage/json_file.h"
 #include "../reader/reader.h"
 
 BookmarkList Bookmarks;
@@ -23,12 +24,13 @@ void BookmarkList::load(const String& bookPath) {
     _deleted.clear();
     _path = bookPath;
     const String file = fileFor();
-    if (!Storage.isAvailable() || !Storage.exists(file.c_str())) return;
+    if (!Storage.isAvailable()) return;
     JsonDocument doc;
-    const DeserializationError err = readJsonFile(file.c_str(), doc);
+    const DeserializationError err = JsonFile::read(file.c_str(), doc);
+    if (err == DeserializationError::EmptyInput && !Storage.exists(file.c_str())) return;   // no bookmarks yet
     if (err) {
         Serial.printf("[Bookmarks] %s: unreadable, ignored\n", file.c_str());
-        if (err != DeserializationError::NoMemory) keepUnreadableFile(file.c_str());
+        if (err != DeserializationError::NoMemory) JsonFile::keepUnreadable(file.c_str());
         return;
     }
     for (JsonObject o : doc["bookmarks"].as<JsonArray>()) {
@@ -76,15 +78,7 @@ bool BookmarkList::save() const {
         JsonArray del = doc["deleted"].to<JsonArray>();
         for (int id : _deleted) del.add(id);
     }
-    if (doc.overflowed()) return false;
-    String out;
-    serializeJson(doc, out);
-    const String tmp = file + ".tmp";
-    FsFile f = Storage.open(tmp.c_str(), O_RDWR | O_CREAT | O_TRUNC);
-    if (!f) return false;
-    const bool ok = f.write((const uint8_t*)out.c_str(), out.length()) == out.length();
-    f.close();
-    return ok && Storage.replaceFile(tmp.c_str(), file.c_str());
+    return JsonFile::write(file.c_str(), doc);
 }
 
 int BookmarkList::findIn(int spine, uint32_t from, uint32_t to) const {
