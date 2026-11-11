@@ -122,6 +122,9 @@ void AppController::setup() {
     // folders and catalog.json) when the book is left (LibraryManager::ensureScanned).
     // Restarted to open a book that did not fit in the cut-up heap: as after sleep.
     const bool restartedIntoBook = PowerService::takeRestartIntoBook();
+    // Restarted on leaving USB mass storage: back to Settings, not a cold boot
+    // (no sync at boot, no clean-up of the card: B7).
+    const bool restartedIntoSettings = PowerService::takeRestartIntoSettings();
     const bool resumeBook = restartedIntoBook || (isWakeFromSleep && PowerService::getSavedRtcState() == STATE_READING);
     if (!resumeBook) lib.scanLocalBooks();
     lib.initLastBook();
@@ -146,6 +149,15 @@ void AppController::setup() {
     }
 
     lib.ensureScanned();   // the book could not be resumed
+
+    if (restartedIntoSettings) {
+        Serial.println("[BOOT] Back from USB mass storage: Settings");
+        _ctx.currentState = STATE_SETTINGS;
+        drawSettingsScreen(_ctx, true);
+        Buttons.clearEvents();
+        _ctx.lastActivityTime = millis();
+        return;
+    }
 
     // 7. Cold boot progress sync only if user explicitly turned on syncOnBoot in Settings
     if (!isWakeFromSleep) SyncService::syncOnBootProgress(_ctx);

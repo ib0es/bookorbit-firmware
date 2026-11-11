@@ -28,8 +28,7 @@ bool begin(AppContext& ctx) {
     if (UsbMsc.start()) return true;
     if (Platform::restartSupported()) {
         Serial.println("[USB-MSC] Restarting to recover the file system.");
-        PowerService::setSavedRtcState(STATE_SETTINGS);
-        Platform::restart();
+        PowerService::restartIntoSettings();
     }
     Storage.begin();
     return false;
@@ -41,9 +40,8 @@ void exit(AppContext& ctx) {
     if (Platform::restartSupported()) {
         // Switching the PHY back from TinyUSB OTG to USB Serial/JTAG and
         // cleanly remounting the file system takes a soft reset.
-        PowerService::setSavedRtcState(STATE_SETTINGS);
         delay(80);
-        Platform::restart();
+        PowerService::restartIntoSettings();
     }
     Storage.begin();
     LibraryManager::getInstance().scanLocalBooks();
