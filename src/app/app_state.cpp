@@ -1,13 +1,13 @@
 #include "app_state.h"
 #include "../platform/hal/frontlight.h"
-#include "../platform/hal/storage.h"
+#include "../storage/config_store.h"
 
 bool AppConfig::load() {
-    return Storage.loadConfig(*this);
+    return ConfigStore::load(*this);
 }
 
 bool AppConfig::save() {
-    return Storage.saveConfig(*this);
+    return ConfigStore::save(*this);
 }
 
 bool hasUsbMscSetting() { return Platform::kDevice.usbMassStorage; }

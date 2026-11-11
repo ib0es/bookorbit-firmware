@@ -3,10 +3,9 @@
 #include <Arduino.h>
 #include <vector>
 #include "../platform/hal/storage.h"
+#include "../storage/book_records.h"
 #include "progress_store.h"
 
-struct BookMetadata;
-struct BookFormatEntry;
 
 // One format (file) of a book: "/books/<name>.epub", "/books/<name>.fb2"... next
 // to each other, each with its own server file id and reading position.

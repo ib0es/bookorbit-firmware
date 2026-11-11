@@ -4,6 +4,7 @@
 #include "app/app_state.h"
 #include "platform/hal/frontlight.h"
 #include "platform/hal/storage.h"
+#include "storage/config_store.h"
 #include "core/power_policy.h"
 
 #include <cstdio>
@@ -15,8 +16,8 @@ bool FrontlightHelper::present() const { return false; }
 
 StorageManager::StorageManager() {}
 StorageManager Storage;
-bool StorageManager::loadConfig(AppConfig&) { return false; }
-bool StorageManager::saveConfig(const AppConfig&) { return false; }
+bool ConfigStore::load(AppConfig&) { return false; }
+bool ConfigStore::save(const AppConfig&) { return false; }
 
 static int g_failed = 0, g_checks = 0;
 #define CHECK(cond) do { g_checks++; if (!(cond)) { g_failed++; \

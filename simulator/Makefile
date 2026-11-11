@@ -74,6 +74,9 @@ SRCS_CXX = \
     src/platform/hal/display.cpp \
     src/platform/hal/storage.cpp \
     src/storage/json_file.cpp \
+    src/storage/config_store.cpp \
+    src/storage/catalog_store.cpp \
+    src/storage/last_book_store.cpp \
     src/platform/hal/usb_msc.cpp \
     src/platform/hal/mem_stats.cpp \
     src/ui/i18n.cpp \

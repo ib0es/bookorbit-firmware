@@ -17,6 +17,7 @@
 #include "sync_clock.h"
 #include "../ui/text_utils.h"
 #include "power_service.h"
+#include "../storage/catalog_store.h"
 
 bool SyncService::s_syncCancelled = false;
 uint32_t SyncService::s_lastProgressTime = 0;
@@ -140,12 +141,12 @@ SyncBatch* s_batchState = nullptr;
 const std::vector<BookMetadata>* savedCatalog(std::vector<BookMetadata>& local) {
     if (s_batchState) {
         if (!s_batchState->loaded) {
-            Storage.loadCatalog(s_batchState->catalog);
+            CatalogStore::load(s_batchState->catalog);
             s_batchState->loaded = true;
         }
         return &s_batchState->catalog;
     }
-    if (!Storage.loadCatalog(local)) return nullptr;
+    if (!CatalogStore::load(local)) return nullptr;
     return &local;
 }
 
@@ -477,7 +478,7 @@ void syncOpenedBooks(AppContext& ctx, std::vector<int>& synced) {
 // Adds saved catalog entries missing from a truncated fresh catalog.
 void mergeSavedCatalog(std::vector<BookMetadata>& catalog) {
     std::vector<BookMetadata> saved;
-    if (!Storage.loadCatalog(saved)) return;
+    if (!CatalogStore::load(saved)) return;
     size_t added = 0;
     for (const auto& old : saved) {
         bool present = false;
@@ -613,7 +614,7 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
             drawStatusModal(tr(MsgId::SYNC_CATALOG_PARSE_ERR_TITLE), l1, l2, tr(MsgId::SYNC_CATALOG_KEPT));
             PowerService::waitOrKey(4000);
             catalog.clear();
-            Storage.loadCatalog(catalog);
+            CatalogStore::load(catalog);
         } else if (ci.truncated) {
             // Out of memory part-way: keep the books we knew about but did not get now.
             mergeSavedCatalog(catalog);
@@ -641,7 +642,7 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
                 if (f.fileId > 0) synced.push_back(f.fileId);
             }
         }
-        Storage.saveCatalog(catalog);
+        CatalogStore::save(catalog);
         ProgressStore::instance().save();
 
         downloadCovers(ctx, catalog);
