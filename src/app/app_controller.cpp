@@ -27,7 +27,7 @@
 #include "../services/library_manager.h"
 #include "../services/power_service.h"
 #include "../services/sync_service.h"
-#include "../services/progress_store.h"
+#include "../storage/progress_store.h"
 #include "../ui/views/home_view.h"
 #include "../ui/views/catalog_view.h"
 #include "../ui/views/library_view.h"

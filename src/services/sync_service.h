@@ -3,7 +3,7 @@
 #include <Arduino.h>
 #include "../app/app_state.h"
 #include "library_manager.h"
-#include "progress_store.h"
+#include "../storage/progress_store.h"
 #include "../net/bookorbit_client.h"
 
 // Network operations with Book Orbit: catalog, downloads and reading progress.
