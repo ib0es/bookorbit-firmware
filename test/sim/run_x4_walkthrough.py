@@ -121,6 +121,12 @@ def subfolder_book(sd):
 def russian(sd):
     merge_config(sd, language="ru")
 
+def clock_redraw_fast(log, sd):
+    # After the first page, the minute's redraw (whenever it comes) and no full refresh.
+    first = log.find("[Reader] Page drawn")
+    rest = log[first + 1:] if first >= 0 else ""
+    return first >= 0 and "[Reader] Page drawn" in rest and "FULL" not in rest
+
 def short_book_last(sd):
     # The one-page TXT book is the book on the card's home screen.
     json.dump({"filePath": "/books/Тестовая книга.txt", "title": "Тестовая книга", "author": "",
@@ -307,9 +313,8 @@ CASES = [
     # B5: the clock's minute redraw is not a page. A full refresh every 2 pages;
     # the book opens (page 1) and the minute changes during the wait.
     ("status bar: the clock's minute redraw does not count towards the full refresh (B5)",
-     lambda sd: merge_config(sd, sb_clock=True, full_refresh_every=2), {"SIM_RTC_UTC": "1794391199"},
-     OPEN_BOOK + "w",
-     lambda log, sd: "Page drawn" in after(log, ">>> wait") and "FULL" not in after(log, ">>> wait")),
+     lambda sd: merge_config(sd, sb_clock=True, full_refresh_every=2), {"SIM_RTC_UTC": "1794391198"},
+     OPEN_BOOK + "ww", clock_redraw_fast),
     ("status bar: clock and UTC+3 saved and active from RTC",
      None, {"SIM_RTC_UTC": "1794391200"},
      OPEN_BOOK + APPEARANCE + "U" + "C" + "UU" + "C" + "D" + "RRRRRR" + "BB",
