@@ -94,12 +94,20 @@ using ProgressSync::Action;
 // The client logs in again by itself when the token has expired (HTTP 401) and
 // updates ctx.config.authToken in memory: this saves it when a sync step ends,
 // so the next session does not start with a refused request and a login.
+// (A hash, not a copy: a String kept through the Wi-Fi session would sit in the
+// middle of the heap the reader needs in one piece afterwards.)
+uint32_t tokenHash(const String& s) {
+    uint32_t h = 2166136261u;
+    for (size_t i = 0; i < s.length(); i++) h = (h ^ (uint8_t)s[i]) * 16777619u;
+    return h;
+}
+
 struct KeepToken {
     AppContext& ctx;
-    const String before;
-    explicit KeepToken(AppContext& c) : ctx(c), before(c.config.authToken) {}
+    const uint32_t before;
+    explicit KeepToken(AppContext& c) : ctx(c), before(tokenHash(c.config.authToken)) {}
     ~KeepToken() {
-        if (ctx.config.authToken.length() > 0 && ctx.config.authToken != before) ctx.config.save();
+        if (ctx.config.authToken.length() > 0 && tokenHash(ctx.config.authToken) != before) ctx.config.save();
     }
 };
 

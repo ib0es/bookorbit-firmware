@@ -325,15 +325,49 @@ void LibraryManager::updateLastBookAfterDeletion(const String& deletedPath) {
     Storage.saveLastBook(lastBook);
 }
 
+namespace {
+struct CoverMemo {
+    uint32_t gen = 0;
+    uint32_t key = 0;
+    char path[160];
+};
+CoverMemo g_coverMemo[8];
+int g_coverNext = 0;
+
+uint32_t coverKey(const String& a, const String& b, const String& c) {
+    uint32_t h = 2166136261u;   // FNV-1a over the three, separated
+    for (const String* s : {&a, &b, &c}) {
+        for (size_t i = 0; i < s->length(); i++) h = (h ^ (uint8_t)(*s)[i]) * 16777619u;
+        h = (h ^ 0xFF) * 16777619u;
+    }
+    return h ? h : 1;
+}
+}  // namespace
+
+String LibraryManager::recentCover(const String& filePath, const String& title, const String& coverPath) {
+    const uint32_t key = coverKey(filePath, title, coverPath);
+    for (const CoverMemo& m : g_coverMemo) {
+        if (m.key == key && m.gen == _gen) return String(m.path);
+    }
+    const String found = resolveCoverPath(filePath, title, coverPath, true);
+    if (found.length() < sizeof(g_coverMemo[0].path)) {
+        CoverMemo& m = g_coverMemo[g_coverNext];
+        g_coverNext = (g_coverNext + 1) % (int)(sizeof(g_coverMemo) / sizeof(g_coverMemo[0]));
+        m.key = key;
+        m.gen = _gen;
+        memcpy(m.path, found.c_str(), found.length() + 1);
+    }
+    return found;
+}
+
 std::vector<RecentBookInfo> LibraryManager::getRecentBooks() {
-    if (_recentGen == _gen && _recentLast == lastBook.filePath) return _recent;
     std::vector<RecentBookInfo> list;
     auto toInfo = [&](const BookItem& b) {
         RecentBookInfo r;
         r.title = b.title;
         r.author = b.author;
         r.filePath = b.filePath;
-        r.coverPath = resolveCoverPath(b.filePath, b.title, b.coverPath, true);
+        r.coverPath = recentCover(b.filePath, b.title, b.coverPath);
         r.downloadUrl = b.downloadUrl();
         r.fileId = b.fileId;
         r.progress = b.progress;
@@ -355,7 +389,7 @@ std::vector<RecentBookInfo> LibraryManager::getRecentBooks() {
         r.title = lastBook.title;
         r.author = lastBook.author;
         r.filePath = lastBook.filePath;
-        r.coverPath = resolveCoverPath(r.filePath, r.title, lastBook.coverPath, true);
+        r.coverPath = recentCover(r.filePath, r.title, lastBook.coverPath);
         r.fileId = lastBook.fileId;
         r.progress = lastBook.progress;
         r.page = lastBook.page;
@@ -400,9 +434,6 @@ std::vector<RecentBookInfo> LibraryManager::getRecentBooks() {
         if (!b.formats.empty() && !BookFormats::readable((BookFormats::Kind)b.activeKind())) continue;   // not openable yet
         list.push_back(toInfo(b));
     }
-    _recent = list;
-    _recentGen = _gen;
-    _recentLast = lastBook.filePath;
     return list;
 }
 
