@@ -26,6 +26,7 @@
 #include "../../ui/views/settings_view.h"
 #include "../../ui/i18n.h"
 #include "../../services/usb_msc_session.h"
+#include "../../ui/actions.h"
 
 namespace {
 
@@ -37,8 +38,8 @@ void handleMenu(AppContext& ctx, const ButtonEvent& event, int& selected, int co
                 UpdateSelectionFn updateSelection, void (*execute)(AppContext&, int),
                 AppState backState, RedrawFn backRedraw, bool backFull = false) {
     if (event.action != ACTION_CLICK) return;
-    switch (event.id) {
-        case BTN_DOWN: {
+    switch (Actions::of(event)) {
+        case Action::Down: {
             int prev = selected;
             selected = (selected + 1) % count;
             if (prev != selected) {
@@ -46,7 +47,7 @@ void handleMenu(AppContext& ctx, const ButtonEvent& event, int& selected, int co
             }
             break;
         }
-        case BTN_UP: {
+        case Action::Up: {
             int prev = selected;
             selected = (selected - 1 + count) % count;
             if (prev != selected) {
@@ -54,12 +55,12 @@ void handleMenu(AppContext& ctx, const ButtonEvent& event, int& selected, int co
             }
             break;
         }
-        case BTN_CONFIRM:
-        case BTN_RIGHT:
+        case Action::Select:
+        case Action::Next:
             execute(ctx, selected);
             break;
-        case BTN_BACK:
-        case BTN_LEFT:
+        case Action::Back:
+        case Action::Prev:
             ctx.currentState = backState;
             backRedraw(ctx, backFull);
             break;
@@ -449,7 +450,8 @@ void handleUsbMscSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
 
 void handleUsbMscEvent(AppContext& ctx, const ButtonEvent& event) {
     if (event.action != ACTION_CLICK) return;
-    if (event.id == BTN_CONFIRM || event.id == BTN_BACK || event.id == BTN_LEFT) {
+    const Action key = Actions::of(event);
+    if (key == Action::Select || key == Action::Back || key == Action::Prev) {
         exitUsbMscScreen(ctx);
     }
 }
@@ -483,8 +485,8 @@ void handleSleepCoverSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
 void handleLanguageSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
     if (event.action != ACTION_CLICK) return;
     const int langCount = I18n::getLanguageCount();
-    switch (event.id) {
-        case BTN_DOWN: {
+    switch (Actions::of(event)) {
+        case Action::Down: {
             int prev = ctx.selectedLanguageIndex;
             ctx.selectedLanguageIndex = (ctx.selectedLanguageIndex + 1) % langCount;
             if (prev != ctx.selectedLanguageIndex) {
@@ -492,7 +494,7 @@ void handleLanguageSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
             }
             break;
         }
-        case BTN_UP: {
+        case Action::Up: {
             int prev = ctx.selectedLanguageIndex;
             ctx.selectedLanguageIndex = (ctx.selectedLanguageIndex - 1 + langCount) % langCount;
             if (prev != ctx.selectedLanguageIndex) {
@@ -500,8 +502,8 @@ void handleLanguageSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
             }
             break;
         }
-        case BTN_CONFIRM:
-        case BTN_RIGHT: {
+        case Action::Select:
+        case Action::Next: {
             AppLanguage newLang = (AppLanguage)ctx.selectedLanguageIndex;
             ctx.config.language = newLang;
             I18n::setLanguage(newLang);
@@ -512,8 +514,8 @@ void handleLanguageSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
             drawSettingsScreen(ctx, false);
             break;
         }
-        case BTN_BACK:
-        case BTN_LEFT:
+        case Action::Back:
+        case Action::Prev:
             ctx.currentState = STATE_SETTINGS;
             drawSettingsScreen(ctx, false);
             break;
@@ -547,22 +549,22 @@ namespace SettingsScreen {
 void handleFrontlightEvent(AppContext& ctx, const ButtonEvent& event) {
     if (event.action != ACTION_CLICK) return;
     int& sel = ctx.selectedFrontlightIndex;
-    switch (event.id) {
-        case BTN_UP:
-        case BTN_DOWN:
+    switch (Actions::onValue(Actions::of(event))) {
+        case Action::Up:
+        case Action::Down:
             sel = (sel + 1) % frontlightRows();
             drawFrontlightScreen(ctx, false);
             break;
-        case BTN_LEFT:
+        case Action::Less:
             setFrontlight(ctx, sel, frontlightValue(ctx, sel) - 10);
             break;
-        case BTN_RIGHT:
+        case Action::More:
             setFrontlight(ctx, sel, frontlightValue(ctx, sel) + 10);
             break;
-        case BTN_CONFIRM:  // light on/off
+        case Action::Select:  // light on/off
             setFrontlight(ctx, 0, FrontlightPolicy::toggleLevel(ctx.config.frontlight, s_rememberedFrontlight));
             break;
-        case BTN_BACK:
+        case Action::Back:
             ctx.config.save();
             ctx.currentState = STATE_SETTINGS;
             drawSettingsScreen(ctx, false);

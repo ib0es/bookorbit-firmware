@@ -7,6 +7,7 @@
 #include "../../ui/views/catalog_view.h"
 #include "../../ui/views/library_view.h"
 #include "../../ui/views/settings_view.h"
+#include "../../ui/actions.h"
 
 namespace {
 
@@ -98,27 +99,27 @@ void handleEvent(AppContext& ctx, const ButtonEvent& event) {
     if (event.action != ACTION_CLICK) return;
     const int sel = ctx.selectedHomeIndex;
 
-    switch (event.id) {
-        case BTN_DOWN:
+    switch (Actions::of(event)) {
+        case Action::Down:
             ctx.selectedHomeIndex = (sel + 1) % NUM_HOME_ITEMS;
             drawHomeScreen(ctx, false);
             break;
-        case BTN_UP:
+        case Action::Up:
             ctx.selectedHomeIndex = (sel - 1 + NUM_HOME_ITEMS) % NUM_HOME_ITEMS;
             drawHomeScreen(ctx, false);
             break;
-        case BTN_RIGHT:
+        case Action::Next:
             if (sel == HOME_RECENT_BOOK) cycleRecentBook(ctx, +1);
             else activateItem(ctx, sel);
             break;
-        case BTN_CONFIRM:
+        case Action::Select:
             activateItem(ctx, sel);
             break;
-        case BTN_LEFT:
+        case Action::Prev:
             if (sel == HOME_RECENT_BOOK) cycleRecentBook(ctx, -1);
             else if (sel == HOME_SYNC_NOW) SyncService::syncWithBookOrbit(ctx);
             break;
-        case BTN_BACK:
+        case Action::Back:
             if (sel != HOME_RECENT_BOOK) {
                 ctx.selectedHomeIndex = HOME_RECENT_BOOK;
                 drawHomeScreen(ctx, false);
