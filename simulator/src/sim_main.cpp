@@ -217,7 +217,9 @@ int main(int argc, char* argv[]) {
     }
 
     char winTitle[64];
-#if defined(FREEINK_DEVICE_X4PRO) && FREEINK_DEVICE_X4PRO
+#if defined(FREEINK_DEVICE_X4CLASSIC) && FREEINK_DEVICE_X4CLASSIC
+    snprintf(winTitle, sizeof(winTitle), "XTEINK X4 CLASSIC - Book Orbit Simulator (%dx%d)", SCREEN_W, SCREEN_H);
+#elif defined(FREEINK_DEVICE_X4PRO) && FREEINK_DEVICE_X4PRO
     snprintf(winTitle, sizeof(winTitle), "XTEINK X4 PRO - Book Orbit Simulator (%dx%d)", SCREEN_W, SCREEN_H);
 #elif defined(FREEINK_DEVICE_PICCO) && FREEINK_DEVICE_PICCO
     snprintf(winTitle, sizeof(winTitle), "ONYX BOOX PICCO - Book Orbit Simulator (%dx%d)", SCREEN_W, SCREEN_H);

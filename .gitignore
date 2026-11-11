@@ -5,6 +5,9 @@
 test/build-cov-host/
 simulator/x4_simulator
 simulator/x3_simulator
+simulator/x4c_simulator
+simulator/x4pro_simulator
+simulator/picco_simulator
 simulator/build-*/
 test/host/run
 *.o

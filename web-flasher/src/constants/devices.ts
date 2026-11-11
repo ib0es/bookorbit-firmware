@@ -21,8 +21,8 @@ export const DEVICES: Record<DeviceKey, DeviceInfo> = {
     name: 'X4 Classic',
     chip: 'ESP32-S3',
     chipSubtitle: 'ESP32-S3',
-    desc_en: 'Xteink X4 Classic: ESP32-S3 (8MB PSRAM), 8 physical buttons',
-    desc_ru: 'Xteink X4 Classic: ESP32-S3 (8MB PSRAM), 8 кнопок, без тачскрина',
+    desc_en: 'Xteink X4 Classic: ESP32-S3 (8MB PSRAM), 8 physical buttons, USB-MSC, BM8563 RTC & auto-rotate',
+    desc_ru: 'Xteink X4 Classic: ESP32-S3 (8MB PSRAM), 8 кнопок (без тача и подсветки), USB-MSC, RTC и автоповорот',
     merged: 'builds/x4c/bookorbit-x4c.bin'
   },
   x4pro: {

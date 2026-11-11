@@ -168,13 +168,15 @@ void AppController::setup() {
     syncAfterWake();
     Buttons.clearEvents();
     _ctx.lastActivityTime = millis();
-    Serial.printf("[BOOT] device=%s ctrl=%s touch=%d homeKey=%d usbMsc=%d intWake=%d\n",
+    Serial.printf("[BOOT] device=%s ctrl=%s touch=%d homeKey=%d usbMsc=%d intWake=%d rtc=%d imu=%d\n",
                   uikit::deviceDisplayName(),
                   Display.getControllerName(),
                   Buttons.hasTouch() ? 1 : 0,
                   Buttons.hasHomeKey() ? 1 : 0,
                   UsbMsc.present() ? 1 : 0,
-                  Buttons.touchWakeIrqPin());
+                  Buttons.touchWakeIrqPin(),
+                  BoardRtc.present() ? 1 : 0,
+                  BoardImu.present() ? 1 : 0);
 }
 
 void AppController::applyConfig() {

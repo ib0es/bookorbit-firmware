@@ -23,6 +23,7 @@
 #include "../ui/i18n.h"
 #include "library_manager.h"
 #include "light_sleep_policy.h"
+#include "power_policy.h"
 #include "sync_service.h"
 #include "../reader/reader.h"
 #include "../net/bookorbit_client.h"
@@ -42,9 +43,22 @@ uint32_t batteryCheckIntervalMs() {
 #endif
 }
 
+uint32_t sleepTimeoutMs() {
+#if defined(ESP_PLATFORM)
+    return SLEEP_TIMEOUT_MS;
+#else
+    const char* v = std::getenv("SIM_SLEEP_TIMEOUT_MS");
+    const long ms = (v && *v) ? std::atol(v) : 0;
+    return ms > 0 ? static_cast<uint32_t>(ms) : SLEEP_TIMEOUT_MS;
+#endif
+}
+
 bool isUsbCdcConnected() {
 #if defined(ESP_PLATFORM) && defined(ARDUINO_USB_MODE) && ARDUINO_USB_MODE && defined(ARDUINO_USB_CDC_ON_BOOT) && ARDUINO_USB_CDC_ON_BOOT
     return Serial.isConnected();
+#elif !defined(ESP_PLATFORM)
+    const char* v = std::getenv("SIM_USB_SERIAL");
+    return v && *v == '1';
 #else
     return false;
 #endif
@@ -126,8 +140,9 @@ void PowerService::noteActivity() {
 }
 
 void PowerService::sleepIfIdle(AppContext& ctx) {
-    if (UsbMsc.active()) return;
-    if (!Battery.isCharging() && (millis() - ctx.lastActivityTime >= SLEEP_TIMEOUT_MS)) {
+    const uint32_t idleMs = millis() - ctx.lastActivityTime;
+    if (PowerPolicy::shouldEnterIdleDeepSleep(UsbMsc.active(), Battery.isCharging(), isUsbCdcConnected(),
+                                              idleMs, sleepTimeoutMs())) {
         Serial.println("[Power] Idle timeout reached.");
         enterDeepSleep(ctx);
     }
@@ -185,7 +200,7 @@ void PowerService::idleWaitOrLightSleep(AppContext& ctx) {
     LightSleepPolicy::WakeTiming wt;
     wt.onBattery = !Battery.isCharging();
     wt.idleMs = idleMs;
-    wt.sleepTimeoutMs = SLEEP_TIMEOUT_MS;
+    wt.sleepTimeoutMs = sleepTimeoutMs();
     wt.batteryCheckIntervalMs = batteryCheckIntervalMs();
     wt.msSinceBatteryCheck = now - s_lastBatteryCheck;
     wt.modalRemainingMs = Modal.remainingAutoCloseMs();

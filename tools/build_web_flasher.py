@@ -38,7 +38,7 @@ TARGETS = {
         "chip": "esp32s3",
         "name": "Book Orbit for Xteink X4 Classic",
         "device": "Xteink X4 Classic",
-        "desc": "ESP32-S3 (8MB PSRAM), 8 physical buttons, no touch",
+        "desc": "ESP32-S3 (8MB PSRAM), SSD1677/UC8179/UC8279, 8 buttons (no touch/light), USB-MSC, BM8563 RTC, QMI8658 IMU",
     },
     "x4pro": {
         "chip": "esp32s3",

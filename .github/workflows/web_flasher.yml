@@ -73,31 +73,31 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: bookorbit-x4
-          path: docs/builds/x4/bookorbit-x4-*.bin
+          path: docs/builds/x4/bookorbit-x4.bin
 
       - name: Upload firmware (Xteink X3)
         uses: actions/upload-artifact@v4
         with:
           name: bookorbit-x3
-          path: docs/builds/x3/bookorbit-x3-*.bin
+          path: docs/builds/x3/bookorbit-x3.bin
 
       - name: Upload firmware (Xteink X4 Classic)
         uses: actions/upload-artifact@v4
         with:
           name: bookorbit-x4c
-          path: docs/builds/x4c/bookorbit-x4c-*.bin
+          path: docs/builds/x4c/bookorbit-x4c.bin
 
       - name: Upload firmware (Xteink X4 Pro)
         uses: actions/upload-artifact@v4
         with:
           name: bookorbit-x4pro
-          path: docs/builds/x4pro/bookorbit-x4pro-*.bin
+          path: docs/builds/x4pro/bookorbit-x4pro.bin
 
       - name: Upload firmware (BOOX Picco)
         uses: actions/upload-artifact@v4
         with:
           name: bookorbit-picco
-          path: docs/builds/picco/bookorbit-picco-*.bin
+          path: docs/builds/picco/bookorbit-picco.bin
 
       # ---------- tag: publish release ----------
       - name: Publish GitHub release

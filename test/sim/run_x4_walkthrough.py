@@ -232,9 +232,10 @@ CASES = [
                      and cfg(sd).get("sb_clock") is True and cfg(sd).get("utc_offset_min") == 180
                      and "Page drawn" in after(log, ">>> BACK")),
     ("imu: auto-rotate tilts on sustained gravity and sleeps when disabled",
-     None if ("build-x3" in BIN or os.environ.get("DEVICE") == "x3") else (lambda sd: merge_config(sd, auto_rotate=True)),
+     None if (any(d in BIN for d in ("build-x3", "build-x4c")) or os.environ.get("DEVICE") in ("x3", "x4c"))
+     else (lambda sd: merge_config(sd, auto_rotate=True)),
      {"SIM_IMU_PRESENT": "1"},
-     "A-1.0,0.0,0.0;w" + SETTINGS + "UC",
+     "A-1.0,0.0,0.0;w" + SETTINGS + ("UUC" if ("build-x4c" in BIN or os.environ.get("DEVICE") == "x4c") else "UC"),
      lambda log, sd: "[IMU] Ready" in log and "[App] Auto-rotated UI 0 -> 1" in log
                      and "[IMU] Put to sleep" in log and cfg(sd).get("auto_rotate") is False),
 ]
