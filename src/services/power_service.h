@@ -20,6 +20,10 @@ public:
     // Returns true when a (non-POWER) event was received.
     static bool pollModalEvent(ButtonEvent& event);
 
+    // Leaves a status message up for `ms`, or until a key is pressed (the key is
+    // taken: it closes the message, it does not act on the screen below).
+    static void waitOrKey(uint32_t ms);
+
     // Marks user activity (e.g. an HTTP request to the config portal) so the idle
     // timer does not fire while the user is interacting by other means.
     static void noteActivity();

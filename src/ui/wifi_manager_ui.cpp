@@ -200,11 +200,11 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
                             outPass = "";
                             String ipStr = "IP: " + WiFi.localIP().toString();
                             drawModal(tr(MsgId::WIFI_CONNECTED_TITLE), tr(MsgId::WIFI_CONNECTED_OPEN), chosen.ssid.c_str(), ipStr.c_str());
-                            delay(2200);
+                            PowerService::waitOrKey(2200);
                             return true;
                         } else {
                             drawModal(tr(MsgId::COMMON_ERROR), tr(MsgId::WIFI_ERR_OPEN), chosen.ssid.c_str());
-                            delay(2200);
+                            PowerService::waitOrKey(2200);
                             redraw = true;
                         }
                     } else {
@@ -219,11 +219,11 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
                                 outSsid = chosen.ssid;
                                 String ipStr = "IP: " + WiFi.localIP().toString();
                                 drawModal(tr(MsgId::WIFI_CONNECTED_TITLE), tr(MsgId::WIFI_CONNECTED_SAVED), chosen.ssid.c_str(), ipStr.c_str());
-                                delay(2200);
+                                PowerService::waitOrKey(2200);
                                 return true;
                             } else {
                                 drawModal(tr(MsgId::COMMON_ERROR), tr(MsgId::WIFI_ERR_SAVED_PASS_L1), tr(MsgId::WIFI_ERR_SAVED_PASS_L2));
-                                delay(2000);
+                                PowerService::waitOrKey(2000);
                             }
                         } else if (chosen.ssid.equalsIgnoreCase(lastEnteredSsid)) {
                             passCandidate = lastEnteredPass;
@@ -245,11 +245,11 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
                             outPass = passCandidate;
                             String ipStr = "IP: " + WiFi.localIP().toString();
                             drawModal(tr(MsgId::WIFI_CONNECTED_TITLE), tr(MsgId::WIFI_CONNECTED_SAVED_MSG), chosen.ssid.c_str(), ipStr.c_str());
-                            delay(2200);
+                            PowerService::waitOrKey(2200);
                             return true;
                         } else {
                             drawModal(tr(MsgId::WIFI_ERR_TITLE), tr(MsgId::WIFI_TEST_ERR_L1), tr(MsgId::WIFI_ERR_CHECK_PASS));
-                            delay(2500);
+                            PowerService::waitOrKey(2500);
                             redraw = true;
                         }
                     }
