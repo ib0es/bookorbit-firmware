@@ -458,6 +458,8 @@
   "KEYBOARD_LAYER_LOWER": "[abc] строчные",
   "KEYBOARD_LAYER_UPPER": "[ABC] ЗАГЛАВНЫЕ",
   "KEYBOARD_LAYER_SYM": "[123#] символы",
+  "KEYBOARD_LAYER_CYR": "[абв] кириллица",
+  "KEYBOARD_LAYER_ACC": "[áéñ] диакритика",
   "READER_TOC_NOT_FOUND_L1": "В этой книге не найдены",
   "READER_TOC_NOT_FOUND_L2": "главы или разделы.",
   "MODAL_DEFAULT_BACK": "[BACK] - Назад",
