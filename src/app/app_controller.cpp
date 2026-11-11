@@ -286,6 +286,7 @@ void AppController::dispatch(const ButtonEvent& event) {
         case STATE_STATUSBAR_MENU:    ReaderScreen::handleStatusBarEvent(_ctx, event); break;
         case STATE_SYNC_SETTINGS:     SettingsScreen::handleSyncSettingsEvent(_ctx, event); break;
         case STATE_SLEEP_COVER_SETTINGS: SettingsScreen::handleSleepCoverSettingsEvent(_ctx, event); break;
+        case STATE_SD_SETTINGS:       SettingsScreen::handleSdSettingsEvent(_ctx, event); break;
         case STATE_SYNCING:           break;
     }
 }
@@ -311,6 +312,7 @@ void AppController::redrawCurrentScreen(bool fullRefresh) {
         case STATE_STATUSBAR_MENU:    drawStatusBarScreen(_ctx, fullRefresh); break;
         case STATE_SYNC_SETTINGS:     drawSyncSettingsScreen(_ctx, fullRefresh); break;
         case STATE_SLEEP_COVER_SETTINGS: drawSleepCoverSettingsScreen(_ctx, fullRefresh); break;
+        case STATE_SD_SETTINGS:       drawSdSettingsScreen(_ctx, fullRefresh); break;
         case STATE_SYNCING:           break;
     }
 }
