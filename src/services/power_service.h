@@ -9,6 +9,13 @@ public:
     static void handleAccidentalWakeup();
     static int getSavedRtcState();
     static void setSavedRtcState(int state);
+
+    // A book that could not be opened for want of memory (the heap is cut up
+    // after Wi-Fi): the device restarts and opens it right away (lastBook), as it
+    // does after sleep. False on the simulator (no restart there).
+    static bool restartIntoLastBook();
+    // True once, at the boot that restartIntoLastBook() caused.
+    static bool takeRestartIntoBook();
     static void enterDeepSleep(AppContext& ctx);
 
     // Button polling for blocking UI loops (modals, on-screen keyboard, Wi-Fi picker,

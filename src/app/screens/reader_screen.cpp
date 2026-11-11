@@ -13,6 +13,7 @@
 #include "../../services/progress_store.h"
 #include "../../services/progress_sync.h"
 #include "../../services/sync_service.h"
+#include "../../services/power_service.h"
 #include "../../ui/modal.h"
 #include "../../ui/views/home_view.h"
 #include "../../ui/views/reader_menu_view.h"
@@ -135,8 +136,24 @@ bool openBook(AppContext& ctx, const String& path, const String& title, const St
                               tr(why == convert::ConvertProblem::Drm ? MsgId::READER_OPEN_DRM : MsgId::READER_OPEN_VARIANT),
                               "", "", 4000, false, tr(MsgId::READER_OPEN_ERR_FOOTER));
         } else if (Reader.lastFailedForMemory()) {
+            // The heap is cut up (typically right after a download over Wi-Fi): a
+            // restart gives it back whole, and the book opens straight away, as
+            // after sleep. Only on the device; the message below otherwise.
+            lib.lastBook.filePath = path;
+            lib.lastBook.title = title;
+            lib.lastBook.author = author;
+            lib.lastBook.coverPath = coverPath;
+            lib.lastBook.fileId = fileId;
+            lib.lastBook.docId = docId;
+            if (!store.find(fileId, path)) {   // never opened here: the server's position
+                lib.lastBook.progress = progress;
+                lib.lastBook.page = page > 0 ? page : 1;
+                lib.lastBook.xpath = xpath;
+            }
+            lib.saveLastBook();
+            PowerService::restartIntoLastBook();
             Modal.showMessage(tr(MsgId::COMMON_ERROR), tr(MsgId::READER_OPEN_ERR_L1),
-                              tr(MsgId::READER_OPEN_ERR_L2), "", "", 4000, false, tr(MsgId::READER_OPEN_ERR_FOOTER));
+                              tr(MsgId::READER_OPEN_ERR_MEMORY), "", "", 4000, false, tr(MsgId::READER_OPEN_ERR_FOOTER));
         } else {
             Modal.showMessage(tr(MsgId::READER_OPEN_ERR_TITLE), tr(MsgId::READER_OPEN_ERR_L1),
                               tr(MsgId::READER_OPEN_ERR_L2), "", "", 3500, false, tr(MsgId::READER_OPEN_ERR_FOOTER));
