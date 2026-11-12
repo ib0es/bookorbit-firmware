@@ -53,7 +53,9 @@ static void drawNetworkList(const std::vector<ScannedNet>& list, int selectedInd
     char titleBuf[64];
     snprintf(titleBuf, sizeof(titleBuf), tr(MsgId::WIFI_SCAN_TITLE_FMT), selectedIndex + 1, (int)list.size());
     Rect area = topBar(f, titleBuf);
-    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_CONNECT), tr(MsgId::KEY_RESCAN), tr(MsgId::KEY_CONNECT)});
+    KeyLabels keys{tr(MsgId::KEY_BACK), tr(MsgId::KEY_CONNECT), tr(MsgId::KEY_RESCAN), tr(MsgId::KEY_CONNECT)};
+    keys.touch = tr(MsgId::WIFI_SCAN_TOUCH_HINT);   // C9: the search again by swipe, said
+    area = keyHints(f, area, keys);
     area = insetXY(area, kMargin, 10);
 
     const int16_t rowH = (int16_t)(lineHeight(FontBody) + lineHeight(FontSmall) + 20);
@@ -152,7 +154,11 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
         }
 
         if (list.empty()) {
-            drawModal(tr(MsgId::WIFI_SCAN_NONE_TITLE), tr(MsgId::WIFI_SCAN_NONE_L1), tr(MsgId::WIFI_SCAN_NONE_HINT_CONFIRM), tr(MsgId::WIFI_SCAN_NONE_HINT_BACK));
+            // C9: on a touch board a tap closes the dialog and a swipe down searches again.
+            const bool touchHints = uikit::touchOnly() && !uikit::touchMissing();
+            drawModal(tr(MsgId::WIFI_SCAN_NONE_TITLE), tr(MsgId::WIFI_SCAN_NONE_L1),
+                      tr(touchHints ? MsgId::WIFI_SCAN_NONE_TOUCH_RESCAN : MsgId::WIFI_SCAN_NONE_HINT_CONFIRM),
+                      tr(touchHints ? MsgId::WIFI_SCAN_NONE_TOUCH_BACK : MsgId::WIFI_SCAN_NONE_HINT_BACK));
             while (true) {
                 ButtonEvent event;
                 if (PowerService::pollModalEvent(event) && event.action == ACTION_CLICK) {

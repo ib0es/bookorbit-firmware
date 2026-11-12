@@ -95,6 +95,7 @@ bool touchUi();
 // A touch-only board whose touch panel did not answer: the footer explains
 // the held-key fallback instead of taps (C4).
 void setTouchMissing(bool missing);
+bool touchMissing();
 // True on boards whose only keys are UP / DOWN / POWER (Picco): every
 // screen's key hints are replaced by touch hints.
 bool touchOnly();
@@ -128,7 +129,7 @@ Rect topBar(Frame& f, const char* title);
 // Home header: logo, "book orbit", battery, divider. Returns the area below it.
 Rect appHeader(Frame& f);
 // Divider plus up to two hint lines at the bottom of `area`. Returns the area above.
-Rect footerHints(Frame& f, Rect area, const char* line1, const char* line2 = nullptr);
+Rect footerHints(Frame& f, Rect area, const char* line1, const char* line2 = nullptr, const char* touchLine = nullptr);
 // What the four keys under the screen do here (X4: BACK, OK, LEFT, RIGHT from
 // left to right): a tab with its label above each key, as the device shows
 // them. "" leaves a key's tab empty. `info` (optional) is a line of text above
@@ -138,6 +139,9 @@ struct KeyLabels {
     const char* ok = "";
     const char* left = "";
     const char* right = "";
+    // Touch-only boards: this screen's own touch hint in place of the generic
+    // second line (e.g. a gesture only this screen has).
+    const char* touch = nullptr;
 };
 Rect keyHints(Frame& f, Rect area, const KeyLabels& keys, const char* info = nullptr);
 // Small rounded label. dark = black fill/white text; otherwise outlined.
