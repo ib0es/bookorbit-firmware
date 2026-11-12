@@ -10,6 +10,7 @@
 #include "screens/status_bar_menu.h"
 #include "../services/bookmarks.h"
 #include "touch_router.h"
+#include "screen_table.h"
 #include "../platform/hal/display.h"
 #include "../platform/hal/buttons.h"
 #include "../platform/hal/battery.h"
@@ -365,57 +366,11 @@ void AppController::loop() {
 }
 
 void AppController::dispatch(const ButtonEvent& event) {
-    switch (_ctx.currentState) {
-        case STATE_HOME:              HomeScreen::handleEvent(_ctx, event); break;
-        case STATE_CATALOG:           CatalogScreen::handleEvent(_ctx, event); break;
-        case STATE_LIBRARY:           LibraryScreen::handleEvent(_ctx, event); break;
-        case STATE_READING:           ReaderScreen::handleReadingEvent(_ctx, event); break;
-        case STATE_TOC:               ReaderScreen::handleTocEvent(_ctx, event); break;
-        case STATE_READER_MENU:       ReaderScreen::handleMenuEvent(_ctx, event); break;
-        case STATE_SETTINGS:          SettingsScreen::handleSettingsEvent(_ctx, event); break;
-        case STATE_WIFI_SETTINGS:     SettingsScreen::handleWifiSettingsEvent(_ctx, event); break;
-        case STATE_SERVER_SETTINGS:   SettingsScreen::handleServerSettingsEvent(_ctx, event); break;
-        case STATE_LANGUAGE_SETTINGS: SettingsScreen::handleLanguageSettingsEvent(_ctx, event); break;
-        case STATE_FRONTLIGHT_SETTINGS: SettingsScreen::handleFrontlightEvent(_ctx, event); break;
-        case STATE_BOOK_MENU:         LibraryScreen::handleBookMenuEvent(_ctx, event); break;
-        case STATE_FONT_MENU:         ReaderScreen::handleFontMenuEvent(_ctx, event); break;
-        case STATE_TYPEFACE_MENU:     ReaderScreen::handleTypefaceMenuEvent(_ctx, event); break;
-        case STATE_APPEARANCE_MENU:   ReaderScreen::handleAppearanceEvent(_ctx, event); break;
-        case STATE_BOOKMARKS:         ReaderScreen::handleBookmarksEvent(_ctx, event); break;
-        case STATE_STATUSBAR_MENU:    ReaderScreen::handleStatusBarEvent(_ctx, event); break;
-        case STATE_SYNC_SETTINGS:     SettingsScreen::handleSyncSettingsEvent(_ctx, event); break;
-        case STATE_SLEEP_COVER_SETTINGS: SettingsScreen::handleSleepCoverSettingsEvent(_ctx, event); break;
-        case STATE_SD_SETTINGS:       SettingsScreen::handleSdSettingsEvent(_ctx, event); break;
-        case STATE_USB_MSC_SETTINGS:  SettingsScreen::handleUsbMscSettingsEvent(_ctx, event); break;
-        case STATE_USB_MSC:           SettingsScreen::handleUsbMscEvent(_ctx, event); break;
-        case STATE_SYNCING:           break;
-    }
+    const ScreenEntry* screen = Screens::find(_ctx.currentState);
+    if (screen && screen->handle) screen->handle(_ctx, event);
 }
 
 void AppController::redrawCurrentScreen(bool fullRefresh) {
-    switch (_ctx.currentState) {
-        case STATE_HOME:              drawHomeScreen(_ctx, fullRefresh); break;
-        case STATE_CATALOG:           drawCatalogScreen(_ctx, fullRefresh); break;
-        case STATE_LIBRARY:           drawLibraryScreen(_ctx, fullRefresh); break;
-        case STATE_READING:           Reader.renderCurrentPage(); break;
-        case STATE_TOC:               drawTocScreen(_ctx, fullRefresh); break;
-        case STATE_READER_MENU:       drawReaderMenuScreen(_ctx, fullRefresh); break;
-        case STATE_SETTINGS:          drawSettingsScreen(_ctx, fullRefresh); break;
-        case STATE_WIFI_SETTINGS:     drawWifiSettingsScreen(_ctx, fullRefresh); break;
-        case STATE_SERVER_SETTINGS:   drawServerSettingsScreen(_ctx, fullRefresh); break;
-        case STATE_LANGUAGE_SETTINGS: drawLanguageSettingsScreen(_ctx, fullRefresh); break;
-        case STATE_FRONTLIGHT_SETTINGS: drawFrontlightScreen(_ctx, fullRefresh); break;
-        case STATE_BOOK_MENU:         drawBookMenuScreen(_ctx, fullRefresh); break;
-        case STATE_FONT_MENU:         drawFontMenuScreen(_ctx, fullRefresh); break;
-        case STATE_TYPEFACE_MENU:     drawTypefaceMenuScreen(_ctx, fullRefresh); break;
-        case STATE_APPEARANCE_MENU:   drawAppearanceScreen(_ctx, fullRefresh); break;
-        case STATE_BOOKMARKS:         drawBookmarksScreen(_ctx, fullRefresh); break;
-        case STATE_STATUSBAR_MENU:    drawStatusBarScreen(_ctx, fullRefresh); break;
-        case STATE_SYNC_SETTINGS:     drawSyncSettingsScreen(_ctx, fullRefresh); break;
-        case STATE_SLEEP_COVER_SETTINGS: drawSleepCoverSettingsScreen(_ctx, fullRefresh); break;
-        case STATE_SD_SETTINGS:       drawSdSettingsScreen(_ctx, fullRefresh); break;
-        case STATE_USB_MSC_SETTINGS:  drawUsbMscSettingsScreen(_ctx, fullRefresh); break;
-        case STATE_USB_MSC:           drawUsbMscScreen(_ctx, fullRefresh); break;
-        case STATE_SYNCING:           break;
-    }
+    const ScreenEntry* screen = Screens::find(_ctx.currentState);
+    if (screen && screen->draw) screen->draw(_ctx, fullRefresh);
 }

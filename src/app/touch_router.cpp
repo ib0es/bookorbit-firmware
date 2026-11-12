@@ -1,4 +1,5 @@
 #include "touch_router.h"
+#include "screen_table.h"
 #include "../services/library_manager.h"
 #include "../ui/kit/ui_kit.h"
 #include "screens/screens.h"
@@ -68,9 +69,6 @@ bool translate(AppContext& ctx, const ButtonEvent& tap, ButtonEvent& out) {
             // home_view: 1 = continue-reading card, 2 = category (1=catalog, 2=settings), 3 = sync row
             ctx.selectedHomeIndex = (action == 1) ? 0 : (action == 3 ? 3 : value);
             break;
-        case STATE_CATALOG:
-            ctx.selectedCatalogIndex = value;
-            break;
         case STATE_LIBRARY: {
             auto& lib = LibraryManager::getInstance();
             if (value < 0 || value >= lib.rowCount()) return false;
@@ -83,30 +81,19 @@ bool translate(AppContext& ctx, const ButtonEvent& tap, ButtonEvent& out) {
             }
             break;
         }
-        case STATE_SETTINGS:          ctx.selectedSettingIndex = value; break;
-        case STATE_WIFI_SETTINGS:     ctx.selectedWifiSettingIndex = value; break;
-        case STATE_SERVER_SETTINGS:   ctx.selectedServerSettingIndex = value; break;
-        case STATE_LANGUAGE_SETTINGS: ctx.selectedLanguageIndex = value; break;
-        case STATE_READER_MENU:       ctx.selectedReaderMenuIndex = value; break;
-        case STATE_TOC:               ctx.selectedTocIndex = value; break;
-        case STATE_BOOK_MENU:         ctx.selectedBookMenuIndex = value; break;
-        case STATE_FONT_MENU:         ctx.selectedFontIndex = value; break;
-        case STATE_TYPEFACE_MENU:     ctx.selectedTypefaceIndex = value; break;
-        case STATE_APPEARANCE_MENU:   ctx.selectedAppearanceIndex = value; break;
-        case STATE_BOOKMARKS:         ctx.selectedBookmarkIndex = value; break;
-        case STATE_STATUSBAR_MENU:    ctx.selectedStatusBarIndex = value; break;
-        case STATE_SYNC_SETTINGS:     ctx.selectedSyncSettingIndex = value; break;
-        case STATE_SLEEP_COVER_SETTINGS: ctx.selectedSleepCoverIndex = value; break;
-        case STATE_SD_SETTINGS:       ctx.selectedSdSettingIndex = value; break;
-        case STATE_USB_MSC_SETTINGS:  ctx.selectedUsbMscIndex = value; break;
         case STATE_USB_MSC:
             SettingsScreen::handleUsbMscTap(ctx, action);
             return false;
         case STATE_FRONTLIGHT_SETTINGS:  // sliders handle the tap themselves
             SettingsScreen::handleFrontlightTap(ctx, action, value, tap.x);
             return false;
-        default:
-            return false;
+        default: {
+            // A list screen: the row tapped is selected, then OK (screen_table.cpp).
+            const ScreenEntry* screen = Screens::find(ctx.currentState);
+            if (!screen || !screen->selection) return false;
+            ctx.*(screen->selection) = value;
+            break;
+        }
     }
     out = make(BTN_CONFIRM);
     return true;
@@ -129,23 +116,8 @@ bool pageSelection(int& index, int count, int perPage, bool forward) {
 // The selection of the screens whose list pages through uikit::cardList /
 // setListPager (settings, catalog, the menus).
 int* pagedSelection(AppContext& ctx) {
-    switch (ctx.currentState) {
-        case STATE_CATALOG:              return &ctx.selectedCatalogIndex;
-        case STATE_SETTINGS:             return &ctx.selectedSettingIndex;
-        case STATE_WIFI_SETTINGS:        return &ctx.selectedWifiSettingIndex;
-        case STATE_SERVER_SETTINGS:      return &ctx.selectedServerSettingIndex;
-        case STATE_LANGUAGE_SETTINGS:    return &ctx.selectedLanguageIndex;
-        case STATE_SYNC_SETTINGS:        return &ctx.selectedSyncSettingIndex;
-        case STATE_SLEEP_COVER_SETTINGS: return &ctx.selectedSleepCoverIndex;
-        case STATE_SD_SETTINGS:          return &ctx.selectedSdSettingIndex;
-        case STATE_USB_MSC_SETTINGS:     return &ctx.selectedUsbMscIndex;
-        case STATE_READER_MENU:          return &ctx.selectedReaderMenuIndex;
-        case STATE_BOOK_MENU:            return &ctx.selectedBookMenuIndex;
-        case STATE_APPEARANCE_MENU:      return &ctx.selectedAppearanceIndex;
-        case STATE_TYPEFACE_MENU:        return &ctx.selectedTypefaceIndex;
-        case STATE_BOOKMARKS:            return &ctx.selectedBookmarkIndex;
-        default:                         return nullptr;
-    }
+    const ScreenEntry* screen = Screens::find(ctx.currentState);
+    return screen && screen->pagedList && screen->selection ? &(ctx.*(screen->selection)) : nullptr;
 }
 
 }  // namespace
