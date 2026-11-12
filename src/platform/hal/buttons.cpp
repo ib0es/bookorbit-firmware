@@ -40,6 +40,29 @@ void ButtonManager::update() {
     // refreshes waits for the next update().
     if (_heldKey != BTN_NONE && !isPressed(_heldKey)) _heldKey = BTN_NONE;
     if (_hasPendingEvent) return; // Keep pending until consumed
+
+    // Hold fallback (no touch panel): UP / DOWN pressed are timed here.
+    if (_holdKey != BTN_NONE) {
+        constexpr uint32_t kHoldMs = 600;
+        if (!isPressed(_holdKey)) {
+            if (!_holdFired) {   // released before the hold: an ordinary click
+                _pendingEvent = { _holdKey, ACTION_CLICK };
+                _hasPendingEvent = true;
+                Serial.printf("[Buttons] Event: CLICK %s (released)\n", getName(_holdKey));
+            }
+            _holdKey = BTN_NONE;
+            if (_hasPendingEvent) return;
+        } else {
+            if (!_holdFired && millis() - _holdSince >= kHoldMs) {
+                _holdFired = true;
+                const ButtonId as = _holdKey == BTN_DOWN ? BTN_CONFIRM : BTN_BACK;
+                _pendingEvent = { as, ACTION_CLICK };
+                _hasPendingEvent = true;
+                Serial.printf("[Buttons] Event: HOLD %s -> %s (no touch)\n", getName(_holdKey), getName(as));
+            }
+            return;
+        }
+    }
     if (_heldKey != BTN_NONE) {
         const uint32_t now = millis();
         if (now - _heldSince >= 500 && now - _lastRepeat >= 250) {
@@ -57,6 +80,10 @@ void ButtonManager::update() {
         _pendingEvent = { BTN_CONFIRM, ACTION_CLICK };
         _hasPendingEvent = true;
         Serial.println("[Buttons] Event: CLICK CONFIRM");
+    } else if (_holdFallback && (_freeinkInput.wasPressed(InputManager::BTN_UP) || _freeinkInput.wasPressed(InputManager::BTN_DOWN))) {
+        _holdKey = _freeinkInput.wasPressed(InputManager::BTN_DOWN) ? BTN_DOWN : BTN_UP;
+        _holdSince = millis();
+        _holdFired = false;
     } else if (_freeinkInput.wasPressed(InputManager::BTN_UP)) {
         _pendingEvent = { BTN_UP, ACTION_CLICK };
         _hasPendingEvent = true;
@@ -122,7 +149,7 @@ bool ButtonManager::getEvent(ButtonEvent& event) {
         _hasPendingEvent = false;
         // A fresh press of an arrow key starts its auto-repeat clock.
         const ButtonId id = event.id;
-        if (event.repeat == 0 && (id == BTN_UP || id == BTN_DOWN || id == BTN_LEFT || id == BTN_RIGHT)) {
+        if (event.repeat == 0 && !_holdFallback && (id == BTN_UP || id == BTN_DOWN || id == BTN_LEFT || id == BTN_RIGHT)) {
             _heldKey = id;
             _heldSince = _lastRepeat = millis();
             _repeats = 0;

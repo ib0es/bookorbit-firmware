@@ -92,6 +92,9 @@ bool hitTest(int16_t x, int16_t y, fi::ActionId& action, int16_t& value);
 bool backTapped(int16_t x, int16_t y);
 // True on boards driven by touch (dialogs then show tappable buttons).
 bool touchUi();
+// A touch-only board whose touch panel did not answer: the footer explains
+// the held-key fallback instead of taps (C4).
+void setTouchMissing(bool missing);
 // True on boards whose only keys are UP / DOWN / POWER (Picco): every
 // screen's key hints are replaced by touch hints.
 bool touchOnly();

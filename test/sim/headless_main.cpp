@@ -128,6 +128,8 @@ int main(int argc, char** argv) {
     SDCardManager::getInstance().setRoot(argv[2]);
     freeink::FreeInkDisplay::setUpdateCallback(onUpdate);
     const std::string script = argc > 3 ? argv[3] : "";
+    // SIM_NO_TOUCH=1: the touch panel does not answer (C4).
+    if (getenv("SIM_NO_TOUCH")) InputManager::s_touchEnabled = false;
     setup();
     for (size_t i = 0; i < script.size(); i++) {
         char c = script[i];

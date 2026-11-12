@@ -177,12 +177,21 @@ CASES = [
     ("book menu: Frontlight opens the light screen, back returns to the book menu (C2)",
      HOME_CARD + "w" + READ_MIDDLE + "T240,658;" + TITLE + RMENU_RESUME,
      lambda log, sd: "[Reader] Page" in log.split(">>> TAP_240_506")[-1]),
+    # C4: the touch panel silent: a held DOWN is OK (opens the book on the home
+    # screen's card), a held UP is BACK (closes it); a short press still moves.
+    ("no touch panel: held DOWN = OK, held UP = BACK, a click still selects (C4)",
+     "D" + "U" + "HD" + "w" + "HU",
+     lambda log, sd: "[Input] No touch panel" in log and "HOLD DOWN -> CONFIRM" in log
+                     and "[Reader] Page" in log.split(">>> HOLD D")[-1].split(">>> HOLD U")[0]
+                     and "drawHomeScreen" in log.split(">>> HOLD U")[-1]
+                     and "CLICK DOWN (released)" in log,
+     None, None, {"SIM_NO_TOUCH": "1"}),
     ("power: sleep and wake",
      "P" + "Z",
      lambda log, sd: "Entering Deep Sleep" in log and log.count("drawHomeScreen") >= 2),
 ]
 
-def run(script, config=None, srv=None):
+def run(script, config=None, srv=None, env=None):
     sd = tempfile.mkdtemp(); shutil.rmtree(sd)
     shutil.copytree(os.path.join(ROOT, "simulator/sdcard"), sd)
     shutil.copy(os.path.join(ROOT, "test/sim/config.json"), os.path.join(sd, "config.json"))
@@ -193,7 +202,8 @@ def run(script, config=None, srv=None):
         c = json.load(open(p)); c.update(config); json.dump(c, open(p, "w"))
     frames = tempfile.mkdtemp()
     try:
-        res = subprocess.run([BIN, frames, sd, script], capture_output=True, text=True, timeout=240)
+        res = subprocess.run([BIN, frames, sd, script], capture_output=True, text=True, timeout=240,
+                             env=dict(os.environ, **(env or {})))
     finally:
         shutil.rmtree(frames, ignore_errors=True)
     return res.returncode, res.stdout, sd
@@ -202,7 +212,7 @@ def main():
     failed = 0
     for case in CASES:
         name, script, check = case[:3]
-        code, log, sd = run(script, case[3] if len(case) > 3 else None, case[4] if len(case) > 4 else None)
+        code, log, sd = run(script, *[case[i] if len(case) > i else None for i in (3, 4, 5)])
         problems = []
         if "KEY_NOT_ON_DEVICE" in log: problems.append("used a key Picco does not have")
         if "STUCK" in log: problems.append("stuck in a screen's input loop")

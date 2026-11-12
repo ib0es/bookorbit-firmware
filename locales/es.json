@@ -360,6 +360,8 @@
   "LIB_DELETE_BTN": "Eliminar",
   "TOUCH_HINT_L1": "Toque para elegir · ◀ en el título o deslice a la derecha para volver",
   "TOUCH_HINT_L2": "[▲/▼] Seleccionar · Deslice arriba/abajo para cambiar página · [ENCENDER] Suspender",
+  "TOUCH_FALLBACK_L1": "La pantalla táctil no responde · mantén ▼ = OK · mantén ▲ = Atrás",
+  "TOUCH_FALLBACK_L2": "[▲/▼] Elegir · [POWER] Reposo",
   "TOUCH_MODAL_HINT": "Toque la pantalla para cerrar o cancelar",
   "FONT_MENU_TITLE": "TAMAÑO DE FUENTE",
   "FONT_MENU_HINT": "[▲/▼] Seleccionar | [OK] Aplicar | [BACK] Atrás",

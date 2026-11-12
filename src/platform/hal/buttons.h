@@ -61,6 +61,13 @@ public:
     using KeyRemap = ButtonId (*)(ButtonId physical);
     void setKeyRemap(KeyRemap remap) { _keyRemap = remap; }
 
+    // A touch-only board whose touch panel did not answer has UP, DOWN and
+    // POWER left: then a held DOWN is OK and a held UP is BACK (C4). UP and DOWN
+    // report their click on release (a hold is told from a click), and do not
+    // repeat.
+    void setHoldFallback(bool on) { _holdFallback = on; }
+    bool holdFallback() const { return _holdFallback; }
+
     // Side slide switch that turns the frontlight on/off (Picco, GPIO6).
     bool hasLightSwitch() const { return _freeinkInput.hasToggleSwitch(); }
     bool lightSwitchOn() const { return _freeinkInput.isToggleSwitchOn(); }
@@ -79,6 +86,10 @@ private:
     InputManager _freeinkInput;
     TouchMapper _touchMapper = nullptr;
     KeyRemap _keyRemap = nullptr;
+    bool _holdFallback = false;
+    ButtonId _holdKey = BTN_NONE;   // UP or DOWN down, in the hold fallback
+    uint32_t _holdSince = 0;
+    bool _holdFired = false;
     ButtonEvent _pendingEvent;
     bool _hasPendingEvent;
     bool _powerLongPressFired;
