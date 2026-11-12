@@ -12,4 +12,5 @@ inline constexpr DeviceProfile kPiccoProfile = {
     /*autoRotateByDefault*/ false, /*usbMassStorage*/ false, /*touchWake*/ false,
     /*sdPowerPin*/ -1,                    // GPIO0 rail, in the SDK profile
     /*imuMountRot*/ 1,   // QMI8658 turned 90° on the PCB: portrait read as landscape (field report)
+    /*imuMountFlipY*/ true,    // and mirrored: upright was right, the two landscapes swapped (field report)
 };

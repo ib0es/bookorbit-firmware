@@ -283,7 +283,8 @@ void AppController::loop() {
             if (BoardImu.readAccel(ax, ay, az)) {
                 // The board's sensor mount (device profile) plus the user's calibration.
                 const ImuCalibration cal{(Platform::kDevice.imuMountRot + _ctx.config.imuRot) & 3,
-                                         _ctx.config.imuFlipX, _ctx.config.imuFlipY};
+                                         _ctx.config.imuFlipX,
+                                         Platform::kDevice.imuMountFlipY != _ctx.config.imuFlipY};
                 const int nextOrient = _autoRotate.update(ax, ay, az, _ctx.config.uiOrientation, nowMs, cal);
                 if (nextOrient >= 0 && nextOrient != _ctx.config.uiOrientation) {
                     Serial.printf("[App] Auto-rotated UI %d -> %d (ax=%.2f ay=%.2f az=%.2f)\n",

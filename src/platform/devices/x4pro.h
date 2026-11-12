@@ -13,4 +13,5 @@ inline constexpr DeviceProfile kX4ProProfile = {
     /*autoRotateByDefault*/ false, /*usbMassStorage*/ true, /*touchWake*/ true,
     /*sdPowerPin*/ -1,                    // SDMMC enable, in the SDK profile
     /*imuMountRot*/ 0,
+    /*imuMountFlipY*/ false,
 };

@@ -14,4 +14,5 @@ inline constexpr DeviceProfile kX4Profile = {
     // the same GPIO13 switch as the X3 (active-high).
     /*sdPowerPin*/ 13,
     /*imuMountRot*/ 0,
+    /*imuMountFlipY*/ false,
 };
