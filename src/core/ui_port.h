@@ -33,7 +33,7 @@ struct UiPort {
     uint32_t (*modalRemainingMs)() = nullptr;
     void (*coverCacheChanged)() = nullptr;           // covers on the card changed: drop decoded ones
     void (*sleepScreen)(const SleepScreen& s) = nullptr;   // drawn, not yet on the panel
-    void (*portalScreen)(const char* apSsid, const char* apPass, const char* url, int page) = nullptr;
+    void (*portalScreen)(const char* apSsid, const char* apPass, const char* url, int page, bool fullRefresh) = nullptr;
     PortalAction (*portalEvent)(int btnId, int btnAction, int16_t x, int16_t y, int& page) = nullptr;
 };
 
@@ -57,8 +57,8 @@ inline bool modalActive() { return port().modalActive && port().modalActive(); }
 inline uint32_t modalRemainingMs() { return port().modalRemainingMs ? port().modalRemainingMs() : 0; }
 inline void coverCacheChanged() { if (port().coverCacheChanged) port().coverCacheChanged(); }
 inline void sleepScreen(const SleepScreen& s) { if (port().sleepScreen) port().sleepScreen(s); }
-inline void portalScreen(const char* apSsid, const char* apPass, const char* url, int page = 0) {
-    if (port().portalScreen) port().portalScreen(apSsid, apPass, url, page);
+inline void portalScreen(const char* apSsid, const char* apPass, const char* url, int page = 0, bool fullRefresh = false) {
+    if (port().portalScreen) port().portalScreen(apSsid, apPass, url, page, fullRefresh);
 }
 inline PortalAction portalEvent(int btnId, int btnAction, int16_t x, int16_t y, int& page) {
     return port().portalEvent ? port().portalEvent(btnId, btnAction, x, y, page) : PortalAction::Stay;

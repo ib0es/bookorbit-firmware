@@ -210,6 +210,17 @@ public:
         return &s_simBlockDev;
     }
     uint64_t sdTotalBytes() const { return (uint64_t)16 * 1024 * 1024 * 1024; }
+    uint64_t sdUsedBytes() const {
+        uint64_t total = 0;
+        try {
+            if (fs::exists(_rootDir)) {
+                for (const auto& entry : fs::recursive_directory_iterator(_rootDir)) {
+                    if (entry.is_regular_file()) total += entry.file_size();
+                }
+            }
+        } catch (...) {}
+        return total;
+    }
 
     bool ensureDirectoryExists(const char* path) {
         try {

@@ -613,9 +613,18 @@ bool JpegViewer::drawCover(const char* filePath, int x, int y, int maxW, int max
 
     String pathStr(filePath);
 
-    // 2. Direct BMP rendering if file is already a BMP
+    // 2. Direct BMP rendering if file is already a BMP (by extension or header magic)
     if (pathStr.endsWith(".bmp") || pathStr.endsWith(".BMP")) {
         return drawBmp(filePath, x, y, maxW, maxH, fit);
+    }
+    {
+        FsFile bf = Storage.open(filePath, O_RDONLY);
+        if (bf) {
+            uint8_t m[2] = {0};
+            const bool isBmp = (bf.read(m, 2) == 2 && m[0] == 'B' && m[1] == 'M');
+            bf.close();
+            if (isBmp) return drawBmp(filePath, x, y, maxW, maxH, fit);
+        }
     }
 
     // 3. Check for pre-rendered BMP cache on SD card (CrossPoint style: instant loading without JPEG lag)

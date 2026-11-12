@@ -15,6 +15,7 @@
 #include <unordered_map>
 #include "../storage/catalog_store.h"
 #include "../storage/last_book_store.h"
+#include "../storage/progress_store.h"
 
 using namespace LibraryInternal;
 
@@ -38,7 +39,10 @@ void removeIfExists(const String& path) {
 // for it (thumb/full, crop/fit).
 void removeCoverStem(const String& stem) {
     if (stem.length() == 0) return;
-    const char* suffixes[] = { ".jpg", ".jpeg", ".jpg.bad", "_thumb_crop.bmp", "_thumb_fit.bmp", "_crop.bmp", "_fit.bmp" };
+    // ".jpg.nocover": the marker of a book found to have no cover; ".jpg.tmp" /
+    // ".jpg.bmp.tmp": an extraction cut short.
+    const char* suffixes[] = { ".jpg", ".jpeg", ".bmp", ".jpg.bad", ".jpg.nocover", ".nocover", ".jpg.tmp", ".jpg.bmp.tmp",
+                               "_thumb_crop.bmp", "_thumb_fit.bmp", "_crop.bmp", "_fit.bmp" };
     for (const char* sfx : suffixes) removeIfExists("/covers/" + stem + sfx);
 }
 
@@ -78,6 +82,15 @@ void LibraryManager::deleteBookArtifacts(const BookItem& book, bool removeCover)
         // An explicit cover in /covers/ (never a cover.jpg in the book's folder).
         if (book.coverPath.startsWith("/covers/")) removeCoverStem(stemOf(book.coverPath));
     }
+    // An offline book is known to this device only: its position goes with it
+    // (a catalog book keeps its record: the server has it, a download brings it back).
+    if (isOfflinePath(book.filePath)) {
+        ProgressStore& store = ProgressStore::instance();
+        if (store.remove(book.filePath)) {
+            store.save();
+            Serial.printf("[Library]   position of %s forgotten\n", book.filePath.c_str());
+        }
+    }
     Ui::coverCacheChanged();
 }
 
@@ -106,7 +119,8 @@ bool contains(const std::vector<String>& v, const String& s) {
 
 // The cover stem a /covers file belongs to, "" if the name is not one we write.
 String coverOwner(const String& n) {
-    const char* sfx[] = { "_thumb_crop.bmp", "_thumb_fit.bmp", "_crop.bmp", "_fit.bmp", ".jpg.bad", ".jpeg", ".jpg" };
+    const char* sfx[] = { "_thumb_crop.bmp", "_thumb_fit.bmp", "_crop.bmp", "_fit.bmp", ".jpg.bad", ".jpg.nocover",
+                          ".jpg.bmp.tmp", ".jpg.tmp", ".jpeg", ".jpg" };
     for (const char* x : sfx) {
         if (n.endsWith(x)) return n.substring(0, n.length() - strlen(x));
     }

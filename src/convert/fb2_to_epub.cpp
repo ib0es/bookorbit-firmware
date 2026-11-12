@@ -1,5 +1,7 @@
 #include "fb2_to_epub.h"
 
+#include "../platform/system.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -576,6 +578,7 @@ ConvertResult Fb2Converter::parsePass() {
     const uint64_t total = _in.size() ? _in.size() : 1;
     bool first = true;
     for (;;) {
+        Platform::feedWatchdog();
         void* buf = XML_GetBuffer(_parser, 8192);
         if (!buf) {
             r = ConvertResult::NoMemory;
@@ -1122,6 +1125,7 @@ ConvertResult Fb2Converter::rawBinaries(uint64_t offset) {
     std::string tag;
     char* buf = reinterpret_cast<char*>(_raw);
     for (;;) {
+        Platform::feedWatchdog();
         // Reads end on sector boundaries: whole sectors go straight to the buffer.
         const uint32_t want = (uint32_t)sizeof(_raw) - (uint32_t)(_read % 512);
         const int32_t n = _in.read(buf, want);
@@ -1578,6 +1582,7 @@ bool Fb2Converter::writeNcx() {
     } else if (_tmpOk && _tocCount > 0 && _tmp.beginRead()) {
         int open = 0;
         for (;;) {
+            Platform::feedWatchdog();
             uint8_t head[4];
             if (_tmp.read(head, 4) != 4) break;
             const int depth = head[0];

@@ -214,18 +214,21 @@ String BookOrbitClient::buildUrl(const String& host, const String& path) {
 
 WebConfigManager::WebConfigManager() {}
 
-bool WebConfigManager::runPortal(AppConfig& cfg) {
-    (void)cfg;
-    Serial.println("[SimNet] Simulated Web Portal opened.");
-    int page = 0;
-    Ui::portalScreen("BookOrbit-Config", "12345678", "http://192.168.4.1/", page);
+bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
+    Serial.printf("[SimNet] Simulated Web Portal opened (mode=%d).\n", (int)mode);
+    const bool apMode = (mode == WebPortalMode::AccessPoint);
+    const char* ssid = apMode ? "BookOrbit-Config" : cfg.wifiSsid.c_str();
+    const char* pass = apMode ? "12345678" : "";
+    const char* url = apMode ? "http://192.168.4.1/" : "http://192.168.1.42/";
+    int page = apMode ? 0 : -1;
+    Ui::portalScreen(ssid, pass, url, page);
     ButtonEvent event;
     while (true) {
         if (PowerService::pollModalEvent(event)) {
             const PortalAction act = Ui::portalEvent(event.id, event.action, event.x, event.y, page);
             if (act == PortalAction::Close) break;
             if (act == PortalAction::Redraw) {
-                Ui::portalScreen("BookOrbit-Config", "12345678", "http://192.168.4.1/", page);
+                Ui::portalScreen(ssid, pass, url, page);
             }
         }
     }

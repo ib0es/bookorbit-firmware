@@ -73,10 +73,21 @@ uint64_t StorageManager::totalBytes() const {
     return SDCardManager::getInstance().sdTotalBytes();
 }
 
+uint64_t StorageManager::usedBytes() {
+    return SDCardManager::getInstance().sdUsedBytes();
+}
+
+uint64_t StorageManager::freeBytes() {
+    uint64_t total = totalBytes();
+    uint64_t used = usedBytes();
+    return (total > used) ? (total - used) : 0;
+}
+
 bool StorageManager::ensureDirectories() {
     if (!isAvailable()) return false;
     SDCardManager& sd = SDCardManager::getInstance();
     sd.ensureDirectoryExists("/books");
+    sd.ensureDirectoryExists("/offline");
     sd.ensureDirectoryExists("/covers");
     sd.ensureDirectoryExists("/cache");
     return true;

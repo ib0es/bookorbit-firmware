@@ -12,6 +12,8 @@ portrait pixels (480x800) taken from the screens' layout.
 import json, os, re, shutil, subprocess, sys, tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Files a manual simulator session leaves on the card (uploaded offline books, their caches).
+SD_LEFTOVERS = shutil.ignore_patterns("offline", "offline#*")
 BIN = os.environ.get("PICCO_HEADLESS") or os.path.join(ROOT, "test/sim/build-picco/x4_headless")
 
 BACK = "W100,300,400,300;"        # swipe right = back
@@ -21,8 +23,9 @@ HOME_CATALOG = "T200,385;"
 CATALOG_ALL_BOOKS = "T200,145;"
 HOME_ALL_BOOKS = HOME_CATALOG + CATALOG_ALL_BOOKS
 LIB_FRANKENSTEIN = "T200,225;"  # 3rd row of All Books (sorted by title; two-line rows, U1)
-HOME_SETTINGS = "T200,447;"
-HOME_SYNC = "T200,515;"
+HOME_OFFLINE = "T200,445;"
+HOME_SETTINGS = "T200,505;"
+HOME_SYNC = "T200,565;"
 READ_MIDDLE = "T240,400;"         # reading: middle third = book menu
 READ_RIGHT = "T400,400;"
 READ_LEFT = "T80,400;"
@@ -164,11 +167,14 @@ CASES = [
     # Landscape: the home rows sit beside the book card (stacked they were below
     # the screen). Taps in the panel's portrait coordinates: the Settings row.
     ("home in landscape: the Settings row is on screen and opens by tap",
-     "T285,620;",
+     "T250,620;",
      lambda log, sd: "drawSettingsScreen" in log, {"ui_orientation": 1}),
     ("home in landscape (the other way): Sync now is on screen",
-     "T250,200;",
+     "T300,200;",
      lambda log, sd: "[Sync]" in log or "SYNC" in log or "Wi-Fi" in log, {"ui_orientation": 3}),
+    ("offline: tap Offline library opens /offline and title bar returns Home",
+     HOME_OFFLINE + TITLE,
+     lambda log, sd: "List /offline: 0 rows" in log and "drawHomeScreen" in log.rsplit(">>> TAP", 1)[1]),
     # Landscape lists: cards keep their second line inside, and what does not fit
     # is a swipe away (the page swipe moves the selection to the next page).
     ("catalog in landscape: swipe up to the second page, open Downloaded",
@@ -245,7 +251,7 @@ CASES = [
 
 def run(script, config=None, srv=None, env=None, setup=None):
     sd = tempfile.mkdtemp(); shutil.rmtree(sd)
-    shutil.copytree(os.path.join(ROOT, "simulator/sdcard"), sd)
+    shutil.copytree(os.path.join(ROOT, "simulator/sdcard"), sd, ignore=SD_LEFTOVERS)
     shutil.copy(os.path.join(ROOT, "test/sim/config.json"), os.path.join(sd, "config.json"))
     if setup:   # files the case starts with
         setup(sd)

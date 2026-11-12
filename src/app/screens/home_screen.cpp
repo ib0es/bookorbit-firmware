@@ -14,6 +14,7 @@ namespace {
 enum HomeItem {
     HOME_RECENT_BOOK = 0,
     HOME_CATALOG,
+    HOME_OFFLINE,
     HOME_SETTINGS,
     HOME_SYNC_NOW,
 };
@@ -21,7 +22,7 @@ enum HomeItem {
 void openLibrary(AppContext& ctx, LibraryFilter filter, bool rescan) {
     auto& lib = LibraryManager::getInstance();
     ctx.currentState = STATE_LIBRARY;
-    lib.currentFolder = "/books";
+    lib.currentFolder = (filter == FILTER_OFFLINE) ? LibraryManager::kOfflineDir : "/books";
     lib.currentFilter = filter;
     lib.selectedBookIndex = 0;
     if (rescan) lib.scanLocalBooks();
@@ -80,6 +81,10 @@ void activateItem(AppContext& ctx, int index) {
             ctx.currentState = STATE_CATALOG;
             ctx.selectedCatalogIndex = 0;
             drawCatalogScreen(ctx, false);
+            break;
+        case HOME_OFFLINE:
+            LibraryManager::getInstance().scanOfflineBooks();
+            openLibrary(ctx, FILTER_OFFLINE, /*rescan=*/false);
             break;
         case HOME_SETTINGS:
             ctx.currentState = STATE_SETTINGS;

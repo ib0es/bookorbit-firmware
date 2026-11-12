@@ -36,6 +36,9 @@ public:
     // Finds or creates the record; fills in ids/path/title that were missing.
     BookProgressRecord& getOrCreate(int fileId, int bookId, const String& filePath, const String& title);
 
+    // Drops the record of a local path (any letter case); true if there was one.
+    bool remove(const String& filePath);
+
     // A deque: references to records stay valid when other records are added.
     std::deque<BookProgressRecord>& records() { return _records; }
 

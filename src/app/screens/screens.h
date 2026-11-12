@@ -23,6 +23,7 @@ void openBookMenu(AppContext& ctx);
 // Lists the formats of the selected book (book menu "Format"); false if it has one.
 bool openFormatsOfSelected(AppContext& ctx);
 void handleBookMenuEvent(AppContext& ctx, const ButtonEvent& event);
+void openWebSettingsFromOffline(AppContext& ctx);
 }
 
 namespace ReaderScreen {
@@ -50,6 +51,7 @@ namespace SettingsScreen {
 void handleSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleWifiSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleWebSettingsEvent(AppContext& ctx, const ButtonEvent& event);
+void openWebSettings(AppContext& ctx, AppState returnState = STATE_SETTINGS);
 void handleServerSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleSyncSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleReadingSettingsEvent(AppContext& ctx, const ButtonEvent& event);

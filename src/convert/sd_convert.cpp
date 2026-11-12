@@ -1,6 +1,7 @@
 #include "sd_convert.h"
 
 #include "../platform/hal/storage.h"
+#include "../platform/system.h"
 #include "../reader/engine/sd_book_storage.h"
 #include "fb2_to_epub.h"
 #include "mobi_to_epub.h"
@@ -106,6 +107,7 @@ struct TimedProgress {
     static void call(void* self, int permille) {
         TimedProgress* t = static_cast<TimedProgress*>(self);
         const uint32_t s = micros();
+        Platform::feedWatchdog();
         if (t->fn) t->fn(t->user, permille);
         t->us += micros() - s;
         t->calls++;

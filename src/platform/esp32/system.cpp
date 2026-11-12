@@ -6,6 +6,7 @@
 #include <driver/gpio.h>
 #include <esp_sleep.h>
 #include <esp_system.h>
+#include <esp_task_wdt.h>
 #include <sys/time.h>
 
 #include "config.h"
@@ -36,6 +37,12 @@ bool usbSerialConnected() {
 #else
     return false;
 #endif
+}
+
+void feedWatchdog() {
+    if (esp_task_wdt_status(nullptr) == ESP_OK) {
+        esp_task_wdt_reset();
+    }
 }
 
 namespace {

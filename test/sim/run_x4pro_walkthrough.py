@@ -11,6 +11,8 @@ simulator/sdcard and checks both stdout logs and persisted SD state.
 import json, os, re, shutil, subprocess, sys, tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Files a manual simulator session leaves on the card (uploaded offline books, their caches).
+SD_LEFTOVERS = shutil.ignore_patterns("offline", "offline#*")
 BIN = os.environ.get("X4PRO_HEADLESS") or os.path.join(ROOT, "test/sim/build-x4pro/x4_headless")
 
 BACK = "W100,300,400,300;"        # swipe right = back
@@ -22,8 +24,9 @@ HOME_CATALOG = "T200,385;"
 CATALOG_ALL_BOOKS = "T200,145;"
 HOME_ALL_BOOKS = HOME_CATALOG + CATALOG_ALL_BOOKS
 LIB_FRANKENSTEIN = "T200,225;"   # 3rd row (two-line rows, U1)
-HOME_SETTINGS = "T200,447;"
-HOME_SYNC = "T200,515;"
+HOME_OFFLINE = "T200,445;"
+HOME_SETTINGS = "T200,505;"
+HOME_SYNC = "T200,565;"
 READ_MIDDLE = "T240,400;"
 READ_RIGHT = "T400,400;"
 READ_LEFT = "T80,400;"
@@ -157,8 +160,11 @@ CASES = [
      HOME_SETTINGS + SET_ORIENTATION + SET_ORIENTATION_LANDSCAPE,
      lambda log, sd: config(sd)["ui_orientation"] == 2 and config(sd).get("orientation", 0) == 0),
     ("home in landscape: Settings row opens cleanly",
-     "T285,620;",
+     "T250,620;",
      lambda log, sd: "drawSettingsScreen" in log, {"ui_orientation": 1}),
+    ("offline: tap Offline library opens /offline and Home Key returns Home",
+     HOME_OFFLINE + HOME_KEY_TAP,
+     lambda log, sd: "List /offline: 0 rows" in log and "drawHomeScreen" in log.split(">>> HOME_TAP", 1)[1]),
     ("Wi-Fi: SSID typed on keyboard, Home Key tap cancels cleanly",
      HOME_SETTINGS + SET_WIFI + "[T60,385;T430,448;]" + SET_WIFI + HOME_KEY_TAP,
      lambda log, sd: config(sd)["wifi_ssid"].endswith("x")),
@@ -171,7 +177,7 @@ CASES = [
 def run(script, cfg=None, env_extra=None):
     sd = tempfile.mkdtemp()
     shutil.rmtree(sd)
-    shutil.copytree(os.path.join(ROOT, "simulator/sdcard"), sd)
+    shutil.copytree(os.path.join(ROOT, "simulator/sdcard"), sd, ignore=SD_LEFTOVERS)
     shutil.copy(os.path.join(ROOT, "test/sim/config.json"), os.path.join(sd, "config.json"))
     if cfg:
         p = os.path.join(sd, "config.json")

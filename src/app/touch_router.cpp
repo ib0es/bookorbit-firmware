@@ -66,10 +66,14 @@ bool translate(AppContext& ctx, const ButtonEvent& tap, ButtonEvent& out) {
 
     switch (ctx.currentState) {
         case STATE_HOME:
-            // home_view: 1 = continue-reading card, 2 = category (1=catalog, 2=settings), 3 = sync row
-            ctx.selectedHomeIndex = (action == 1) ? 0 : (action == 3 ? 3 : value);
+            // home_view: 1 = continue-reading card, 2 = category (1=catalog, 2=offline, 3=settings), 3 = sync row
+            ctx.selectedHomeIndex = (action == 1) ? 0 : (action == 3 ? 4 : value);
             break;
         case STATE_LIBRARY: {
+            if (action == 2) {
+                LibraryScreen::openWebSettingsFromOffline(ctx);
+                return false;
+            }
             auto& lib = LibraryManager::getInstance();
             if (value < 0 || value >= lib.rowCount()) return false;
             lib.selectedBookIndex = value;

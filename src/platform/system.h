@@ -22,6 +22,7 @@ bool restartSupported();
 uint32_t sleepTimeoutMs();          // idle time before deep sleep
 uint32_t batteryCheckIntervalMs();  // how often the charge is looked at
 bool usbSerialConnected();          // a host has the CDC serial port open
+void feedWatchdog();                // feeds the task watchdog during long-running tasks
 
 // ---- light sleep between loop ticks (touch-wake boards)
 // A key or the touch IRQ is held down now: light sleep would wake at once.

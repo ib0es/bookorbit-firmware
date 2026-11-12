@@ -30,6 +30,7 @@
 #include "../core/ui_port.h"
 #include "config.h"
 #include "../platform/device.h"
+#include "../platform/system.h"
 #include "engine/engine_text_counter.h"
 #include "../core/epub_cfi.h"
 #include "../ui/text_utils.h"
@@ -101,6 +102,7 @@ struct Buffer {
 
 // One-time container index (ZIP directory, package, TOC, CSS) on the card.
 inline bool buildContainerIndex(SdBookSource& src, SdCacheStorage& cache, bool& noMemory) {
+    Platform::feedWatchdog();
     const uint32_t t0 = millis();
     BookStatus st = BookStatus::OutOfMemory;
     // Record tables grow with the book (~70 KB for a 1,700-chapter omnibus): retried larger.
@@ -116,6 +118,7 @@ inline bool buildContainerIndex(SdBookSource& src, SdCacheStorage& cache, bool& 
         }
         Arena a(scratch.p, cap), b(parse.p, kInflateBytes);
         st = BookCatalog::build(src, cache, a, &b);
+        Platform::feedWatchdog();
         Serial.printf("[Reader] Book index built: %s in %lu ms (scratch %u B of %u, parse %u B)\n", bookStatusName(st),
                       (unsigned long)(millis() - t0), (unsigned)a.highWater(), (unsigned)cap, (unsigned)b.highWater());
     }

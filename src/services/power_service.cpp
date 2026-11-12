@@ -248,7 +248,8 @@ void PowerService::enterDeepSleep(AppContext& ctx, bool syncAllowed) {
     // (never on a critical battery: the progress stays queued for the next sync)
     if (!syncAllowed) Serial.println("[Power] Critical battery: no sync before sleep; progress stays queued.");
     if (syncAllowed && ctx.config.syncOnSleep && ctx.config.wifiSsid.length() > 0 && ctx.config.serverHost.length() > 0 &&
-        lib.lastBook.filePath.length() > 0 && lib.currentRecord().state.localDirty) {
+        lib.lastBook.filePath.length() > 0 && !LibraryManager::isOfflinePath(lib.lastBook.filePath) &&
+        lib.currentRecord().state.localDirty) {
         Serial.println("[Power] syncOnSleep enabled: uploading progress to Book Orbit...");
         Ui::status(tr(MsgId::POWER_SYNC_BEFORE_SLEEP), tr(MsgId::POWER_SYNC_SAVING), utf8Prefix(lib.lastBook.title, 64).c_str());
         SyncService::syncCurrentBookProgress(ctx, true);

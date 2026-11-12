@@ -29,8 +29,8 @@ void goBack(AppContext& ctx);
 void showUnsupported(const BookItem& book) {
     // A row of the format list is titled by its format: name the book.
     auto& lib = LibraryManager::getInstance();
-    const String& title = (book.formatRow >= 0 && lib.formatsBook >= 0 && lib.formatsBook < (int)lib.masterBooks.size())
-                              ? lib.masterBooks[lib.formatsBook].title : book.title;
+    const BookItem* parent = (book.formatRow >= 0) ? lib.formatBookItem() : nullptr;
+    const String& title = parent ? parent->title : book.title;
     Serial.printf("[Library] '%s': %s cannot be opened yet\n", title.c_str(),
                   BookFormats::label((BookFormats::Kind)book.activeKind()));
     char line[64];
@@ -64,8 +64,10 @@ void openSelected(AppContext& ctx) {
     if (!book) return;
 
     // A row of the format list: that format of the book becomes the active one.
-    if (book->formatRow >= 0 && lib.formatsBook >= 0 && lib.formatsBook < (int)lib.masterBooks.size()) {
-        BookItem& master = lib.masterBooks[lib.formatsBook];
+    if (book->formatRow >= 0) {
+        BookItem* parent = lib.formatBookItem();
+        if (!parent) return;
+        BookItem& master = *parent;
         if (!BookFormats::readable((BookFormats::Kind)book->activeKind())) {   // the book keeps its format
             showUnsupported(*book);
             return;
@@ -81,10 +83,12 @@ void openSelected(AppContext& ctx) {
     }
     // A book in several formats opens in the one read last; never read here,
     // the formats are listed to choose from.
-    if (!book->isDirectory && book->formats.size() > 1 && masterIdx >= 0) {
+    const int listIdx = (lib.currentFilter == FILTER_OFFLINE && lib.selectedBookIndex >= 0 &&
+                         lib.selectedBookIndex < lib.rowCount()) ? lib.rows[lib.selectedBookIndex] : masterIdx;
+    if (!book->isDirectory && book->formats.size() > 1 && listIdx >= 0) {
         const int last = LibraryManager::lastReadFormat(*book);
         if (last < 0) {
-            lib.openFormats(masterIdx);
+            lib.openFormats(listIdx);
             drawLibraryScreen(ctx, uikit::periodicFullRefresh());
             return;
         }
@@ -158,10 +162,22 @@ void openSelected(AppContext& ctx) {
 void deleteBookFile(int masterIdx, const String& path) {
     auto& lib = LibraryManager::getInstance();
     BookItem* book = nullptr;
+    bool inOffline = false;
+    size_t offlineIdx = 0;
     if (masterIdx >= 0 && masterIdx < (int)lib.masterBooks.size() && lib.masterBooks[masterIdx].filePath == path) {
         book = &lib.masterBooks[masterIdx];
     } else {
-        for (auto& r : lib.folderRows) if (!r.isDirectory && r.filePath == path) { book = &r; break; }
+        for (size_t i = 0; i < lib.offlineBooks.size(); i++) {
+            if (lib.offlineBooks[i].filePath == path) {
+                book = &lib.offlineBooks[i];
+                inOffline = true;
+                offlineIdx = i;
+                break;
+            }
+        }
+        if (!book) {
+            for (auto& r : lib.folderRows) if (!r.isDirectory && r.filePath == path) { book = &r; break; }
+        }
     }
     if (!book) return;
     // Only the active format goes; the book stays while another format is on
@@ -192,7 +208,8 @@ void deleteBookFile(int masterIdx, const String& path) {
         Modal.showMessage(tr(MsgId::LIB_DELETE_SUCCESS_TITLE), tr(MsgId::LIB_DELETE_SUCCESS_L1), tr(MsgId::LIB_DELETE_SUCCESS_L2),
                           tr(MsgId::LIB_DELETE_SUCCESS_L3), "", 1600);
     } else {
-        if (masterIdx >= 0 && book == &lib.masterBooks[masterIdx]) lib.masterBooks.erase(lib.masterBooks.begin() + masterIdx);
+        if (inOffline) lib.offlineBooks.erase(lib.offlineBooks.begin() + offlineIdx);
+        else if (masterIdx >= 0 && book == &lib.masterBooks[masterIdx]) lib.masterBooks.erase(lib.masterBooks.begin() + masterIdx);
         lib.updateLastBookAfterDeletion(path);
         lib.rebuildFilteredIndices();   // also clamps the selection
         Modal.showMessage(tr(MsgId::LIB_DELETE_SUCCESS_TITLE), tr(MsgId::LIB_DELETE_SUCCESS_L1), tr(MsgId::LIB_DELETE_SUCCESS_L2),
@@ -249,12 +266,17 @@ void goBack(AppContext& ctx) {
                lib.currentFilter == FILTER_SEARCH) {
         ctx.currentState = STATE_CATALOG;
         drawCatalogScreen(ctx, false);
-    } else if (!lib.currentFolder.equalsIgnoreCase("/books") && !lib.currentFolder.equals("/")) {
+    } else if (!lib.currentFolder.equalsIgnoreCase("/books") &&
+               !lib.currentFolder.equalsIgnoreCase(LibraryManager::kOfflineDir) &&
+               !lib.currentFolder.equals("/")) {
         int lastSlash = lib.currentFolder.lastIndexOf('/');
         lib.currentFolder = (lastSlash > 0) ? lib.currentFolder.substring(0, lastSlash) : String("/books");
         lib.selectedBookIndex = 0;
         lib.scanLocalBooks();
         drawLibraryScreen(ctx, uikit::periodicFullRefresh());
+    } else if (lib.currentFilter == FILTER_OFFLINE) {
+        ctx.currentState = STATE_HOME;
+        drawHomeScreen(ctx, false);
     } else {
         ctx.currentState = STATE_CATALOG;
         drawCatalogScreen(ctx, false);
@@ -289,11 +311,25 @@ void handleEvent(AppContext& ctx, const ButtonEvent& event) {
             }
             break;
         case Action::Select:
+            if (lib.currentFilter == FILTER_OFFLINE && count == 0) {
+                openWebSettingsFromOffline(ctx);
+                break;
+            }
+            openSelected(ctx);
+            break;
         case Action::Next:
+            if (lib.currentFilter == FILTER_OFFLINE) {
+                openWebSettingsFromOffline(ctx);
+                break;
+            }
             openSelected(ctx);
             break;
         case Action::Menu:     // OK on a book where there is no LEFT key (Picco, X4 Pro), as a tap
         case Action::Prev:
+            if (lib.currentFilter == FILTER_OFFLINE && count == 0) {
+                openWebSettingsFromOffline(ctx);
+                break;
+            }
             openBookMenu(ctx);
             break;
         case Action::Back:
@@ -308,8 +344,10 @@ bool openFormatsOfSelected(AppContext& ctx) {
     auto& lib = LibraryManager::getInstance();
     int masterIdx = -1;
     BookItem* book = selectedBook(lib, &masterIdx);
-    if (!book || book->isDirectory || masterIdx < 0 || book->formats.size() < 2) return false;
-    lib.openFormats(masterIdx);
+    const int listIdx = (lib.currentFilter == FILTER_OFFLINE && lib.selectedBookIndex >= 0 &&
+                         lib.selectedBookIndex < lib.rowCount()) ? lib.rows[lib.selectedBookIndex] : masterIdx;
+    if (!book || book->isDirectory || listIdx < 0 || book->formats.size() < 2) return false;
+    lib.openFormats(listIdx);
     ctx.currentState = STATE_LIBRARY;
     drawLibraryScreen(ctx, uikit::periodicFullRefresh());
     return true;
@@ -380,10 +418,17 @@ void handleBookMenuEvent(AppContext& ctx, const ButtonEvent& event) {
             drawLibraryScreen(ctx);
             askDeleteSelected();
             break;
+        case BOOK_MENU_WEB:
+            openWebSettingsFromOffline(ctx);
+            break;
         case BOOK_MENU_BACK:
             drawLibraryScreen(ctx);
             break;
     }
+}
+
+void openWebSettingsFromOffline(AppContext& ctx) {
+    SettingsScreen::openWebSettings(ctx, STATE_LIBRARY);
 }
 
 }  // namespace LibraryScreen

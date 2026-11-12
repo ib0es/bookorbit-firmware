@@ -161,7 +161,7 @@ static int coverCheck(const char* path) {
         f.close();
     }
     Storage.remove(out);
-    const bool good = ok && size > 1000 && magic[0] == 0xFF && magic[1] == 0xD8;
+    const bool good = ok && size > 1000 && ((magic[0] == 0xFF && magic[1] == 0xD8) || (magic[0] == 'B' && magic[1] == 'M'));
     printf("  cover: %s (%u bytes)\n", good ? "ok" : "FAILED", (unsigned)size);
     return good ? 0 : 1;
 }

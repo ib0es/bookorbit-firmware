@@ -87,6 +87,7 @@ bool BookReader::setFontFamily(const String& name) {
 // ------------------------------------------------------------------ open/close
 
 bool BookReader::openBook(const String& filePath) {
+    Platform::feedWatchdog();
     closeBook();
     _noMemory = false;
     _ttf.reserve();   // low in the heap, before the book's buffers come and go around it
@@ -110,7 +111,8 @@ bool BookReader::openBook(const String& filePath) {
         }
     }
     if (!_src.open(readPath)) {
-        Serial.printf("[Reader] Cannot open %s\n", filePath.c_str());
+        Serial.printf("[Reader] Cannot open %s (read as %s, on card: %d)\n", filePath.c_str(), readPath.c_str(),
+                      (int)Storage.exists(readPath.c_str()));
         return false;
     }
     _cfiMap.clear();
@@ -159,6 +161,7 @@ bool BookReader::openBook(const String& filePath) {
 }
 
 void BookReader::drawConvertProgress(void* self, int permille) {
+    Platform::feedWatchdog();
     BookReader* r = static_cast<BookReader*>(self);
     // An e-ink refresh blocks for ~0.5-1 s: the window is drawn at the start, then
     // at most every 4 s, so that the drawing does not become the conversion's cost.

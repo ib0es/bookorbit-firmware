@@ -87,7 +87,7 @@ struct AppConfig {
     bool save();
 };
 
-const int NUM_HOME_ITEMS = 4;      // 0=Recent, 1=Catalog, 2=Settings, 3=Sync
+const int NUM_HOME_ITEMS = 5;      // 0=Recent, 1=Catalog, 2=Offline, 3=Settings, 4=Sync
 const int NUM_CATALOG_ITEMS = 9;   // Search, All, Libraries, Authors, Series, Folders, Downloaded, Completed, Toggle Hide Completed
 const int NUM_SETTINGS_ITEMS = 8;  // base count before optional Frontlight, USB-MSC, Touch Wake
 bool hasUsbMscSetting();
@@ -101,7 +101,7 @@ int touchWakeSettingIndex();
 int webSettingIndex();
 int readingSettingIndex();   // Settings -> Reading: just before screen orientation
 const int NUM_WIFI_SETTINGS_ITEMS = 5;
-const int NUM_WEB_SETTINGS_ITEMS = 1;
+const int NUM_WEB_SETTINGS_ITEMS = 2;
 const int NUM_SERVER_SETTINGS_ITEMS = 4;
 const int NUM_SYNC_SETTINGS_ITEMS = 4;
 const int NUM_SLEEP_COVER_ITEMS = 3;

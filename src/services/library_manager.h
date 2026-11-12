@@ -58,7 +58,8 @@ enum LibraryFilter {
     FILTER_FOLDERS,
     FILTER_DOWNLOADED,
     FILTER_COMPLETED,
-    FILTER_CLOUD
+    FILTER_CLOUD,
+    FILTER_OFFLINE
 };
 
 struct RecentBookInfo {
@@ -85,21 +86,30 @@ public:
 
     // Every book once: files under /books merged with the saved catalog.
     std::vector<BookItem> masterBooks;
+    // Books uploaded or copied into /offline: isolated from catalog and server sync.
+    std::vector<BookItem> offlineBooks;
+    static constexpr const char* kOfflineDir = "/offline";
+    static bool isOfflinePath(const String& path);
+    int offlineCount() const { return (int)offlineBooks.size(); }
+    void scanOfflineBooks();
+
     // Names of the server libraries (BookItem::libraryIdx), each stored once.
     std::vector<String> libraryNames;
-    // The current list (library screen): rows are indices into masterBooks, or
-    // -1-i for folderRows[i] (virtual folders, "..", SD folders, loose files).
+    // The current list (library screen): rows are indices into masterBooks (or
+    // offlineBooks when FILTER_OFFLINE), or -1-i for folderRows[i].
     std::vector<int> rows;
     std::vector<BookItem> folderRows;
     int rowCount() const;
-    BookItem& rowAt(int i);            // a reference: changes go to the master entry
-    int rowMasterIndex(int i) const;   // -1 for a folder row
+    BookItem& rowAt(int i);            // a reference: changes go to the master/offline entry
+    int rowMasterIndex(int i) const;   // -1 for a folder row or offline list
     int selectedBookIndex = 0;
     int savedAuthorIndex = 0;
     int savedSeriesIndex = 0;
     int savedLibraryIndex = 0;
-    String currentFolder = "/books";   // also "@formats": the formats of masterBooks[formatsBook]
+    String currentFolder = "/books";   // also "@formats": the formats of formatBookItem()
     int formatsBook = -1;
+    bool formatsOffline = false;
+    BookItem* formatBookItem();
     String formatsReturnFolder;
     int formatsReturnIndex = 0;
     LibraryFilter currentFilter = FILTER_ALL;
