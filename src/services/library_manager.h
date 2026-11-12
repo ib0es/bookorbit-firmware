@@ -160,6 +160,9 @@ public:
 
     // A cover the renderer can draw: JPEG (baseline) or BMP; anything else is deleted.
     static bool isValidCoverFile(const String& path);
+    // A server cover that could not be drawn, by the address it came from (P7).
+    static bool coverKnownUnusable(const String& coverPath, const String& coverUrl);
+    static void markCoverUnusable(const String& coverPath, const String& coverUrl);
     static bool isProgressiveJpeg(const String& path);
     static String resolveCoverPath(const String& filePath, const String& title, const String& explicitCoverPath = "", bool allowExtract = false);
     static void deleteBookArtifacts(const BookItem& book, bool removeCover = true);

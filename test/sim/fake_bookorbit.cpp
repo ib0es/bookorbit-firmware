@@ -11,6 +11,7 @@
 //    "expireToken":true,     -> the next Bearer request answers 401 once ("PUT": the next PUT)
 //    "deviceHeap":5000,      -> ESP.getFreeHeap() on the "device" (memory guards)
 //    "wifiDown":true,        -> Wi-Fi connections fail
+//    "coverPng":true,        -> covers are PNG (the device cannot draw them)
 //    "wifiConnectMs":3000,   -> Wi-Fi connects that long after begin()
 //    "wifiReason":202,       -> with "wifiDown": the driver's disconnect reason (202 wrong password, 201 no network)
 //    "backOnWifi":true,      -> BACK is pressed while Wi-Fi connects (once)
@@ -227,6 +228,10 @@ Response route(const Request& rq, JsonDocument& st, bool& dirty) {
         return r;
     }
     if (p.find("/thumbnail") != std::string::npos || p.find("/covers/") != std::string::npos) {
+        if (st["coverPng"] | false) {   // a cover the device cannot draw (P7)
+            r.body = std::string("\x89PNG\r\n\x1a\n", 8) + std::string(600, '\0');
+            return r;
+        }
         r.body = readFile(sdPath("/covers/Pride and Prejudice.jpg")); return r;
     }
     if (p.find("/download") != std::string::npos) {

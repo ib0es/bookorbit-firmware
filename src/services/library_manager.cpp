@@ -15,6 +15,30 @@
 #include "../storage/catalog_store.h"
 #include "../storage/last_book_store.h"
 
+// P7: a server cover the renderer cannot draw (PNG, WebP, progressive JPEG)
+// was downloaded and removed again at every sync. "<cover>.bad" holds the
+// address it came from: the same address is not fetched again; a new one is.
+bool LibraryManager::coverKnownUnusable(const String& coverPath, const String& coverUrl) {
+    const String marker = coverPath + ".bad";
+    if (coverUrl.length() == 0 || !Storage.exists(marker.c_str())) return false;
+    FsFile f = Storage.open(marker.c_str(), O_RDONLY);
+    if (!f) return false;
+    char buf[256];
+    const int n = f.read((uint8_t*)buf, sizeof(buf) - 1);
+    f.close();
+    buf[n > 0 ? n : 0] = '\0';
+    return coverUrl.equals(buf);
+}
+
+void LibraryManager::markCoverUnusable(const String& coverPath, const String& coverUrl) {
+    const String marker = coverPath + ".bad";
+    FsFile f = Storage.open(marker.c_str(), O_WRONLY | O_CREAT | O_TRUNC);
+    if (!f) return;
+    f.write((const uint8_t*)coverUrl.c_str(), coverUrl.length());
+    f.close();
+    Serial.printf("[Library] Cover marked unusable (not fetched again): %s\n", coverPath.c_str());
+}
+
 bool LibraryManager::isValidCoverFile(const String& path) {
     if (path.length() == 0 || !Storage.exists(path.c_str())) return false;
     FsFile f = Storage.open(path.c_str(), O_RDONLY);
@@ -165,7 +189,7 @@ void removeIfExists(const String& path) {
 // for it (thumb/full, crop/fit).
 void removeCoverStem(const String& stem) {
     if (stem.length() == 0) return;
-    const char* suffixes[] = { ".jpg", ".jpeg", "_thumb_crop.bmp", "_thumb_fit.bmp", "_crop.bmp", "_fit.bmp" };
+    const char* suffixes[] = { ".jpg", ".jpeg", ".jpg.bad", "_thumb_crop.bmp", "_thumb_fit.bmp", "_crop.bmp", "_fit.bmp" };
     for (const char* sfx : suffixes) removeIfExists("/covers/" + stem + sfx);
 }
 
@@ -229,7 +253,7 @@ bool contains(const std::vector<String>& v, const String& s) {
 
 // The cover stem a /covers file belongs to, "" if the name is not one we write.
 String coverOwner(const String& n) {
-    const char* sfx[] = { "_thumb_crop.bmp", "_thumb_fit.bmp", "_crop.bmp", "_fit.bmp", ".jpeg", ".jpg" };
+    const char* sfx[] = { "_thumb_crop.bmp", "_thumb_fit.bmp", "_crop.bmp", "_fit.bmp", ".jpg.bad", ".jpeg", ".jpg" };
     for (const char* x : sfx) {
         if (n.endsWith(x)) return n.substring(0, n.length() - strlen(x));
     }
@@ -1251,7 +1275,7 @@ bool renameIfThere(const String& from, const String& to) {
 
 // A cover stem in /covers: the JPEG and the BMP renders JpegViewer caches for it.
 void renameCoverStem(const String& from, const String& to) {
-    const char* suffixes[] = { ".jpg", ".jpeg", "_thumb_crop.bmp", "_thumb_fit.bmp", "_crop.bmp", "_fit.bmp" };
+    const char* suffixes[] = { ".jpg", ".jpeg", ".jpg.bad", "_thumb_crop.bmp", "_thumb_fit.bmp", "_crop.bmp", "_fit.bmp" };
     for (const char* sfx : suffixes) renameIfThere("/covers/" + from + sfx, "/covers/" + to + sfx);
 }
 

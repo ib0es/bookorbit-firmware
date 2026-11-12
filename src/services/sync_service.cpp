@@ -403,9 +403,13 @@ bool SyncService::downloadBook(AppContext& ctx, BookItem& book, AppState returnS
                 book.coverPath = "/covers/" + LibraryManager::catalogStem(book.title, book.bookId) + ".jpg";
             }
         }
-        if (book.coverUrl.length() > 0 && !LibraryManager::isValidCoverFile(book.coverPath)) {
-            BookOrbit.downloadCover(ctx.config.serverHost, book.coverUrl, book.coverPath, ctx.config.bookOrbitUser,
-                                    ctx.config.bookOrbitPass, ctx.config.authToken, checkSyncCancel);
+        if (book.coverUrl.length() > 0 && !LibraryManager::isValidCoverFile(book.coverPath) &&
+            !LibraryManager::coverKnownUnusable(book.coverPath, book.coverUrl)) {
+            if (BookOrbit.downloadCover(ctx.config.serverHost, book.coverUrl, book.coverPath, ctx.config.bookOrbitUser,
+                                        ctx.config.bookOrbitPass, ctx.config.authToken, checkSyncCancel) &&
+                !LibraryManager::isValidCoverFile(book.coverPath)) {
+                LibraryManager::markCoverUnusable(book.coverPath, book.coverUrl);
+            }
         }
         book.coverPath = LibraryManager::resolveCoverPath(book.filePath, book.title, book.coverPath);
 
@@ -503,11 +507,12 @@ void downloadCovers(AppContext& ctx, const std::vector<BookMetadata>& catalog) {
         const String destPath = LibraryManager::catalogBookPath(b);
         const bool wanted = lib.lastBook.filePath.equalsIgnoreCase(destPath) ||
                             Storage.exists(destPath.c_str()) || downloaded < 4;
-        if (wanted && !LibraryManager::isValidCoverFile(coverPath)) {
+        if (wanted && !LibraryManager::isValidCoverFile(coverPath) && !LibraryManager::coverKnownUnusable(coverPath, b.coverUrl)) {
             Serial.printf("[Sync] Downloading cover thumbnail: %s -> %s\n", b.title.c_str(), coverPath.c_str());
             if (BookOrbit.downloadCover(ctx.config.serverHost, b.coverUrl, coverPath, ctx.config.bookOrbitUser,
                                         ctx.config.bookOrbitPass, ctx.config.authToken, SyncService::checkSyncCancel)) {
                 downloaded++;
+                if (!LibraryManager::isValidCoverFile(coverPath)) LibraryManager::markCoverUnusable(coverPath, b.coverUrl);
             }
         }
     }

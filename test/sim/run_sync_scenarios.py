@@ -177,6 +177,11 @@ LOG_SCENARIOS = [
     ("full sync: a catalog cut short says so (U6)",
      {"deviceHeap": 5000}, None, HOME_SYNC,
      [r"Catalog incomplete: \d+ books taken from the server"], []),
+    # P7: a cover the device cannot draw is fetched once, marked, and not again.
+    ("full sync twice: an undrawable cover is not fetched again (P7)",
+     {"coverPng": True}, None, HOME_SYNC + HOME_SYNC,
+     [r"Cover marked unusable", r"Downloading cover thumbnail: Moby Dick"],
+     [r"(?s)Downloading cover thumbnail: Moby Dick.*Downloading cover thumbnail: Moby Dick"]),
     ("full sync: Wi-Fi down",
      {"wifiDown": True}, None, HOME_SYNC,
      [r"Wi-Fi connection failed"], [r"GET /api/v1/opds/catalog"]),
