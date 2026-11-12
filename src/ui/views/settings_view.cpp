@@ -6,6 +6,7 @@
 #include "../../platform/hal/imu.h"
 #include "../../platform/hal/usb_msc.h"
 #include "../../platform/hal/buttons.h"
+#include "../../core/bookorbit_protocol.h"
 
 using namespace uikit;
 
@@ -161,7 +162,9 @@ SettingItemDef getWifiSettingItemDef(const AppContext& ctx, int index) {
 SettingItemDef getServerSettingItemDef(const AppContext& ctx, int index) {
     switch (index) {
         case 0:
-            return { tr(MsgId::SERVER_ITEM_HOST), ctx.config.serverHost.length() > 0 ? ctx.config.serverHost : tr(MsgId::SERVER_ITEM_HOST_NONE), tr(MsgId::SERVER_TAG_URL) };
+            return { tr(MsgId::SERVER_ITEM_HOST), ctx.config.serverHost.length() > 0 ? ctx.config.serverHost : tr(MsgId::SERVER_ITEM_HOST_NONE),
+                     // B4: an address that is not https:// is flagged
+                     tr(BookOrbitProtocol::isPlainHttp(ctx.config.serverHost.c_str()) ? MsgId::SERVER_TAG_HTTP : MsgId::SERVER_TAG_URL) };
         case 1:
             return { tr(MsgId::SERVER_ITEM_USER), ctx.config.bookOrbitUser.length() > 0 ? ctx.config.bookOrbitUser : tr(MsgId::SERVER_ITEM_USER_NONE), tr(MsgId::SERVER_TAG_LOGIN) };
         case 2: {
