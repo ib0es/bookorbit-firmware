@@ -128,7 +128,19 @@ static void testBookmarks() {
     CHECK(parseCreatedBookmarkId("{}") == 0);
 }
 
+static void testPlainHttp() {
+    CHECK(isPlainHttp("http://192.168.1.10:3000"));
+    CHECK(isPlainHttp("192.168.1.10:3000"));          // no scheme: used as http://
+    CHECK(isPlainHttp("  books.example.org"));
+    CHECK(!isPlainHttp("https://books.example.org"));
+    CHECK(!isPlainHttp(" HTTPS://Books.example.org"));
+    CHECK(!isPlainHttp(""));                           // no address
+    CHECK(!isPlainHttp("   "));
+    CHECK(isPlainHttp("https:/broken"));
+}
+
 int main() {
+    testPlainHttp();
     testBookmarks();
     testBookProgress();
     testProgressPerFormat();

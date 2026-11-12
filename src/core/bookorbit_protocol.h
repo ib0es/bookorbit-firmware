@@ -21,6 +21,10 @@ struct Progress {
 // POST /api/v1/auth/login response -> access token. False if none.
 bool parseLoginToken(const std::string& json, std::string& token);
 
+// A server address that is not https:// (an address without a scheme is
+// used as http://): the login and password would go as plain text (B4).
+bool isPlainHttp(const std::string& serverAddress);
+
 // GET /api/v1/books/:id/progress response (array or {"items":[...]}): one record
 // per file (format) of the book. With fileId > 0 only that file's record counts
 // (formats are read separately: EPUB at 40% says nothing about the FB2); the most

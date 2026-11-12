@@ -28,6 +28,8 @@
 #include "../../ui/i18n.h"
 #include "../../services/usb_msc_session.h"
 #include "../../ui/actions.h"
+#include "../../core/bookorbit_protocol.h"
+#include "../../ui/text_utils.h"
 
 namespace {
 
@@ -342,7 +344,14 @@ void testServer(AppContext& ctx) {
         ctx.config.save();
         char userBuf[64];
         snprintf(userBuf, sizeof(userBuf), tr(MsgId::SERVER_TEST_SUCCESS_USER_FMT), ctx.config.bookOrbitUser.c_str());
-        Modal.showMessage(tr(MsgId::SERVER_TEST_SUCCESS_TITLE), tr(MsgId::SERVER_TEST_SUCCESS_L1), String(userBuf), "", "", 3000);
+        if (BookOrbitProtocol::isPlainHttp(ctx.config.serverHost.c_str())) {
+            // B4: it works, but not encrypted: said with the result.
+            Serial.println("[Settings] Connection test passed over http://: unencrypted warning shown");
+            Modal.showMessage(tr(MsgId::SERVER_TEST_SUCCESS_TITLE), tr(MsgId::SERVER_TEST_SUCCESS_L1), String(userBuf),
+                              tr(MsgId::SERVER_HTTP_WARN_L1), tr(MsgId::SERVER_HTTP_WARN_L2), 6000);
+        } else {
+            Modal.showMessage(tr(MsgId::SERVER_TEST_SUCCESS_TITLE), tr(MsgId::SERVER_TEST_SUCCESS_L1), String(userBuf), "", "", 3000);
+        }
     } else {
         Modal.showMessage(tr(MsgId::SERVER_TEST_AUTH_ERR_TITLE), tr(MsgId::SERVER_TEST_AUTH_ERR_L1), tr(MsgId::SERVER_TEST_AUTH_ERR_L2), "", "", 3000);
     }
@@ -350,12 +359,24 @@ void testServer(AppContext& ctx) {
 
 void invalidateToken(AppContext& ctx) { ctx.config.authToken = ""; }
 
+// B4: after an http:// (or scheme-less) address is entered: the login and
+// password would travel unencrypted.
+void showPlainHttpWarning(AppContext& ctx) {
+    if (!BookOrbitProtocol::isPlainHttp(ctx.config.serverHost.c_str())) return;
+    Serial.println("[Settings] Server address is not https://: warning shown");
+    Modal.showMessage(tr(MsgId::SERVER_HTTP_WARN_TITLE), utf8Prefix(ctx.config.serverHost, 64),
+                      tr(MsgId::SERVER_HTTP_WARN_L1), tr(MsgId::SERVER_HTTP_WARN_L2), "", 6000);
+}
+
 void executeServerSetting(AppContext& ctx, int index) {
     switch (index) {
-        case 0:
+        case 0: {
+            const String before = ctx.config.serverHost;
             editField(ctx, tr(MsgId::SERVER_KB_HOST_TITLE), tr(MsgId::SERVER_KB_HOST_PROMPT), ctx.config.serverHost, KB_MODE_URL,
                       drawServerSettingsScreen, tr(MsgId::SERVER_KB_HOST_SAVED), true);
+            if (ctx.config.serverHost != before) showPlainHttpWarning(ctx);   // B4
             break;
+        }
         case 1:
             editField(ctx, tr(MsgId::SERVER_KB_USER_TITLE), tr(MsgId::SERVER_KB_USER_PROMPT), ctx.config.bookOrbitUser, KB_MODE_TEXT,
                       drawServerSettingsScreen, tr(MsgId::SERVER_KB_USER_SAVED), true);

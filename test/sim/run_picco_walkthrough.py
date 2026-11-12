@@ -131,6 +131,15 @@ CASES = [
     ("server: connection test by tap",
      HOME_SETTINGS + SET_SERVER + "T240,315;w",
      lambda log, sd: "Authenticating" in log or "Authentication" in log),
+    # B4: the test config's server is http://: the result says it is not encrypted;
+    # with https:// it does not.
+    ("server: a passed test over http:// warns that it is not encrypted (B4)",
+     HOME_SETTINGS + SET_SERVER + "T240,315;w",
+     lambda log, sd: "Authentication successful" in log and "unencrypted warning shown" in log),
+    ("server: a passed test over https:// has no warning (B4)",
+     HOME_SETTINGS + SET_SERVER + "T240,315;w",
+     lambda log, sd: "Authentication successful" in log and "unencrypted warning" not in log,
+     {"server_url": "https://bookorbit.test:3000"}),
     ("home: sync now by tap",
      HOME_SYNC + "ww",
      lambda log, sd: "[Sync]" in log),

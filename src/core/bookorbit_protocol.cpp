@@ -22,6 +22,20 @@ std::string str(JsonVariantConst v) {
 }
 }  // namespace
 
+bool isPlainHttp(const std::string& serverAddress) {
+    size_t i = 0;
+    while (i < serverAddress.size() && (serverAddress[i] == ' ' || serverAddress[i] == '\t')) i++;
+    if (i >= serverAddress.size()) return false;   // no address: nothing is sent
+    static const char kHttps[] = "https://";
+    for (size_t k = 0; k < sizeof(kHttps) - 1; k++) {
+        if (i + k >= serverAddress.size()) return true;
+        char c = serverAddress[i + k];
+        if (c >= 'A' && c <= 'Z') c = (char)(c - 'A' + 'a');
+        if (c != kHttps[k]) return true;
+    }
+    return false;
+}
+
 bool parseLoginToken(const std::string& json, std::string& token) {
     token.clear();
     JsonDocument doc;
