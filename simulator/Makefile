@@ -54,6 +54,9 @@ SRCS_CXX = \
     src/app/screens/settings_screen.cpp \
     src/ui/modal.cpp \
     src/services/library_manager.cpp \
+    src/services/library_covers.cpp \
+    src/services/library_cleanup.cpp \
+    src/services/library_progress.cpp \
     src/services/power_service.cpp \
     src/services/bookmarks.cpp \
     src/services/sync_service.cpp \
