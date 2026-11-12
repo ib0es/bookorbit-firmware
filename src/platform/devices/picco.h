@@ -11,4 +11,5 @@ inline constexpr DeviceProfile kPiccoProfile = {
     /*keyCentres*/ {96, 178, 279, 370},   // unused: no key hint tabs on a touch-only board
     /*autoRotateByDefault*/ false, /*usbMassStorage*/ false, /*touchWake*/ false,
     /*sdPowerPin*/ -1,                    // GPIO0 rail, in the SDK profile
+    /*imuMountRot*/ 1,   // QMI8658 turned 90° on the PCB: portrait read as landscape (field report)
 };

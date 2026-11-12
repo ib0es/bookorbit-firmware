@@ -11,4 +11,5 @@ inline constexpr DeviceProfile kX4ClassicProfile = {
     /*keyCentres*/ {96, 178, 279, 370},   // as the X4 (not measured on an X4 Classic)
     /*autoRotateByDefault*/ true, /*usbMassStorage*/ true, /*touchWake*/ false,
     /*sdPowerPin*/ -1,                    // SDMMC enable, in the SDK profile
+    /*imuMountRot*/ 0,
 };

@@ -10,4 +10,5 @@ inline constexpr DeviceProfile kX3Profile = {
     /*keyCentres*/ {96, 178, 279, 370},   // as the X4 (not measured on an X3)
     /*autoRotateByDefault*/ true, /*usbMassStorage*/ false, /*touchWake*/ false,
     /*sdPowerPin*/ -1,                    // GPIO13, in the SDK profile
+    /*imuMountRot*/ 0,
 };

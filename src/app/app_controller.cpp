@@ -1,4 +1,5 @@
 #include "app_controller.h"
+#include "../platform/device.h"
 #include "../platform/hal/mem_stats.h"
 #include <esp_sleep.h>
 #include <PowerManager.h>
@@ -280,7 +281,9 @@ void AppController::loop() {
             _lastImuPollMs = nowMs;
             float ax = 0.0f, ay = 0.0f, az = 0.0f;
             if (BoardImu.readAccel(ax, ay, az)) {
-                const ImuCalibration cal{_ctx.config.imuRot, _ctx.config.imuFlipX, _ctx.config.imuFlipY};
+                // The board's sensor mount (device profile) plus the user's calibration.
+                const ImuCalibration cal{(Platform::kDevice.imuMountRot + _ctx.config.imuRot) & 3,
+                                         _ctx.config.imuFlipX, _ctx.config.imuFlipY};
                 const int nextOrient = _autoRotate.update(ax, ay, az, _ctx.config.uiOrientation, nowMs, cal);
                 if (nextOrient >= 0 && nextOrient != _ctx.config.uiOrientation) {
                     Serial.printf("[App] Auto-rotated UI %d -> %d (ax=%.2f ay=%.2f az=%.2f)\n",
