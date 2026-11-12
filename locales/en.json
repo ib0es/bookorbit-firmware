@@ -475,6 +475,7 @@
   "SYNC_CATALOG_PARSE_FMT2": "RAM %u/%u KB, error %d",
   "SYNC_SUCCESS_TITLE": "SYNC SUCCESSFUL",
   "SYNC_FOUND_BOOKS_FMT": "-> Books found in catalog: %d",
+  "SYNC_CATALOG_TRUNCATED_FMT": "Not the whole catalog: the first %d books (device limit).",
   "SYNC_CATALOG_UPDATED_L2": "-> Catalog and progress updated!",
   "SYNC_SERVER_UNREACHABLE_TITLE": "CONNECTION ERROR",
   "SYNC_SERVER_UNREACHABLE_L1": "-> Book Orbit server unreachable!",

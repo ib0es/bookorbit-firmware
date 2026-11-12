@@ -173,6 +173,10 @@ LOG_SCENARIOS = [
     ("download fails: server error",
      {}, {"fail": True}, HOME_SYNC + "S" + CLOUD + "w",
      [r"Download failed with HTTP 500"], [r"downloaded successfully"]),
+    # U6: a catalog cut short (low memory here) is said on the screen too.
+    ("full sync: a catalog cut short says so (U6)",
+     {"deviceHeap": 5000}, None, HOME_SYNC,
+     [r"Catalog incomplete: \d+ books taken from the server"], []),
     ("full sync: Wi-Fi down",
      {"wifiDown": True}, None, HOME_SYNC,
      [r"Wi-Fi connection failed"], [r"GET /api/v1/opds/catalog"]),
