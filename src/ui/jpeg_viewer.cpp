@@ -2,6 +2,7 @@
 #include "kit/ui_kit.h"
 #include "font.h"
 #include <algorithm>
+#include <math.h>
 #include "../platform/device.h"
 
 struct JpegContext {

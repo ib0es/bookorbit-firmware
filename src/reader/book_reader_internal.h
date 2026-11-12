@@ -6,6 +6,7 @@
 // Internal to src/reader/book_reader*.cpp.
 
 #include "book_reader.h"
+#include <math.h>
 #include "fonts/builtin_font.h"
 #include "font_store.h"
 
