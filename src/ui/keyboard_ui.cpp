@@ -231,6 +231,11 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
                         const char* ch = keyText[selRow * 12 + selCol];
                         if (*ch) {
                             currentText += ch;
+                            // U4: Shift is for one letter ("Abc123" needs no trip back to it).
+                            if (shift) {
+                                shift = false;
+                                loadKeys();
+                            }
                             renderKeyboard();
                         }
                     } else {
@@ -260,6 +265,20 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
                         }
                     }
                 } else if (key == Action::Back) {
+                    // U4: BACK held leaves without saving (a long address need not be
+                    // erased letter by letter); a click erases one letter.
+                    const uint32_t pressedAt = millis();
+                    bool held = false;
+                    while (Buttons.isPressed(BTN_BACK)) {
+                        Buttons.update();
+                        if (millis() - pressedAt >= 600) { held = true; break; }
+                        delay(10);
+                    }
+                    if (held) {
+                        Serial.println("[Keyboard] BACK held: left without saving");
+                        Buttons.clearEvents();
+                        return false;
+                    }
                     if (currentText.length() > 0) {
                         eraseLast(currentText);
                         renderKeyboard();
