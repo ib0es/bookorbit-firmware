@@ -35,4 +35,7 @@ struct DeviceProfile {
     // auto-rotate filter expects, where the SDK's BoardConfig has no mount
     // correction for the board. Added to the user's calibration (imu_rot).
     int8_t imuMountRot;
+    // The sensor's Y axis mirrored (applied before the turn, as imu_flip_y;
+    // combined with the user's flip).
+    bool imuMountFlipY;
 };

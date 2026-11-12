@@ -11,4 +11,5 @@ inline constexpr DeviceProfile kX3Profile = {
     /*autoRotateByDefault*/ true, /*usbMassStorage*/ false, /*touchWake*/ false,
     /*sdPowerPin*/ -1,                    // GPIO13, in the SDK profile
     /*imuMountRot*/ 0,
+    /*imuMountFlipY*/ false,
 };
