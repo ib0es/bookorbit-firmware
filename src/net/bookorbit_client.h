@@ -5,6 +5,7 @@
 #include <HTTPClient.h>
 #include <vector>
 #include "../core/bookorbit_protocol.h"
+#include "../core/wifi_failure.h"
 #include "../storage/book_records.h"
 
 struct ServerLibrary {
@@ -50,6 +51,8 @@ public:
     // operation takes the radio over from a background job.
     void setForegroundConnectHook(void (*hook)()) { _foregroundHook = hook; }
     void disconnectWiFi();
+    // Why the last connectWiFi() failed (U5): None after a success or a cancel.
+    WifiFailure lastWifiFailure() const { return _lastWifiFailure; }
     bool isConnected();
     int getRssi();
 
@@ -90,6 +93,7 @@ public:
                         int bookId, int bookmarkId);
 
 private:
+    WifiFailure _lastWifiFailure = WifiFailure::None;
     // A request with the session token: logs in first when there is none, and
     // once more when the server answers 401. Returns the HTTP code (<0 on a
     // network error); the body of a 2xx answer goes to `response`.

@@ -27,6 +27,7 @@ build cfi      "$ROOT/test/host/test_epub_cfi.cpp" "$ROOT/src/core/epub_cfi.cpp"
 build cfimap   "$ROOT/test/host/test_cfi_map.cpp" "$ROOT/src/core/cfi_map.cpp" "$ROOT/src/core/epub_cfi.cpp"
 build progress "$ROOT/test/host/test_progress_sync.cpp" "$ROOT/src/core/progress_sync.cpp" "$ROOT/src/core/time_utils.cpp"
 build protocol "$ROOT/test/host/test_bookorbit_protocol.cpp" "$ROOT/src/core/bookorbit_protocol.cpp" "$ROOT/src/core/time_utils.cpp"
+build wififail "$ROOT/test/host/test_wifi_failure.cpp"
 build x3sens   "$ROOT/test/host/test_x3_sensors.cpp" "$ROOT/src/core/time_utils.cpp" "$ROOT/src/core/auto_rotate.cpp"
 build x4pro    "$ROOT/test/host/test_x4pro_features.cpp"
 build x4c      -I"$ROOT/include" -DFREEINK_DEVICE_X4CLASSIC=1 -DFREEINK_CAP_USB_MSC=1 "$ROOT/test/host/test_x4c_features.cpp" "$ROOT/src/app/app_state.cpp" "$ROOT/src/ui/i18n.cpp"
@@ -61,6 +62,7 @@ echo "== EpubCfi";          "$OUT/cfi/test" | tail -1 || rc=1
 echo "== CfiMap";           "$OUT/cfimap/test" | grep -v "^ *pub\|^ *loc" | tail -40 || rc=1
 echo "== ProgressSync";      "$OUT/progress/test" > "$OUT/progress.log" || rc=1; tail -1 "$OUT/progress.log"; [ $rc = 0 ] || cat "$OUT/progress.log"
 echo "== BookOrbitProtocol"; "$OUT/protocol/test" | grep -v "^[a-zA-Z/]* *$" || rc=1
+echo "== WifiFailure";       "$OUT/wififail/test" || rc=1
 echo "== X3Sensors";         "$OUT/x3sens/test" || rc=1
 echo "== X4ProFeatures";     "$OUT/x4pro/test" || rc=1
 echo "== X4ClassicFeatures"; "$OUT/x4c/test" || rc=1
