@@ -28,8 +28,12 @@ enum Row : int {
     FULL_REFRESH,
     UPDOWN_KEYS,    // UP / DOWN while reading: chapters or pages
     STATUS_BAR,     // opens the status bar menu
+    AUTO_ROTATE,    // boards with a motion sensor only: the last row (U3)
     COUNT
 };
+
+// Rows shown on this board: AUTO_ROTATE only where there is a motion sensor.
+int count();
 
 const char* label(int row);
 // The value as shown (in `buf`).

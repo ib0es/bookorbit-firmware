@@ -560,6 +560,7 @@
   "APPEAR_ORIENT_TURNED_FMT": "Girado %d°",
   "APPEAR_FULL_REFRESH": "Refresco completo",
   "APPEAR_UPDOWN_KEYS": "Teclas arriba / abajo",
+  "APPEAR_AUTO_ROTATE": "Giro automático",
   "APPEAR_UPDOWN_CHAPTERS": "Capítulos",
   "APPEAR_UPDOWN_PAGES": "Páginas",
   "APPEAR_REFRESH_FMT": "cada %d páginas",

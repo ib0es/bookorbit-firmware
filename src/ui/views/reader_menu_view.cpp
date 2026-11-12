@@ -331,7 +331,8 @@ void drawAppearanceScreen(AppContext& ctx, bool fullRefresh) {
     clear();
     int& sel = ctx.selectedAppearanceIndex;
     if (sel < 0) sel = 0;
-    if (sel >= Appearance::COUNT) sel = Appearance::COUNT - 1;
+    const int rows = Appearance::count();
+    if (sel >= rows) sel = rows - 1;
     Rect area = topBar(f, tr(MsgId::APPEAR_TITLE));
     {
         const bool list = sel == Appearance::TYPEFACE || sel == Appearance::SIZE;   // OK opens a list there
@@ -344,9 +345,9 @@ void drawAppearanceScreen(AppContext& ctx, bool fullRefresh) {
     // All the rows when they fit (with room for the preview below), else the
     // page of rows the selection is on (a landscape screen).
     const int perPage = std::max(1, (int)(area.height / (rowH + 2)));
-    const int first = Appearance::COUNT > perPage ? (sel / perPage) * perPage : 0;
-    if (Appearance::COUNT > perPage) setListPager(Appearance::COUNT, perPage);
-    for (int i = first; i < Appearance::COUNT && i < first + perPage; i++) {
+    const int first = rows > perPage ? (sel / perPage) * perPage : 0;
+    if (rows > perPage) setListPager(rows, perPage);
+    for (int i = first; i < rows && i < first + perPage; i++) {
         Rect row = takeTop(area, rowH);
         Appearance::value(ctx.config, i, val, sizeof(val));
         // The typeface and status bar rows open a list; the others step.

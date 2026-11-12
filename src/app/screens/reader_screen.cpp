@@ -26,6 +26,8 @@
 #include "../../ui/actions.h"
 #include "../../services/wifi_session.h"
 #include "../../platform/device.h"
+#include "../../platform/hal/imu.h"
+#include "../app_controller.h"
 
 namespace {
 
@@ -474,11 +476,11 @@ void handleAppearanceEvent(AppContext& ctx, const ButtonEvent& event) {
     int& sel = ctx.selectedAppearanceIndex;
     switch (key) {
         case Action::Down:
-            sel = (sel + 1) % Appearance::COUNT;
+            sel = (sel + 1) % Appearance::count();
             drawAppearanceScreen(ctx, false);
             break;
         case Action::Up:
-            sel = (sel - 1 + Appearance::COUNT) % Appearance::COUNT;
+            sel = (sel - 1 + Appearance::count()) % Appearance::count();
             drawAppearanceScreen(ctx, false);
             break;
         case Action::Less:
@@ -495,6 +497,10 @@ void handleAppearanceEvent(AppContext& ctx, const ButtonEvent& event) {
                 ctx.currentState = STATE_FONT_MENU;
                 drawFontMenuScreen(ctx, false);
             } else if (Appearance::step(ctx.config, sel, key == Action::Less ? -1 : 1)) {
+                if (sel == Appearance::AUTO_ROTATE) {   // U3: on or off without leaving the book
+                    BoardImu.setActive(ctx.config.autoRotate);
+                    AppController::getInstance().resetAutoRotate();
+                }
                 ctx.config.save();
                 drawAppearanceScreen(ctx, false);   // (the book turns when the menus are left)
             }

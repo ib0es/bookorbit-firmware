@@ -1,10 +1,13 @@
 #include "appearance.h"
+#include "../../platform/hal/imu.h"
 
 #include "../../reader/reader.h"
 #include "../../ui/font.h"
 #include "../../ui/i18n.h"
 
 namespace Appearance {
+
+int count() { return BoardImu.present() ? COUNT : COUNT - 1; }
 
 namespace {
 
@@ -48,6 +51,7 @@ const char* label(int row) {
         case FULL_REFRESH: return tr(MsgId::APPEAR_FULL_REFRESH);
         case UPDOWN_KEYS: return tr(MsgId::APPEAR_UPDOWN_KEYS);
         case STATUS_BAR: return tr(MsgId::APPEAR_STATUS_BAR);
+        case AUTO_ROTATE: return tr(MsgId::APPEAR_AUTO_ROTATE);
     }
     return "";
 }
@@ -83,6 +87,7 @@ const char* value(const AppConfig& cfg, int row, char* buf, size_t len) {
             snprintf(buf, len, "%s", tr(cfg.upDownTurnPages ? MsgId::APPEAR_UPDOWN_PAGES : MsgId::APPEAR_UPDOWN_CHAPTERS));
             break;
         case STATUS_BAR: snprintf(buf, len, "%s", "\xE2\x96\xB6"); break;   // a menu of its own
+        case AUTO_ROTATE: snprintf(buf, len, "%s", tr(cfg.autoRotate ? MsgId::APPEAR_ON : MsgId::APPEAR_OFF)); break;
         default: buf[0] = 0;
     }
     return buf;
@@ -103,6 +108,7 @@ bool step(AppConfig& cfg, int row, int dir) {
         case FOCUS_READING: cfg.focusReading = !cfg.focusReading; return true;
         case IMAGES: cfg.sharpImages = !cfg.sharpImages; return true;
         case UPDOWN_KEYS: cfg.upDownTurnPages = !cfg.upDownTurnPages; return true;
+        case AUTO_ROTATE: cfg.autoRotate = !cfg.autoRotate; return true;   // the sensor follows (reader screen)
         case ORIENTATION: cfg.orientation = (cfg.orientation + (dir > 0 ? 1 : 3)) & 3; return true;
         case FULL_REFRESH: {
             // "never" sits after the largest
