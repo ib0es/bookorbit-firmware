@@ -48,10 +48,11 @@ bool UsbMscHelper::start() {
 }
 
 void UsbMscHelper::stop() {
-    if (_active) {
-        _msc.end();
-        _active = false;
-    }
+#if defined(FREEINK_CAP_USB_MSC) && FREEINK_CAP_USB_MSC
+    // Boards without mass storage get the SDK's stub, which has no end().
+    if (_active) _msc.end();
+#endif
+    _active = false;
     _lastState = freeink::UsbMassStorageState::Idle;
 }
 
