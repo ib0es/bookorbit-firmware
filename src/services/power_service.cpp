@@ -10,7 +10,6 @@
 #include "../platform/hal/frontlight.h"
 #include "../platform/hal/storage.h"
 #include "../platform/hal/usb_msc.h"
-#include "../ui/font.h"
 #include "../ui/i18n.h"
 #include "../core/ui_port.h"
 #include "library_manager.h"
@@ -19,7 +18,6 @@
 #include "sync_service.h"
 #include "../reader/reader.h"
 #include "../net/bookorbit_client.h"
-#include "../app/app_controller.h"
 #include "../platform/hal/buttons.h"
 #include "../ui/text_utils.h"
 #include "../platform/device.h"
@@ -109,8 +107,12 @@ int PowerService::getSavedRtcState() {
 }
 
 
+namespace { AppContext* g_ctx = nullptr; }
+
+void PowerService::setContext(AppContext& ctx) { g_ctx = &ctx; }
+
 void PowerService::noteActivity() {
-    AppController::getInstance().getContext().lastActivityTime = millis();
+    if (g_ctx) g_ctx->lastActivityTime = millis();
 }
 
 void PowerService::sleepIfIdle(AppContext& ctx) {
@@ -207,7 +209,8 @@ void PowerService::waitOrKey(uint32_t ms) {
 }
 
 bool PowerService::pollModalEvent(ButtonEvent& event) {
-    AppContext& ctx = AppController::getInstance().getContext();
+    if (!g_ctx) return false;
+    AppContext& ctx = *g_ctx;
 
     Buttons.update();
     if (Buttons.getEvent(event)) {

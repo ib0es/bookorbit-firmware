@@ -78,6 +78,7 @@ void AppController::setup() {
     Battery.begin();
     Buttons.begin();
     Input::install(_ctx);
+    PowerService::setContext(_ctx);
     UiPortImpl::install();   // dialogs and screens for the layers below the UI (A5)
     MemStats::mark("battery, buttons");
     // FreeInk's bring-up order for boards whose SD card shares the display SPI
