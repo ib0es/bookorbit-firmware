@@ -173,6 +173,10 @@ CASES = [
      HOME_CARD + "w" + READ_RIGHT + READ_MIDDLE + RMENU_MARKS + MARKS_THIS_PAGE
      + READ_MIDDLE + RMENU_MARKS + "T430,165;",
      lambda log, sd: "[Bookmarks] added" in log and "[Bookmarks] removed" in log),
+    # C2: the frontlight from the book's menu (its last item), and back to that menu.
+    ("book menu: Frontlight opens the light screen, back returns to the book menu (C2)",
+     HOME_CARD + "w" + READ_MIDDLE + "T240,658;" + TITLE + RMENU_RESUME,
+     lambda log, sd: "[Reader] Page" in log.split(">>> TAP_240_506")[-1]),
     ("power: sleep and wake",
      "P" + "Z",
      lambda log, sd: "Entering Deep Sleep" in log and log.count("drawHomeScreen") >= 2),

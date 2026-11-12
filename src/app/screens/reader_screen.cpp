@@ -18,6 +18,7 @@
 #include "../../ui/text_utils.h"
 #include "../../ui/views/home_view.h"
 #include "../../ui/views/reader_menu_view.h"
+#include "../../ui/views/settings_view.h"
 #include "../../ui/views/status_modal.h"
 #include "../../reader/font_store.h"
 #include "../../ui/i18n.h"
@@ -109,6 +110,12 @@ void executeMenuAction(AppContext& ctx, int index) {
             break;
         case 5:  // Закрыть книгу
             closeBookAndGoHome(ctx, uikit::periodicFullRefresh());
+            break;
+        case READER_MENU_FRONTLIGHT:  // only listed on boards with a frontlight; BACK comes back here
+            ctx.frontlightReturnState = STATE_READER_MENU;
+            ctx.currentState = STATE_FRONTLIGHT_SETTINGS;
+            ctx.selectedFrontlightIndex = 0;
+            drawFrontlightScreen(ctx, false);
             break;
     }
 }
@@ -319,11 +326,11 @@ void handleMenuEvent(AppContext& ctx, const ButtonEvent& event) {
     if (event.action != ACTION_CLICK) return;
     switch (Actions::of(event)) {
         case Action::Down:
-            ctx.selectedReaderMenuIndex = (ctx.selectedReaderMenuIndex + 1) % NUM_READER_MENU_ITEMS;
+            ctx.selectedReaderMenuIndex = (ctx.selectedReaderMenuIndex + 1) % readerMenuItemCount();
             drawReaderMenuScreen(ctx, false);
             break;
         case Action::Up:
-            ctx.selectedReaderMenuIndex = (ctx.selectedReaderMenuIndex - 1 + NUM_READER_MENU_ITEMS) % NUM_READER_MENU_ITEMS;
+            ctx.selectedReaderMenuIndex = (ctx.selectedReaderMenuIndex - 1 + readerMenuItemCount()) % readerMenuItemCount();
             drawReaderMenuScreen(ctx, false);
             break;
         case Action::Prev:
