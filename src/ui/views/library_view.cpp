@@ -98,8 +98,27 @@ void drawRow(Frame& f, Rect r, const BookItem& item, bool selected, int index) {
         displayTitle = "#" + String(item.seriesIndex) + " " + item.title;
     }
 
+    // U1: two lines, so books of one series ("Saga. Book 1", "Saga. Book 2")
+    // are told apart: a title that does not fit wraps onto the second line;
+    // one that fits has its author there. Folders keep one line.
     Rect title{(int16_t)(inner.x + 24), r.y, (int16_t)(inner.width - 24 - pillsW - kGap), r.height};
-    text(title, displayTitle.c_str(), FontBody, ink);
+    const int16_t lh = lineHeight(FontBody);
+    if (item.isDirectory || r.height < 2 * lh + 8) {
+        text(title, displayTitle.c_str(), FontBody, ink);
+        return;
+    }
+    const bool wraps = wrappedHeight(displayTitle.c_str(), FontBody, title.width, 2) > lh + 2;
+    const bool author = !wraps && item.author.length() > 0 && item.formatRow < 0;
+    if (wraps || !author) {
+        const int16_t h = wraps ? (int16_t)(2 * lh + 2) : lh;
+        text(Rect{title.x, (int16_t)(r.y + (r.height - h) / 2), title.width, h}, displayTitle.c_str(), FontBody, ink,
+             TextAlign::Left, 2);
+        return;
+    }
+    const int16_t sh = lineHeight(FontSmall);
+    const int16_t top = (int16_t)(r.y + (r.height - lh - sh - 4) / 2);
+    text(Rect{title.x, top, title.width, lh}, displayTitle.c_str(), FontBody, ink);
+    text(Rect{title.x, (int16_t)(top + lh + 4), title.width, sh}, item.author.c_str(), FontSmall, ink);
 }
 
 }  // namespace
@@ -185,7 +204,7 @@ void drawLibraryScreen(AppContext& ctx, bool fullRefresh) {
             takeTop(area, 12);
         }
     } else {
-        const int16_t rowH = (int16_t)(lineHeight(FontBody) + 20);
+        const int16_t rowH = (int16_t)(2 * lineHeight(FontBody) + 18);   // two lines (U1)
         const int16_t step = (int16_t)(rowH + 5);
         int perPage = (area.height + 5) / step;
         if (perPage < 1) perPage = 1;
