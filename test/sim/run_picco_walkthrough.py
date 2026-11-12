@@ -202,6 +202,14 @@ CASES = [
                      and "drawHomeScreen" in log.split(">>> HOLD U")[-1]
                      and "CLICK DOWN (released)" in log,
      None, None, {"SIM_NO_TOUCH": "1"}),
+    # The Picco's motion sensor sits turned on the PCB (device profile imuMountRot):
+    # held upright (gravity along the sensor's -X) the screen stays portrait;
+    # turned, it goes landscape.
+    ("auto-rotate: held upright the Picco stays portrait, turned it goes landscape",
+     "A-1.0,0.0,0.0;w" + "A0.0,1.0,0.0;w",
+     lambda log, sd: "Auto-rotated UI 0 ->" not in log.split(">>> IMU_ACCEL 0.00,1.00")[0]
+                     and re.search(r"Auto-rotated UI 0 -> [13]", log.split(">>> IMU_ACCEL 0.00,1.00")[-1]),
+     {"auto_rotate": True}, None, {"SIM_IMU_PRESENT": "1"}),
     ("power: sleep and wake",
      "P" + "Z",
      lambda log, sd: "Entering Deep Sleep" in log and log.count("drawHomeScreen") >= 2),

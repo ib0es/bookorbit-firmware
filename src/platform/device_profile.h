@@ -29,4 +29,10 @@ struct DeviceProfile {
     // ---- power
     // The SD rail switch when the SDK profile leaves it unassigned (-1: none).
     int8_t sdPowerPin;
+
+    // ---- motion sensor
+    // Quarter-turns from the sensor's axes to the X3 / X4 Classic frame the
+    // auto-rotate filter expects, where the SDK's BoardConfig has no mount
+    // correction for the board. Added to the user's calibration (imu_rot).
+    int8_t imuMountRot;
 };

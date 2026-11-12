@@ -12,4 +12,5 @@ inline constexpr DeviceProfile kX4ProProfile = {
     /*keyCentres*/ {96, 178, 279, 370},   // unused: no key hint tabs on a touch-only board
     /*autoRotateByDefault*/ false, /*usbMassStorage*/ true, /*touchWake*/ true,
     /*sdPowerPin*/ -1,                    // SDMMC enable, in the SDK profile
+    /*imuMountRot*/ 0,
 };
