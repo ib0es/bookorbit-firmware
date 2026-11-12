@@ -74,7 +74,28 @@ uint64_t StorageManager::totalBytes() const {
 }
 
 uint64_t StorageManager::usedBytes() {
-    return SDCardManager::getInstance().sdUsedBytes();
+    // SDCardManager counts the free clusters by walking the whole FAT: seconds on
+    // a big card, in one call that cannot feed the task watchdog. This task is
+    // taken off the watchdog for the count, and the answer kept for a minute.
+    static uint64_t s_used = 0;
+    static uint32_t s_at = 0;
+    static bool s_valid = false;
+    const uint32_t now = millis();
+    if (s_valid && now - s_at < 60000) return s_used;
+#ifdef ESP_PLATFORM
+    const bool watched = esp_task_wdt_status(nullptr) == ESP_OK;
+    if (watched) {
+        esp_task_wdt_reset();
+        esp_task_wdt_delete(nullptr);
+    }
+#endif
+    s_used = SDCardManager::getInstance().sdUsedBytes();
+#ifdef ESP_PLATFORM
+    if (watched) esp_task_wdt_add(nullptr);
+#endif
+    s_at = millis();
+    s_valid = true;
+    return s_used;
 }
 
 uint64_t StorageManager::freeBytes() {

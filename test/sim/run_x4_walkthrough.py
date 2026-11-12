@@ -199,6 +199,21 @@ def offline_progressive_cover(sd):
     json.dump({"filePath": "/offline/Prog.epub", "title": "Prog", "author": "", "coverPath": "",
                "progress": 0, "page": 1, "totalPages": 1}, open(os.path.join(sd, "books/last_book.json"), "w"))
 
+def offline_undeclared_cover(sd):
+    """An offline EPUB that declares no cover: its image is only named "...cover.jpg"."""
+    import zipfile
+    os.makedirs(os.path.join(sd, "offline"), exist_ok=True)
+    src = zipfile.ZipFile(os.path.join(sd, "books/Frankenstein.epub"))
+    out = zipfile.ZipFile(os.path.join(sd, "offline/NoDecl.epub"), "w")
+    for n in src.namelist():
+        d = src.read(n)
+        if n.endswith(".opf"):
+            d = re.sub(r'\s*<meta name="cover"[^>]*/>', "", d.decode()).replace(' properties="cover-image"', "").encode()
+        out.writestr(n, d, zipfile.ZIP_STORED if n == "mimetype" else zipfile.ZIP_DEFLATED)
+    out.close()
+    json.dump({"filePath": "/offline/NoDecl.epub", "title": "NoDecl", "author": "", "coverPath": "",
+               "progress": 0, "page": 1, "totalPages": 1}, open(os.path.join(sd, "books/last_book.json"), "w"))
+
 def offline_covers(sd):
     os.makedirs(os.path.join(sd, "offline"), exist_ok=True)
     shutil.copy(os.path.join(ROOT, "test/books/Alice's Adventures in Wonderland - Lewis Carroll - FB2.fb2"),
@@ -454,6 +469,10 @@ CASES = [
      lambda log, sd: "progressive JPEG as BMP" in log
                      and open(os.path.join(sd, "covers/offline#Prog.jpg"), "rb").read(2) == b"BM"
                      and not os.path.exists(os.path.join(sd, "covers/offline#Prog.jpg.nocover"))),
+    ("offline: a cover the EPUB does not declare is found by its name",
+     offline_undeclared_cover, {},
+     "w",
+     lambda log, sd: "Cover of /offline/NoDecl.epub: /covers/offline#NoDecl.jpg" in log),
     ("offline: unconverted FB2 and MOBI extract covers directly into /covers",
      offline_covers, {},
      "w" + "DDC" + "D" + "C" + "w",
