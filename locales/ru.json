@@ -560,6 +560,7 @@
   "APPEAR_ORIENT_TURNED_FMT": "Повёрнута на %d°",
   "APPEAR_FULL_REFRESH": "Полное обновление экрана",
   "APPEAR_UPDOWN_KEYS": "Клавиши вверх / вниз",
+  "APPEAR_AUTO_ROTATE": "Автоповорот",
   "APPEAR_UPDOWN_CHAPTERS": "Главы",
   "APPEAR_UPDOWN_PAGES": "Страницы",
   "APPEAR_REFRESH_FMT": "каждые %d стр.",

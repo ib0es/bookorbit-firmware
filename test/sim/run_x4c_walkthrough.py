@@ -77,6 +77,12 @@ CASES = [
 
     # B8: in USB mode with no computer (never connected here) for the idle timeout
     # (3 s in this case), the mode is left; the usual idle sleep follows.
+    # U3: auto-rotate (on by default here) turned off from the book's Appearance,
+    # its last row on a board with a motion sensor.
+    ("appearance: auto-rotate toggled without leaving the book (U3)",
+     OPEN_BOOK + "C" + "DC" + "U" + "R",
+     lambda log, sd: config(sd).get("auto_rotate") is False,
+     None, {"SIM_IMU_PRESENT": "1"}),
     ("usb-msc: no computer for the idle timeout leaves the mode, then the device sleeps (B8)",
      SETTINGS + "UCC" + "www",
      lambda log, sd: "Detaching filesystem" in log
