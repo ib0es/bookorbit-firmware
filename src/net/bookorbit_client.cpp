@@ -268,7 +268,15 @@ public:
     size_t write(uint8_t b) override { return write(&b, 1); }
     size_t write(const uint8_t* data, size_t len) override {
         if (_failed) return 0;
-        if (_checkCancel && _checkCancel()) { _cancelled = _failed = true; return 0; }   // aborts writeToStream
+        // P8: polled at most every 100 ms, not for every ~1.4 KB block (the key
+        // scan was a measurable share of a 75 KB/s download).
+        if (_checkCancel) {
+            const uint32_t now = millis();
+            if (now - _lastCancelPoll >= 100) {
+                _lastCancelPoll = now;
+                if (_checkCancel()) { _cancelled = _failed = true; return 0; }   // aborts writeToStream
+            }
+        }
         size_t done = 0;
         while (done < len) {
             size_t n = len - done;
@@ -311,6 +319,7 @@ private:
     int _total, _lastPct = -1;
     void (*_onProgress)(int);
     bool (*_checkCancel)();
+    uint32_t _lastCancelPoll = 0;
     bool _failed = false, _cancelled = false;
 };
 
