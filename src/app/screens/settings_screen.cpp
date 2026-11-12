@@ -32,6 +32,8 @@
 #include "../../ui/text_utils.h"
 #include "../../ui/wifi_messages.h"
 #include "../../services/library_manager.h"
+#include "appearance.h"
+#include "status_bar_menu.h"
 
 namespace {
 
@@ -108,6 +110,12 @@ void executeSetting(AppContext& ctx, int index) {
         ctx.config.touchWakeEnabled = !ctx.config.touchWakeEnabled;
         ctx.config.save();
         updateSettingsItem(ctx, index);
+        return;
+    }
+    if (index == readingSettingIndex()) {
+        ctx.selectedReadingSettingIndex = 0;
+        ctx.currentState = STATE_READING_SETTINGS;
+        drawReadingSettingsScreen(ctx, false);
         return;
     }
     if (index == orientationSettingIndex()) {
@@ -503,6 +511,48 @@ void handleServerSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
 void handleSyncSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
     handleMenu(ctx, event, ctx.selectedSyncSettingIndex, NUM_SYNC_SETTINGS_ITEMS, updateSyncSettingsSelection,
                executeSyncSetting, STATE_SETTINGS, drawSettingsScreen, false);
+}
+
+// Settings -> Reading: rows step with LEFT / RIGHT (OK steps too); the status
+// bar row opens its menu. The reader gets the values when the screen is left.
+void handleReadingSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
+    if (event.action != ACTION_CLICK) return;
+    const Action key = Actions::onValue(Actions::of(event));
+    int& sel = ctx.selectedReadingSettingIndex;
+    const int n = Appearance::Reading::count();
+    const int row = Appearance::Reading::rowAt(sel);
+    switch (key) {
+        case Action::Down:
+            sel = (sel + 1) % n;
+            drawReadingSettingsScreen(ctx, false);
+            break;
+        case Action::Up:
+            sel = (sel - 1 + n) % n;
+            drawReadingSettingsScreen(ctx, false);
+            break;
+        case Action::Less:
+        case Action::More:
+        case Action::Select:
+            if (row == Appearance::STATUS_BAR) {
+                if (key == Action::Less) break;
+                ctx.selectedStatusBarIndex = 0;
+                ctx.currentState = STATE_STATUSBAR_MENU;
+                drawStatusBarScreen(ctx, false);
+            } else if (Appearance::step(ctx.config, row, key == Action::Less ? -1 : 1)) {
+                ctx.config.save();
+                drawReadingSettingsScreen(ctx, false);
+            }
+            break;
+        case Action::Back:
+            Reader.setFullRefreshEvery(ctx.config.fullRefreshEvery);
+            Reader.setSharpImages(ctx.config.sharpImages);
+            Reader.setStatusBar(StatusBarMenu::options(ctx.config));
+            ctx.currentState = STATE_SETTINGS;
+            drawSettingsScreen(ctx, false);
+            break;
+        default:
+            break;
+    }
 }
 
 void handleSleepCoverSettingsEvent(AppContext& ctx, const ButtonEvent& event) {

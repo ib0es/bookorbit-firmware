@@ -31,22 +31,23 @@ RMENU_TOC, RMENU_FONT, RMENU_MARKS = "T240,200;", "T240,278;", "T240,354;"
 RMENU_SYNC, RMENU_RESUME, RMENU_CLOSE = "T240,430;", "T240,506;", "T240,582;"
 MARKS_THIS_PAGE = "T240,90;"
 APPEAR_TYPEFACE, APPEAR_SIZE = "T240,67;", "T240,103;"
-APPEAR_ORIENTATION = "T100,463;"   # on the label: the middle of a value row is its "-" (C5)
-APPEAR_STATUS_BAR = "T240,584;"
+APPEAR_ORIENTATION = "T100,427;"   # on the label: the middle of a value row is its "-" (C5)
 SB_BOTTOM = "T100,211;"   # on the label (the middle of a value row is its "-")
 
-# Settings rows (11 rows on X4 Pro: 0..8 shared + 9 USB-MSC + 10 Touch Wake)
+# Settings rows (12 rows on X4 Pro: 0..9 shared + 10 USB-MSC + 11 Touch Wake on the second page)
 SET_LANG = "T240,80;"
 SET_WIFI = "T240,140;"
 SET_SERVER = "T240,195;"
 SET_SLEEP = "T240,250;"
-SET_INFO = "T240,365;"
-SET_SYNC = "T240,425;"
-SET_LIGHT = "T240,480;"
-SET_ORIENTATION = "T240,560;"
-SET_USB_MSC = "T240,605;"
-SET_TOUCH_WAKE = "T240,665;"
-SET_ORIENTATION_LANDSCAPE = "T290,400;"
+SET_INFO = "T240,370;"
+SET_SYNC = "T240,428;"
+SET_LIGHT = "T240,486;"
+SET_READING = "T240,544;"   # Settings -> Reading: status bar, full refresh, pictures
+READING_STATUS_BAR = "T240,67;"
+SET_ORIENTATION = "T240,602;"
+SET_USB_MSC = "T240,660;"
+SET_TOUCH_WAKE = "W240,600,240,200;T240,80;"   # the next page of the list, its first row
+SET_ORIENTATION_LANDSCAPE = "T224,400;"
 
 FL_BRIGHT_PLUS = "T442,124;"
 FL_WARM_PLUS = "T442,240;"
@@ -100,8 +101,8 @@ CASES = [
     ("reader menu: landscape pages, tap zones turn with them",
      HOME_CARD + "w" + HOME_KEY_LONG + RMENU_FONT + APPEAR_ORIENTATION + HOME_KEY_TAP + "w" + "T264,700;T264,700;T264,100;",
      lambda log, sd: config(sd)["orientation"] == 1 and [p for p, _ in pages(log)][-3:] == [2, 3, 2]),
-    ("reader menu: status bar menu, bottom line off gives text room",
-     HOME_CARD + "w" + HOME_KEY_LONG + RMENU_FONT + APPEAR_STATUS_BAR + SB_BOTTOM + SB_BOTTOM + TITLE + TITLE + "w",
+    ("settings: Reading -> status bar menu, bottom line off gives text room",
+     HOME_SETTINGS + SET_READING + READING_STATUS_BAR + SB_BOTTOM + SB_BOTTOM + TITLE + TITLE + TITLE + HOME_CARD + "w",
      lambda log, sd: config(sd)["sb_bottom"] == 2 and "[Reader] Page" in log.split("TAP_100_211")[-1]),
     ("reader menu: bookmarks, tap 'this page' adds bookmark",
      HOME_CARD + "w" + READ_RIGHT + HOME_KEY_LONG + RMENU_MARKS + MARKS_THIS_PAGE,

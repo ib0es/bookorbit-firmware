@@ -627,5 +627,9 @@
   "SETTINGS_ITEM_TOUCH_WAKE": "Toque en reposo (Light Sleep)",
   "SETTINGS_TOUCH_WAKE_ON": "[SÍ] Despertar al tocar o pulsar botones",
   "SETTINGS_TOUCH_WAKE_OFF": "[NO] Esperar hasta el reposo profundo",
-  "SETTINGS_TAG_SLEEP_LIGHT": "REPOSO"
+  "SETTINGS_TAG_SLEEP_LIGHT": "REPOSO",
+  "SETTINGS_ITEM_READING": "Lectura",
+  "SETTINGS_TAG_READING": "LECTURA >",
+  "SETTINGS_READING_SUB": "Barra de estado, refresco, imágenes, teclas",
+  "READING_TITLE": "LECTURA"
 }

@@ -474,6 +474,7 @@ void handleAppearanceEvent(AppContext& ctx, const ButtonEvent& event) {
     if (event.action != ACTION_CLICK) return;
     const Action key = Actions::onValue(Actions::of(event));
     int& sel = ctx.selectedAppearanceIndex;
+    const int row = Appearance::rowAt(sel);
     switch (key) {
         case Action::Down:
             sel = (sel + 1) % Appearance::count();
@@ -486,21 +487,13 @@ void handleAppearanceEvent(AppContext& ctx, const ButtonEvent& event) {
         case Action::Less:
         case Action::More:
         case Action::Select:
-            if (sel == Appearance::TYPEFACE && key != Action::Less) {
+            if (row == Appearance::TYPEFACE && key != Action::Less) {
                 openTypefaces(ctx);
-            } else if (sel == Appearance::STATUS_BAR && key != Action::Less) {
-                ctx.selectedStatusBarIndex = 0;
-                ctx.currentState = STATE_STATUSBAR_MENU;
-                drawStatusBarScreen(ctx, false);
-            } else if (sel == Appearance::SIZE && key == Action::Select) {
+            } else if (row == Appearance::SIZE && key == Action::Select) {
                 ctx.selectedFontIndex = ctx.config.readerFontSize;
                 ctx.currentState = STATE_FONT_MENU;
                 drawFontMenuScreen(ctx, false);
-            } else if (Appearance::step(ctx.config, sel, key == Action::Less ? -1 : 1)) {
-                if (sel == Appearance::AUTO_ROTATE) {   // U3: on or off without leaving the book
-                    BoardImu.setActive(ctx.config.autoRotate);
-                    AppController::getInstance().resetAutoRotate();
-                }
+            } else if (Appearance::step(ctx.config, row, key == Action::Less ? -1 : 1)) {
                 ctx.config.save();
                 drawAppearanceScreen(ctx, false);   // (the book turns when the menus are left)
             }
@@ -533,9 +526,9 @@ void handleStatusBarEvent(AppContext& ctx, const ButtonEvent& event) {
             ctx.config.save();
             drawStatusBarScreen(ctx, false);
             break;
-        case Action::Back:
-            ctx.currentState = STATE_APPEARANCE_MENU;
-            drawAppearanceScreen(ctx, false);
+        case Action::Back:   // Settings -> Reading (the book gets it when it is opened)
+            ctx.currentState = STATE_READING_SETTINGS;
+            drawReadingSettingsScreen(ctx, false);
             break;
         default:
             break;

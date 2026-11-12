@@ -13,8 +13,9 @@ BIN = os.environ.get("X4C_HEADLESS") or os.path.join(ROOT, "test/sim/build-x4c/x
 
 OPEN_BOOK = "C"
 READER_MENU = "C"
-APPEARANCE = READER_MENU + "DC"
-SETTINGS = "DDC"  # Home -> Settings (row 0 = Language; 9 items total: 0..8)
+
+SETTINGS = "DDC"  # Home -> Settings (row 0 = Language; 10 items total: 0..9)
+READING = SETTINGS + "UUUC"  # -> Reading (7: above Screen orientation 8 and USB Drive 9)
 
 
 def config(sd):
@@ -40,7 +41,7 @@ CASES = [
                      and "[IMU] Ready" in log,
      None, {"SIM_RTC_UTC": "1735689600", "SIM_IMU_PRESENT": "1"}),
 
-    ("settings: 9-row button layout (Orientation=7, USB Drive=8, Device Info=5, no frontlight)",
+    ("settings: 10-row button layout (Reading=7, Orientation=8, USB Drive=9, Device Info=5, no frontlight)",
      SETTINGS + "DDDDDC" + "B",
      lambda log, sd: "device info" in log
                      and "[RTC] Ready (UTC 1735689600)" in log
@@ -75,14 +76,13 @@ CASES = [
                      and "MSC_c]" in log and "MSC_a]" in log and "MSC_e]" in log and "MSC_d]" in log and "MSC_i]" in log
                      and pages(log)),
 
+    # The Up/Down keys setting is the device's: Settings -> Reading (its last row here).
+    ("settings: Reading, the Up/Down keys row switches to pages",
+     READING + "U" + "R" + "B",
+     lambda log, sd: config(sd).get("updown_pages") is True and "drawSettingsScreen" in after(log, ">>> BACK"),
+     None, {"SIM_IMU_PRESENT": "1"}),
     # B8: in USB mode with no computer (never connected here) for the idle timeout
     # (3 s in this case), the mode is left; the usual idle sleep follows.
-    # U3: auto-rotate (on by default here) turned off from the book's Appearance,
-    # its last row on a board with a motion sensor.
-    ("appearance: auto-rotate toggled without leaving the book (U3)",
-     OPEN_BOOK + "C" + "DC" + "U" + "R",
-     lambda log, sd: config(sd).get("auto_rotate") is False,
-     None, {"SIM_IMU_PRESENT": "1"}),
     ("usb-msc: no computer for the idle timeout leaves the mode, then the device sleeps (B8)",
      SETTINGS + "UCC" + "www",
      lambda log, sd: "Detaching filesystem" in log
@@ -108,7 +108,7 @@ CASES = [
      None, {"SIM_BATTERY_PCT": "100", "SIM_BATTERY_VOLTS": "4.20", "SIM_SLEEP_TIMEOUT_MS": "400", "SIM_USB_SERIAL": "0"}),
 
     ("rtc: BM8563 clock and UTC+3 timezone configured with buttons and shown in status bar",
-     OPEN_BOOK + APPEARANCE + "U" + "C" + "UU" + "C" + "D" + "RRRRRR" + "BB",
+     READING + "C" + "UU" + "C" + "D" + "RRRRRR" + "BBB" + "UU" + OPEN_BOOK,
      lambda log, sd: "[RTC] Ready" in log and "[Clock] Restored from RTC" in log
                      and config(sd).get("sb_clock") is True and config(sd).get("utc_offset_min") == 180
                      and "Page drawn" in after(log, ">>> BACK"),

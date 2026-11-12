@@ -51,9 +51,12 @@ bool translate(AppContext& ctx, const ButtonEvent& tap, ButtonEvent& out) {
 
     // Value rows' "-" / "+" (C5) and a bookmark's "delete" (C1): the row is
     // selected and stepped down / up, or deleted, as LEFT / RIGHT would.
-    if (ctx.currentState == STATE_APPEARANCE_MENU || ctx.currentState == STATE_STATUSBAR_MENU) {
+    if (ctx.currentState == STATE_APPEARANCE_MENU || ctx.currentState == STATE_STATUSBAR_MENU ||
+        ctx.currentState == STATE_READING_SETTINGS) {
         if (action == ActionValueLess || action == ActionValueMore) {
-            (ctx.currentState == STATE_APPEARANCE_MENU ? ctx.selectedAppearanceIndex : ctx.selectedStatusBarIndex) = value;
+            (ctx.currentState == STATE_APPEARANCE_MENU  ? ctx.selectedAppearanceIndex
+             : ctx.currentState == STATE_STATUSBAR_MENU ? ctx.selectedStatusBarIndex
+                                                        : ctx.selectedReadingSettingIndex) = value;
             out = make(action == ActionValueLess ? BTN_LEFT : BTN_RIGHT);
             return true;
         }

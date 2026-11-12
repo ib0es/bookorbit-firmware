@@ -641,7 +641,11 @@ enum class MsgId : uint16_t {
     SETTINGS_TOUCH_WAKE_ON = 626,
     SETTINGS_TOUCH_WAKE_OFF = 627,
     SETTINGS_TAG_SLEEP_LIGHT = 628,
-    COUNT = 629
+    SETTINGS_ITEM_READING = 629,
+    SETTINGS_TAG_READING = 630,
+    SETTINGS_READING_SUB = 631,
+    READING_TITLE = 632,
+    COUNT = 633
 };
 
 // Language: English (en)
@@ -1275,6 +1279,10 @@ static const char* const STRINGS_EN[(size_t)MsgId::COUNT] PROGMEM = {
     /* SETTINGS_TOUCH_WAKE_ON */ "[ON] Wake on touch & keys during idle",
     /* SETTINGS_TOUCH_WAKE_OFF */ "[OFF] Stay active until deep sleep",
     /* SETTINGS_TAG_SLEEP_LIGHT */ "SLEEP",
+    /* SETTINGS_ITEM_READING */ "Reading",
+    /* SETTINGS_TAG_READING */ "READING >",
+    /* SETTINGS_READING_SUB */ "Status bar, refresh, pictures, keys",
+    /* READING_TITLE */ "READING",
 };
 
 // Language: Russian (ru)
@@ -1908,6 +1916,10 @@ static const char* const STRINGS_RU[(size_t)MsgId::COUNT] PROGMEM = {
     /* SETTINGS_TOUCH_WAKE_ON */ "[ВКЛ] Мгновенный выход тачем и кнопками",
     /* SETTINGS_TOUCH_WAKE_OFF */ "[ВЫКЛ] Не усыплять до Deep Sleep",
     /* SETTINGS_TAG_SLEEP_LIGHT */ "СОН",
+    /* SETTINGS_ITEM_READING */ "Чтение",
+    /* SETTINGS_TAG_READING */ "ЧТЕНИЕ >",
+    /* SETTINGS_READING_SUB */ "Строка состояния, обновление, картинки, клавиши",
+    /* READING_TITLE */ "ЧТЕНИЕ",
 };
 
 // Language: Spanish (es)
@@ -2541,6 +2553,10 @@ static const char* const STRINGS_ES[(size_t)MsgId::COUNT] PROGMEM = {
     /* SETTINGS_TOUCH_WAKE_ON */ "[SÍ] Despertar al tocar o pulsar botones",
     /* SETTINGS_TOUCH_WAKE_OFF */ "[NO] Esperar hasta el reposo profundo",
     /* SETTINGS_TAG_SLEEP_LIGHT */ "REPOSO",
+    /* SETTINGS_ITEM_READING */ "Lectura",
+    /* SETTINGS_TAG_READING */ "LECTURA >",
+    /* SETTINGS_READING_SUB */ "Barra de estado, refresco, imágenes, teclas",
+    /* READING_TITLE */ "LECTURA",
 };
 
 static const char* const* const I18N_ALL_TABLES[(size_t)AppLanguage::COUNT] = {

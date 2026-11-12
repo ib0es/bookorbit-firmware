@@ -32,8 +32,18 @@ enum Row : int {
     COUNT
 };
 
-// Rows shown on this board: AUTO_ROTATE only where there is a motion sensor.
+// The book's Appearance menu: the rows of the page itself (typeface to
+// orientation). The device-wide ones (status bar, full refresh, pictures,
+// UP/DOWN keys) live in Settings -> Reading; auto-rotate in Settings ->
+// Screen orientation.
 int count();
+int rowAt(int index);   // the Row shown at `index`
+
+// Settings -> Reading: the reading rows that are not about one book's page.
+namespace Reading {
+int count();
+int rowAt(int index);
+}  // namespace Reading
 
 const char* label(int row);
 // The value as shown (in `buf`).
