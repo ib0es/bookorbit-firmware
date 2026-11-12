@@ -14,6 +14,7 @@
 #include "net/bookorbit_client.h"
 #include "../services/wifi_session.h"
 #include "actions.h"
+#include "wifi_messages.h"
 
 WifiManagerUI WifiUI;
 
@@ -278,7 +279,8 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
                             PowerService::waitOrKey(2200);
                             return true;
                         } else {
-                            drawModal(tr(MsgId::WIFI_ERR_TITLE), tr(MsgId::WIFI_TEST_ERR_L1), tr(MsgId::WIFI_ERR_CHECK_PASS));
+                            drawModal(tr(MsgId::WIFI_ERR_TITLE), tr(MsgId::WIFI_TEST_ERR_L1),
+                                      wifiFailureLine(BookOrbit.lastWifiFailure(), tr(MsgId::WIFI_ERR_CHECK_PASS)));
                             PowerService::waitOrKey(2500);
                             redraw = true;
                         }

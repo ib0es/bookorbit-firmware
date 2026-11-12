@@ -7,7 +7,12 @@ enum wifi_mode_t { WIFI_OFF = 0, WIFI_STA = 1, WIFI_AP = 2, WIFI_AP_STA = 3 };
 enum wifi_auth_mode_t { WIFI_AUTH_OPEN = 0, WIFI_AUTH_WPA2_PSK = 3 };
 enum { WL_IDLE_STATUS = 0, WL_CONNECTED = 3, WL_DISCONNECTED = 6 };
 
-namespace FakeNet { bool wifiBegin(uint32_t& connectMs); }   // test/sim/fake_bookorbit.cpp
+namespace FakeNet { bool wifiBegin(uint32_t& connectMs, uint8_t& failReason); }   // test/sim/fake_bookorbit.cpp
+
+// Station events, as Arduino-ESP32 has them (only the disconnect is used).
+enum arduino_event_id_t { ARDUINO_EVENT_WIFI_STA_DISCONNECTED = 5, ARDUINO_EVENT_MAX = 100 };
+struct arduino_event_info_t { struct { uint8_t reason; } wifi_sta_disconnected; };
+typedef void (*WiFiEventSimCb)(arduino_event_id_t, arduino_event_info_t);
 
 class IPAddress {
 public:
@@ -30,8 +35,19 @@ public:
     void begin(const char* ssid, const char*) {
         _ssid = ssid ? ssid : "";
         uint32_t connectMs = 0;
-        _connected = FakeNet::wifiBegin(connectMs);
+        uint8_t failReason = 0;
+        _connected = FakeNet::wifiBegin(connectMs, failReason);
         _connectedAt = millis() + connectMs;
+        if (!_connected && failReason && _onDisconnect) {   // the driver reports why, twice (a retry)
+            arduino_event_info_t info{};
+            info.wifi_sta_disconnected.reason = failReason;
+            _onDisconnect(ARDUINO_EVENT_WIFI_STA_DISCONNECTED, info);
+            _onDisconnect(ARDUINO_EVENT_WIFI_STA_DISCONNECTED, info);
+        }
+    }
+    int onEvent(WiFiEventSimCb cb, arduino_event_id_t event = ARDUINO_EVENT_MAX) {
+        if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) _onDisconnect = cb;
+        return 1;
     }
     void disconnect(bool = false, bool = false) { _connected = false; }
     int status() { return _connected && (int32_t)(millis() - _connectedAt) >= 0 ? WL_CONNECTED : WL_DISCONNECTED; }
@@ -49,6 +65,7 @@ public:
 private:
     wifi_mode_t _mode = WIFI_OFF;
     uint32_t _connectedAt = 0;
+    WiFiEventSimCb _onDisconnect = nullptr;
     bool _connected = false;
     std::string _ssid;
 };

@@ -30,6 +30,7 @@
 #include "../../ui/actions.h"
 #include "../../core/bookorbit_protocol.h"
 #include "../../ui/text_utils.h"
+#include "../../ui/wifi_messages.h"
 
 namespace {
 
@@ -270,7 +271,8 @@ void testWifi(AppContext& ctx) {
         BookOrbit.disconnectWiFi();
         Modal.showMessage(tr(MsgId::WIFI_TEST_OK_TITLE), tr(MsgId::WIFI_TEST_OK_L1), ipStr, rssiBuf, "", 2500);
     } else {
-        Modal.showMessage(tr(MsgId::WIFI_TEST_ERR_TITLE), tr(MsgId::WIFI_TEST_ERR_L1), tr(MsgId::WIFI_TEST_ERR_L2), "", "", 2500);
+        Modal.showMessage(tr(MsgId::WIFI_TEST_ERR_TITLE), tr(MsgId::WIFI_TEST_ERR_L1),
+                          wifiFailureLine(BookOrbit.lastWifiFailure(), tr(MsgId::WIFI_TEST_ERR_L2)), "", "", 3500);
     }
 }
 
@@ -322,7 +324,8 @@ void testServer(AppContext& ctx) {
     drawStatusModal(tr(MsgId::SERVER_TEST_TITLE), tr(MsgId::SERVER_TEST_WIFI_CONNECTING), ctx.config.wifiSsid.c_str(), nullptr, nullptr, tr(MsgId::COMMON_CANCEL));
     if (!BookOrbit.connectWiFi(ctx.config.wifiSsid.c_str(), ctx.config.wifiPass.c_str(), 15000, SyncService::checkSyncCancel)) {
         if (cancelledDuringTest(ctx, STATE_SERVER_SETTINGS)) return;
-        Modal.showMessage(tr(MsgId::SERVER_TEST_WIFI_ERR_TITLE), tr(MsgId::SERVER_TEST_WIFI_ERR_L1), tr(MsgId::SERVER_TEST_WIFI_ERR_L2), "", "", 3000);
+        Modal.showMessage(tr(MsgId::SERVER_TEST_WIFI_ERR_TITLE), tr(MsgId::SERVER_TEST_WIFI_ERR_L1),
+                          wifiFailureLine(BookOrbit.lastWifiFailure(), tr(MsgId::SERVER_TEST_WIFI_ERR_L2)), "", "", 3500);
         return;
     }
     if (cancelledDuringTest(ctx, STATE_SERVER_SETTINGS)) return;

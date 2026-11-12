@@ -12,6 +12,7 @@
 //    "deviceHeap":5000,      -> ESP.getFreeHeap() on the "device" (memory guards)
 //    "wifiDown":true,        -> Wi-Fi connections fail
 //    "wifiConnectMs":3000,   -> Wi-Fi connects that long after begin()
+//    "wifiReason":202,       -> with "wifiDown": the driver's disconnect reason (202 wrong password, 201 no network)
 //    "backOnWifi":true,      -> BACK is pressed while Wi-Fi connects (once)
 //    "backOn":"/download",   -> BACK is pressed when a request path contains this (once)
 //    "failPut":true,         -> progress uploads answer HTTP 500
@@ -401,10 +402,11 @@ void pump() {
     }
 }
 
-bool wifiBegin(uint32_t& connectMs) {
+bool wifiBegin(uint32_t& connectMs, uint8_t& failReason) {
     JsonDocument st;
     loadState(st);
     connectMs = st["wifiConnectMs"] | 0;
+    failReason = st["wifiReason"] | 0;
     if (st["backOnWifi"] | false) {
         st.remove("backOnWifi");
         saveState(st);

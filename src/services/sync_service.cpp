@@ -19,6 +19,7 @@
 #include "power_service.h"
 #include "wifi_session.h"
 #include "../storage/catalog_store.h"
+#include "../ui/wifi_messages.h"
 
 bool SyncService::s_syncCancelled = false;
 uint32_t SyncService::s_lastProgressTime = 0;
@@ -374,7 +375,8 @@ bool SyncService::downloadBook(AppContext& ctx, BookItem& book, AppState returnS
     const bool wifi = BookOrbit.connectWiFi(ctx.config.wifiSsid.c_str(), ctx.config.wifiPass.c_str(), 15000, checkSyncCancel);
     if (cancelled()) return false;
     if (!wifi) {
-        drawStatusModal(tr(MsgId::WIFI_ERR_TITLE), tr(MsgId::WIFI_TEST_ERR_L1), tr(MsgId::WIFI_ERR_CHECK_SETTINGS));
+        drawStatusModal(tr(MsgId::WIFI_ERR_TITLE), tr(MsgId::WIFI_TEST_ERR_L1),
+                        wifiFailureLine(BookOrbit.lastWifiFailure(), tr(MsgId::WIFI_ERR_CHECK_SETTINGS)));
         PowerService::waitOrKey(2000);
         return false;
     }
@@ -550,7 +552,8 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
             return;
         }
         Serial.println("[Sync] Wi-Fi connection failed.");
-        drawStatusModal(tr(MsgId::WIFI_ERR_TITLE), tr(MsgId::SYNC_ERR_WIFI_CONNECT_L1), tr(MsgId::SYNC_ERR_WIFI_CONNECT_L2));
+        drawStatusModal(tr(MsgId::WIFI_ERR_TITLE), tr(MsgId::SYNC_ERR_WIFI_CONNECT_L1),
+                        wifiFailureLine(BookOrbit.lastWifiFailure(), tr(MsgId::SYNC_ERR_WIFI_CONNECT_L2)));
         PowerService::waitOrKey(1800);
         lib.scanLocalBooks();
         returnFromSync(ctx, prevState);

@@ -57,7 +57,26 @@ String BookOrbitClient::urlEncode(const String& str) {
     return encoded;
 }
 
+namespace {
+// The station's disconnect reasons during a connection attempt (U5). Written
+// from the Wi-Fi task: small counters, read by the waiting loop.
+WifiFailureTracker s_wifiTrack;
+bool s_wifiEventsHooked = false;
+void onStaDisconnected(arduino_event_id_t, arduino_event_info_t info) {
+    s_wifiTrack.onDisconnect(info.wifi_sta_disconnected.reason);
+}
+const char* failureName(WifiFailure f) {
+    switch (f) {
+        case WifiFailure::NoNetwork:   return "network not found";
+        case WifiFailure::BadPassword: return "wrong password";
+        case WifiFailure::NoAnswer:    return "no answer";
+        default:                       return "none";
+    }
+}
+}  // namespace
+
 bool BookOrbitClient::connectWiFi(const char* ssid, const char* pass, uint32_t timeoutMs, bool (*checkCancel)()) {
+    _lastWifiFailure = WifiFailure::None;
     if (!ssid || strlen(ssid) == 0) return false;
     if (_foregroundHook) _foregroundHook();
 
@@ -82,6 +101,11 @@ bool BookOrbitClient::connectWiFi(const char* ssid, const char* pass, uint32_t t
     delay(40);
 
     // 3. Begin new connection
+    if (!s_wifiEventsHooked) {
+        WiFi.onEvent(onStaDisconnected, ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
+        s_wifiEventsHooked = true;
+    }
+    s_wifiTrack.reset();
     WiFi.begin(ssid, pass);
 
     uint32_t start = millis();
@@ -93,8 +117,17 @@ bool BookOrbitClient::connectWiFi(const char* ssid, const char* pass, uint32_t t
         }
         delay(100);
         Serial.print(".");
+        // U5: a wrong password or a missing network is known before the timeout.
+        const WifiFailure verdict = s_wifiTrack.verdict();
+        if (verdict != WifiFailure::None) {
+            _lastWifiFailure = verdict;
+            Serial.printf("\n[WiFi] Connection failed after %lu ms: %s\n", (unsigned long)(millis() - start), failureName(verdict));
+            disconnectWiFi();
+            return false;
+        }
         if (millis() - start > timeoutMs) {
-            Serial.println("\n[WiFi] Connection timeout!");
+            _lastWifiFailure = s_wifiTrack.atTimeout();
+            Serial.printf("\n[WiFi] Connection timeout! (%s)\n", failureName(_lastWifiFailure));
             disconnectWiFi();
             return false;
         }
