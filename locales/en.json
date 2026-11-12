@@ -631,5 +631,7 @@
   "SETTINGS_ITEM_READING": "Reading",
   "SETTINGS_TAG_READING": "READING >",
   "SETTINGS_READING_SUB": "Status bar, refresh, pictures, keys",
-  "READING_TITLE": "READING"
+  "READING_TITLE": "READING",
+  "SB_TAG": "BAR >",
+  "SB_SCREEN_TITLE": "STATUS BAR"
 }

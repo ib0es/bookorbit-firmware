@@ -7,6 +7,8 @@
 #include "../../platform/hal/usb_msc.h"
 #include "../../platform/hal/buttons.h"
 #include "../../core/bookorbit_protocol.h"
+#include "../../app/screens/appearance.h"
+#include "../../app/screens/status_bar_menu.h"
 
 using namespace uikit;
 
@@ -193,6 +195,31 @@ SettingItemDef getSyncSettingItemDef(const AppContext& ctx, int index) {
     }
 }
 
+// Settings -> Reading: a card a row, its value below the name; the status bar
+// card says what the lines above and below the text show.
+SettingItemDef getReadingSettingItemDef(const AppContext& ctx, int index) {
+    const int row = Appearance::Reading::rowAt(index);
+    char buf[64];
+    if (row == Appearance::STATUS_BAR) {
+        String v = StatusBarMenu::label(StatusBarMenu::TOP);
+        v += ": ";
+        v += StatusBarMenu::value(ctx.config, StatusBarMenu::TOP, buf, sizeof(buf));
+        v += " \xC2\xB7 ";   // middle dot
+        v += StatusBarMenu::label(StatusBarMenu::BOTTOM);
+        v += ": ";
+        v += StatusBarMenu::value(ctx.config, StatusBarMenu::BOTTOM, buf, sizeof(buf));
+        return { Appearance::label(row), v, tr(MsgId::SB_TAG) };
+    }
+    return { Appearance::label(row), String(Appearance::value(ctx.config, row, buf, sizeof(buf))),
+             tr(MsgId::SYNC_TAG_OPTION) };
+}
+
+SettingItemDef getStatusBarItemDef(const AppContext& ctx, int index) {
+    char buf[64];
+    return { StatusBarMenu::label(index), String(StatusBarMenu::value(ctx.config, index, buf, sizeof(buf))),
+             tr(MsgId::SYNC_TAG_OPTION) };
+}
+
 SettingItemDef getSleepCoverSettingItemDef(const AppContext& ctx, int index) {
     switch (index) {
         case 0: {
@@ -270,6 +297,21 @@ void drawSyncSettingsScreen(AppContext& ctx, bool fullRefresh) {
     drawCardScreen(ctx, tr(MsgId::SYNC_TITLE), getSyncSettingItemDef, NUM_SYNC_SETTINGS_ITEMS,
                    ctx.selectedSyncSettingIndex, tr(MsgId::SYNC_HINT_NAV), tr(MsgId::SYNC_HINT_BACK), fullRefresh,
                    "drawSyncSettingsScreen");
+}
+
+void drawReadingSettingsScreen(AppContext& ctx, bool fullRefresh) {
+    int& sel = ctx.selectedReadingSettingIndex;
+    const int n = Appearance::Reading::count();
+    if (sel < 0 || sel >= n) sel = 0;
+    drawCardScreen(ctx, tr(MsgId::READING_TITLE), getReadingSettingItemDef, n, sel, tr(MsgId::SETTINGS_HINT_NAV),
+                   tr(MsgId::SETTINGS_HINT_BACK), fullRefresh, "drawReadingSettingsScreen");
+}
+
+void drawStatusBarScreen(AppContext& ctx, bool fullRefresh) {
+    int& sel = ctx.selectedStatusBarIndex;
+    if (sel < 0 || sel >= StatusBarMenu::COUNT) sel = 0;
+    drawCardScreen(ctx, tr(MsgId::SB_SCREEN_TITLE), getStatusBarItemDef, StatusBarMenu::COUNT, sel, tr(MsgId::SETTINGS_HINT_NAV),
+                   tr(MsgId::SETTINGS_HINT_BACK), fullRefresh, "drawStatusBarScreen");
 }
 
 void drawSdSettingsScreen(AppContext& ctx, bool fullRefresh) {

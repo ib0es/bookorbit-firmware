@@ -631,5 +631,7 @@
   "SETTINGS_ITEM_READING": "Lectura",
   "SETTINGS_TAG_READING": "LECTURA >",
   "SETTINGS_READING_SUB": "Barra de estado, refresco, imágenes, teclas",
-  "READING_TITLE": "LECTURA"
+  "READING_TITLE": "LECTURA",
+  "SB_TAG": "BARRA >",
+  "SB_SCREEN_TITLE": "BARRA DE ESTADO"
 }

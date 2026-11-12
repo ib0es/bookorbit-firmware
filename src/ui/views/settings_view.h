@@ -16,6 +16,10 @@ void updateServerSettingsSelection(AppContext& ctx, int prevIndex, int newIndex)
 void updateServerSettingsItem(AppContext& ctx, int index);
 
 void drawSyncSettingsScreen(AppContext& ctx, bool fullRefresh = false);
+// Settings -> Reading: status bar, full refresh, pictures, UP/DOWN keys.
+void drawReadingSettingsScreen(AppContext& ctx, bool fullRefresh = false);
+// Settings -> Reading -> Status bar: what the lines above and below the text show.
+void drawStatusBarScreen(AppContext& ctx, bool fullRefresh = false);
 void updateSyncSettingsSelection(AppContext& ctx, int prevIndex, int newIndex);
 void updateSyncSettingsItem(AppContext& ctx, int index);
 

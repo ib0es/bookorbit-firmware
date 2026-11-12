@@ -367,61 +367,6 @@ void drawAppearanceScreen(AppContext& ctx, bool fullRefresh) {
     present(fullRefresh);
 }
 
-// ------------------------------------------------------------- Settings -> Reading
-
-// The reading settings that are the device's, not one book's page: the same
-// rows as the book's Appearance menu had, without the preview.
-void drawReadingSettingsScreen(AppContext& ctx, bool fullRefresh) {
-    Pass pass;
-    Frame& f = pass.frame();
-    clear();
-    int& sel = ctx.selectedReadingSettingIndex;
-    const int rows = Appearance::Reading::count();
-    if (sel < 0) sel = 0;
-    if (sel >= rows) sel = rows - 1;
-    Rect area = topBar(f, tr(MsgId::READING_TITLE));
-    {
-        const bool list = Appearance::Reading::rowAt(sel) == Appearance::STATUS_BAR;   // OK opens its menu
-        area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(list ? MsgId::KEY_OPEN : MsgId::KEY_CHANGE),
-                                           "\xE2\x97\x80", "\xE2\x96\xB6"});
-    }
-    area = insetXY(area, kMargin, 6);
-    const int16_t rowH = (int16_t)(lineHeight(FontBody) + 12);
-    char val[64];
-    for (int i = 0; i < rows; i++) {
-        const int r = Appearance::Reading::rowAt(i);
-        Rect row = takeTop(area, rowH);
-        Appearance::value(ctx.config, r, val, sizeof(val));
-        valueRow(f, row, Appearance::label(r), val, i == sel, r != Appearance::STATUS_BAR, ActionReadingSetting,
-                 (int16_t)i);
-        takeTop(area, 2);
-    }
-    present(fullRefresh);
-}
-
-// ------------------------------------------------------------- status bar
-
-void drawStatusBarScreen(AppContext& ctx, bool fullRefresh) {
-    Pass pass;
-    Frame& f = pass.frame();
-    clear();
-    int& sel = ctx.selectedStatusBarIndex;
-    if (sel < 0) sel = 0;
-    if (sel >= StatusBarMenu::COUNT) sel = StatusBarMenu::COUNT - 1;
-    Rect area = topBar(f, tr(MsgId::SB_TITLE));
-    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_CHANGE), "\xE2\x97\x80", "\xE2\x96\xB6"});
-    area = insetXY(area, kMargin, 6);
-    const int16_t rowH = (int16_t)(lineHeight(FontBody) + 12);
-    char val[64];
-    for (int i = 0; i < StatusBarMenu::COUNT; i++) {
-        Rect row = takeTop(area, rowH);
-        StatusBarMenu::value(ctx.config, i, val, sizeof(val));
-        valueRow(f, row, StatusBarMenu::label(i), val, i == sel, /*stepping=*/true, ActionStatusBar, (int16_t)i);
-        takeTop(area, 2);
-    }
-    present(fullRefresh);
-}
-
 // ------------------------------------------------------------- bookmarks
 
 // Whether the page on screen has a bookmark: the index, -1 if not.
