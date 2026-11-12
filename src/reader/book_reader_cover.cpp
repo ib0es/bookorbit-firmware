@@ -135,6 +135,43 @@ bool imageFileToGrayBmp(const String& imgPath, const ImageInfo& info, const Stri
     return false;
 }
 
+bool containsNoCase(const char* s, const char* word) {
+    const size_t n = strlen(word);
+    for (; s && *s; ++s)
+        if (strncasecmp(s, word, n) == 0) return true;
+    return false;
+}
+
+bool endsWithNoCase(const char* s, const char* sfx) {
+    const size_t a = strlen(s), b = strlen(sfx);
+    return a >= b && strcasecmp(s + a - b, sfx) == 0;
+}
+
+// A book that declares no cover (no cover-image property, no EPUB 2 meta): an
+// image whose path says "cover" (cover.jpg, Images/Cover.png ...). Only the ZIP
+// directory is read, into an arena given back before the image is copied.
+bool coverByName(SdBookSource& src, ZipEntry& out) {
+    uint16_t count = 0;
+    uint32_t dirOffset = 0, dirSize = 0;
+    if (ZipCatalog::locateCentralDirectory(src, &dirOffset, &dirSize, &count) != BookStatus::Ok || count == 0) return false;
+    const size_t want = (size_t)dirSize + (size_t)count * (sizeof(ZipEntry) + 8) + 256;
+    if (want > 32 * 1024) return false;   // a huge book: no guessing
+    Buffer mem(want);
+    if (!mem.p) return false;
+    Arena a(mem.p, mem.n);
+    ZipCatalog zip;
+    if (zip.open(src, a) != BookStatus::Ok) return false;
+    for (size_t i = 0; i < zip.entryCount(); i++) {
+        const ZipEntry* e = zip.entry(i);
+        if (!e || !e->name || !containsNoCase(e->name, "cover")) continue;
+        if (!endsWithNoCase(e->name, ".jpg") && !endsWithNoCase(e->name, ".jpeg") && !endsWithNoCase(e->name, ".png")) continue;
+        out = *e;
+        out.name = nullptr;   // lives in the arena
+        return true;
+    }
+    return false;
+}
+
 }  // namespace
 
 // ------------------------------------------------------------------ cover
@@ -170,13 +207,14 @@ bool BookReader::extractCover(const String& epubPath, const String& outPath, boo
     }
     bool copied = false;
     ZipEntry entry;
-    const bool hasCover = st == BookStatus::Ok && catalog.coverEntry(&entry);
+    bool hasCover = st == BookStatus::Ok && catalog.coverEntry(&entry);
     // The catalog's arena is not needed to copy the entry: given back before the
     // inflate stream is taken, so that the two never sit in the heap together.
     entry.name = nullptr;   // lived in the catalog's arena; the reader needs offsets and sizes only
     catalog = BookCatalog();
     free(mem);
     mem = nullptr;
+    if (st == BookStatus::Ok && !hasCover) hasCover = coverByName(src, entry);
     const String tmp = outPath + ".tmp";
     if (hasCover) {
         // A stored image (the usual case) is copied; a deflated one needs an inflate stream.
