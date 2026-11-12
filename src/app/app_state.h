@@ -104,8 +104,7 @@ const int NUM_SYNC_SETTINGS_ITEMS = 4;
 const int NUM_SLEEP_COVER_ITEMS = 3;
 const int NUM_SD_SETTINGS_ITEMS = 2;   // reload / save /config.json
 const int NUM_USB_MSC_ITEMS = 2;       // connect / enable-disable toggle
-const int NUM_READER_MENU_ITEMS = 6;      // without the frontlight item
-const int READER_MENU_FRONTLIGHT = 6;     // the last item, on boards with a frontlight (C2)
+const int NUM_READER_MENU_ITEMS = 6;      // the light: a swipe down from the top edge, on any screen
 int readerMenuItemCount();
 
 struct AppContext {

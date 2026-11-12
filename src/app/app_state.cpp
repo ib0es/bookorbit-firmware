@@ -14,7 +14,7 @@ bool hasUsbMscSetting() { return Platform::kDevice.usbMassStorage; }
 
 bool hasTouchWakeSetting() { return Platform::kDevice.touchWake; }
 
-int readerMenuItemCount() { return NUM_READER_MENU_ITEMS + (Frontlight.present() ? 1 : 0); }
+int readerMenuItemCount() { return NUM_READER_MENU_ITEMS; }
 
 // Settings: the fixed items, frontlight (boards with one), Reading, screen
 // orientation, then USB drive and touch wake on the boards that have them.

@@ -642,19 +642,32 @@ void handleFrontlightEvent(AppContext& ctx, const ButtonEvent& event) {
         case Action::Select:  // light on/off
             setFrontlight(ctx, 0, FrontlightPolicy::toggleLevel(ctx.config.frontlight, s_rememberedFrontlight));
             break;
-        case Action::Back:
+        case Action::Back:   // to the screen it was opened from (Settings, or any by the edge swipe)
             ctx.config.save();
-            if (ctx.frontlightReturnState == STATE_READER_MENU) {   // opened from the book's menu (C2)
-                ctx.currentState = STATE_READER_MENU;
-                drawReaderMenuScreen(ctx, false);
-                break;
-            }
-            ctx.currentState = STATE_SETTINGS;
-            drawSettingsScreen(ctx, false);
+            ctx.currentState = ctx.frontlightReturnState;
+            Modal.redrawScreen(false);
             break;
         default:
             break;
     }
+}
+
+bool openFrontlightFrom(AppContext& ctx) {
+    if (!Frontlight.present()) return false;
+    switch (ctx.currentState) {
+        case STATE_FRONTLIGHT_SETTINGS:   // already there
+        case STATE_SYNCING:               // busy screens: no way back to them
+        case STATE_USB_MSC:
+            return false;
+        default:
+            break;
+    }
+    Serial.printf("[UI] Frontlight by the edge swipe (over screen %d)\n", (int)ctx.currentState);
+    ctx.frontlightReturnState = ctx.currentState;
+    ctx.currentState = STATE_FRONTLIGHT_SETTINGS;
+    ctx.selectedFrontlightIndex = 0;
+    drawFrontlightScreen(ctx, false);
+    return true;
 }
 
 void handleFrontlightTap(AppContext& ctx, int action, int value, int16_t x) {

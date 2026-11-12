@@ -32,7 +32,7 @@ MARKS_THIS_PAGE = "T240,90;"   # first row of the Bookmarks screen
 APPEAR_TYPEFACE, APPEAR_SIZE = "T240,67;", "T240,103;"   # rows of the Appearance screen
 APPEAR_ORIENTATION = "T100,427;"   # on the label: the middle of a value row is its "-" (C5)
 SB_BOTTOM = "T240,393;"   # the "Bottom" card of the status bar menu
-# Settings rows (nine of them with the frontlight and the screen orientation)
+# Settings rows (ten of them with the frontlight, Reading and the screen orientation)
 SET_LANG, SET_WIFI, SET_SERVER, SET_SLEEP, SET_INFO, SET_LIGHT = "T240,85;", "T240,150;", "T240,215;", "T240,280;", "T240,410;", "T240,540;"
 SET_SYNC = "T240,475;"
 SET_READING = "T240,605;"   # Settings -> Reading: status bar, full refresh, pictures
@@ -129,7 +129,7 @@ CASES = [
     ("settings: screen orientation turns the whole interface, a quarter turn a tap",
      HOME_SETTINGS + SET_ORIENTATION + SET_ORIENTATION_LANDSCAPE,
      lambda log, sd: config(sd)["ui_orientation"] == 2 and config(sd).get("orientation", 0) == 0
-                     and "drawSettingsScreen" in log.split("TAP_290_400")[-1]),
+                     and "drawSettingsScreen" in log.split("TAP_224_400")[-1]),
     ("settings: frontlight + button",
      HOME_SETTINGS + SET_LIGHT + "T442,124;" + BACK,
      lambda log, sd: "[Light] brightness 10%" in log and config(sd)["frontlight"] == 10),
@@ -196,10 +196,22 @@ CASES = [
      HOME_CARD + "w" + READ_RIGHT + READ_MIDDLE + RMENU_MARKS + MARKS_THIS_PAGE
      + READ_MIDDLE + RMENU_MARKS + "T430,165;",
      lambda log, sd: "[Bookmarks] added" in log and "[Bookmarks] removed" in log),
-    # C2: the frontlight from the book's menu (its last item), and back to that menu.
-    ("book menu: Frontlight opens the light screen, back returns to the book menu (C2)",
-     HOME_CARD + "w" + READ_MIDDLE + "T240,658;" + TITLE + RMENU_RESUME,
-     lambda log, sd: "[Reader] Page" in log.split(">>> TAP_240_506")[-1]),
+    # The frontlight: a swipe down from the top edge on any screen (no book menu
+    # item); BACK returns to the screen it came over.
+    ("frontlight: a swipe down from the top edge over the page, back to the page",
+     HOME_CARD + "w" + "W240,8,240,400;" + "T442,124;" + TITLE,
+     lambda log, sd: "Frontlight by the edge swipe" in log and "[Light] brightness 10%" in log
+                     and "[Reader] Page" in log.split(">>> TAP_240_20")[-1]),
+    ("frontlight: from the home screen too, back to it",
+     "W240,8,240,400;" + TITLE,
+     lambda log, sd: "Frontlight by the edge swipe" in log and "drawHomeScreen" in log.split(">>> TAP_240_20")[-1]),
+    ("frontlight: a swipe down that starts lower is not the light (a list's page)",
+     HOME_SETTINGS + "W240,300,240,600;",
+     lambda log, sd: "Frontlight by the edge swipe" not in log and "SWIPE_240_300_240_600" in log),
+    ("book menu: no frontlight item (the edge swipe has it)",
+     HOME_CARD + "w" + READ_MIDDLE + "T240,658;",
+     lambda log, sd: "drawFrontlightScreen" not in log and "Frontlight by the edge swipe" not in log
+                     and "[Light]" not in log.split(">>> TAP_240_658")[-1]),
     # C4: the touch panel silent: a held DOWN is OK (opens the book on the home
     # screen's card), a held UP is BACK (closes it); a short press still moves.
     ("no touch panel: held DOWN = OK, held UP = BACK, a click still selects (C4)",

@@ -113,12 +113,6 @@ void executeMenuAction(AppContext& ctx, int index) {
         case 5:  // Закрыть книгу
             closeBookAndGoHome(ctx, uikit::periodicFullRefresh());
             break;
-        case READER_MENU_FRONTLIGHT:  // only listed on boards with a frontlight; BACK comes back here
-            ctx.frontlightReturnState = STATE_READER_MENU;
-            ctx.currentState = STATE_FRONTLIGHT_SETTINGS;
-            ctx.selectedFrontlightIndex = 0;
-            drawFrontlightScreen(ctx, false);
-            break;
     }
 }
 
