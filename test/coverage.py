@@ -14,6 +14,11 @@ TARGETS = [
     "src/services/sync_clock.cpp",
     "src/storage/progress_store.cpp",
     "src/services/sync_service.cpp",
+    "src/services/sync_common.cpp",
+    "src/services/sync_book.cpp",
+    "src/services/sync_download.cpp",
+    "src/services/sync_full.cpp",
+    "src/services/sync_background.cpp",
     "src/core/bookorbit_protocol.cpp",
     "src/core/opds_stream_parser.cpp",
     "src/core/book_formats.cpp",
@@ -22,7 +27,10 @@ TARGETS = [
 ]
 # Shown for information, not counted: the HTTP/Wi-Fi transport also serves the
 # settings screens (connection test, Wi-Fi), which these tests do not drive.
-INFO = ["src/net/bookorbit_client.cpp", "src/services/library_manager.cpp", "src/reader/book_reader.cpp",
+INFO = ["src/net/bookorbit_client.cpp", "src/services/library_manager.cpp", "src/services/library_covers.cpp",
+        "src/services/library_cleanup.cpp", "src/services/library_progress.cpp", "src/reader/book_reader.cpp",
+        "src/reader/book_reader_layout.cpp", "src/reader/book_reader_position.cpp", "src/reader/book_reader_render.cpp",
+        "src/reader/book_reader_preview.cpp", "src/reader/book_reader_cover.cpp",
         "src/reader/engine/sd_book_storage.cpp", "src/reader/engine/bitmap_book_font.cpp"]
 
 def main():

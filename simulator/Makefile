@@ -103,6 +103,11 @@ SRCS_CXX = \
     src/ui/keyboard_ui.cpp \
     src/ui/wifi_manager_ui.cpp \
     src/reader/book_reader.cpp \
+    src/reader/book_reader_preview.cpp \
+    src/reader/book_reader_layout.cpp \
+    src/reader/book_reader_cover.cpp \
+    src/reader/book_reader_position.cpp \
+    src/reader/book_reader_render.cpp \
     src/reader/engine/bitmap_book_font.cpp \
     src/reader/engine/sd_book_storage.cpp \
     src/reader/engine/ttf_book_font.cpp \
