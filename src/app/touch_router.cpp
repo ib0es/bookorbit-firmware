@@ -101,6 +101,8 @@ bool translate(AppContext& ctx, const ButtonEvent& tap, ButtonEvent& out) {
 
 namespace {
 
+constexpr int16_t kFrontlightEdgePx = 60;   // where a swipe must start to open the frontlight
+
 // Moves a paged list's selection by one page: to the first row of the
 // next/previous page. Returns true if it moved.
 bool pageSelection(int& index, int count, int perPage, bool forward) {
@@ -125,6 +127,12 @@ int* pagedSelection(AppContext& ctx) {
 bool translateSwipe(AppContext& ctx, const ButtonEvent& swipe, ButtonEvent& out) {
     const bool vertical = swipe.id == BTN_SWIPE_UP || swipe.id == BTN_SWIPE_DOWN;
     const bool forward = swipe.id == BTN_SWIPE_UP;  // finger up = further down the list
+
+    // A swipe down from the top edge (the title bar's band) brings the
+    // frontlight up, on any screen; BACK returns to it. Swipes that page a
+    // list or turn a page start lower.
+    if (swipe.id == BTN_SWIPE_DOWN && swipe.y < kFrontlightEdgePx && SettingsScreen::openFrontlightFrom(ctx))
+        return false;
 
     if (ctx.currentState == STATE_READING) {
         // The swipe in the page's terms: a finger moving left turns to the next page.

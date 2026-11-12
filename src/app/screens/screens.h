@@ -59,6 +59,9 @@ void handleUsbMscSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleUsbMscEvent(AppContext& ctx, const ButtonEvent& event);
 void handleUsbMscTap(AppContext& ctx, int action);
 void handleFrontlightEvent(AppContext& ctx, const ButtonEvent& event);
+// The frontlight screen over the current one (a swipe down from the top edge);
+// BACK returns there. False where there is no light or the screen can't be left.
+bool openFrontlightFrom(AppContext& ctx);
 // Touch on the frontlight screen (hit action/value from settings_view, tap x).
 void handleFrontlightTap(AppContext& ctx, int action, int value, int16_t x);
 }
