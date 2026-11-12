@@ -40,6 +40,7 @@ static std::deque<NestedStep> g_nested;
 static int g_pumpsThisLoop = 0;
 static int g_nestedTick = 0;
 static int g_pressed = -1;
+static int g_holdTicks = 0;   // a nested 'h' (BACK held): polls left before the release
 static void applyNested(const NestedStep& s);
 void simPumpEvents() { FakeNet::pump(); }
 
@@ -52,6 +53,7 @@ void simInputPolled() {
         return;
     }
     if (++g_nestedTick % 8) return;  // a few polls between steps
+    if (g_pressed >= 0 && g_holdTicks > 0) { g_holdTicks--; return; }
     if (g_pressed >= 0) { InputManager::simRelease((InputManager::Button)g_pressed); g_pressed = -1; return; }
     NestedStep s = g_nested.front();
     g_nested.pop_front();
@@ -97,6 +99,8 @@ static void applyNested(const NestedStep& s) {
         case 'R': g_label = "n_RIGHT"; printf(">>> (nested) RIGHT\n"); InputManager::simPress(InputManager::BTN_RIGHT); g_pressed = InputManager::BTN_RIGHT; break;
         case 'C': g_label = "n_CONFIRM"; printf(">>> (nested) CONFIRM\n"); InputManager::simPress(InputManager::BTN_CONFIRM); g_pressed = InputManager::BTN_CONFIRM; break;
         case 'B': g_label = "n_BACK"; printf(">>> (nested) BACK\n"); InputManager::simPress(InputManager::BTN_BACK); g_pressed = InputManager::BTN_BACK; break;
+        case 'h': g_label = "n_BACK_HELD"; printf(">>> (nested) BACK held\n"); InputManager::simPress(InputManager::BTN_BACK);
+                  g_pressed = InputManager::BTN_BACK; g_holdTicks = 12; break;
         case 'k': g_label = "n_HOME_TAP"; printf(">>> (nested) HOME_TAP\n"); InputManager::simHomeKeyTap(); break;
         case 'T': {
             char lbl[32]; snprintf(lbl, sizeof(lbl), "n_TAP_%d_%d", s.a, s.b); g_label = lbl; printf(">>> (nested) %s\n", lbl);
@@ -115,7 +119,7 @@ static size_t queueNested(const std::string& script, size_t i) {
     for (++i; i < script.size() && script[i] != ']'; ++i) {
         const char c = script[i];
         int a = 0, b = 0, cc = 0, d = 0, n = 0;
-        if (c == 'U' || c == 'D' || c == 'L' || c == 'R' || c == 'C' || c == 'B' || c == 'k') g_nested.push_back({c, 0, 0, 0, 0});
+        if (c == 'U' || c == 'D' || c == 'L' || c == 'R' || c == 'C' || c == 'B' || c == 'h' || c == 'k') g_nested.push_back({c, 0, 0, 0, 0});
         else if (c == 'T' && sscanf(script.c_str() + i + 1, "%d,%d;%n", &a, &b, &n) == 2) { g_nested.push_back({c, a, b, 0, 0}); i += n; }
         else if (c == 'W' && sscanf(script.c_str() + i + 1, "%d,%d,%d,%d;%n", &a, &b, &cc, &d, &n) == 4) { g_nested.push_back({c, a, b, cc, d}); i += n; }
     }

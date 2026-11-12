@@ -303,6 +303,14 @@ CASES = [
     ("keyboard the right way up: LEFT from Shift wraps to OK (C7)", None, {},
      "DC" + "[" + "DU" + "CC" + "DDD" + "L" + "C" + "]" + "C",
      lambda log, sd: re.search(r"\[Library\] Search '.+'", log)),
+    # U4: Shift is for one letter: Shift, a letter, a letter -> "Xx" (the first
+    # nested OK is taken by the key that opened the keyboard, hence the extra C).
+    ("keyboard: Shift is for one letter (U4)", None, {},
+     "DC" + "[" + "DU" + "C" + "DDD" + "C" + "UUU" + "C" + "C" + "DDD" + "L" + "C" + "]" + "C",
+     lambda log, sd: re.search(r"\[Library\] Search '[A-Z][a-z]'", log)),
+    ("keyboard: BACK held leaves without saving (U4)", None, {},
+     "DC" + "[" + "DU" + "CC" + "h" + "]" + "w",
+     lambda log, sd: "[Keyboard] BACK held: left without saving" in log and "[Library] Search" not in log),
     ("library: a book in a subfolder gets a cache of its own (B13)", subfolder_book, {},
      "DC" + "DDDDD" + "C" + "D" + "C" + "D" + "C", subfolder_cache),
     ("names: two server books of one title get a file each; the old file goes to the one read here",
