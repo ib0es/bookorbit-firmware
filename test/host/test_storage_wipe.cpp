@@ -33,6 +33,7 @@ int main() {
     writeDummy(tmp / ".hidden_file", "x");
     writeDummy(tmp / ".crosspoint" / "state.bin", "cp");
     writeDummy(tmp / "books" / "nested" / "Книга на русском.epub", "epub");
+    writeDummy(tmp / "offline" / "Local.fb2", "fb2");
     writeDummy(tmp / "covers" / "cover.jpg", "jpg");
     writeDummy(tmp / "cache" / "sub" / "page.bin", "cache");
     writeDummy(tmp / "factory" / "a" / "b" / "c.txt", "oem");
@@ -46,9 +47,11 @@ int main() {
     CHECK(!fs::exists(tmp / "factory"));
 
     CHECK(fs::exists(tmp / "books") && fs::is_directory(tmp / "books"));
+    CHECK(fs::exists(tmp / "offline") && fs::is_directory(tmp / "offline"));
     CHECK(fs::exists(tmp / "covers") && fs::is_directory(tmp / "covers"));
     CHECK(fs::exists(tmp / "cache") && fs::is_directory(tmp / "cache"));
     CHECK(fs::is_empty(tmp / "books"));
+    CHECK(fs::is_empty(tmp / "offline"));
     CHECK(fs::is_empty(tmp / "covers"));
     CHECK(fs::is_empty(tmp / "cache"));
 

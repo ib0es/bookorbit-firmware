@@ -24,6 +24,7 @@ using namespace SyncInternal;
 // Per-book progress
 // ============================================================================
 bool SyncService::syncBookProgress(AppContext& ctx, BookProgressRecord& rec, ServerProgress* serverOut) {
+    if (LibraryManager::isOfflinePath(rec.filePath)) return false;
     auto& lib = LibraryManager::getInstance();
     auto& store = ProgressStore::instance();
     resolveServerIds(rec);
@@ -119,10 +120,10 @@ bool SyncService::syncBookProgress(AppContext& ctx, BookProgressRecord& rec, Ser
 // Current book only (closing the book, sleep, boot)
 // ============================================================================
 void SyncService::syncCurrentBookProgress(AppContext& ctx, bool autoConnectWiFi) {
+    auto& lib = LibraryManager::getInstance();
+    if (lib.lastBook.filePath.length() == 0 || LibraryManager::isOfflinePath(lib.lastBook.filePath)) return;
     KeepToken keepToken(ctx);
     WifiSession::prepare();
-    auto& lib = LibraryManager::getInstance();
-    if (lib.lastBook.filePath.length() == 0) return;
     if (Reader.isOpened()) lib.flushReaderPosition();
 
     bool didConnectWiFi = false;
@@ -144,6 +145,7 @@ void SyncService::syncCurrentBookProgress(AppContext& ctx, bool autoConnectWiFi)
 }
 
 SyncService::BookSyncResult SyncService::syncBookItem(AppContext& ctx, BookItem& book) {
+    if (LibraryManager::isOfflinePath(book.filePath)) return BookSyncResult::Cancelled;
     KeepToken keepToken(ctx);
     WifiSession::prepare();
     if (ctx.config.wifiSsid.length() == 0 || ctx.config.serverHost.length() == 0) return BookSyncResult::NotConfigured;
@@ -198,12 +200,13 @@ void SyncService::showBookSyncResult(BookSyncResult r, const BookItem& book) {
 }
 
 void SyncService::syncOnBootProgress(AppContext& ctx) {
-    KeepToken keepToken(ctx);
-    WifiSession::prepare();
     auto& lib = LibraryManager::getInstance();
-    if (!ctx.config.syncOnBoot || ctx.config.wifiSsid.length() == 0 || ctx.config.serverHost.length() == 0 || lib.lastBook.filePath.length() == 0) {
+    if (!ctx.config.syncOnBoot || ctx.config.wifiSsid.length() == 0 || ctx.config.serverHost.length() == 0 ||
+        lib.lastBook.filePath.length() == 0 || LibraryManager::isOfflinePath(lib.lastBook.filePath)) {
         return;
     }
+    KeepToken keepToken(ctx);
+    WifiSession::prepare();
 
     Serial.println("[Boot] syncOnBoot enabled: synchronizing progress with server...");
     Ui::status(tr(MsgId::SYNC_BOOT_TITLE), tr(MsgId::SYNC_BOOT_CHECKING), utf8Prefix(lib.lastBook.title, 64).c_str(), nullptr, nullptr, tr(MsgId::COMMON_CANCEL));

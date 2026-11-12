@@ -88,7 +88,7 @@ def prepare(first, nxt):
     _noSavedCatalog, _seedRecord, _config {...} (merged into config.json), _progressJson "raw",
     _lastBook "<title>" (book on the home screen, default BOOK)."""
     sd = tempfile.mkdtemp()
-    shutil.rmtree(sd); shutil.copytree(SD_TEMPLATE, sd)
+    shutil.rmtree(sd); shutil.copytree(SD_TEMPLATE, sd, ignore=shutil.ignore_patterns("offline", "offline#*"))
     shutil.copy(TEST_CONFIG, os.path.join(sd, "config.json"))
     for f in ("books/progress.json", "server.json", "server_next.json"):
         p = os.path.join(sd, f)
@@ -98,8 +98,10 @@ def prepare(first, nxt):
     if last is None:
         os.remove(os.path.join(sd, "books/last_book.json"))
     else:
+      fp = last if last.startswith("/") else ("/books/" + last)
+      ttl = os.path.splitext(os.path.basename(fp))[0]
       with open(os.path.join(sd, "books/last_book.json"), "w") as f:
-        json.dump({"filePath": "/books/" + last, "title": os.path.splitext(last)[0], "progress": 0, "page": 1,
+        json.dump({"filePath": fp, "title": ttl, "progress": 0, "page": 1,
                    "totalPages": 1, "fileId": first.pop("_fileId", 101 if last == BOOK + ".epub" else 0)},
                   f, ensure_ascii=False)
     if first.pop("_noSavedCatalog", False):
@@ -111,6 +113,11 @@ def prepare(first, nxt):
     raw = first.pop("_progressJson", None)
     if raw is not None:
         with open(os.path.join(sd, "books/progress.json"), "w") as f: f.write(raw)
+    offline_map = first.pop("_offline", None)
+    if offline_map:
+        os.makedirs(os.path.join(sd, "offline"), exist_ok=True)
+        for dst_name, src_rel in offline_map.items():
+            shutil.copy(os.path.join(SD_TEMPLATE, src_rel), os.path.join(sd, "offline", dst_name))
     cfg_extra = first.pop("_config", None)
     if cfg_extra:
         cp = os.path.join(sd, "config.json")
@@ -323,6 +330,23 @@ LOG_SCENARIOS = [
     ("book without a server id is not synced by file id",
      {"_lastBook": "Frankenstein.epub", "progress": P40}, None, "CRB",
      [r"book id unknown yet"], [r"GET /api/v1/books/101/progress"]),
+    ("offline book: local reading is never synced on close, sleep, or boot",
+     {"_offline": {"OfflineNovel.epub": "books/Frankenstein.epub"}, "_lastBook": "/offline/OfflineNovel.epub",
+      "_config": {"sync_on_close": True, "sync_on_sleep": True, "sync_on_boot": True}},
+     None, "C" + "RRR" + "B" + "PZ",
+     [r"Opening book: /offline/OfflineNovel\.epub", r"\[Reader\] Page 4/",
+      r"Last read book loaded: OfflineNovel \(page 4/"],
+     [r"\[Sync\] 'OfflineNovel'", r"\[Boot\] syncOnBoot enabled", r"\[WiFi\] Initializing",
+      r"Background upload", r"FakeHttp\]"]),
+    ("offline book: Home sync syncs catalog books only and skips offline records",
+     {"_offline": {"OfflineNovel.epub": "books/Frankenstein.epub"},
+      "_progressJson": json.dumps({"version": 1, "books": [
+          {"fileId": 0, "bookId": 0, "path": "/offline/OfflineNovel.epub", "title": "OfflineNovel",
+           "local": {"p": 0.25, "pg": 5}, "localDirty": True}]}),
+      "progress": P40},
+     None, HOME_SYNC,
+     [r"\[Sync\] 'Alice in Wonderland'.*-> pull"],
+     [r"\[Sync\] 'OfflineNovel'", r"FakeHttp\] PUT /api/v1/progress"]),
 ]
 
 def run_log(scenario):

@@ -28,8 +28,8 @@ void install() {
     p.modalRemainingMs = []() { return Modal.remainingAutoCloseMs(); };
     p.coverCacheChanged = []() { JpegViewer::clearCache(); };
     p.sleepScreen = [](const SleepScreen& s) { drawSleepScreen(s); };
-    p.portalScreen = [](const char* apSsid, const char* apPass, const char* url, int page) {
-        drawPortalScreen(apSsid, apPass, url, page);
+    p.portalScreen = [](const char* apSsid, const char* apPass, const char* url, int page, bool fullRefresh) {
+        drawPortalScreen(apSsid, apPass, url, page, fullRefresh);
     };
     p.portalEvent = [](int btnId, int btnAction, int16_t x, int16_t y, int& page) {
         return handlePortalEvent(btnId, btnAction, x, y, page);

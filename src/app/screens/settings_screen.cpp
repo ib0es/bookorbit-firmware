@@ -34,8 +34,11 @@
 #include "../../services/library_manager.h"
 #include "appearance.h"
 #include "status_bar_menu.h"
+#include "../../ui/views/library_view.h"
 
 namespace {
+
+static AppState s_webSettingsReturnState = STATE_SETTINGS;
 
 using RedrawFn = void (*)(AppContext&, bool);
 using UpdateSelectionFn = void (*)(AppContext&, int, int);
@@ -113,9 +116,7 @@ void executeSetting(AppContext& ctx, int index) {
         return;
     }
     if (index == webSettingIndex()) {
-        ctx.currentState = STATE_WEB_SETTINGS;
-        ctx.selectedWebSettingIndex = 0;
-        drawWebSettingsScreen(ctx, false);
+        SettingsScreen::openWebSettings(ctx, STATE_SETTINGS);
         return;
     }
     if (index == readingSettingIndex()) {
@@ -330,15 +331,25 @@ void executeWifiSetting(AppContext& ctx, int index) {
 
 // ---------------------------------------------------------------- web settings
 void executeWebSetting(AppContext& ctx, int index) {
-    if (index == 0) {
-        if (WebConfig.runPortal(ctx.config)) {
-            AppController::getInstance().applyConfig();
-            if (Reader.isOpened()) LibraryManager::getInstance().flushReaderPosition();
-            LibraryManager::getInstance().touch();
-        }
-        LibraryManager::getInstance().cardMayHaveChanged();   // files can be uploaded there
-        drawWebSettingsScreen(ctx, false);
+    if (index == 1 && ctx.config.wifiSsid.length() == 0) {
+        Modal.showMessage(tr(MsgId::WEB_WIFI_NO_CFG_TITLE), tr(MsgId::WEB_WIFI_NO_CFG_L1),
+                          tr(MsgId::WEB_WIFI_NO_CFG_L2), "", "", 2200);
+        return;
     }
+    const WebPortalMode mode = (index == 1) ? WebPortalMode::HomeWifi : WebPortalMode::AccessPoint;
+    if (WebConfig.runPortal(ctx.config, mode)) {
+        AppController::getInstance().applyConfig();
+        if (Reader.isOpened()) LibraryManager::getInstance().flushReaderPosition();
+        LibraryManager::getInstance().touch();
+    }
+    LibraryManager::getInstance().scanOfflineBooks();
+    LibraryManager::getInstance().cardMayHaveChanged();   // files can be uploaded/deleted there
+    if (s_webSettingsReturnState == STATE_LIBRARY) {
+        ctx.currentState = STATE_LIBRARY;
+        drawLibraryScreen(ctx, uikit::periodicFullRefresh());
+        return;
+    }
+    drawWebSettingsScreen(ctx, false);
 }
 
 // ---------------------------------------------------------------- server settings
@@ -517,8 +528,24 @@ void handleWifiSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
 }
 
 void handleWebSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
+    if (event.action != ACTION_CLICK) return;
+    const Action a = Actions::of(event);
+    if (a == Action::Back || a == Action::Prev) {
+        if (s_webSettingsReturnState == STATE_LIBRARY) {
+            ctx.currentState = STATE_LIBRARY;
+            drawLibraryScreen(ctx, false);
+            return;
+        }
+    }
     handleMenu(ctx, event, ctx.selectedWebSettingIndex, NUM_WEB_SETTINGS_ITEMS, updateWebSettingsSelection,
                executeWebSetting, STATE_SETTINGS, drawSettingsScreen, false);
+}
+
+void openWebSettings(AppContext& ctx, AppState returnState) {
+    s_webSettingsReturnState = returnState;
+    ctx.currentState = STATE_WEB_SETTINGS;
+    ctx.selectedWebSettingIndex = 0;
+    drawWebSettingsScreen(ctx, false);
 }
 
 void handleServerSettingsEvent(AppContext& ctx, const ButtonEvent& event) {

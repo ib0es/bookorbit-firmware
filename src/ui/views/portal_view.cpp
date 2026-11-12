@@ -61,25 +61,27 @@ void drawQrCode(Rect box, const char* payload) {
 }
 
 void drawHeaderBand(Rect& area, int stepNo, TextAlign titleAlign, const char* title) {
-    const int16_t badgeH = (int16_t)(lineHeight(FontSmall) + 8);
-    Rect row = takeTop(area, badgeH);
+    if (stepNo > 0) {
+        const int16_t badgeH = (int16_t)(lineHeight(FontSmall) + 8);
+        Rect row = takeTop(area, badgeH);
 
-    char badge[24];
-    snprintf(badge, sizeof(badge), tr(MsgId::WEB_STEP_BADGE_FMT), stepNo);
-    const int16_t bw = std::min<int16_t>((int16_t)(row.width * 2 / 3), (int16_t)(textWidth(FontSmall, badge) + 20));
-    Rect pillRect{row.x, row.y, bw, row.height};
-    fill(pillRect, Color::Black, 4);
-    text(pillRect, badge, FontSmall, Color::White, TextAlign::Center);
+        char badge[24];
+        snprintf(badge, sizeof(badge), tr(MsgId::WEB_STEP_BADGE_FMT), stepNo);
+        const int16_t bw = std::min<int16_t>((int16_t)(row.width * 2 / 3), (int16_t)(textWidth(FontSmall, badge) + 20));
+        Rect pillRect{row.x, row.y, bw, row.height};
+        fill(pillRect, Color::Black, 4);
+        text(pillRect, badge, FontSmall, Color::White, TextAlign::Center);
 
-    char counter[12];
-    snprintf(counter, sizeof(counter), "%d / 2", stepNo);
-    const int16_t cw = (int16_t)(row.width - bw - 8);
-    if (cw > 0) {
-        text(Rect{(int16_t)(row.x + bw + 8), row.y, cw, row.height}, counter,
-             FontSmall, Color::Black, TextAlign::Right);
+        char counter[12];
+        snprintf(counter, sizeof(counter), "%d / 2", stepNo);
+        const int16_t cw = (int16_t)(row.width - bw - 8);
+        if (cw > 0) {
+            text(Rect{(int16_t)(row.x + bw + 8), row.y, cw, row.height}, counter,
+                 FontSmall, Color::Black, TextAlign::Right);
+        }
+
+        takeTop(area, 8);
     }
-
-    takeTop(area, 8);
     if (title && *title) {
         const fi::FontId tf = wrappedHeight(title, FontTitle, area.width, 2) <= lineHeight(FontTitle) * 2
                                   ? FontTitle
@@ -99,7 +101,7 @@ void drawPortraitPage(Frame& f, Rect in, const PortalPageContent& c) {
     drawHeaderBand(in, c.stepNo, TextAlign::Center, c.title);
     takeTop(in, 8);
 
-    if (touchUi()) {
+    if (touchUi() && c.touchBtnLabel && *c.touchBtnLabel) {
         const int16_t btnH = (int16_t)(lineHeight(FontBody) + 20);
         Rect btn = takeBottom(in, btnH);
         drawNavButton(f, btn, c.touchBtnLabel, c.targetPage);
@@ -141,7 +143,7 @@ void drawLandscapePage(Frame& f, Rect in, const PortalPageContent& c) {
     hline(col.x, col.right(), col.y);
     takeTop(col, 10);
 
-    if (touchUi()) {
+    if (touchUi() && c.touchBtnLabel && *c.touchBtnLabel) {
         const int16_t btnH = (int16_t)(lineHeight(FontBody) + 18);
         Rect btn = takeBottom(col, btnH);
         drawNavButton(f, btn, c.touchBtnLabel, c.targetPage);
@@ -162,19 +164,24 @@ void drawLandscapePage(Frame& f, Rect in, const PortalPageContent& c) {
 
 }  // namespace
 
-void drawPortalScreen(const char* apSsid, const char* apPass, const char* url, int page) {
-    page = (page == 1) ? 1 : 0;
+void drawPortalScreen(const char* apSsid, const char* apPass, const char* url, int page, bool fullRefresh) {
+    const bool staMode = (page < 0);
+    if (!staMode) page = (page == 1) ? 1 : 0;
 
     Pass pass;
     Frame& f = pass.frame();
     clear();
-    Rect area = topBar(f, tr(MsgId::WEB_TITLE));
+    Rect area = topBar(f, tr(staMode ? MsgId::WEB_STA_TITLE : MsgId::WEB_TITLE));
 
     KeyLabels keys;
     keys.back = tr(MsgId::KEY_DONE);
-    keys.left = (page == 1) ? tr(MsgId::WEB_KEY_WIFI) : "";
-    keys.right = (page == 0) ? tr(MsgId::WEB_KEY_URL) : "";
-    keys.touch = tr(MsgId::WEB_TOUCH_HINT);
+    if (staMode) {
+        keys.touch = tr(MsgId::WEB_STA_TOUCH_HINT);
+    } else {
+        keys.left = (page == 1) ? tr(MsgId::WEB_KEY_WIFI) : "";
+        keys.right = (page == 0) ? tr(MsgId::WEB_KEY_URL) : "";
+        keys.touch = tr(MsgId::WEB_TOUCH_HINT);
+    }
     area = keyHints(f, area, keys);
 
     area = insetXY(area, kMargin, 10);
@@ -188,7 +195,7 @@ void drawPortalScreen(const char* apSsid, const char* apPass, const char* url, i
     String wifiPayload = qr::formatWifiPayload(ssid, passStr);
 
     char ssidLine[96];
-    snprintf(ssidLine, sizeof(ssidLine), "SSID: %s", ssid);
+    snprintf(ssidLine, sizeof(ssidLine), staMode ? tr(MsgId::WEB_STA_SSID_FMT) : "SSID: %s", ssid);
     char passLine[64];
     snprintf(passLine, sizeof(passLine), tr(MsgId::WEB_STEP1_PASS_FMT), passStr);
 
@@ -196,31 +203,44 @@ void drawPortalScreen(const char* apSsid, const char* apPass, const char* url, i
     String urlDisplay = urlStr;
     if (urlDisplay.endsWith("/")) urlDisplay.remove(urlDisplay.length() - 1);
 
-    PortalPageContent content = (page == 0)
+    PortalPageContent content = staMode
         ? PortalPageContent{
-              1,
-              tr(MsgId::WEB_STEP1_TITLE),
-              wifiPayload.c_str(),
-              ssidLine,
-              false,
-              passLine,
-              true,
-              tr(MsgId::WEB_STEP1_HINT),
-              tr(MsgId::WEB_BTN_TO_URL),
-              1,
-          }
-        : PortalPageContent{
-              2,
-              tr(MsgId::WEB_STEP2_TITLE),
+              0,
+              tr(MsgId::WEB_STA_SCAN_TITLE),
               urlStr,
               urlDisplay.c_str(),
               true,
-              tr(MsgId::WEB_STEP3_TITLE),
+              ssidLine,
               false,
-              tr(MsgId::WEB_STEP3_DESC),
-              tr(MsgId::WEB_BTN_TO_WIFI),
-              0,
-          };
+              tr(MsgId::WEB_STA_FOOTER_EXIT),
+              tr(MsgId::KEY_DONE),
+              -2,
+          }
+        : (page == 0)
+            ? PortalPageContent{
+                  1,
+                  tr(MsgId::WEB_STEP1_TITLE),
+                  wifiPayload.c_str(),
+                  ssidLine,
+                  false,
+                  passLine,
+                  true,
+                  tr(MsgId::WEB_STEP1_HINT),
+                  tr(MsgId::WEB_BTN_TO_URL),
+                  1,
+              }
+            : PortalPageContent{
+                  2,
+                  tr(MsgId::WEB_STEP2_TITLE),
+                  urlStr,
+                  urlDisplay.c_str(),
+                  true,
+                  tr(MsgId::WEB_STEP3_TITLE),
+                  false,
+                  tr(MsgId::WEB_STEP3_DESC),
+                  tr(MsgId::WEB_BTN_TO_WIFI),
+                  0,
+              };
 
     if (width() > height()) {
         drawLandscapePage(f, in, content);
@@ -228,11 +248,29 @@ void drawPortalScreen(const char* apSsid, const char* apPass, const char* url, i
         drawPortraitPage(f, in, content);
     }
 
-    present(true);
+    present(fullRefresh);
 }
 
 PortalAction handlePortalEvent(int btnId, int btnAction, int16_t x, int16_t y, int& page) {
     if (btnAction != ACTION_CLICK) return PortalAction::Stay;
+    if (page < 0) {
+        switch (btnId) {
+            case BTN_BACK:
+            case BTN_SWIPE_RIGHT:
+                return PortalAction::Close;
+            case BTN_TAP: {
+                if (backTapped(x, y)) return PortalAction::Close;
+                freeink::ui::ActionId action = 0;
+                int16_t value = 0;
+                if (hitTest(x, y, action, value) && action == kActionNav && value == -2) {
+                    return PortalAction::Close;
+                }
+                return PortalAction::Stay;
+            }
+            default:
+                return PortalAction::Stay;
+        }
+    }
     page = (page == 1) ? 1 : 0;
 
     switch (btnId) {

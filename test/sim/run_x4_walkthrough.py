@@ -9,8 +9,8 @@ Every case runs the headless runner on a fresh copy of simulator/sdcard (with
 test/sim/config.json), after an optional setup of the card, and checks the log
 and the files the steps must have left. It covers what the sync scenarios
 (run_sync_scenarios.py) do not: the screens and keys, the power rules, the
-files on the card. Navigation (X4): home rows 0 book, 1 catalog, 2 settings,
-3 sync; reader menu 0 contents, 1 appearance, 2 bookmarks, 3 sync, 4 resume,
+files on the card. Navigation (X4): home rows 0 book, 1 catalog, 2 offline,
+3 settings, 4 sync; reader menu 0 contents, 1 appearance, 2 bookmarks, 3 sync, 4 resume,
 5 close; settings 0 language, 1 Wi-Fi, 2 server, 3 sleep cover, 4 settings
 file, 5 info, 6 sync, 7 orientation; catalog 0 search, 1 all books ...
 """
@@ -18,6 +18,8 @@ import glob, json, os, re, shutil, subprocess, sys, tempfile
 from concurrent.futures import ThreadPoolExecutor
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Files a manual simulator session leaves on the card (uploaded offline books, their caches).
+SD_LEFTOVERS = shutil.ignore_patterns("offline", "offline#*")
 BIN = os.environ.get("X4_HEADLESS") or os.path.join(ROOT, "test/sim/build-x4/x4_headless")
 SCREEN_W = 528 if (os.environ.get("DEVICE") == "x3" or "build-x3" in BIN) else 480
 
@@ -29,7 +31,7 @@ ALL_BOOKS = "DC" + "DC"            # home -> catalog -> "All books"
 OPEN_BOOK = "C"                    # home: the book on the card
 READER_MENU = "C"                  # reading: the book menu
 APPEARANCE = READER_MENU + "DC"    # reading -> menu -> Appearance
-SETTINGS = "DDC"                   # home -> settings
+SETTINGS = "DDDC"                  # home -> settings
 SETTINGS_FILE = SETTINGS + "DDDDC" # -> "Settings file" submenu
 READING = SETTINGS + "UUUC"        # -> Reading (above Screen orientation and Web)
 HOME_SYNC = "UCww"                 # home: "Sync now"
@@ -143,6 +145,69 @@ def updown_pages(sd):
 def config_next(sd):
     c = cfg(sd); c.update(frontlight=30, language="es", line_spacing=150)
     json.dump(c, open(os.path.join(sd, "config_next.json"), "w"), ensure_ascii=False)
+
+def offline_epub(sd):
+    os.makedirs(os.path.join(sd, "offline"), exist_ok=True)
+    shutil.copy(os.path.join(sd, "books/Frankenstein.epub"), os.path.join(sd, "offline/OfflineOne.epub"))
+
+def offline_traces(sd):
+    """An offline book that was read: position, bookmarks, page cache, cover, no-cover marker."""
+    offline_epub(sd)
+    path = "/offline/OfflineOne.epub"
+    json.dump({"version": 1, "books": [
+        {"path": path, "title": "OfflineOne", "local": {"p": 0.4}},
+        {"path": "/books/Frankenstein.epub", "title": "Frankenstein", "local": {"p": 0.3}}]},
+        open(os.path.join(sd, "books/progress.json"), "w"))
+    json.dump({"filePath": path, "title": "OfflineOne", "author": "", "coverPath": "", "progress": 0.4,
+               "page": 3, "totalPages": 10}, open(os.path.join(sd, "books/last_book.json"), "w"))
+    os.makedirs(os.path.join(sd, "bookmarks"), exist_ok=True)
+    json.dump({"bookmarks": [{"spine": 1, "chars": 0, "percent": 0.02, "chapter": "c", "snippet": "s"}]},
+              open(os.path.join(sd, "bookmarks/offline#OfflineOne.epub.json"), "w"))
+    os.makedirs(os.path.join(sd, "cache/offline#OfflineOne.epub.fib"), exist_ok=True)
+    open(os.path.join(sd, "cache/offline#OfflineOne.epub.fib/marker"), "w").write("x")
+    os.makedirs(os.path.join(sd, "covers"), exist_ok=True)
+    for sfx in (".jpg", ".jpg.nocover", "_thumb_crop.bmp", "_fit.bmp"):
+        open(os.path.join(sd, "covers/offline#OfflineOne" + sfx), "w").write("x")
+
+def offline_traces_gone(log, sd):
+    rec = json.load(open(os.path.join(sd, "books/progress.json")))["books"]
+    last = json.load(open(os.path.join(sd, "books/last_book.json")))
+    return (not os.path.exists(os.path.join(sd, "offline/OfflineOne.epub"))
+            and [r["path"] for r in rec] == ["/books/Frankenstein.epub"]
+            and last.get("filePath") != "/offline/OfflineOne.epub"
+            and not os.path.exists(os.path.join(sd, "bookmarks/offline#OfflineOne.epub.json"))
+            and not os.path.exists(os.path.join(sd, "cache/offline#OfflineOne.epub.fib"))
+            and not files(sd, "covers/offline#OfflineOne*"))
+
+def offline_progressive_cover(sd):
+    """An offline EPUB whose cover is a progressive JPEG (TJpgDec cannot draw it),
+    and the empty no-cover marker an older firmware left for it."""
+    import io, zipfile
+    from PIL import Image
+    os.makedirs(os.path.join(sd, "offline"), exist_ok=True)
+    src = zipfile.ZipFile(os.path.join(sd, "books/Frankenstein.epub"))
+    out = zipfile.ZipFile(os.path.join(sd, "offline/Prog.epub"), "w")
+    for n in src.namelist():
+        d = src.read(n)
+        if n.endswith("_cover.jpg"):
+            b = io.BytesIO()
+            Image.open(io.BytesIO(d)).convert("RGB").save(b, "JPEG", progressive=True)
+            d = b.getvalue()
+        out.writestr(n, d, zipfile.ZIP_STORED if n == "mimetype" else zipfile.ZIP_DEFLATED)
+    out.close()
+    open(os.path.join(sd, "covers/offline#Prog.jpg.nocover"), "w").close()
+    json.dump({"filePath": "/offline/Prog.epub", "title": "Prog", "author": "", "coverPath": "",
+               "progress": 0, "page": 1, "totalPages": 1}, open(os.path.join(sd, "books/last_book.json"), "w"))
+
+def offline_covers(sd):
+    os.makedirs(os.path.join(sd, "offline"), exist_ok=True)
+    shutil.copy(os.path.join(ROOT, "test/books/Alice's Adventures in Wonderland - Lewis Carroll - FB2.fb2"),
+                os.path.join(sd, "offline/OffCover.fb2"))
+    shutil.copy(os.path.join(ROOT, "test/books/Alice's Adventures in Wonderland - Lewis Carroll - MOBI.mobi"),
+                os.path.join(sd, "offline/OffMobi.mobi"))
+    json.dump({"filePath": "/offline/OffCover.fb2", "title": "OffCover", "author": "",
+               "coverPath": "", "progress": 0, "page": 1, "totalPages": 1},
+              open(os.path.join(sd, "books", "last_book.json"), "w"))
 
 def fake_server(state):
     return lambda sd: server(sd, state)
@@ -339,7 +404,7 @@ CASES = [
      OPEN_BOOK + "ww", clock_redraw_fast),
     ("status bar: clock and UTC+3 saved and active from RTC",
      None, {"SIM_RTC_UTC": "1794391200"},
-     READING + "C" + "UU" + "C" + "D" + "RRRRRR" + "BBB" + "UU" + OPEN_BOOK,
+     READING + "C" + "UU" + "C" + "D" + "RRRRRR" + "BBB" + "UUU" + OPEN_BOOK,
      lambda log, sd: "[RTC] Ready" in log and "[Clock] Restored from RTC" in log
                      and cfg(sd).get("sb_clock") is True and cfg(sd).get("utc_offset_min") == 180
                      and "Page drawn" in after(log, ">>> BACK")),
@@ -353,14 +418,55 @@ CASES = [
     ("web: Settings -> Web opens Web submenu and Web Config QR portal",
      None, {},
      SETTINGS + "UC" + "[RB]" + "C" + "wB",
-     lambda log, sd: "drawWebSettingsScreen" in log and log.count(" FULL]") >= 3
+     lambda log, sd: "drawWebSettingsScreen" in log and "n_RIGHT" in log
                      and "drawSettingsScreen" in after(log, ">>> BACK")),
+    ("offline: empty Offline library shows 0 rows and BACK returns to Home",
+     None, {},
+     "DDC" + "B",
+     lambda log, sd: "List /offline: 0 rows" in log and "drawLibraryScreen" in log
+                     and "drawHomeScreen" in after(log, ">>> BACK")),
+    ("offline: empty Offline library launches Web settings via CONFIRM and returns via BACK",
+     None, {},
+     "DDC" + "C" + "B" + "B",
+     lambda log, sd: "List /offline: 0 rows" in log and "drawWebSettingsScreen" in log
+                     and "drawLibraryScreen" in log.split("drawWebSettingsScreen")[1]
+                     and "drawHomeScreen" in after(log, ">>> BACK")),
+    ("offline: book menu and RIGHT key transition to Web settings from offline library",
+     offline_epub, {},
+     "DDC" + "R" + "B" + "L" + "DDC" + "B" + "BB",
+     lambda log, sd: log.count("drawWebSettingsScreen") >= 2
+                     and "drawLibraryScreen" in log
+                     and "drawHomeScreen" in after(log.rsplit("drawWebSettingsScreen", 1)[1], ">>> BACK")),
+    ("offline: books in /offline are isolated from Catalog and delete removes only the file",
+     offline_epub, {},
+     ALL_BOOKS + "BB" + "DC" + "L" + "D" + "C" + "C" + "w",
+     lambda log, sd: "List /books: 7 rows" in log and "List /offline: 1 rows" in log
+                     and all(t != "OfflineOne" for _, _, t, _ in library_rows(log[:log.find("List /offline")]))
+                     and not os.path.exists(os.path.join(sd, "offline/OfflineOne.epub"))
+                     and os.path.exists(os.path.join(sd, "books/Pride and Prejudice.epub"))),
+    ("offline: deleting a book takes its position, bookmarks, caches and covers",
+     offline_traces, {},
+     "w" + "DDC" + "L" + "D" + "C" + "C" + "w",
+     offline_traces_gone),
+    ("offline: a progressive JPEG cover is drawn (converted to BMP), an old no-cover marker retried",
+     offline_progressive_cover, {},
+     "w",
+     lambda log, sd: "progressive JPEG as BMP" in log
+                     and open(os.path.join(sd, "covers/offline#Prog.jpg"), "rb").read(2) == b"BM"
+                     and not os.path.exists(os.path.join(sd, "covers/offline#Prog.jpg.nocover"))),
+    ("offline: unconverted FB2 and MOBI extract covers directly into /covers",
+     offline_covers, {},
+     "w" + "DDC" + "D" + "C" + "w",
+     lambda log, sd: bool(files(sd, "covers/offline#OffCover*.jpg"))
+                     and any(os.path.getsize(p) > 0 for p in files(sd, "covers/offline#OffCover*.jpg"))
+                     and bool(files(sd, "covers/offline#OffMobi*.jpg"))
+                     and any(os.path.getsize(p) > 0 for p in files(sd, "covers/offline#OffMobi*.jpg"))),
 ]
 
 def run_case(case):
     name, setup, env, script, check = case
     sd = tempfile.mkdtemp(); shutil.rmtree(sd)
-    shutil.copytree(os.path.join(ROOT, "simulator/sdcard"), sd)
+    shutil.copytree(os.path.join(ROOT, "simulator/sdcard"), sd, ignore=SD_LEFTOVERS)
     shutil.copy(os.path.join(ROOT, "test/sim/config.json"), os.path.join(sd, "config.json"))
     for f in ("server.json", "server_next.json"):
         if os.path.exists(os.path.join(sd, f)): os.remove(os.path.join(sd, f))

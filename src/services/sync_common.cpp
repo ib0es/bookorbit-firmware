@@ -66,6 +66,7 @@ const std::vector<BookMetadata>* savedCatalog(std::vector<BookMetadata>& local) 
 // Fills in missing server ids of a record from the library list / cached catalog.
 // Exact matches only (server id, path, or full title).
 void resolveServerIds(BookProgressRecord& rec) {
+    if (LibraryManager::isOfflinePath(rec.filePath)) return;
     auto& lib = LibraryManager::getInstance();
     for (const auto& b : lib.masterBooks) {
         if ((rec.fileId > 0 && b.fileId == rec.fileId) || b.filePath.equalsIgnoreCase(rec.filePath)) {

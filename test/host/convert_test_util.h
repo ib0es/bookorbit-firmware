@@ -17,6 +17,10 @@
 
 using namespace freeink::book;
 
+namespace Platform {
+__attribute__((weak)) void feedWatchdog() {}
+}
+
 static int g_failed = 0, g_checks = 0;
 #define CHECK(c)                                                         \
     do {                                                                 \

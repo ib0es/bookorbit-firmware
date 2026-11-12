@@ -94,12 +94,12 @@ void drawHomeScreen(AppContext& ctx, bool fullRefresh) {
     Rect area = appHeader(f);
     {
         // BACK: sleep on the book card, else back to it; LEFT/RIGHT: other recent
-        // books on the card, LEFT syncs on the sync row; OK/RIGHT open.
+        // books on the card, LEFT goes back to card elsewhere; OK/RIGHT open.
         const int sel = ctx.selectedHomeIndex;
         KeyLabels keys;
         keys.back = tr(sel == 0 ? MsgId::KEY_SLEEP : MsgId::KEY_BACK);
         keys.ok = tr(MsgId::KEY_OPEN);
-        keys.left = sel == 0 ? "\xE2\x97\x80" : sel == 3 ? tr(MsgId::KEY_SYNC) : "";
+        keys.left = sel == 0 ? "\xE2\x97\x80" : "";
         keys.right = sel == 0 ? "\xE2\x96\xB6" : tr(MsgId::KEY_OPEN);
         area = keyHints(f, area, keys);
     }
@@ -141,29 +141,34 @@ void drawHomeScreen(AppContext& ctx, bool fullRefresh) {
     hline(area.x, area.right(), area.y);
     takeTop(area, 6);
 
-    // Categories: Catalog, Settings
-    fi::ListItem items[2];
+    // Categories: Catalog, Offline Library, Settings
+    fi::ListItem items[3];
     char bookCountBuf[16];
-    int totalBooks = lib.getCounts().total;
-    snprintf(bookCountBuf, sizeof(bookCountBuf), "%d", totalBooks);
+    snprintf(bookCountBuf, sizeof(bookCountBuf), "%d", lib.getCounts().total);
+    char offlineCountBuf[16];
+    snprintf(offlineCountBuf, sizeof(offlineCountBuf), "%d", lib.offlineCount());
 
     items[0].label = tr(MsgId::HOME_CAT_CATALOG);
     items[0].value = bookCountBuf;
     items[0].actionValue = 1;
 
-    items[1].label = tr(MsgId::HOME_CAT_SETTINGS);
-    items[1].value = tr(MsgId::HOME_CAT_SETTINGS_SUB);
+    items[1].label = tr(MsgId::HOME_CAT_OFFLINE);
+    items[1].value = offlineCountBuf;
     items[1].actionValue = 2;
 
-    int16_t rowH = (int16_t)((area.height - 20 - 3 * 4) / 3);
-    const int16_t minRow = (int16_t)(lineHeight(FontBody) + 20), maxRow = (int16_t)(lineHeight(FontBody) + 36);
+    items[2].label = tr(MsgId::HOME_CAT_SETTINGS);
+    items[2].value = tr(MsgId::HOME_CAT_SETTINGS_SUB);
+    items[2].actionValue = 3;
+
+    int16_t rowH = (int16_t)((area.height - 20 - 4 * 4) / 4);
+    const int16_t minRow = (int16_t)(lineHeight(FontBody) + 14), maxRow = (int16_t)(lineHeight(FontBody) + 34);
     if (rowH < minRow) rowH = minRow;
     if (rowH > maxRow) rowH = maxRow;
 
     fi::ListProps lp;
     lp.items = items;
-    lp.count = 2;
-    lp.selectedIndex = (ctx.selectedHomeIndex >= 1 && ctx.selectedHomeIndex <= 2) ? ctx.selectedHomeIndex - 1 : -1;
+    lp.count = 3;
+    lp.selectedIndex = (ctx.selectedHomeIndex >= 1 && ctx.selectedHomeIndex <= 3) ? ctx.selectedHomeIndex - 1 : -1;
     lp.action = ActionCategory;
     lp.rowHeight = rowH;
     lp.rowGap = 4;
@@ -171,7 +176,7 @@ void drawHomeScreen(AppContext& ctx, bool fullRefresh) {
     lp.labelText = style(FontBody);
     lp.valueText = style(FontBody, Color::Black, TextAlign::Right);
     lp.scrollIndicator = false;
-    fi::list(f, takeTop(area, (int16_t)(2 * (rowH + 4))), lp);
+    fi::list(f, takeTop(area, (int16_t)(3 * (rowH + 4))), lp);
 
     takeTop(area, 4);
     hline(area.x, area.right(), area.y);
@@ -179,7 +184,7 @@ void drawHomeScreen(AppContext& ctx, bool fullRefresh) {
 
     // Sync row.
     Rect sync = takeTop(area, rowH);
-    const bool syncSel = (ctx.selectedHomeIndex == 3);
+    const bool syncSel = (ctx.selectedHomeIndex == 4);
     const Color ink = syncSel ? Color::White : Color::Black;
     if (syncSel) fill(sync, Color::Black);
     text(insetX(sync, 12), tr(MsgId::HOME_SYNC_NOW), FontBody, ink);

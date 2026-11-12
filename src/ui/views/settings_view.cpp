@@ -165,11 +165,20 @@ SettingItemDef getWifiSettingItemDef(const AppContext& ctx, int index) {
     }
 }
 
-SettingItemDef getWebSettingItemDef(const AppContext&, int index) {
+SettingItemDef getWebSettingItemDef(const AppContext& ctx, int index) {
     switch (index) {
         case 0:
-        default:
-            return { tr(MsgId::WIFI_ITEM_WEB), tr(MsgId::WIFI_ITEM_WEB_SUB), tr(MsgId::WIFI_TAG_WEB) };
+            return { tr(MsgId::WIFI_ITEM_WEB), tr(MsgId::WIFI_ITEM_WEB_SUB), tr(MsgId::WEB_MENU_TAG_AP) };
+        case 1:
+        default: {
+            char sub[80];
+            if (ctx.config.wifiSsid.length() > 0) {
+                snprintf(sub, sizeof(sub), tr(MsgId::WEB_MENU_PORTAL_WIFI_SUB), ctx.config.wifiSsid.c_str());
+            } else {
+                snprintf(sub, sizeof(sub), "%s", tr(MsgId::WEB_MENU_PORTAL_WIFI_NO_CFG));
+            }
+            return { tr(MsgId::WEB_MENU_PORTAL_WIFI), String(sub), tr(MsgId::WEB_MENU_TAG_WIFI) };
+        }
     }
 }
 

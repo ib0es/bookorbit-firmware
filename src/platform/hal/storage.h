@@ -21,6 +21,8 @@ public:
     bool isAvailable() const;
 
     uint64_t totalBytes() const;
+    uint64_t usedBytes();
+    uint64_t freeBytes();
 
     // Directory & file helpers
     bool ensureDirectories();

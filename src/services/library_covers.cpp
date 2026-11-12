@@ -4,6 +4,7 @@
 #include "sync_clock.h"
 #include "../reader/reader.h"
 #include "../convert/sd_convert.h"
+#include "../convert/cover_extract.h"
 #include "../reader/book_reader.h"
 #include "../core/ui_port.h"
 #include "../net/bookorbit_client.h"
@@ -122,7 +123,7 @@ String LibraryManager::resolveCoverPath(const String& filePath, const String& ti
 
             const char* candidates[] = {
                 "cover.jpg", "Cover.jpg", "cover.jpeg", "Cover.jpeg",
-                "folder.jpg", "folder.jpeg"
+                "cover.bmp", "Cover.bmp", "folder.jpg", "folder.jpeg"
             };
             for (const char* c : candidates) {
                 String p = dir + c;
@@ -133,6 +134,8 @@ String LibraryManager::resolveCoverPath(const String& filePath, const String& ti
                 if (isValidCoverFile(p1)) return p1;
                 String p2 = dir + base + ".jpeg";
                 if (isValidCoverFile(p2)) return p2;
+                String p3 = dir + base + ".bmp";
+                if (isValidCoverFile(p3)) return p3;
             }
         }
     }
@@ -142,12 +145,29 @@ String LibraryManager::resolveCoverPath(const String& filePath, const String& ti
     //    title: two books of one title do not share a cover).
     if (filePath.length() > 0) {
         String cPath = epubCoverPath(filePath);
+        // "This book has no cover it can draw": written by a firmware that converts
+        // PNG and progressive JPEG covers (content "2"). An older marker (empty: a
+        // failure for any reason, or a cover it could not convert yet) is dropped
+        // and the cover looked for again.
+        String noCoverMarker = cPath + ".nocover";
+        {
+            FsFile m = Storage.open(noCoverMarker.c_str(), O_RDONLY);
+            if (m) {
+                char v = 0;
+                const bool current = m.read(&v, 1) == 1 && v == '2';
+                m.close();
+                if (current) return "";
+                Storage.remove(noCoverMarker.c_str());
+            }
+        }
         if (isValidCoverFile(cPath)) return cPath;
 
         String cPathJpeg = cPath;
         if (cPathJpeg.endsWith(".jpg")) {
             cPathJpeg = cPathJpeg.substring(0, cPathJpeg.length() - 4) + ".jpeg";
             if (isValidCoverFile(cPathJpeg)) return cPathJpeg;
+            String cPathBmp = cPath.substring(0, cPath.length() - 4) + ".bmp";
+            if (isValidCoverFile(cPathBmp)) return cPathBmp;
         }
 
         // 3. Extract embedded cover from EPUB if allowed. A cover that cannot be
@@ -162,18 +182,30 @@ String LibraryManager::resolveCoverPath(const String& filePath, const String& ti
         if (!cHash) cHash = 1;
         bool knownBad = false;
         for (uint32_t h : s_unusableEpubCovers) if (h == cHash) { knownBad = true; break; }
-        // A converted book (FB2) has its EPUB in its cache directory once it was opened.
+        // A converted book (FB2/MOBI/AZW3) has its EPUB in its cache directory once it was opened.
         String epub = filePath, indexDir;
-        if (convert::needsConversion(filePath)) {
+        const bool conv = convert::needsConversion(filePath);
+        if (conv) {
             indexDir = BookReader::cacheDirFor(filePath);
             epub = indexDir + "/book.epub";
         }
-        if (allowExtract && !knownBad && (isEpubPath(filePath) || indexDir.length()) && Storage.exists(epub.c_str())) {
+        if (allowExtract && !knownBad) {
             bool noMemory = false;
-            if (BookReader::extractCover(epub, cPath, &noMemory, indexDir) && isValidCoverFile(cPath)) return cPath;
-            if (!noMemory) {   // short of memory now: tried again later
+            bool extracted = false;
+            if ((isEpubPath(filePath) || conv) && Storage.exists(epub.c_str())) {
+                extracted = BookReader::extractCover(epub, cPath, &noMemory, indexDir);
+            } else if (conv && Storage.exists(filePath.c_str())) {
+                extracted = convert::extractDirectCover(filePath, cPath);
+            }
+            if (extracted && isValidCoverFile(cPath)) return cPath;
+            if ((isEpubPath(filePath) || conv) && !noMemory) {   // short of memory now: tried again later
                 s_unusableEpubCovers[s_unusableNext] = cHash;
                 s_unusableNext = (s_unusableNext + 1) % (int)(sizeof(s_unusableEpubCovers) / sizeof(s_unusableEpubCovers[0]));
+                FsFile nc = Storage.open(noCoverMarker.c_str(), O_WRONLY | O_CREAT | O_TRUNC);
+                if (nc) {
+                    nc.write((const uint8_t*)"2", 1);
+                    nc.close();
+                }
             }
         }
     }

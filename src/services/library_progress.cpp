@@ -46,9 +46,9 @@ void LibraryManager::initLastBook() {
                 }
             }
         }
-    } else if (!masterBooks.empty()) {
-        // Fallback to first book in library
-        const BookItem& b = masterBooks[0];
+    } else if (!masterBooks.empty() || !offlineBooks.empty()) {
+        // Fallback to first book on the device (preferring catalog library, then offline).
+        const BookItem& b = !masterBooks.empty() ? masterBooks[0] : offlineBooks[0];
         lastBook.filePath = b.filePath;
         lastBook.title = b.title;
         lastBook.author = b.author;
@@ -156,6 +156,13 @@ void LibraryManager::applyRecordToLibrary(const BookProgressRecord& rec) {
     }
     for (auto& b : masterBooks) {
         if (b.filePath.equalsIgnoreCase(rec.filePath) || (rec.fileId > 0 && b.fileId == rec.fileId)) {
+            b.progress = pos.percent;
+            b.page = pos.page > 0 ? pos.page : 1;
+            b.xpath = pos.xpath.c_str();
+        }
+    }
+    for (auto& b : offlineBooks) {
+        if (b.filePath.equalsIgnoreCase(rec.filePath)) {
             b.progress = pos.percent;
             b.page = pos.page > 0 ? pos.page : 1;
             b.xpath = pos.xpath.c_str();

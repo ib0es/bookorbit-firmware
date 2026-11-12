@@ -1,5 +1,6 @@
 #include "library_manager.h"
 #include "library_internal.h"
+#include "../platform/system.h"
 #include "../core/progress_sync.h"
 #include "sync_clock.h"
 #include "../reader/reader.h"
@@ -68,30 +69,44 @@ std::vector<RecentBookInfo> LibraryManager::getRecentBooks() {
 
     // 2. Books on the card opened here (they have a position record), newest move first.
     ProgressStore& store = ProgressStore::instance();
-    std::vector<std::pair<uint32_t, int>> opened;   // (last local move, master index)
-    for (int i = 0; i < (int)masterBooks.size(); i++) {
-        const BookItem& b = masterBooks[i];
-        if (!b.isDownloaded) continue;
-        if (const BookProgressRecord* rec = store.find(b.fileId, b.filePath)) {
-            if (ProgressSync::hasProgress(rec->state.local.percent) || rec->state.local.page > 1) {
-                opened.push_back({ rec->state.localChangedAt, i });
+    struct OpenedEntry {
+        uint32_t changedAt;
+        bool isOffline;
+        int index;
+    };
+    std::vector<OpenedEntry> opened;
+    auto collectOpened = [&](const std::vector<BookItem>& vec, bool isOffline) {
+        for (int i = 0; i < (int)vec.size(); i++) {
+            const BookItem& b = vec[i];
+            if (!b.isDownloaded) continue;
+            if (const BookProgressRecord* rec = store.find(b.fileId, b.filePath)) {
+                if (ProgressSync::hasProgress(rec->state.local.percent) || rec->state.local.page > 1) {
+                    opened.push_back({ rec->state.localChangedAt, isOffline, i });
+                }
             }
         }
-    }
-    std::stable_sort(opened.begin(), opened.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
+    };
+    collectOpened(masterBooks, false);
+    collectOpened(offlineBooks, true);
+    std::stable_sort(opened.begin(), opened.end(),
+                     [](const OpenedEntry& a, const OpenedEntry& b) { return a.changedAt > b.changedAt; });
     for (const auto& o : opened) {
         if (list.size() >= 4) break;
-        const BookItem& b = masterBooks[o.second];
+        const BookItem& b = o.isOffline ? offlineBooks[o.index] : masterBooks[o.index];
         if (!listed(b.filePath)) list.push_back(toInfo(b));
     }
 
     // 3. Fill up with other books on the card.
-    for (const auto& b : masterBooks) {
-        if (list.size() >= 4) break;
-        if (!b.isDownloaded || b.isDirectory || listed(b.filePath)) continue;
-        if (!b.formats.empty() && !BookFormats::readable((BookFormats::Kind)b.activeKind())) continue;   // not openable yet
-        list.push_back(toInfo(b));
-    }
+    auto fillFrom = [&](const std::vector<BookItem>& vec) {
+        for (const auto& b : vec) {
+            if (list.size() >= 4) break;
+            if (!b.isDownloaded || b.isDirectory || listed(b.filePath)) continue;
+            if (!b.formats.empty() && !BookFormats::readable((BookFormats::Kind)b.activeKind())) continue;   // not openable yet
+            list.push_back(toInfo(b));
+        }
+    };
+    fillFrom(masterBooks);
+    fillFrom(offlineBooks);
     return list;
 }
 
@@ -177,15 +192,28 @@ bool LibraryManager::utf8ContainsIgnoreCase(const String& haystack, const String
     return foldString(haystack).indexOf(foldString(needle)) >= 0;
 }
 
+bool LibraryManager::isOfflinePath(const String& path) {
+    if (path.length() < 8) return false;
+    String lower = path;
+    lower.toLowerCase();
+    return lower.equals(kOfflineDir) || lower.startsWith("/offline/");
+}
+
+BookItem* LibraryManager::formatBookItem() {
+    auto& vec = formatsOffline ? offlineBooks : masterBooks;
+    return (formatsBook >= 0 && formatsBook < (int)vec.size()) ? &vec[formatsBook] : nullptr;
+}
+
 int LibraryManager::rowCount() const { return (int)rows.size(); }
 
 BookItem& LibraryManager::rowAt(int i) {
     const int r = rows[i];
-    return r >= 0 ? masterBooks[r] : folderRows[-1 - r];
+    if (r < 0) return folderRows[-1 - r];
+    return (currentFilter == FILTER_OFFLINE) ? offlineBooks[r] : masterBooks[r];
 }
 
 int LibraryManager::rowMasterIndex(int i) const {
-    return (i >= 0 && i < (int)rows.size() && rows[i] >= 0) ? rows[i] : -1;
+    return (currentFilter != FILTER_OFFLINE && i >= 0 && i < (int)rows.size() && rows[i] >= 0) ? rows[i] : -1;
 }
 
 const String& LibraryManager::libraryOf(const BookItem& b) const {
@@ -311,24 +339,29 @@ void LibraryManager::chooseFormat(BookItem& b) {
 }
 
 void LibraryManager::openFormats(int idx) {
-    if (idx < 0 || idx >= (int)masterBooks.size()) return;
+    const bool fromOffline = (currentFilter == FILTER_OFFLINE);
+    auto& src = fromOffline ? offlineBooks : masterBooks;
+    if (idx < 0 || idx >= (int)src.size()) return;
     if (!currentFolder.equals("@formats")) {
         formatsReturnFolder = currentFolder;
         formatsReturnIndex = selectedBookIndex;
+        formatsOffline = fromOffline;
     }
     formatsBook = idx;
     currentFolder = "@formats";
-    Serial.printf("[Library] Formats of '%s': %u\n", masterBooks[idx].title.c_str(), (unsigned)masterBooks[idx].formats.size());
+    Serial.printf("[Library] Formats of '%s': %u\n", src[idx].title.c_str(), (unsigned)src[idx].formats.size());
     // Start on the active format (row 0 is "..").
-    selectedBookIndex = masterBooks[idx].activeFormat >= 0 ? masterBooks[idx].activeFormat + 1 : 1;
+    selectedBookIndex = src[idx].activeFormat >= 0 ? src[idx].activeFormat + 1 : 1;
     rebuildRows();
 }
 
 void LibraryManager::closeFormats() {
     if (!currentFolder.equals("@formats")) return;
-    currentFolder = formatsReturnFolder.length() > 0 ? formatsReturnFolder : String("/books");
+    currentFolder = formatsReturnFolder.length() > 0 ? formatsReturnFolder
+                  : String(formatsOffline ? kOfflineDir : "/books");
     selectedBookIndex = formatsReturnIndex;
     formatsBook = -1;
+    formatsOffline = false;
     rebuildRows();
 }
 
@@ -454,9 +487,10 @@ void LibraryManager::buildMaster() {
             lastBook.fileId = item.fileId;
         }
     }
-    Serial.printf("[Library] Master list: %d books (%d in the catalog, %d libraries) in %lu ms\n",
+    scanOfflineBooks();
+    Serial.printf("[Library] Master list: %d books (%d in the catalog, %d libraries, %d offline) in %lu ms\n",
                   (int)masterBooks.size(), (int)catalogSize, (int)libraryNames.size(),
-                  (unsigned long)(millis() - t0));
+                  (int)offlineBooks.size(), (unsigned long)(millis() - t0));
 }
 
 void LibraryManager::refreshProgressOf(BookItem& item) {
@@ -477,6 +511,22 @@ void LibraryManager::refreshProgressOf(BookItem& item) {
 void LibraryManager::refreshProgress() {
     ProgressStore& store = ProgressStore::instance();
     for (auto& item : masterBooks) {
+        if (store.find(item.fileId, item.filePath)) refreshProgressOf(item);
+    }
+    for (auto& item : offlineBooks) {
+        if (store.find(item.fileId, item.filePath)) refreshProgressOf(item);
+    }
+}
+
+void LibraryManager::scanOfflineBooks() {
+    touch();
+    offlineBooks.clear();
+    if (!Storage.isAvailable()) return;
+    Storage.ensureDirectories();
+    collectAllLocalBooks(kOfflineDir, 0, offlineBooks, nullptr);
+    for (auto& item : offlineBooks) chooseFormat(item);
+    ProgressStore& store = ProgressStore::instance();
+    for (auto& item : offlineBooks) {
         if (store.find(item.fileId, item.filePath)) refreshProgressOf(item);
     }
 }
@@ -550,6 +600,7 @@ void LibraryManager::refreshLocalFiles() {
         if (!matched[i]) { masterBooks.push_back(found[i]); chooseFormat(masterBooks.back()); added++; }
     }
     if (added) refreshProgress();
+    scanOfflineBooks();
     _countsDirty = true;
     if (added || gone) Serial.printf("[Library] Card changed: %d new books, %d removed\n", added, gone);
 }
@@ -604,9 +655,12 @@ void LibraryManager::scanLocalBooks(bool forceMasterScan) {
         folderRows.clear();
         return;
     }
-    if (currentFolder.length() == 0) currentFolder = "/books";
+    if (currentFolder.length() == 0) currentFolder = (currentFilter == FILTER_OFFLINE) ? kOfflineDir : "/books";
     if (masterBooks.empty() || forceMasterScan || !_scanned) buildMaster();
-    else refreshProgress();   // positions changed by reading / syncing since the last list
+    else {
+        refreshProgress();   // positions changed by reading / syncing since the last list
+        if (currentFilter == FILTER_OFFLINE) scanOfflineBooks();
+    }
     _scanned = true;
     rebuildRows();
     _countsDirty = true;
@@ -673,13 +727,16 @@ void LibraryManager::rebuildRows() {
     const String& f = currentFolder;
     if (f.equals("@formats")) {
         // The formats of one book: a row each, with its own place on the card and position.
-        if (formatsBook < 0 || formatsBook >= (int)masterBooks.size()) {
-            currentFolder = formatsReturnFolder.length() > 0 ? formatsReturnFolder : String("/books");
+        const BookItem* parent = formatBookItem();
+        if (!parent) {
+            currentFolder = formatsReturnFolder.length() > 0 ? formatsReturnFolder
+                          : String(formatsOffline ? kOfflineDir : "/books");
             formatsBook = -1;
+            formatsOffline = false;
             rebuildRows();
             return;
         }
-        const BookItem& book = masterBooks[formatsBook];
+        const BookItem& book = *parent;
         BookItem up = folderItem(".. (" + String(tr(MsgId::BOOK_MENU_BACK)) + ")", "@formats-up", 0);
         up.author = book.title;
         addFolder(up);
@@ -812,6 +869,14 @@ void LibraryManager::rebuildRows() {
         for (const auto& d : dirs) addFolder(d);
         for (int i : files) rows.push_back(i);
         for (const auto& it : looseFiles) addFolder(it);
+    } else if (currentFilter == FILTER_OFFLINE) {
+        for (int i = 0; i < (int)offlineBooks.size(); i++) {
+            if (!visible(offlineBooks[i])) continue;
+            rows.push_back(i);
+        }
+        std::stable_sort(rows.begin(), rows.end(), [&](int a, int b) {
+            return foldCompare(offlineBooks[a].title, offlineBooks[b].title) < 0;
+        });
     } else {
         // "/books": all books, downloaded or completed: the ones on the card, then
         // the ones only on the server, each by title (was the order of the card

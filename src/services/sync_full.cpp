@@ -61,6 +61,7 @@ void syncOpenedBooks(AppContext& ctx, std::vector<int>& synced) {
     for (size_t i = 0; i < records.size(); i++) {
         if (SyncService::isCancelled() || SyncService::checkSyncCancel()) break;
         BookProgressRecord& rec = records[i];
+        if (LibraryManager::isOfflinePath(rec.filePath)) continue;
         if (rec.filePath.length() > 0 && !Storage.exists(rec.filePath.c_str())) continue;   // deleted book
         resolveServerIds(rec);
         if (rec.bookId <= 0) continue;   // matched against the catalog below

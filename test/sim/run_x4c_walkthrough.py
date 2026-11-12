@@ -9,12 +9,14 @@ guard while USB Serial is open at 100% battery).
 import json, os, re, shutil, subprocess, sys, tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Files a manual simulator session leaves on the card (uploaded offline books, their caches).
+SD_LEFTOVERS = shutil.ignore_patterns("offline", "offline#*")
 BIN = os.environ.get("X4C_HEADLESS") or os.path.join(ROOT, "test/sim/build-x4c/x4_headless")
 
 OPEN_BOOK = "C"
 READER_MENU = "C"
 
-SETTINGS = "DDC"  # Home -> Settings (row 0 = Language; 11 items total: 0..10)
+SETTINGS = "DDDC"  # Home -> Settings (row 0 = Language; 11 items total: 0..10)
 READING = SETTINGS + "UUUUC"  # -> Reading (7: above Screen orientation 8, USB Drive 9, Web 10)
 
 
@@ -67,7 +69,7 @@ CASES = [
      + "C"                 # Exit via physical CONFIRM -> remounts SD -> Settings
      + "C" + "C"           # Re-enter USB Drive (cursor remembered at 0 = Connect) -> Connect
      + "B"                 # Exit via physical BACK -> remounts SD -> Settings
-     + "B" + "UU" + OPEN_BOOK + "w",
+     + "B" + "UUU" + OPEN_BOOK + "w",
      lambda log, sd: config(sd).get("usb_msc") is True
                      and config(sd).get("auto_rotate") is True
                      and "Detaching filesystem and starting USB Mass Storage" in log
@@ -108,7 +110,7 @@ CASES = [
      None, {"SIM_BATTERY_PCT": "100", "SIM_BATTERY_VOLTS": "4.20", "SIM_SLEEP_TIMEOUT_MS": "400", "SIM_USB_SERIAL": "0"}),
 
     ("rtc: BM8563 clock and UTC+3 timezone configured with buttons and shown in status bar",
-     READING + "C" + "UU" + "C" + "D" + "RRRRRR" + "BBB" + "UU" + OPEN_BOOK,
+     READING + "C" + "UU" + "C" + "D" + "RRRRRR" + "BBB" + "UUU" + OPEN_BOOK,
      lambda log, sd: "[RTC] Ready" in log and "[Clock] Restored from RTC" in log
                      and config(sd).get("sb_clock") is True and config(sd).get("utc_offset_min") == 180
                      and "Page drawn" in after(log, ">>> BACK"),
@@ -126,7 +128,7 @@ CASES = [
 def run(script, cfg=None, env_extra=None):
     sd = tempfile.mkdtemp()
     shutil.rmtree(sd)
-    shutil.copytree(os.path.join(ROOT, "simulator/sdcard"), sd)
+    shutil.copytree(os.path.join(ROOT, "simulator/sdcard"), sd, ignore=SD_LEFTOVERS)
     shutil.copy(os.path.join(ROOT, "test/sim/config.json"), os.path.join(sd, "config.json"))
     if cfg:
         p = os.path.join(sd, "config.json")

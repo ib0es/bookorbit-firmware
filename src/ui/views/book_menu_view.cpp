@@ -19,6 +19,7 @@ int bookMenuItems(const BookItem& book, BookMenuAction out[BOOK_MENU_MAX]) {
     if (book.formats.size() > 1) out[n++] = BOOK_MENU_FORMATS;
     if (onServer && onDevice) out[n++] = BOOK_MENU_SYNC;   // a book only on the server has no position here
     if (onDevice) out[n++] = BOOK_MENU_DELETE;
+    if (LibraryManager::isOfflinePath(book.filePath.c_str())) out[n++] = BOOK_MENU_WEB;
     out[n++] = BOOK_MENU_BACK;
     return n;
 }
@@ -86,6 +87,7 @@ void drawBookMenuScreen(AppContext& ctx, bool fullRefresh) {
             case BOOK_MENU_FORMATS:  title = MsgId::BOOK_MENU_FORMATS;  sub = MsgId::BOOK_MENU_FORMATS_SUB; break;
             case BOOK_MENU_SYNC:     title = MsgId::BOOK_MENU_SYNC;     sub = MsgId::BOOK_MENU_SYNC_SUB; break;
             case BOOK_MENU_DELETE:   title = MsgId::BOOK_MENU_DELETE;   sub = MsgId::BOOK_MENU_DELETE_SUB; break;
+            case BOOK_MENU_WEB:      title = MsgId::BOOK_MENU_WEB;      sub = MsgId::BOOK_MENU_WEB_SUB; break;
             default:                 title = MsgId::BOOK_MENU_BACK;     sub = MsgId::BOOK_MENU_BACK_SUB; break;
         }
         card(f, takeTop(area, l.cardH), tr(title), tr(sub), nullptr, i == ctx.selectedBookMenuIndex,

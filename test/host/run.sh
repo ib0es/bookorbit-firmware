@@ -33,6 +33,7 @@ build x3sens   "$ROOT/test/host/test_x3_sensors.cpp" "$ROOT/src/core/time_utils.
 build x4pro    "$ROOT/test/host/test_x4pro_features.cpp"
 build x4c      -I"$ROOT/include" -DFREEINK_DEVICE_X4CLASSIC=1 -DFREEINK_CAP_USB_MSC=1 "$ROOT/test/host/test_x4c_features.cpp" "$ROOT/src/app/app_state.cpp" "$ROOT/src/ui/i18n.cpp"
 build wipe     -I"$ROOT/include" -DFREEINK_DEVICE_X4=1 "$ROOT/test/host/test_storage_wipe.cpp" "$ROOT/src/platform/hal/storage.cpp" "$ROOT/src/core/book_formats.cpp"
+build covext   -I"$ROOT/include" -DFREEINK_DEVICE_X4=1 "$ROOT/test/host/test_cover_extract.cpp" "$ROOT/src/convert/cover_extract.cpp" "$ROOT/src/platform/hal/storage.cpp" "$ROOT/src/core/book_formats.cpp"
 # FreeInkBook (the layout engine) for the tests that check against it: vendored C
 # libraries once, the C++ core with each test.
 FIB="$ROOT/freeink-sdk/libs/book/FreeInkBook"
@@ -70,6 +71,7 @@ echo "== X3Sensors";         "$OUT/x3sens/test" || rc=1
 echo "== X4ProFeatures";     "$OUT/x4pro/test" || rc=1
 echo "== X4ClassicFeatures"; "$OUT/x4c/test" || rc=1
 echo "== StorageWipe";       "$OUT/wipe/test" || rc=1
+echo "== CoverExtract";      "$OUT/covext/test" "$ROOT/test/books" || rc=1
 echo "== FB2 to EPUB";       "$OUT/fb2/test" "$ROOT/test/books" || rc=1
 echo "== MOBI to EPUB";      "$OUT/mobi/test" "$ROOT/test/books" || rc=1
 echo "== TXT to EPUB";       "$OUT/txt/test" "$ROOT/test/books" || rc=1

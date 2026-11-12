@@ -42,6 +42,7 @@ void SyncService::cancelBackground() {
 }
 
 void SyncService::startBackgroundUpload(AppContext& ctx, int fileId, const String& filePath, bool onlyIfDirty) {
+    if (LibraryManager::isOfflinePath(filePath)) return;
     WifiSession::prepare();
     if (ctx.config.wifiSsid.length() == 0 || ctx.config.serverHost.length() == 0) return;
     if (s_bgState != BgState::Idle) cancelBackground();

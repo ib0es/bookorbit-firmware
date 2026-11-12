@@ -11,7 +11,7 @@ using namespace uikit;
 
 namespace {
 
-enum LibraryAction : fi::ActionId { ActionOpenItem = 1 };
+enum LibraryAction : fi::ActionId { ActionOpenItem = 1, ActionLaunchWeb = 2 };
 
 // Drops a UTF-8 sequence left incomplete at the end of a buffer.
 void clipUtf8(char* s) {
@@ -54,7 +54,9 @@ void drawRow(Frame& f, Rect r, const BookItem& item, bool selected, int index) {
         char pct[12];
         const char* read = nullptr;
         if (item.progress >= LibraryManager::kCompletedAt) read = tr(MsgId::LIB_BADGE_COMPLETED);
-        else if (item.progress > 0.01f) { snprintf(pct, sizeof(pct), "%d%%", (int)roundf(item.progress * 100.0f)); read = pct; }
+        // Any position at all, rounded as on the home screen's card (a book just
+        // begun showed "0%" there and nothing here below 1%).
+        else if (item.progress > 0.0f) { snprintf(pct, sizeof(pct), "%d%%", (int)roundf(item.progress * 100.0f)); read = pct; }
         if (item.isDownloaded) {
             snprintf(badgeBuf, sizeof(badgeBuf), "%s", read ? read : tr(MsgId::HOME_CAT_DOWNLOADED));   // pct is local
         } else {
@@ -146,8 +148,11 @@ void drawLibraryScreen(AppContext& ctx, bool fullRefresh) {
     // Virtual lists: "<name> (<entries>)"; the ".." row is not counted.
     const int entries = total > 0 && lib.rowAt(0).title.startsWith("..") ? total - 1 : total;
     const String& folder = lib.currentFolder;
-    if (folder.equals("@formats") && lib.formatsBook >= 0 && lib.formatsBook < (int)lib.masterBooks.size()) {
-        snprintf(titleBuf, sizeof(titleBuf), tr(MsgId::LIB_FORMATS_HEADER_FMT), lib.masterBooks[lib.formatsBook].title.c_str());
+    if (folder.equals("@formats") && lib.formatBookItem()) {
+        snprintf(titleBuf, sizeof(titleBuf), tr(MsgId::LIB_FORMATS_HEADER_FMT), lib.formatBookItem()->title.c_str());
+    } else if (lib.currentFilter == FILTER_OFFLINE) {
+        if (total == 0) snprintf(titleBuf, sizeof(titleBuf), "%s", tr(MsgId::LIB_TITLE_OFFLINE));
+        else snprintf(titleBuf, sizeof(titleBuf), "%s (%d/%d)", tr(MsgId::LIB_TITLE_OFFLINE), lib.selectedBookIndex + 1, total);
     } else if (folder.equalsIgnoreCase("@libraries")) {
         snprintf(titleBuf, sizeof(titleBuf), tr(MsgId::LIB_LIBRARIES_HEADER_FMT), entries);
     } else if (folder.startsWith("@library:")) {
@@ -189,6 +194,12 @@ void drawLibraryScreen(AppContext& ctx, bool fullRefresh) {
         area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_OPEN), "", tr(MsgId::KEY_OPEN)});
     } else if (folder.equals("@formats")) {   // format rows have no book menu
         area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_READ), "", tr(MsgId::KEY_READ)});
+    } else if (lib.currentFilter == FILTER_OFFLINE) {
+        if (total == 0) {
+            area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_WEB), "", tr(MsgId::KEY_WEB)});
+        } else {
+            area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_READ), tr(MsgId::KEY_MENU), tr(MsgId::KEY_WEB)});
+        }
     } else {
         (void)curDownloaded;
         area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_READ), tr(MsgId::KEY_MENU), tr(MsgId::KEY_READ)});
@@ -196,12 +207,23 @@ void drawLibraryScreen(AppContext& ctx, bool fullRefresh) {
     area = insetXY(area, kMargin, 10);
 
     if (total == 0) {
-        takeTop(area, area.height / 4);
-        const MsgId msgs[3] = { MsgId::LIB_EMPTY_MSG_1, MsgId::LIB_EMPTY_MSG_2, MsgId::LIB_EMPTY_MSG_3 };
+        takeTop(area, lib.currentFilter == FILTER_OFFLINE ? 10 : (area.height / 4));
+        const MsgId msgs[3] = {
+            lib.currentFilter == FILTER_OFFLINE ? MsgId::LIB_EMPTY_OFFLINE_1 : MsgId::LIB_EMPTY_MSG_1,
+            lib.currentFilter == FILTER_OFFLINE ? MsgId::LIB_EMPTY_OFFLINE_2 : MsgId::LIB_EMPTY_MSG_2,
+            lib.currentFilter == FILTER_OFFLINE ? MsgId::LIB_EMPTY_OFFLINE_3 : MsgId::LIB_EMPTY_MSG_3,
+        };
         for (MsgId m : msgs) {
             const int16_t h = wrappedHeight(tr(m), FontBody, area.width, 3);
             text(takeTop(area, h), tr(m), FontBody, Color::Black, TextAlign::Left, 3);
+            takeTop(area, 10);
+        }
+        if (lib.currentFilter == FILTER_OFFLINE) {
             takeTop(area, 12);
+            const int16_t cardH = (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 24);
+            Rect cardR = takeTop(area, cardH);
+            card(f, cardR, tr(MsgId::LIB_EMPTY_OFFLINE_BTN), tr(MsgId::LIB_EMPTY_OFFLINE_SUB), tr(MsgId::KEY_WEB), true,
+                 ActionLaunchWeb, 0);
         }
     } else {
         const int16_t rowH = (int16_t)(2 * lineHeight(FontBody) + 18);   // two lines (U1)

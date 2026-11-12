@@ -174,7 +174,8 @@ void AppController::setup() {
     // After sleep (Settings > Synchronization > After sleep): the current book is
     // synced in the background while the reader / home screen is already up.
     auto syncAfterWake = [&]() {
-        if (isWakeFromSleep && _ctx.config.syncOnWake && lib.lastBook.filePath.length() > 0) {
+        if (isWakeFromSleep && _ctx.config.syncOnWake && lib.lastBook.filePath.length() > 0 &&
+            !LibraryManager::isOfflinePath(lib.lastBook.filePath)) {
             lib.currentRecord();   // make sure the book has a record to sync
             SyncService::startBackgroundUpload(_ctx, lib.lastBook.fileId, lib.lastBook.filePath, /*onlyIfDirty=*/false);
         }

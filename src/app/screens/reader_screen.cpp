@@ -65,7 +65,8 @@ void closeBookAndGoHome(AppContext& ctx, bool fullRefresh, bool draw = true) {
     // Unsynced position: uploaded in the background (Settings: send progress when
     // closing a book) while the home screen is already up; otherwise it waits
     // for the next sync.
-    const bool upload = ctx.config.syncOnClose && lib.currentRecord().state.localDirty;
+    const bool upload = ctx.config.syncOnClose && !LibraryManager::isOfflinePath(lib.lastBook.filePath) &&
+                        lib.currentRecord().state.localDirty;
     const int fileId = lib.lastBook.fileId;
     const String path = lib.lastBook.filePath;
     Reader.closeBook();

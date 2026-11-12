@@ -4,15 +4,19 @@
 
 struct AppConfig;
 
+enum class WebPortalMode : uint8_t {
+    AccessPoint = 0,
+    HomeWifi = 1,
+};
+
 class WebConfigManager {
 public:
     WebConfigManager();
 
-    // Runs captive portal web server to configure settings via smartphone or browser.
-    // Edits the server / Wi-Fi / sync fields of `cfg`; on save the whole config is
-    // written to /config.json (other settings such as font size are preserved).
-    // Returns true if new settings were saved, false if cancelled by user.
-    bool runPortal(AppConfig& cfg);
+    // Runs portal web server for uploading offline books and editing settings.
+    // Supports SoftAP captive portal (AccessPoint) or existing home Wi-Fi (HomeWifi).
+    // Returns true if config settings were saved at least once during the session.
+    bool runPortal(AppConfig& cfg, WebPortalMode mode = WebPortalMode::AccessPoint);
 };
 
 extern WebConfigManager WebConfig;

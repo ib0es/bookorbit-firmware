@@ -101,6 +101,21 @@ BookProgressRecord* ProgressStore::find(int fileId, const String& filePath) {
     return nullptr;
 }
 
+bool ProgressStore::remove(const String& filePath) {
+    if (filePath.length() == 0) return false;
+    bool removed = false;
+    for (auto it = _records.begin(); it != _records.end();) {
+        if (it->filePath.equalsIgnoreCase(filePath)) {
+            it = _records.erase(it);
+            removed = true;
+        } else {
+            ++it;
+        }
+    }
+    if (removed) _modified = true;
+    return removed;
+}
+
 BookProgressRecord& ProgressStore::getOrCreate(int fileId, int bookId, const String& filePath, const String& title) {
     BookProgressRecord* r = find(fileId, filePath);
     if (!r) {
