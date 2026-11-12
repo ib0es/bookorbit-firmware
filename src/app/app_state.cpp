@@ -14,6 +14,7 @@ bool hasUsbMscSetting() { return Platform::kDevice.usbMassStorage; }
 
 bool hasTouchWakeSetting() { return Platform::kDevice.touchWake; }
 
+int readerMenuItemCount() { return NUM_READER_MENU_ITEMS + (Frontlight.present() ? 1 : 0); }
 int orientationSettingIndex() { return NUM_SETTINGS_ITEMS - 1 + (Frontlight.present() ? 1 : 0); }
 
 int usbMscSettingIndex() { return hasUsbMscSetting() ? (orientationSettingIndex() + 1) : -1; }

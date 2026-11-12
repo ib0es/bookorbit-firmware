@@ -136,15 +136,20 @@ void drawReaderMenuScreen(AppContext& ctx, bool fullRefresh) {
     snprintf(marksVal, sizeof(marksVal), tr(MsgId::READER_MENU_BOOKMARKS_FMT), Bookmarks.count());
 
     struct Item { const char* title; const char* value; const char* tag; };
-    const Item items[NUM_READER_MENU_ITEMS] = {
+    char lightVal[48];
+    if (ctx.config.frontlight <= 0) snprintf(lightVal, sizeof(lightVal), "%s", tr(MsgId::SETTINGS_FRONTLIGHT_OFF));
+    else snprintf(lightVal, sizeof(lightVal), tr(MsgId::SETTINGS_FRONTLIGHT_FMT), ctx.config.frontlight, ctx.config.frontlightWarm);
+    const Item items[NUM_READER_MENU_ITEMS + 1] = {
         { tr(MsgId::READER_MENU_ITEM_TOC), chDesc, tr(MsgId::READER_MENU_TAG_CHAPTERS) },
         { tr(MsgId::READER_MENU_ITEM_APPEARANCE), fontVal, tr(MsgId::READER_MENU_TAG_FONT) },
         { tr(MsgId::READER_MENU_ITEM_BOOKMARKS), marksVal, tr(MsgId::READER_MENU_TAG_MARKS) },
         { tr(MsgId::READER_MENU_ITEM_SYNC), tr(MsgId::READER_MENU_SYNC_SUB), tr(MsgId::READER_MENU_TAG_WIFI) },
         { tr(MsgId::READER_MENU_ITEM_RESUME), tr(MsgId::READER_MENU_RESUME_SUB), tr(MsgId::READER_MENU_TAG_READ) },
         { tr(MsgId::READER_MENU_ITEM_CLOSE), tr(MsgId::READER_MENU_CLOSE_SUB), tr(MsgId::READER_MENU_TAG_EXIT) },
+        // Boards with a frontlight: the light without leaving the book (C2).
+        { tr(MsgId::SETTINGS_ITEM_FRONTLIGHT), lightVal, tr(MsgId::SETTINGS_TAG_LIGHT) },
     };
-    const int n = NUM_READER_MENU_ITEMS;
+    const int n = readerMenuItemCount();
     const int sel = ctx.selectedReaderMenuIndex;
     // A landscape screen: tighter cards, then a page at a time.
     const CardList l = cardList(area, n, sel, (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 22));

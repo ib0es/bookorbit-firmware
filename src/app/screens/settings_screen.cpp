@@ -11,6 +11,7 @@
 #include "../../core/time_utils.h"
 #include "../../ui/kit/ui_kit.h"
 #include "../../platform/hal/frontlight.h"
+#include "../../ui/views/reader_menu_view.h"
 #include "../../core/frontlight_policy.h"
 #include "../../platform/hal/usb_msc.h"
 #include "../../platform/hal/display.h"
@@ -138,6 +139,7 @@ void executeSetting(AppContext& ctx, int index) {
             drawSyncSettingsScreen(ctx, false);
             break;
         case 7:  // Frontlight (only listed on boards that have one)
+            ctx.frontlightReturnState = STATE_SETTINGS;
             ctx.currentState = STATE_FRONTLIGHT_SETTINGS;
             ctx.selectedFrontlightIndex = 0;
             drawFrontlightScreen(ctx, false);
@@ -566,6 +568,11 @@ void handleFrontlightEvent(AppContext& ctx, const ButtonEvent& event) {
             break;
         case Action::Back:
             ctx.config.save();
+            if (ctx.frontlightReturnState == STATE_READER_MENU) {   // opened from the book's menu (C2)
+                ctx.currentState = STATE_READER_MENU;
+                drawReaderMenuScreen(ctx, false);
+                break;
+            }
             ctx.currentState = STATE_SETTINGS;
             drawSettingsScreen(ctx, false);
             break;
