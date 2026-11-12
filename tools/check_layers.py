@@ -38,7 +38,8 @@ SHARED_UPPER = {"app/app_state.h", "ui/i18n.h", "ui/i18n_generated.h", "ui/text_
                 "ui/wifi_messages.h", "ui/font.h"}
 # (file, included) pairs still to be moved; see the fix plan (A8).
 KNOWN_EXCEPTIONS = {
-    ("src/reader/book_reader.cpp", "ui/kit/ui_kit.h"),   # page-problem notice, turning the UI target
+    ("src/reader/book_reader_render.cpp", "ui/kit/ui_kit.h"),    # the page-problem notice, turning the UI target
+    ("src/reader/book_reader_preview.cpp", "ui/kit/ui_kit.h"),   # the Appearance preview turns the UI target
 }
 
 
