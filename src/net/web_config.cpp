@@ -10,7 +10,6 @@
 #include "services/power_service.h"
 #include "platform/hal/storage.h"
 #include "app/app_state.h"
-#include "ui/font.h"
 #include "ui/i18n.h"
 
 WebConfigManager WebConfig;

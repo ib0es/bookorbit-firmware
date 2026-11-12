@@ -6,6 +6,10 @@
 
 class PowerService {
 public:
+    // The app's context, for the blocking loops that note activity and may
+    // put the device to sleep (set once at start-up: services do not reach
+    // into the app controller).
+    static void setContext(AppContext& ctx);
     static void handleAccidentalWakeup();
     static int getSavedRtcState();
 
