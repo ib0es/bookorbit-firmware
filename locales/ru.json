@@ -631,5 +631,7 @@
   "SETTINGS_ITEM_READING": "Чтение",
   "SETTINGS_TAG_READING": "ЧТЕНИЕ >",
   "SETTINGS_READING_SUB": "Строка состояния, обновление, картинки, клавиши",
-  "READING_TITLE": "ЧТЕНИЕ"
+  "READING_TITLE": "ЧТЕНИЕ",
+  "SB_TAG": "СТРОКА >",
+  "SB_SCREEN_TITLE": "СТРОКА СОСТОЯНИЯ"
 }

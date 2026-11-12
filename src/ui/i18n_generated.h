@@ -645,7 +645,9 @@ enum class MsgId : uint16_t {
     SETTINGS_TAG_READING = 630,
     SETTINGS_READING_SUB = 631,
     READING_TITLE = 632,
-    COUNT = 633
+    SB_TAG = 633,
+    SB_SCREEN_TITLE = 634,
+    COUNT = 635
 };
 
 // Language: English (en)
@@ -1283,6 +1285,8 @@ static const char* const STRINGS_EN[(size_t)MsgId::COUNT] PROGMEM = {
     /* SETTINGS_TAG_READING */ "READING >",
     /* SETTINGS_READING_SUB */ "Status bar, refresh, pictures, keys",
     /* READING_TITLE */ "READING",
+    /* SB_TAG */ "BAR >",
+    /* SB_SCREEN_TITLE */ "STATUS BAR",
 };
 
 // Language: Russian (ru)
@@ -1920,6 +1924,8 @@ static const char* const STRINGS_RU[(size_t)MsgId::COUNT] PROGMEM = {
     /* SETTINGS_TAG_READING */ "ЧТЕНИЕ >",
     /* SETTINGS_READING_SUB */ "Строка состояния, обновление, картинки, клавиши",
     /* READING_TITLE */ "ЧТЕНИЕ",
+    /* SB_TAG */ "СТРОКА >",
+    /* SB_SCREEN_TITLE */ "СТРОКА СОСТОЯНИЯ",
 };
 
 // Language: Spanish (es)
@@ -2557,6 +2563,8 @@ static const char* const STRINGS_ES[(size_t)MsgId::COUNT] PROGMEM = {
     /* SETTINGS_TAG_READING */ "LECTURA >",
     /* SETTINGS_READING_SUB */ "Barra de estado, refresco, imágenes, teclas",
     /* READING_TITLE */ "LECTURA",
+    /* SB_TAG */ "BARRA >",
+    /* SB_SCREEN_TITLE */ "BARRA DE ESTADO",
 };
 
 static const char* const* const I18N_ALL_TABLES[(size_t)AppLanguage::COUNT] = {

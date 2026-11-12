@@ -6,8 +6,8 @@
 // Tap targets of the reader's menus (hit actions), for the touch router.
 enum ReaderMenuAction : int {
     ActionChapter = 1, ActionMenuItem, ActionFontSize, ActionTypeface, ActionAppearance, ActionBookmark,
-    ActionStatusBar, ActionReadingSetting,
-    ActionValueLess,        // "-" of a value row (appearance, status bar): touch boards (C5)
+    ActionStatusBar,
+    ActionValueLess,        // "-" of a value row (appearance): touch boards (C5)
     ActionValueMore,        // "+"
     ActionBookmarkDelete,   // "delete" beside a bookmark: touch boards (C1)
 };
@@ -20,9 +20,6 @@ void drawFontMenuScreen(AppContext& ctx, bool fullRefresh = false);
 void drawTypefaceMenuScreen(AppContext& ctx, bool fullRefresh = false);
 // Typeface, size, spacing, margins... (src/app/screens/appearance.h), a sample below.
 void drawAppearanceScreen(AppContext& ctx, bool fullRefresh = false);
-void drawStatusBarScreen(AppContext& ctx, bool fullRefresh = false);
-// Settings -> Reading: status bar, full refresh, pictures, UP/DOWN keys.
-void drawReadingSettingsScreen(AppContext& ctx, bool fullRefresh = false);
 // This page's bookmark (add/remove) and the book's bookmarks.
 void drawBookmarksScreen(AppContext& ctx, bool fullRefresh = false);
 int bookmarkOnPage();   // index in Bookmarks of the page on screen's, -1 if none

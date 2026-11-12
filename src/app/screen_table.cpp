@@ -36,11 +36,11 @@ const ScreenEntry kScreens[] = {
     { STATE_TYPEFACE_MENU,        ReaderScreen::handleTypefaceMenuEvent,       drawTypefaceMenuScreen,       &C::selectedTypefaceIndex,      true  },
     { STATE_APPEARANCE_MENU,      ReaderScreen::handleAppearanceEvent,         drawAppearanceScreen,         &C::selectedAppearanceIndex,    true  },
     { STATE_BOOKMARKS,            ReaderScreen::handleBookmarksEvent,          drawBookmarksScreen,          &C::selectedBookmarkIndex,      true  },
-    { STATE_STATUSBAR_MENU,       ReaderScreen::handleStatusBarEvent,          drawStatusBarScreen,          &C::selectedStatusBarIndex,     false },
+    { STATE_STATUSBAR_MENU,       ReaderScreen::handleStatusBarEvent,          drawStatusBarScreen,          &C::selectedStatusBarIndex,     true  },
     { STATE_SD_SETTINGS,          SettingsScreen::handleSdSettingsEvent,       drawSdSettingsScreen,         &C::selectedSdSettingIndex,     true  },
     { STATE_USB_MSC_SETTINGS,     SettingsScreen::handleUsbMscSettingsEvent,   drawUsbMscSettingsScreen,     &C::selectedUsbMscIndex,        true  },
     { STATE_USB_MSC,              SettingsScreen::handleUsbMscEvent,           drawUsbMsc,                   nullptr,                        false },
-    { STATE_READING_SETTINGS,     SettingsScreen::handleReadingSettingsEvent,  drawReadingSettingsScreen,    &C::selectedReadingSettingIndex, false },
+    { STATE_READING_SETTINGS,     SettingsScreen::handleReadingSettingsEvent,  drawReadingSettingsScreen,    &C::selectedReadingSettingIndex, true  },
 };
 
 }  // namespace
