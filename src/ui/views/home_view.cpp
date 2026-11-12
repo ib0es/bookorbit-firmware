@@ -30,10 +30,10 @@ void drawFeatured(Frame& f, Rect card, AppContext& ctx, const RecentBookInfo& bo
     frameRect(cover, Color::Black);
 
     bool coverDrawn = false;
-    // The cover drawn last is in RAM (JpegViewer): no need to check its file again.
-    const bool inRam = book.coverPath.length() > 0 &&
-                       JpegViewer::hasCached(book.coverPath.c_str(), cover.width - 2, cover.height - 2, COVER_FIT_CROP);
-    String covPath = inRam ? book.coverPath : LibraryManager::resolveCoverPath(book.filePath, book.title, book.coverPath, true);
+    // P4: book.coverPath is LibraryManager::recentCover()'s answer, kept until the
+    // library changes; an empty one means "no cover": the card is not searched
+    // again (about 12 file checks) at every key press.
+    const String& covPath = book.coverPath;
     if (covPath.length() > 0) {
         coverDrawn = JpegViewer::drawCover(covPath.c_str(), cover.x + 1, cover.y + 1, cover.width - 2, cover.height - 2,
                                            COVER_FIT_CROP);

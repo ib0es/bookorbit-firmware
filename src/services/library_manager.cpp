@@ -150,9 +150,15 @@ String LibraryManager::resolveCoverPath(const String& filePath, const String& ti
         // 3. Extract embedded cover from EPUB if allowed. A cover that cannot be
         //    drawn (progressive JPEG, PNG) is not extracted again this session:
         //    the home screen asks for it on every redraw.
-        static std::vector<String> s_unusableEpubCovers;
+        // P4: by a hash of the path in a fixed ring, not a growing vector of
+        // long-lived Strings on the heap.
+        static uint32_t s_unusableEpubCovers[16] = {};
+        static int s_unusableNext = 0;
+        uint32_t cHash = 2166136261u;
+        for (size_t i = 0; i < cPath.length(); i++) cHash = (cHash ^ (uint8_t)cPath[i]) * 16777619u;
+        if (!cHash) cHash = 1;
         bool knownBad = false;
-        for (const auto& p : s_unusableEpubCovers) if (p == cPath) { knownBad = true; break; }
+        for (uint32_t h : s_unusableEpubCovers) if (h == cHash) { knownBad = true; break; }
         // A converted book (FB2) has its EPUB in its cache directory once it was opened.
         String epub = filePath, indexDir;
         if (convert::needsConversion(filePath)) {
@@ -162,7 +168,10 @@ String LibraryManager::resolveCoverPath(const String& filePath, const String& ti
         if (allowExtract && !knownBad && (isEpubPath(filePath) || indexDir.length()) && Storage.exists(epub.c_str())) {
             bool noMemory = false;
             if (BookReader::extractCover(epub, cPath, &noMemory, indexDir) && isValidCoverFile(cPath)) return cPath;
-            if (!noMemory) s_unusableEpubCovers.push_back(cPath);   // short of memory now: tried again later
+            if (!noMemory) {   // short of memory now: tried again later
+                s_unusableEpubCovers[s_unusableNext] = cHash;
+                s_unusableNext = (s_unusableNext + 1) % (int)(sizeof(s_unusableEpubCovers) / sizeof(s_unusableEpubCovers[0]));
+            }
         }
     }
 
