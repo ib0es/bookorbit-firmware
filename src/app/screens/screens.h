@@ -49,6 +49,7 @@ bool resumeLastBook(AppContext& ctx);
 namespace SettingsScreen {
 void handleSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleWifiSettingsEvent(AppContext& ctx, const ButtonEvent& event);
+void handleWebSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleServerSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleSyncSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleReadingSettingsEvent(AppContext& ctx, const ButtonEvent& event);

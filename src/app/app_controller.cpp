@@ -1,6 +1,7 @@
 #include "app_controller.h"
 #include "../platform/device.h"
 #include "../platform/hal/mem_stats.h"
+#include <Preferences.h>
 #include <esp_sleep.h>
 #include <PowerManager.h>
 #include <BoardConfig.h>
@@ -31,6 +32,7 @@
 #include "../services/sync_service.h"
 #include "../storage/progress_store.h"
 #include "../ui/views/home_view.h"
+#include "../ui/views/status_modal.h"
 #include "../ui/views/catalog_view.h"
 #include "../ui/views/library_view.h"
 #include "../ui/views/settings_view.h"
@@ -110,6 +112,37 @@ void AppController::setup() {
     Font.begin(Display); // book fonts (src/ui/book_fonts.h)
     MemStats::mark("book fonts");
 
+    // One-shot SD card wipe requested by the web flasher via NVS.
+    enum class SdWipeOutcome { None, Ok, NoCard, Partial };
+    SdWipeOutcome sdWipeOutcome = SdWipeOutcome::None;
+    {
+        Preferences prefs;
+        if (prefs.begin("bookorbit", false)) {
+            if (prefs.getString("wipe_sd", "") == "1") {
+                Serial.printf("[BOOT] SD wipe requested (%s)\n", "bo:wipe_sd=1");
+                const String wipeLang = prefs.getString("wipe_lang", "");
+                if (wipeLang.length() > 0) {
+                    I18n::setLanguage(I18n::languageFromCode(wipeLang));
+                }
+                drawStatusModal(tr(MsgId::SD_WIPE_TITLE), tr(MsgId::SD_WIPE_RUNNING),
+                                nullptr, nullptr, nullptr, nullptr, true);
+                if (!Storage.isAvailable()) {
+                    Serial.println("[BOOT] SD wipe skipped: MicroSD not available.");
+                    sdWipeOutcome = SdWipeOutcome::NoCard;
+                } else if (Storage.wipeAll()) {
+                    Serial.println("[BOOT] SD card wiped cleanly.");
+                    sdWipeOutcome = SdWipeOutcome::Ok;
+                } else {
+                    Serial.println("[BOOT] SD card wiped with some protected items remaining.");
+                    sdWipeOutcome = SdWipeOutcome::Partial;
+                }
+                prefs.remove("wipe_sd");
+                prefs.remove("wipe_lang");
+            }
+            prefs.end();
+        }
+    }
+
     // After a modal closes, the screen of the current state is redrawn.
     Modal.setRedrawHook([this](bool full) { redrawCurrentScreen(full); });
 
@@ -178,6 +211,11 @@ void AppController::setup() {
     drawHomeScreen(_ctx, true); // Full refresh on boot
     // Leftovers of deleted books (cold boot only: keeps wake fast), once the screen is up.
     if (!isWakeFromSleep) lib.cleanOrphanFiles();
+    if (sdWipeOutcome == SdWipeOutcome::NoCard) {
+        Modal.showMessage(tr(MsgId::SD_WIPE_TITLE), tr(MsgId::SD_WIPE_NO_CARD), "", "", "", 3000);
+    } else if (sdWipeOutcome == SdWipeOutcome::Partial) {
+        Modal.showMessage(tr(MsgId::SD_WIPE_TITLE), tr(MsgId::SD_WIPE_PARTIAL), "", "", "", 3000);
+    }
     syncAfterWake();
     Buttons.clearEvents();
     _ctx.lastActivityTime = millis();

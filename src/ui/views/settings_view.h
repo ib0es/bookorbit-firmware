@@ -11,6 +11,9 @@ void drawWifiSettingsScreen(AppContext& ctx, bool fullRefresh = false);
 void updateWifiSettingsSelection(AppContext& ctx, int prevIndex, int newIndex);
 void updateWifiSettingsItem(AppContext& ctx, int index);
 
+void drawWebSettingsScreen(AppContext& ctx, bool fullRefresh = false);
+void updateWebSettingsSelection(AppContext& ctx, int prevIndex, int newIndex);
+
 void drawServerSettingsScreen(AppContext& ctx, bool fullRefresh = false);
 void updateServerSettingsSelection(AppContext& ctx, int prevIndex, int newIndex);
 void updateServerSettingsItem(AppContext& ctx, int index);

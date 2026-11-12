@@ -2,6 +2,9 @@
 #include "../include/SDCardManager.h"
 #include "../../src/net/bookorbit_client.h"
 #include "../../src/net/web_config.h"
+#include "../../src/core/ui_port.h"
+#include "../../src/platform/hal/buttons.h"
+#include "../../src/services/power_service.h"
 #include <filesystem>
 #include <cstdlib>
 
@@ -212,6 +215,20 @@ String BookOrbitClient::buildUrl(const String& host, const String& path) {
 WebConfigManager::WebConfigManager() {}
 
 bool WebConfigManager::runPortal(AppConfig& cfg) {
-    Serial.println("[SimNet] Simulated Web Portal opened and cancelled.");
+    (void)cfg;
+    Serial.println("[SimNet] Simulated Web Portal opened.");
+    int page = 0;
+    Ui::portalScreen("BookOrbit-Config", "12345678", "http://192.168.4.1/", page);
+    ButtonEvent event;
+    while (true) {
+        if (PowerService::pollModalEvent(event)) {
+            const PortalAction act = Ui::portalEvent(event.id, event.action, event.x, event.y, page);
+            if (act == PortalAction::Close) break;
+            if (act == PortalAction::Redraw) {
+                Ui::portalScreen("BookOrbit-Config", "12345678", "http://192.168.4.1/", page);
+            }
+        }
+    }
+    Serial.println("[SimNet] Simulated Web Portal closed.");
     return false;
 }

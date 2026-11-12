@@ -1,5 +1,9 @@
 #include "storage.h"
 #include <algorithm>
+#include <cstring>
+#ifdef ESP_PLATFORM
+#include <esp_task_wdt.h>
+#endif
 #include "../../core/book_formats.h"
 #include "../device.h"
 
@@ -76,6 +80,89 @@ bool StorageManager::ensureDirectories() {
     sd.ensureDirectoryExists("/covers");
     sd.ensureDirectoryExists("/cache");
     return true;
+}
+
+bool StorageManager::wipeAll() {
+    if (!isAvailable()) return false;
+
+    bool allRemoved = true;
+    struct DirFrame {
+        String path;
+        bool expanded;
+    };
+    std::vector<DirFrame> stack;
+    stack.push_back({String("/"), false});
+
+    uint32_t lastYieldMs = millis();
+    auto kickWdt = [&]() {
+        const uint32_t now = millis();
+        if (now - lastYieldMs >= 100) {
+#ifdef ESP_PLATFORM
+            if (esp_task_wdt_status(nullptr) == ESP_OK) {
+                esp_task_wdt_reset();
+            }
+#endif
+            delay(1);
+            lastYieldMs = millis();
+        }
+    };
+
+    while (!stack.empty()) {
+        DirFrame frame = stack.back();
+        stack.pop_back();
+
+        if (!frame.expanded) {
+            FsFile dir = open(frame.path.c_str(), O_RDONLY);
+            if (!dir || !dir.isDirectory()) {
+                if (dir) dir.close();
+                allRemoved = false;
+                continue;
+            }
+
+            std::vector<String> subdirs;
+            char nameBuf[256];
+            FsFile entry;
+            while (entry.openNext(&dir, O_RDONLY)) {
+                nameBuf[0] = '\0';
+                entry.getName(nameBuf, sizeof(nameBuf));
+                const bool isDir = entry.isDirectory();
+                entry.close();
+
+                if (nameBuf[0] == '\0' || strcmp(nameBuf, ".") == 0 || strcmp(nameBuf, "..") == 0) {
+                    continue;
+                }
+
+                String fullPath = frame.path;
+                if (!fullPath.endsWith("/")) fullPath += "/";
+                fullPath += nameBuf;
+
+                if (isDir) {
+                    subdirs.push_back(fullPath);
+                } else if (!remove(fullPath.c_str())) {
+                    Serial.printf("[Storage] Wipe: failed to remove file %s\n", fullPath.c_str());
+                    allRemoved = false;
+                }
+                kickWdt();
+            }
+            dir.close();
+
+            if (frame.path != "/") {
+                stack.push_back({frame.path, true});
+            }
+            for (const String& sub : subdirs) {
+                stack.push_back({sub, false});
+            }
+        } else {
+            if (!SDCardManager::getInstance().rmdir(frame.path.c_str())) {
+                Serial.printf("[Storage] Wipe: failed to remove dir %s\n", frame.path.c_str());
+                allRemoved = false;
+            }
+            kickWdt();
+        }
+    }
+
+    ensureDirectories();
+    return allRemoved;
 }
 
 FsFile StorageManager::open(const char* path, oflag_t oflag) {

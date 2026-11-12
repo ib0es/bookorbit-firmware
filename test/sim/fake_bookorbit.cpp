@@ -29,6 +29,9 @@
 #include "HTTPClient.h"
 #include "SDCardManager.h"
 #include "net/web_config.h"
+#include "core/ui_port.h"
+#include "platform/hal/buttons.h"
+#include "services/power_service.h"
 #include <ArduinoJson.h>
 #include <algorithm>
 #include <cstdio>
@@ -38,7 +41,21 @@
 
 WebConfigManager WebConfig;
 WebConfigManager::WebConfigManager() {}
-bool WebConfigManager::runPortal(AppConfig&) { return false; }
+bool WebConfigManager::runPortal(AppConfig&) {
+    int page = 0;
+    Ui::portalScreen("BookOrbit-Config", "12345678", "http://192.168.4.1/", page);
+    ButtonEvent event;
+    while (true) {
+        if (PowerService::pollModalEvent(event)) {
+            const PortalAction act = Ui::portalEvent(event.id, event.action, event.x, event.y, page);
+            if (act == PortalAction::Close) break;
+            if (act == PortalAction::Redraw) {
+                Ui::portalScreen("BookOrbit-Config", "12345678", "http://192.168.4.1/", page);
+            }
+        }
+    }
+    return false;
+}
 
 
 // ArduinoJson may be built without std::string support: go through a buffer.

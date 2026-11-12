@@ -24,6 +24,7 @@ public:
 
     // Directory & file helpers
     bool ensureDirectories();
+    bool wipeAll();
     FsFile open(const char* path, oflag_t oflag = O_RDONLY);
     bool exists(const char* path);
     bool remove(const char* path);

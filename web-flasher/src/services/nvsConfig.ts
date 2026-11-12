@@ -1,5 +1,5 @@
 import { encodeNVS, NVSNamespaces, NVSValue } from '@m1kad0/esp-nvs-utils';
-import { DeviceInitialConfig } from '../types';
+import { DeviceInitialConfig, Language } from '../types';
 import { FlasherError } from './firmwareImage';
 
 /** Preferences namespace used by the firmware (src/hal/storage.cpp). */
@@ -7,11 +7,16 @@ export const NVS_NAMESPACE = 'bookorbit';
 
 const utf8Len = (s: string) => new TextEncoder().encode(s).length;
 
+export interface BuildConfigOptions {
+  wipeSd?: boolean;
+  lang?: Language;
+}
+
 /**
  * Validates the optional setup form and turns it into NVS string entries.
  * Passwords and SSID are kept verbatim: leading/trailing spaces are legal there.
  */
-export function buildConfigEntries(cfg: DeviceInitialConfig): NVSValue[] {
+export function buildConfigEntries(cfg: DeviceInitialConfig, options: BuildConfigOptions = {}): NVSValue[] {
   const serverUrl = cfg.serverUrl?.trim() ?? '';
   const username = cfg.username?.trim() ?? '';
   const password = cfg.password ?? '';
@@ -32,6 +37,10 @@ export function buildConfigEntries(cfg: DeviceInitialConfig): NVSValue[] {
   add('password', password);
   add('wifi_ssid', wifiSsid.trim() ? wifiSsid : '');
   add('wifi_pass', wifiPass);
+  if (options.wipeSd) {
+    add('wipe_sd', '1');
+    add('wipe_lang', options.lang ?? 'en');
+  }
   return entries;
 }
 

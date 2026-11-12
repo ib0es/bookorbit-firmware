@@ -12,6 +12,7 @@ license.
 
 ## Bundled in this repository
 | miniz | `src/reader/miniz.c`, `src/reader/miniz.h` | MIT — Copyright 2013-2014 RAD Game Tools and Valve Software, 2010-2014 Rich Geldreich and Tenacious Software LLC (license text in the file header) |
+| QR Code generator (Nayuki) | `src/ui/vendor/qrcodegen.c`, `src/ui/vendor/qrcodegen.h` | MIT — Copyright Project Nayuki (`https://www.nayuki.io/page/qr-code-generator-library`) |
 | TJpgDec (JPEG decoder) | `freeink-sdk/libs/book/FreeInkBook/third_party/tjpgd/` | ChaN's free license (text in `tjpgd.c`) |
 | DejaVu Serif Condensed, DejaVu Sans glyphs (rendered to bitmaps) | `src/ui/book_fonts.h`, `src/ui/kit/ui_fonts.h` | Bitstream Vera Fonts license and Arev Fonts license; DejaVu changes are public domain — `LICENSES/DejaVu-Fonts-License.txt` |
 | Noto Serif (regular, bold, italic, bold italic; cut to Latin, Cyrillic and punctuation) | `src/reader/fonts/builtin_font_data.h`, `fonts/sd/` | SIL Open Font License 1.1, Copyright 2022 The Noto Project Authors — `LICENSES/OFL-1.1-NotoSerif.txt` |

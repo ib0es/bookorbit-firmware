@@ -55,6 +55,7 @@ export function samePartitionTables(a: PartitionEntry[], b: PartitionEntry[]): b
 export interface MergedImageInfo {
   partitions: PartitionEntry[];
   nvs: PartitionEntry;
+  appOffset: number;
   /** Flash bytes the partition layout needs. */
   requiredFlashBytes: number;
 }
@@ -91,7 +92,27 @@ export function validateMergedImage(bin: Uint8Array, chip: DeviceInfo['chip']): 
   }
 
   const requiredFlashBytes = partitions.reduce((m, p) => Math.max(m, p.offset + p.size), bin.length);
-  return { partitions, nvs, requiredFlashBytes };
+  return { partitions, nvs, appOffset: app.offset, requiredFlashBytes };
+}
+
+const WIPE_SD_CAP_MARKER = new TextEncoder().encode('bo:wipe_sd=1');
+
+/** Checks whether the app image includes the first-boot SD wipe handler. */
+export function supportsSdWipe(bin: Uint8Array, appOffset = 0x10000): boolean {
+  const needle = WIPE_SD_CAP_MARKER;
+  const limit = bin.length - needle.length;
+  for (let i = appOffset; i <= limit; i++) {
+    if (bin[i] !== needle[0]) continue;
+    let match = true;
+    for (let j = 1; j < needle.length; j++) {
+      if (bin[i + j] !== needle[j]) {
+        match = false;
+        break;
+      }
+    }
+    if (match) return true;
+  }
+  return false;
 }
 
 /* ---------------------------- Board signatures ---------------------------- */

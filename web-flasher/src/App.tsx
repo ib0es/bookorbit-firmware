@@ -18,7 +18,7 @@ import { loadReleases, resolveFirmwareUrls } from './services/releases';
 const isBin = (name: string) => name.toLowerCase().endsWith('.bin');
 
 export const App: React.FC = () => {
-  const { t } = useI18n();
+  const { lang, t } = useI18n();
   const { status, phase, logs, progress, detection, connect, disconnect, resetDevice, flash, clearLogs } = useWebSerial();
 
   const [selectedDevice, setSelectedDevice] = useState<DeviceKey | null>(null);
@@ -26,6 +26,7 @@ export const App: React.FC = () => {
   const [releases, setReleases] = useState<GitHubRelease[]>([]);
   const [filterUsb, setFilterUsb] = useState<boolean>(true);
   const [doErase, setDoErase] = useState<boolean>(true);
+  const [wipeSd, setWipeSd] = useState<boolean>(false);
   const [flashSuccess, setFlashSuccess] = useState<boolean>(false);
   const [flashError, setFlashError] = useState<string | null>(null);
 
@@ -122,7 +123,14 @@ export const App: React.FC = () => {
         image = new Uint8Array(await resp.arrayBuffer());
       }
 
-      await flash({ image, device: dev, mode: doErase ? 'clean' : 'update', config: initialConfig });
+      await flash({
+        image,
+        device: dev,
+        mode: doErase ? 'clean' : 'update',
+        config: initialConfig,
+        wipeSd,
+        lang,
+      });
       setFlashSuccess(true);
     } catch (err) {
       setFlashError(translateError(err));
@@ -177,6 +185,8 @@ export const App: React.FC = () => {
               onInitialConfigChange={setInitialConfig}
               doErase={doErase}
               setDoErase={setDoErase}
+              wipeSd={wipeSd}
+              setWipeSd={setWipeSd}
               isBookOrbitInstalled={detection.isBookOrbitInstalled}
               progress={progress}
               flashSuccess={flashSuccess}

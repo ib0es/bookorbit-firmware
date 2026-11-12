@@ -28,6 +28,10 @@ int touchWakeSettingIndex() {
     return orientationSettingIndex() + 1 + (hasUsbMscSetting() ? 1 : 0);
 }
 
-int settingsItemCount() {
+int webSettingIndex() {
     return orientationSettingIndex() + 1 + (hasUsbMscSetting() ? 1 : 0) + (hasTouchWakeSetting() ? 1 : 0);
+}
+
+int settingsItemCount() {
+    return webSettingIndex() + 1;
 }

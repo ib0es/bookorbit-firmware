@@ -26,6 +26,12 @@
   "erase_label": "Clean install (erase the whole flash — recommended when coming from factory firmware)",
   "erase_hint_update": "✓ Book Orbit detected: update mode, your settings in flash are kept",
   "erase_hint_clean": "ℹ Factory or other firmware detected: clean install (full flash erase)",
+  "wipe_sd_label": "Clear SD card on first boot (delete all files and books)",
+  "wipe_sd_warning": "Warning: all files, books, covers, and old settings on the MicroSD card will be permanently deleted.",
+  "wipe_sd_confirm_title": "Confirm SD card wipe",
+  "wipe_sd_confirm_body": "After flashing and rebooting, the reader will delete all files and folders on the inserted MicroSD card. This cannot be undone.",
+  "wipe_sd_confirm_ok": "Yes, clear SD & flash",
+  "wipe_sd_confirm_cancel": "Cancel",
   "flashing": "Flashing firmware...",
   "flash_done": "🎉 Done! Firmware verified, reader is restarting into Book Orbit.",
   "flash_err": "Error during flashing. Please check connection and try again.",
@@ -58,7 +64,7 @@
   "faq2_q": "Device has locked bootloader from factory (Xteink)?",
   "faq2_a": "Certain Xteink units ship with USB flashing locked in factory firmware. If flashing fails to start, run the community OTA Unlocker tool once to unlock USB flashing.",
   "faq3_q": "Will my books and SD card files be deleted?",
-  "faq3_a": "No. Flashing only writes to the internal ESP32 flash chip. Your MicroSD card with books and settings remains untouched.",
+  "faq3_a": "No. Flashing only writes to the internal ESP32 flash chip. Your MicroSD card with books and settings remains untouched unless you explicitly enable the SD card wipe option.",
   "compat_hint_conflict": "⚠ Hardware and installed firmware disagree — choose the model manually",
   "choose_model_hint": "Select your reader model below",
   "phase_preparing": "Preparing...",
@@ -78,5 +84,6 @@
   "err_wifi_ssid_len": "Wi-Fi network name must be at most 32 bytes.",
   "err_wifi_pass_len": "Wi-Fi password must be 8–63 characters (leave empty for open networks).",
   "err_server_url": "Server URL must start with http:// or https://",
-  "err_nvs_too_big": "Settings do not fit into the NVS partition."
+  "err_nvs_too_big": "Settings do not fit into the NVS partition.",
+  "err_wipe_sd_unsupported": "The selected firmware build does not support SD card wipe on boot. Choose a newer release or uncheck the SD card wipe option."
 }

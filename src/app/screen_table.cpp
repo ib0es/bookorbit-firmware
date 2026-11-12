@@ -41,6 +41,7 @@ const ScreenEntry kScreens[] = {
     { STATE_USB_MSC_SETTINGS,     SettingsScreen::handleUsbMscSettingsEvent,   drawUsbMscSettingsScreen,     &C::selectedUsbMscIndex,        true  },
     { STATE_USB_MSC,              SettingsScreen::handleUsbMscEvent,           drawUsbMsc,                   nullptr,                        false },
     { STATE_READING_SETTINGS,     SettingsScreen::handleReadingSettingsEvent,  drawReadingSettingsScreen,    &C::selectedReadingSettingIndex, true  },
+    { STATE_WEB_SETTINGS,         SettingsScreen::handleWebSettingsEvent,      drawWebSettingsScreen,        &C::selectedWebSettingIndex,     true  },
 };
 
 }  // namespace
