@@ -207,6 +207,9 @@ bool touchOnly() { return Platform::kDevice.touchOnly; }
 
 bool touchUi() { return Platform::kDevice.touch; }
 
+namespace { bool g_touchMissing = false; }
+void setTouchMissing(bool missing) { g_touchMissing = missing; }
+
 bool hitTest(int16_t x, int16_t y, fi::ActionId& action, int16_t& value) {
     const fi::Interaction* items = g_hits.data();
     for (size_t i = g_hits.count(); i-- > 0;) {  // last registered = drawn on top
@@ -366,9 +369,10 @@ Rect appHeader(Frame& f) {
 
 Rect footerHints(Frame&, Rect area, const char* line1, const char* line2) {
     if (touchOnly() && ((line1 && *line1) || (line2 && *line2))) {
-        // The screens' hints name LEFT / RIGHT / OK / BACK, which this board lacks.
-        line1 = tr(MsgId::TOUCH_HINT_L1);
-        line2 = tr(MsgId::TOUCH_HINT_L2);
+        // The screens' hints name LEFT / RIGHT / OK / BACK, which this board lacks;
+        // with the touch panel silent, the held keys stand in for them (C4).
+        line1 = tr(g_touchMissing ? MsgId::TOUCH_FALLBACK_L1 : MsgId::TOUCH_HINT_L1);
+        line2 = tr(g_touchMissing ? MsgId::TOUCH_FALLBACK_L2 : MsgId::TOUCH_HINT_L2);
     }
     const int16_t innerW = (int16_t)(width() - 2 * (kMargin + 4));
     const int16_t h1 = (line1 && *line1) ? (int16_t)(wrappedHeight(line1, FontSmall, innerW, 2) + 4) : 0;

@@ -1,6 +1,7 @@
 #include "input.h"
 
 #include "app_state.h"
+#include "../platform/device.h"
 #include "../reader/reader.h"
 #include "../ui/kit/ui_kit.h"
 
@@ -26,6 +27,12 @@ void install(AppContext& ctx) {
     g_ctx = &ctx;
     Buttons.setTouchMapper(uikit::touchToLogical);
     Buttons.setKeyRemap(orient);
+    // C4: a touch-only board with a silent touch panel would have no OK and no
+    // BACK: a held DOWN is OK, a held UP is BACK, and the footer says so.
+    const bool noTouch = Platform::kDevice.touchOnly && !Buttons.hasTouch();
+    if (noTouch) Serial.println("[Input] No touch panel: held DOWN = OK, held UP = BACK");
+    Buttons.setHoldFallback(noTouch);
+    uikit::setTouchMissing(noTouch);
 }
 
 }  // namespace Input

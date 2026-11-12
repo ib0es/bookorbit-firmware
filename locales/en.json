@@ -360,6 +360,8 @@
   "LIB_DELETE_BTN": "Delete",
   "TOUCH_HINT_L1": "Tap to choose · ◀ in the title or swipe right to go back",
   "TOUCH_HINT_L2": "[▲/▼] Select · Swipe up/down for the next list page · [POWER] Sleep",
+  "TOUCH_FALLBACK_L1": "Touch is not responding · hold ▼ = OK · hold ▲ = Back",
+  "TOUCH_FALLBACK_L2": "[▲/▼] Select · [POWER] Sleep",
   "TOUCH_MODAL_HINT": "Tap the screen to close or cancel",
   "FONT_MENU_TITLE": "FONT SIZE",
   "FONT_MENU_HINT": "[▲/▼] Select | [OK] Apply | [BACK] Back",
