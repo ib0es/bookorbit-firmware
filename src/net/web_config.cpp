@@ -1,5 +1,6 @@
 #include "web_config.h"
-#include "../ui/kit/ui_kit.h"
+#include "../core/ui_port.h"
+#include "../platform/device.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <DNSServer.h>
@@ -116,55 +117,6 @@ static String htmlEscape(const String& s) {
     return out;
 }
 
-static void drawPortalScreen(const char* apPass) {
-    using namespace uikit;
-    Pass pass;
-    Frame& f = pass.frame();
-    clear();
-    Rect area = topBar(f, tr(MsgId::WEB_TITLE));
-    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_DONE), "", "", ""}, tr(MsgId::WEB_FOOTER_EXIT));
-    area = insetXY(area, kMargin, 12);
-    frameRect(area, Color::Black, 2);
-    Rect in = insetXY(area, 14, 18);
-
-    struct Step { MsgId title; MsgId value; bool boxed; };
-    const Step steps[3] = {
-        { MsgId::WEB_STEP1_TITLE, MsgId::WEB_STEP1_SSID, true },
-        { MsgId::WEB_STEP2_TITLE, MsgId::WEB_STEP2_URL, true },
-        { MsgId::WEB_STEP3_TITLE, MsgId::WEB_STEP3_DESC, false },
-    };
-    int stepNo = 0;
-    for (const Step& st : steps) {
-        Rect band = takeTop(in, (int16_t)(lineHeight(FontBody) + 10));
-        fill(band, Color::Black, 4);
-        char badge[24];
-        snprintf(badge, sizeof(badge), tr(MsgId::WEB_STEP_BADGE_FMT), ++stepNo);
-        text(insetX(band, 10), badge, FontBody, Color::White);
-        takeTop(in, 8);
-        const int16_t th = wrappedHeight(tr(st.title), FontSmall, in.width, 2);
-        text(takeTop(in, th), tr(st.title), FontSmall, Color::Black, TextAlign::Left, 2);
-        takeTop(in, 6);
-        if (st.boxed) {
-            Rect box = takeTop(in, (int16_t)(lineHeight(FontBody) + 22));
-            frameRect(box, Color::Black);
-            text(insetX(box, 12), tr(st.value), FontBody);
-            if (st.value == MsgId::WEB_STEP1_SSID) {   // the hotspot's password, under its name
-                char passLine[64];
-                snprintf(passLine, sizeof(passLine), tr(MsgId::WEB_STEP1_PASS_FMT), apPass);
-                takeTop(in, 4);
-                Rect pbox = takeTop(in, (int16_t)(lineHeight(FontBody) + 22));
-                frameRect(pbox, Color::Black);
-                text(insetX(pbox, 12), passLine, FontTitle);
-            }
-        } else {
-            const int16_t vh = wrappedHeight(tr(st.value), FontBody, in.width, 3);
-            text(takeTop(in, vh), tr(st.value), FontBody, Color::Black, TextAlign::Left, 3);
-        }
-        takeTop(in, 22);
-    }
-    present(true);
-}
-
 bool WebConfigManager::runPortal(AppConfig& cfg) {
     String& serverUrl = cfg.serverHost;
     String& username = cfg.bookOrbitUser;
@@ -202,7 +154,7 @@ bool WebConfigManager::runPortal(AppConfig& cfg) {
     DNSServer dnsServer;
     dnsServer.start(53, "*", apIP);
 
-    drawPortalScreen(apPass);
+    Ui::portalScreen(apPass);   // drawn by the UI (A5)
 
     WebServer server(80);
     bool saved = false;
@@ -231,7 +183,7 @@ bool WebConfigManager::runPortal(AppConfig& cfg) {
         page.replace("%LBL_WIFI_PASS%", tr(MsgId::WEB_HTML_WIFI_PASS));
         page.replace("%BTN_SAVE%", tr(MsgId::WEB_HTML_BTN_SAVE));
         page.replace("%HTML_FOOTER%", tr(MsgId::WEB_HTML_FOOTER));
-        page.replace("%DEVICE%", uikit::deviceDisplayName());
+        page.replace("%DEVICE%", Platform::kDevice.name);
 
         // The saved passwords are never sent back to the browser.
         page.replace("%PASS_HINT%", htmlEscape(tr(MsgId::WEB_HTML_PASS_KEEP)));

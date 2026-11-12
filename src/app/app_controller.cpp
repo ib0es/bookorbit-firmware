@@ -36,6 +36,7 @@
 #include "../ui/views/book_menu_view.h"
 #include "../services/usb_msc_session.h"
 #include "input.h"
+#include "ui_port_impl.h"
 #include "../core/power_policy.h"
 #include "../platform/system.h"
 
@@ -77,6 +78,7 @@ void AppController::setup() {
     Battery.begin();
     Buttons.begin();
     Input::install(_ctx);
+    UiPortImpl::install();   // dialogs and screens for the layers below the UI (A5)
     MemStats::mark("battery, buttons");
     // FreeInk's bring-up order for boards whose SD card shares the display SPI
     // bus (X4/X3): board/controller detection, then the SD card, then the

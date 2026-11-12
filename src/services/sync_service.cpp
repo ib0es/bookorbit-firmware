@@ -1,15 +1,11 @@
 #include "sync_service.h"
 #include "../platform/hal/mem_stats.h"
-#include "../ui/modal.h"
 #include "../net/bookorbit_client.h"
 #include "../core/book_formats.h"
 #include "../platform/hal/buttons.h"
 #include "../platform/hal/storage.h"
-#include "../ui/views/status_modal.h"
-#include "../ui/views/home_view.h"
-#include "../ui/views/library_view.h"
-#include "../ui/views/settings_view.h"
 #include "../ui/i18n.h"
+#include "../core/ui_port.h"
 #include "../reader/reader.h"
 #include "../core/progress_sync.h"
 #include "../convert/sd_convert.h"
@@ -45,7 +41,7 @@ bool SyncService::checkSyncCancel() {
 void SyncService::abortSync(AppContext& ctx, AppState returnState, const char* title) {
     Serial.println("[Sync] Operation aborted by user.");
     BookOrbit.disconnectWiFi();
-    drawStatusModal(title ? title : tr(MsgId::SYNC_ABORTED_TITLE), tr(MsgId::SYNC_ABORTED_USER), tr(MsgId::SYNC_ABORTED_BY_USER_L2), tr(MsgId::SYNC_ABORT_DISCONNECTING), tr(MsgId::SYNC_ABORT_RETURNING));
+    Ui::status(title ? title : tr(MsgId::SYNC_ABORTED_TITLE), tr(MsgId::SYNC_ABORTED_USER), tr(MsgId::SYNC_ABORTED_BY_USER_L2), tr(MsgId::SYNC_ABORT_DISCONNECTING), tr(MsgId::SYNC_ABORT_RETURNING));
     delay(1200);
     Buttons.clearEvents();
     s_syncCancelled = false;
@@ -59,7 +55,7 @@ void SyncService::showState(AppContext& ctx, AppState state) {
     }
     ctx.currentState = state;
     if (Reader.isOpened()) placeBookmarks(Bookmarks);   // ones that came from the server
-    Modal.redrawScreen(false);
+    Ui::redrawScreen(false);
 }
 
 void SyncService::reportDownloadProgress(int percent) {
@@ -83,7 +79,7 @@ void SyncService::reportDownloadProgress(int percent) {
         bar[p++] = ']';
         bar[p] = '\0';
 
-        drawStatusModal(tr(MsgId::LIB_HINT_DOWNLOAD_BOOK), s_downloadingBookTitle.c_str(), pctText, bar, nullptr, tr(MsgId::COMMON_CANCEL));
+        Ui::status(tr(MsgId::LIB_HINT_DOWNLOAD_BOOK), s_downloadingBookTitle.c_str(), pctText, bar, nullptr, tr(MsgId::COMMON_CANCEL));
     }
 }
 
@@ -358,7 +354,7 @@ bool SyncService::downloadBook(AppContext& ctx, BookItem& book, AppState returnS
     WifiSession::prepare();
     const String url = book.downloadUrl();
     if (url.length() == 0) {
-        drawStatusModal(tr(MsgId::COMMON_ERROR), tr(MsgId::SYNC_ERR_FILE_NOT_FOUND), "");
+        Ui::status(tr(MsgId::COMMON_ERROR), tr(MsgId::SYNC_ERR_FILE_NOT_FOUND), "");
         PowerService::waitOrKey(2000);
         return false;
     }
@@ -369,19 +365,19 @@ bool SyncService::downloadBook(AppContext& ctx, BookItem& book, AppState returnS
         abortSync(ctx, returnState, tr(MsgId::SYNC_DOWNLOAD_ABORTED));
         return true;
     };
-    drawStatusModal(tr(MsgId::SYNC_DOWNLOAD_BOOK_TITLE), utf8Prefix(book.title, 64).c_str(), tr(MsgId::SYNC_CONNECTING_WIFI),
+    Ui::status(tr(MsgId::SYNC_DOWNLOAD_BOOK_TITLE), utf8Prefix(book.title, 64).c_str(), tr(MsgId::SYNC_CONNECTING_WIFI),
                     tr(MsgId::COMMON_WAIT), nullptr, tr(MsgId::COMMON_CANCEL));
 
     const bool wifi = BookOrbit.connectWiFi(ctx.config.wifiSsid.c_str(), ctx.config.wifiPass.c_str(), 15000, checkSyncCancel);
     if (cancelled()) return false;
     if (!wifi) {
-        drawStatusModal(tr(MsgId::WIFI_ERR_TITLE), tr(MsgId::WIFI_TEST_ERR_L1),
+        Ui::status(tr(MsgId::WIFI_ERR_TITLE), tr(MsgId::WIFI_TEST_ERR_L1),
                         wifiFailureLine(BookOrbit.lastWifiFailure(), tr(MsgId::WIFI_ERR_CHECK_SETTINGS)));
         PowerService::waitOrKey(2000);
         return false;
     }
 
-    drawStatusModal(tr(MsgId::SYNC_DOWNLOAD_BOOK_TITLE), utf8Prefix(book.title, 64).c_str(), tr(MsgId::SYNC_DOWNLOADING_FROM_SERVER),
+    Ui::status(tr(MsgId::SYNC_DOWNLOAD_BOOK_TITLE), utf8Prefix(book.title, 64).c_str(), tr(MsgId::SYNC_DOWNLOADING_FROM_SERVER),
                     ctx.config.serverHost.c_str(), nullptr, tr(MsgId::COMMON_CANCEL));
     ensureToken(ctx);
     if (cancelled()) return false;
@@ -425,7 +421,7 @@ bool SyncService::downloadBook(AppContext& ctx, BookItem& book, AppState returnS
     BookOrbit.disconnectWiFi();
     if (cancelled()) return false;
     if (!ok) {
-        drawStatusModal(tr(MsgId::COMMON_ERROR), tr(MsgId::SYNC_DOWNLOAD_ERR_L1), tr(MsgId::SYNC_DOWNLOAD_ERR_L2));
+        Ui::status(tr(MsgId::COMMON_ERROR), tr(MsgId::SYNC_DOWNLOAD_ERR_L1), tr(MsgId::SYNC_DOWNLOAD_ERR_L2));
         PowerService::waitOrKey(2000);
         return false;
     }
@@ -443,7 +439,7 @@ void returnFromSync(AppContext& ctx, AppState prevState) {
 
 void showConfigError(AppContext& ctx, AppState prevState, const char* what, const char* line1, const char* line2) {
     Serial.printf("[Sync] Not configured: %s\n", what);
-    drawStatusModal(tr(MsgId::SYNC_CONFIG_ERR_TITLE), line1, line2);
+    Ui::status(tr(MsgId::SYNC_CONFIG_ERR_TITLE), line1, line2);
     PowerService::waitOrKey(2000);
     SyncService::showState(ctx, prevState);
 }
@@ -551,14 +547,14 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
         return;
     }
 
-    drawStatusModal(tr(MsgId::SYNC_MODAL_TITLE), tr(MsgId::SYNC_CONNECTING_WIFI_PREFIX), ctx.config.wifiSsid.c_str(), nullptr, nullptr, tr(MsgId::COMMON_CANCEL));
+    Ui::status(tr(MsgId::SYNC_MODAL_TITLE), tr(MsgId::SYNC_CONNECTING_WIFI_PREFIX), ctx.config.wifiSsid.c_str(), nullptr, nullptr, tr(MsgId::COMMON_CANCEL));
     if (!BookOrbit.connectWiFi(ctx.config.wifiSsid.c_str(), ctx.config.wifiPass.c_str(), 10000, checkSyncCancel)) {
         if (s_syncCancelled || checkSyncCancel()) {
             abortSync(ctx, prevState);
             return;
         }
         Serial.println("[Sync] Wi-Fi connection failed.");
-        drawStatusModal(tr(MsgId::WIFI_ERR_TITLE), tr(MsgId::SYNC_ERR_WIFI_CONNECT_L1),
+        Ui::status(tr(MsgId::WIFI_ERR_TITLE), tr(MsgId::SYNC_ERR_WIFI_CONNECT_L1),
                         wifiFailureLine(BookOrbit.lastWifiFailure(), tr(MsgId::SYNC_ERR_WIFI_CONNECT_L2)));
         PowerService::waitOrKey(1800);
         lib.scanLocalBooks();
@@ -571,7 +567,7 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
     }
 
     MemStats::log("sync: Wi-Fi up");
-    drawStatusModal(tr(MsgId::SYNC_MODAL_TITLE), tr(MsgId::SYNC_WIFI_CONNECTED), tr(MsgId::SYNC_FETCHING_CATALOG_PROGRESS), ctx.config.serverHost.c_str(), nullptr, tr(MsgId::COMMON_CANCEL));
+    Ui::status(tr(MsgId::SYNC_MODAL_TITLE), tr(MsgId::SYNC_WIFI_CONNECTED), tr(MsgId::SYNC_FETCHING_CATALOG_PROGRESS), ctx.config.serverHost.c_str(), nullptr, tr(MsgId::COMMON_CANCEL));
     ensureToken(ctx);
     if (s_syncCancelled || checkSyncCancel()) {
         abortSync(ctx, prevState);
@@ -620,7 +616,7 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
             snprintf(l1, sizeof(l1), tr(MsgId::SYNC_CATALOG_PARSE_FMT1), ci.httpCode, (unsigned)ci.bytes, (unsigned)ci.skipped);
             snprintf(l2, sizeof(l2), tr(MsgId::SYNC_CATALOG_PARSE_FMT2), (unsigned)(ci.heapStart / 1024),
                      (unsigned)(ci.heapMin / 1024), ci.streamError);
-            drawStatusModal(tr(MsgId::SYNC_CATALOG_PARSE_ERR_TITLE), l1, l2, tr(MsgId::SYNC_CATALOG_KEPT));
+            Ui::status(tr(MsgId::SYNC_CATALOG_PARSE_ERR_TITLE), l1, l2, tr(MsgId::SYNC_CATALOG_KEPT));
             PowerService::waitOrKey(4000);
             catalog.clear();
             CatalogStore::load(catalog);
@@ -668,15 +664,15 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
             char cut[96];
             snprintf(cut, sizeof(cut), tr(MsgId::SYNC_CATALOG_TRUNCATED_FMT), fetched);
             Serial.printf("[Sync] Catalog incomplete: %d books taken from the server\n", fetched);
-            drawStatusModal(tr(MsgId::SYNC_SUCCESS_TITLE), catInfo, cut, tr(MsgId::SYNC_CATALOG_UPDATED_L2));
+            Ui::status(tr(MsgId::SYNC_SUCCESS_TITLE), catInfo, cut, tr(MsgId::SYNC_CATALOG_UPDATED_L2));
             PowerService::waitOrKey(3000);
         } else {
-            drawStatusModal(tr(MsgId::SYNC_SUCCESS_TITLE), catInfo, tr(MsgId::SYNC_CATALOG_UPDATED_L2));
+            Ui::status(tr(MsgId::SYNC_SUCCESS_TITLE), catInfo, tr(MsgId::SYNC_CATALOG_UPDATED_L2));
             PowerService::waitOrKey(800);
         }
     } else {
         Serial.println("[Sync] Book Orbit server not reachable or catalog fetch failed!");
-        drawStatusModal(tr(MsgId::SYNC_SERVER_UNREACHABLE_TITLE), tr(MsgId::SYNC_SERVER_UNREACHABLE_L1), tr(MsgId::SYNC_SERVER_UNREACHABLE_L2));
+        Ui::status(tr(MsgId::SYNC_SERVER_UNREACHABLE_TITLE), tr(MsgId::SYNC_SERVER_UNREACHABLE_L1), tr(MsgId::SYNC_SERVER_UNREACHABLE_L2));
         PowerService::waitOrKey(1800);
     }
 
@@ -810,7 +806,7 @@ SyncService::BookSyncResult SyncService::syncBookItem(AppContext& ctx, BookItem&
     const bool isCurrent = lib.lastBook.filePath.equalsIgnoreCase(book.filePath);
     if (isCurrent && Reader.isOpened()) lib.flushReaderPosition();
 
-    drawStatusModal(tr(MsgId::BOOK_SYNC_TITLE), utf8Prefix(book.title, 64).c_str(), tr(MsgId::BOOK_SYNC_CONNECTING),
+    Ui::status(tr(MsgId::BOOK_SYNC_TITLE), utf8Prefix(book.title, 64).c_str(), tr(MsgId::BOOK_SYNC_CONNECTING),
                     nullptr, nullptr, tr(MsgId::BOOK_SYNC_CANCEL));
     s_syncCancelled = false;
     Buttons.clearEvents();
@@ -842,14 +838,14 @@ void SyncService::showBookSyncResult(BookSyncResult r, const BookItem& book) {
         case BookSyncResult::Synced: {
             char line[48];
             snprintf(line, sizeof(line), tr(MsgId::BOOK_SYNC_PROGRESS_FMT), book.progress * 100.0f);
-            Modal.showMessage(tr(MsgId::BOOK_SYNC_DONE), utf8Prefix(book.title, 64), line);
+            Ui::message(tr(MsgId::BOOK_SYNC_DONE), utf8Prefix(book.title, 64).c_str(), line);
             break;
         }
         case BookSyncResult::Failed:
-            Modal.showMessage(tr(MsgId::BOOK_SYNC_FAILED), tr(MsgId::BOOK_SYNC_FAILED_L1), tr(MsgId::BOOK_SYNC_FAILED_L2));
+            Ui::message(tr(MsgId::BOOK_SYNC_FAILED), tr(MsgId::BOOK_SYNC_FAILED_L1), tr(MsgId::BOOK_SYNC_FAILED_L2));
             break;
         case BookSyncResult::NotConfigured:
-            Modal.showMessage(tr(MsgId::BOOK_SYNC_FAILED), tr(MsgId::BOOK_SYNC_NO_SETUP_L1), tr(MsgId::BOOK_SYNC_NO_SETUP_L2));
+            Ui::message(tr(MsgId::BOOK_SYNC_FAILED), tr(MsgId::BOOK_SYNC_NO_SETUP_L1), tr(MsgId::BOOK_SYNC_NO_SETUP_L2));
             break;
         case BookSyncResult::Cancelled:
             break;
@@ -865,7 +861,7 @@ void SyncService::syncOnBootProgress(AppContext& ctx) {
     }
 
     Serial.println("[Boot] syncOnBoot enabled: synchronizing progress with server...");
-    drawStatusModal(tr(MsgId::SYNC_BOOT_TITLE), tr(MsgId::SYNC_BOOT_CHECKING), utf8Prefix(lib.lastBook.title, 64).c_str(), nullptr, nullptr, tr(MsgId::COMMON_CANCEL));
+    Ui::status(tr(MsgId::SYNC_BOOT_TITLE), tr(MsgId::SYNC_BOOT_CHECKING), utf8Prefix(lib.lastBook.title, 64).c_str(), nullptr, nullptr, tr(MsgId::COMMON_CANCEL));
 
     s_syncCancelled = false;
     uint32_t waitStart = millis();

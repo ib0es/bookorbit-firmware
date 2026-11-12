@@ -4,7 +4,7 @@
 #include "../reader/reader.h"
 #include "../convert/sd_convert.h"
 #include "../reader/book_reader.h"
-#include "../ui/jpeg_viewer.h"
+#include "../core/ui_port.h"
 #include "../net/bookorbit_client.h"
 #include "../core/book_formats.h"
 #include "../ui/i18n.h"
@@ -238,7 +238,7 @@ void LibraryManager::deleteBookArtifacts(const BookItem& book, bool removeCover)
         // An explicit cover in /covers/ (never a cover.jpg in the book's folder).
         if (book.coverPath.startsWith("/covers/")) removeCoverStem(stemOf(book.coverPath));
     }
-    JpegViewer::clearCache();
+    Ui::coverCacheChanged();
 }
 
 namespace {
@@ -321,7 +321,7 @@ void LibraryManager::cleanOrphanFiles() {
             removed++;
         }
     }
-    if (removed > 0) JpegViewer::clearCache();
+    if (removed > 0) Ui::coverCacheChanged();
     Serial.printf("[Library] Cleanup: %d book files, %d orphaned files removed in %lu ms\n", bookFiles, removed,
                   (unsigned long)(millis() - t0));
 }
@@ -1389,7 +1389,7 @@ void LibraryManager::migrateLegacyNames(const std::vector<BookMetadata>& catalog
     if (moved > 0) {
         if (savedChanged) LastBookStore::save(saved);
         ProgressStore::instance().save();
-        JpegViewer::clearCache();
+        Ui::coverCacheChanged();
         touch();
     }
     Serial.printf("[Library] %d files renamed to server ids in %lu ms\n", moved, (unsigned long)(millis() - t0));

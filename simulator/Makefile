@@ -40,6 +40,7 @@ SRCS_CXX = \
     src/app/app_state.cpp \
     src/app/app_controller.cpp \
     src/app/input.cpp \
+    src/app/ui_port_impl.cpp \
     src/core/auto_rotate.cpp \
     src/app/orientation.cpp \
     src/app/touch_router.cpp \
@@ -69,6 +70,8 @@ SRCS_CXX = \
     src/ui/views/settings_view.cpp \
     src/ui/views/reader_menu_view.cpp \
     src/ui/views/book_menu_view.cpp \
+    src/ui/views/sleep_view.cpp \
+    src/ui/views/portal_view.cpp \
     src/platform/hal/battery.cpp \
     src/platform/hal/rtc.cpp \
     src/platform/hal/imu.cpp \
