@@ -20,7 +20,7 @@
 #include "../ui/font.h"
 #include "../ui/i18n.h"
 #include "../ui/kit/ui_kit.h"
-#include "../ui/views/status_modal.h"
+#include "../core/ui_port.h"
 #include "config.h"
 #include "../platform/device.h"
 #include "engine/engine_text_counter.h"
@@ -600,7 +600,7 @@ void BookReader::drawConvertProgress(void* self, int permille) {
     r->_convertStep = step;
     char line[64];
     snprintf(line, sizeof(line), tr(MsgId::READER_CONVERT_PROGRESS_FMT), permille / 10);
-    drawStatusModal(tr(MsgId::READER_CONVERT_TITLE), utf8Prefix(r->_title, 64).c_str(), line);
+    Ui::status(tr(MsgId::READER_CONVERT_TITLE), utf8Prefix(r->_title, 64).c_str(), line);
     r->_convertDrawnAt = millis();
 }
 
@@ -832,7 +832,7 @@ bool BookReader::layoutChapter(int spine) {
     const uint32_t t0 = millis();
     const Spine& sp = _spines[spine];
     if (sp.bytes > 60000) {   // a big one: say why the screen waits
-        drawStatusModal(tr(MsgId::READER_FORMAT_TITLE), utf8Prefix(_title, 64).c_str(), tr(MsgId::READER_FORMAT_LINE),
+        Ui::status(tr(MsgId::READER_FORMAT_TITLE), utf8Prefix(_title, 64).c_str(), tr(MsgId::READER_FORMAT_LINE),
                         tr(MsgId::READER_OPENING_WAIT));
     }
     ZipEntry entry;
@@ -1277,7 +1277,7 @@ bool BookReader::finishBackground() {
     Serial.printf("[Reader] Chapter %d: rest of the layout done now (%u KB of text left)\n", _bg->spine,
                   (unsigned)(left / 1024));
     if (left > 60000) {
-        drawStatusModal(tr(MsgId::READER_FORMAT_TITLE), utf8Prefix(_title, 64).c_str(), tr(MsgId::READER_FORMAT_LINE),
+        Ui::status(tr(MsgId::READER_FORMAT_TITLE), utf8Prefix(_title, 64).c_str(), tr(MsgId::READER_FORMAT_LINE),
                         tr(MsgId::READER_OPENING_WAIT));
     }
     while (stepBackground()) {}
@@ -1313,7 +1313,7 @@ bool BookReader::buildIncrementally(int spine) {
         snprintf(unpacked, sizeof(unpacked), "x%d.xhtml", spine);
         if (_catalog.spineEntry((size_t)spine, &e) == BookStatus::Ok && e.method != 0 && e.uncompressedSize > 200000 &&
             _cache.fileSize(unpacked) != (int64_t)e.uncompressedSize) {
-            drawStatusModal(tr(MsgId::READER_FORMAT_TITLE), utf8Prefix(_title, 64).c_str(), tr(MsgId::READER_FORMAT_LINE),
+            Ui::status(tr(MsgId::READER_FORMAT_TITLE), utf8Prefix(_title, 64).c_str(), tr(MsgId::READER_FORMAT_LINE),
                             tr(MsgId::READER_OPENING_WAIT));   // unpacking a big one takes seconds
         }
         if (!startBackground(spine)) return false;
@@ -1334,7 +1334,7 @@ bool BookReader::buildIncrementally(int spine) {
 void BookReader::sayCatchingUp(uint32_t pagesLeft) {
     if (pagesLeft < 40) return;
     Serial.printf("[Reader] Chapter %d: laying out ~%u pages to get there\n", _bg->spine, (unsigned)pagesLeft);
-    drawStatusModal(tr(MsgId::READER_FORMAT_TITLE), utf8Prefix(_title, 64).c_str(), tr(MsgId::READER_FORMAT_LINE),
+    Ui::status(tr(MsgId::READER_FORMAT_TITLE), utf8Prefix(_title, 64).c_str(), tr(MsgId::READER_FORMAT_LINE),
                     tr(MsgId::READER_OPENING_WAIT));
 }
 
