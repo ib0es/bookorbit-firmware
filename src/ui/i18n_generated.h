@@ -647,7 +647,10 @@ enum class MsgId : uint16_t {
     READING_TITLE = 632,
     SB_TAG = 633,
     SB_SCREEN_TITLE = 634,
-    COUNT = 635
+    FRONTLIGHT_PANEL_HINT = 635,
+    FRONTLIGHT_TURN_ON = 636,
+    FRONTLIGHT_TURN_OFF = 637,
+    COUNT = 638
 };
 
 // Language: English (en)
@@ -1287,6 +1290,9 @@ static const char* const STRINGS_EN[(size_t)MsgId::COUNT] PROGMEM = {
     /* READING_TITLE */ "READING",
     /* SB_TAG */ "BAR >",
     /* SB_SCREEN_TITLE */ "STATUS BAR",
+    /* FRONTLIGHT_PANEL_HINT */ "Tap below or swipe up to close",
+    /* FRONTLIGHT_TURN_ON */ "Turn on",
+    /* FRONTLIGHT_TURN_OFF */ "Turn off",
 };
 
 // Language: Russian (ru)
@@ -1926,6 +1932,9 @@ static const char* const STRINGS_RU[(size_t)MsgId::COUNT] PROGMEM = {
     /* READING_TITLE */ "ЧТЕНИЕ",
     /* SB_TAG */ "СТРОКА >",
     /* SB_SCREEN_TITLE */ "СТРОКА СОСТОЯНИЯ",
+    /* FRONTLIGHT_PANEL_HINT */ "Нажмите ниже или смахните вверх, чтобы закрыть",
+    /* FRONTLIGHT_TURN_ON */ "Включить",
+    /* FRONTLIGHT_TURN_OFF */ "Выключить",
 };
 
 // Language: Spanish (es)
@@ -2565,6 +2574,9 @@ static const char* const STRINGS_ES[(size_t)MsgId::COUNT] PROGMEM = {
     /* READING_TITLE */ "LECTURA",
     /* SB_TAG */ "BARRA >",
     /* SB_SCREEN_TITLE */ "BARRA DE ESTADO",
+    /* FRONTLIGHT_PANEL_HINT */ "Toca debajo o desliza hacia arriba para cerrar",
+    /* FRONTLIGHT_TURN_ON */ "Encender",
+    /* FRONTLIGHT_TURN_OFF */ "Apagar",
 };
 
 static const char* const* const I18N_ALL_TABLES[(size_t)AppLanguage::COUNT] = {

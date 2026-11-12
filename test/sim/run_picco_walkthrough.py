@@ -36,6 +36,7 @@ SB_BOTTOM = "T240,393;"   # the "Bottom" card of the status bar menu
 SET_LANG, SET_WIFI, SET_SERVER, SET_SLEEP, SET_INFO, SET_LIGHT = "T240,85;", "T240,150;", "T240,215;", "T240,280;", "T240,410;", "T240,540;"
 SET_SYNC = "T240,475;"
 SET_READING = "T240,605;"   # Settings -> Reading: status bar, full refresh, pictures
+FL_BRIGHT_PLUS, FL_ONOFF, FL_OUTSIDE = "T425,122;", "T240,303;", "T240,600;"   # the frontlight panel (top edge swipe)
 READING_STATUS_BAR = "T240,67;"   # its first row
 SET_ORIENTATION = "T240,670;"
 SET_ORIENTATION_LANDSCAPE = "T224,400;"   # the same row once the screen is turned (ten rows, two pages)
@@ -198,13 +199,19 @@ CASES = [
      lambda log, sd: "[Bookmarks] added" in log and "[Bookmarks] removed" in log),
     # The frontlight: a swipe down from the top edge on any screen (no book menu
     # item); BACK returns to the screen it came over.
-    ("frontlight: a swipe down from the top edge over the page, back to the page",
-     HOME_CARD + "w" + "W240,8,240,400;" + "T442,124;" + TITLE,
+    ("frontlight: a swipe down from the top edge, a panel over the page; a tap below closes it",
+     HOME_CARD + "w" + "W240,8,240,400;" + FL_BRIGHT_PLUS + FL_OUTSIDE,
      lambda log, sd: "Frontlight by the edge swipe" in log and "[Light] brightness 10%" in log
-                     and "[Reader] Page" in log.split(">>> TAP_240_20")[-1]),
-    ("frontlight: from the home screen too, back to it",
-     "W240,8,240,400;" + TITLE,
-     lambda log, sd: "Frontlight by the edge swipe" in log and "drawHomeScreen" in log.split(">>> TAP_240_20")[-1]),
+                     and config(sd)["frontlight"] == 10
+                     and "[Reader] Page" in log.split(">>> TAP_240_600")[-1]
+                     and "drawAppearanceScreen" not in log and "drawReaderMenuScreen" not in log),
+    ("frontlight: the panel's Turn on / Turn off, then a swipe up closes it",
+     HOME_CARD + "w" + "W240,8,240,400;" + FL_ONOFF + FL_ONOFF + "W240,300,240,20;",
+     lambda log, sd: "[Light] brightness 50%" in log and "[Light] brightness 0%" in log.split("[Light] brightness 50%")[-1]
+                     and "[Reader] Page" in log.split(">>> SWIPE_240_300_240_20")[-1]),
+    ("frontlight: from the home screen too, a tap below back to it",
+     "W240,8,240,400;" + FL_OUTSIDE,
+     lambda log, sd: "Frontlight by the edge swipe" in log and "drawHomeScreen" in log.split(">>> TAP_240_600")[-1]),
     ("frontlight: a swipe down that starts lower is not the light (a list's page)",
      HOME_SETTINGS + "W240,300,240,600;",
      lambda log, sd: "Frontlight by the edge swipe" not in log and "SWIPE_240_300_240_600" in log),

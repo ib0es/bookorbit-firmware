@@ -150,8 +150,7 @@ void executeSetting(AppContext& ctx, int index) {
             ctx.selectedSyncSettingIndex = 0;
             drawSyncSettingsScreen(ctx, false);
             break;
-        case 7:  // Frontlight (only listed on boards that have one)
-            ctx.frontlightReturnState = STATE_SETTINGS;
+        case 7:  // Frontlight (only listed on boards that have one): a screen of its own here
             ctx.currentState = STATE_FRONTLIGHT_SETTINGS;
             ctx.selectedFrontlightIndex = 0;
             drawFrontlightScreen(ctx, false);
@@ -606,6 +605,16 @@ void handleLanguageSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
 
 namespace {
 int s_rememberedFrontlight = 50;
+int s_panelRow = 0;   // the panel's selected slider (keys)
+
+int frontlightRows() { return Frontlight.hasWarmth() ? 2 : 1; }
+int& frontlightValue(AppContext& ctx, int row) { return row == 0 ? ctx.config.frontlight : ctx.config.frontlightWarm; }
+
+// Redraws where the light is set: the panel (the edge swipe) or Settings' screen.
+void redrawFrontlight(AppContext& ctx) {
+    if (Modal.isActive()) Modal.redrawPanel();
+    else drawFrontlightScreen(ctx, false);
+}
 
 void setFrontlight(AppContext& ctx, int row, int value) {
     value = value < 0 ? 0 : (value > 100 ? 100 : value);
@@ -616,68 +625,23 @@ void setFrontlight(AppContext& ctx, int row, int value) {
         ctx.config.frontlightWarm = value;
     }
     Frontlight.apply(ctx.config.frontlight, ctx.config.frontlightWarm);
-    drawFrontlightScreen(ctx, false);
-}
-int frontlightRows() { return Frontlight.hasWarmth() ? 2 : 1; }
-int& frontlightValue(AppContext& ctx, int row) { return row == 0 ? ctx.config.frontlight : ctx.config.frontlightWarm; }
-}  // namespace
-
-namespace SettingsScreen {
-
-void handleFrontlightEvent(AppContext& ctx, const ButtonEvent& event) {
-    if (event.action != ACTION_CLICK) return;
-    int& sel = ctx.selectedFrontlightIndex;
-    switch (Actions::onValue(Actions::of(event))) {
-        case Action::Up:
-        case Action::Down:
-            sel = (sel + 1) % frontlightRows();
-            drawFrontlightScreen(ctx, false);
-            break;
-        case Action::Less:
-            setFrontlight(ctx, sel, frontlightValue(ctx, sel) - 10);
-            break;
-        case Action::More:
-            setFrontlight(ctx, sel, frontlightValue(ctx, sel) + 10);
-            break;
-        case Action::Select:  // light on/off
-            setFrontlight(ctx, 0, FrontlightPolicy::toggleLevel(ctx.config.frontlight, s_rememberedFrontlight));
-            break;
-        case Action::Back:   // to the screen it was opened from (Settings, or any by the edge swipe)
-            ctx.config.save();
-            ctx.currentState = ctx.frontlightReturnState;
-            Modal.redrawScreen(false);
-            break;
-        default:
-            break;
-    }
+    redrawFrontlight(ctx);
 }
 
-bool openFrontlightFrom(AppContext& ctx) {
-    if (!Frontlight.present()) return false;
-    switch (ctx.currentState) {
-        case STATE_FRONTLIGHT_SETTINGS:   // already there
-        case STATE_SYNCING:               // busy screens: no way back to them
-        case STATE_USB_MSC:
-            return false;
-        default:
-            break;
-    }
-    Serial.printf("[UI] Frontlight by the edge swipe (over screen %d)\n", (int)ctx.currentState);
-    ctx.frontlightReturnState = ctx.currentState;
-    ctx.currentState = STATE_FRONTLIGHT_SETTINGS;
-    ctx.selectedFrontlightIndex = 0;
-    drawFrontlightScreen(ctx, false);
-    return true;
+void toggleFrontlight(AppContext& ctx) {
+    setFrontlight(ctx, 0, FrontlightPolicy::toggleLevel(ctx.config.frontlight, s_rememberedFrontlight));
 }
 
-void handleFrontlightTap(AppContext& ctx, int action, int value, int16_t x) {
+// A tap on the controls (settings_view: 1 row, 2 "-", 3 "+", 4 the track,
+// 5 on / off); `row` becomes the selected slider.
+void frontlightTap(AppContext& ctx, int& row, int action, int value, int16_t x) {
     if (action == 5) {
-        ctx.selectedFrontlightIndex = 0;
-        setFrontlight(ctx, 0, FrontlightPolicy::toggleLevel(ctx.config.frontlight, s_rememberedFrontlight));
+        row = 0;
+        toggleFrontlight(ctx);
         return;
     }
-    if (value < 0 || value >= frontlightRows()) return;
-    ctx.selectedFrontlightIndex = value;
+    if (action < 1 || action > 4 || value < 0 || value >= frontlightRows()) return;
+    row = value;
     int v = 0;
     switch (action) {
         case 2: setFrontlight(ctx, value, frontlightValue(ctx, value) - 10); break;
@@ -685,8 +649,80 @@ void handleFrontlightTap(AppContext& ctx, int action, int value, int16_t x) {
         case 4:
             if (frontlightTrackValue(value, x, v)) setFrontlight(ctx, value, v);
             break;
-        default: drawFrontlightScreen(ctx, false); break;
+        default: redrawFrontlight(ctx); break;
     }
+}
+
+// The keys: UP / DOWN a slider, LEFT / RIGHT its value, OK on / off. False for BACK.
+bool frontlightKey(AppContext& ctx, int& row, const ButtonEvent& event) {
+    switch (Actions::onValue(Actions::of(event))) {
+        case Action::Up:
+        case Action::Down:
+            row = (row + 1) % frontlightRows();
+            redrawFrontlight(ctx);
+            return true;
+        case Action::Less: setFrontlight(ctx, row, frontlightValue(ctx, row) - 10); return true;
+        case Action::More: setFrontlight(ctx, row, frontlightValue(ctx, row) + 10); return true;
+        case Action::Select: toggleFrontlight(ctx); return true;
+        case Action::Back: return false;
+        default: return true;
+    }
+}
+
+// The panel's input; false closes it (BACK, a tap below it, a swipe up or right).
+bool frontlightPanelEvent(AppContext& ctx, const ButtonEvent& event) {
+    switch (event.id) {
+        case BTN_TAP: {
+            freeink::ui::ActionId action = 0;
+            int16_t value = 0;
+            if (!uikit::hitTest(event.x, event.y, action, value)) return false;   // below the panel
+            frontlightTap(ctx, s_panelRow, action, value, event.x);
+            return true;
+        }
+        case BTN_SWIPE_RIGHT:
+        case BTN_SWIPE_UP:
+            return false;
+        case BTN_SWIPE_LEFT:
+        case BTN_SWIPE_DOWN:
+            return true;
+        default:
+            return frontlightKey(ctx, s_panelRow, event);
+    }
+}
+}  // namespace
+
+namespace SettingsScreen {
+
+void handleFrontlightEvent(AppContext& ctx, const ButtonEvent& event) {
+    if (event.action != ACTION_CLICK) return;
+    if (!frontlightKey(ctx, ctx.selectedFrontlightIndex, event)) {   // BACK: to Settings
+        ctx.config.save();
+        ctx.currentState = STATE_SETTINGS;
+        drawSettingsScreen(ctx, false);
+    }
+}
+
+void handleFrontlightTap(AppContext& ctx, int action, int value, int16_t x) {
+    frontlightTap(ctx, ctx.selectedFrontlightIndex, action, value, x);
+}
+
+bool openFrontlightFrom(AppContext& ctx) {
+    if (!Frontlight.present() || Modal.isActive()) return false;
+    switch (ctx.currentState) {
+        case STATE_FRONTLIGHT_SETTINGS:   // already there
+        case STATE_SYNCING:               // busy screens
+        case STATE_USB_MSC:
+            return false;
+        default:
+            break;
+    }
+    Serial.printf("[UI] Frontlight by the edge swipe (over screen %d)\n", (int)ctx.currentState);
+    s_panelRow = 0;
+    AppContext* c = &ctx;
+    Modal.showPanel([c]() { drawFrontlightPanel(*c, s_panelRow); },
+                    [c](const ButtonEvent& e) { return frontlightPanelEvent(*c, e); },
+                    [c]() { c->config.save(); });   // saved once, when it closes
+    return true;
 }
 
 }  // namespace SettingsScreen

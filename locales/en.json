@@ -633,5 +633,8 @@
   "SETTINGS_READING_SUB": "Status bar, refresh, pictures, keys",
   "READING_TITLE": "READING",
   "SB_TAG": "BAR >",
-  "SB_SCREEN_TITLE": "STATUS BAR"
+  "SB_SCREEN_TITLE": "STATUS BAR",
+  "FRONTLIGHT_PANEL_HINT": "Tap below or swipe up to close",
+  "FRONTLIGHT_TURN_ON": "Turn on",
+  "FRONTLIGHT_TURN_OFF": "Turn off"
 }

@@ -39,6 +39,9 @@ void drawLanguageSettingsScreen(AppContext& ctx, bool fullRefresh = false);
 void updateLanguageSettingsSelection(AppContext& ctx, int prevIndex, int newIndex);
 void updateLanguageSettingsItem(AppContext& ctx, int index);
 
+// Settings -> Frontlight: sliders, Turn on / Turn off.
 void drawFrontlightScreen(AppContext& ctx, bool fullRefresh = false);
+// The same as a panel pulled down from the top edge over any screen (a modal).
+void drawFrontlightPanel(const AppContext& ctx, int selected);
 // Value (0..100, 5 % steps) for a tap at x on slider `row` of the last frontlight screen.
 bool frontlightTrackValue(int row, int16_t x, int& valueOut);

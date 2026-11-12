@@ -49,6 +49,14 @@ public:
                      const String& line3, const String& footer,
                      Action onConfirm, Action onCancel = nullptr, const String& okLabel = "");
 
+    // A panel of controls over the screen (the frontlight): `draw` paints it (it is
+    // called now and by redrawPanel()), `handle` gets every event and returns
+    // false to close it; then `onClose` runs and the screen is redrawn.
+    using PanelDraw = std::function<void()>;
+    using PanelHandle = std::function<bool(const ButtonEvent&)>;
+    void showPanel(PanelDraw draw, PanelHandle handle, Action onClose = nullptr);
+    void redrawPanel() { if (_active && _kind == Kind::Panel && _panelDraw) _panelDraw(); }
+
     bool isActive() const { return _active; }
 
     // Remaining ms until a timed message auto-closes, or 0 if inactive/untimed.
@@ -65,7 +73,7 @@ public:
     void tick();
 
 private:
-    enum class Kind { Message, Confirm };
+    enum class Kind { Message, Confirm, Panel };
 
     void open(Kind kind, const String& title, const String& l1, const String& l2,
               const String& l3, const String& l4, const String& footer);
@@ -79,6 +87,8 @@ private:
     Action _onClose;
     Action _onConfirm;
     Action _onCancel;
+    PanelDraw _panelDraw;
+    PanelHandle _panelHandle;
     RedrawHook _redraw;
 };
 

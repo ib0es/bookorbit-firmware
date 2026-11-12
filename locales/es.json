@@ -633,5 +633,8 @@
   "SETTINGS_READING_SUB": "Barra de estado, refresco, imágenes, teclas",
   "READING_TITLE": "LECTURA",
   "SB_TAG": "BARRA >",
-  "SB_SCREEN_TITLE": "BARRA DE ESTADO"
+  "SB_SCREEN_TITLE": "BARRA DE ESTADO",
+  "FRONTLIGHT_PANEL_HINT": "Toca debajo o desliza hacia arriba para cerrar",
+  "FRONTLIGHT_TURN_ON": "Encender",
+  "FRONTLIGHT_TURN_OFF": "Apagar"
 }

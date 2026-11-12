@@ -410,22 +410,24 @@ bool frontlightTrackValue(int row, int16_t x, int& valueOut) {
     return true;
 }
 
-void drawFrontlightScreen(AppContext& ctx, bool fullRefresh) {
-    Pass pass;
-    Frame& f = pass.frame();
-    clear();
-    Rect area = topBar(f, tr(MsgId::FRONTLIGHT_TITLE));
-    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_DONE), tr(MsgId::KEY_ON_OFF), "-", "+"});
-    area = insetXY(area, kMargin, 14);
+namespace {
 
+// Height of the sliders and the on / off button (drawFrontlightControls).
+int16_t frontlightControlsHeight() {
+    const int rows = Frontlight.hasWarmth() ? 2 : 1;
+    return (int16_t)(rows * (lineHeight(FontTitle) + 74 + 12) + lineHeight(FontBody) + 24);
+}
+
+// The brightness / warmth sliders and the Turn on / Turn off button, at the top of `area`.
+void drawFrontlightControls(Frame& f, Rect& area, const AppContext& ctx, int selected) {
     const int rows = Frontlight.hasWarmth() ? 2 : 1;
     const MsgId labels[2] = { MsgId::FRONTLIGHT_BRIGHTNESS, MsgId::FRONTLIGHT_WARMTH };
     const int values[2] = { ctx.config.frontlight, ctx.config.frontlightWarm };
+    const int16_t th = lineHeight(FontTitle);
     s_tracks[0] = s_tracks[1] = Rect{};
     for (int r = 0; r < rows; r++) {
-        const bool sel = (r == ctx.selectedFrontlightIndex);
+        const bool sel = (r == selected);
         const Color ink = sel ? Color::White : Color::Black;
-        const int16_t th = lineHeight(FontTitle);
         Rect row = takeTop(area, (int16_t)(th + 74));
         takeTop(area, 12);
         if (sel) fill(row, Color::Black);
@@ -442,9 +444,7 @@ void drawFrontlightScreen(AppContext& ctx, bool fullRefresh) {
         const int16_t btnW = 52;
         Rect minus{ctl.x, ctl.y, btnW, ctl.height};
         Rect plus{(int16_t)(ctl.right() - btnW), ctl.y, btnW, ctl.height};
-        for (const Rect& b : { minus, plus }) {
-            fill(b, sel ? Color::White : Color::Black, 4);
-        }
+        for (const Rect& b : { minus, plus }) fill(b, sel ? Color::White : Color::Black, 4);
         const Color btnInk = sel ? Color::Black : Color::White;
         text(minus, "-", FontLarge, btnInk, TextAlign::Center);
         text(plus, "+", FontLarge, btnInk, TextAlign::Center);
@@ -458,20 +458,52 @@ void drawFrontlightScreen(AppContext& ctx, bool fullRefresh) {
         f.hit(plus, 3, (int16_t)r);
         f.hit(Rect{track.x, ctl.y, track.width, ctl.height}, 4, (int16_t)r);
     }
-    if (touchUi() && !Buttons.hasLightSwitch()) {
-        const int16_t btnH = (int16_t)(lineHeight(FontBody) + 24);
-        if (area.height >= btnH) {
-            const bool isOn = ctx.config.frontlight > 0;
-            Rect btn = takeTop(area, btnH);
-            if (isOn) fill(btn, Color::Black, 4);
-            else frameRect(btn, Color::Black, 2);
-            String label = String(tr(MsgId::KEY_ON_OFF)) + ": " +
-                           (isOn ? tr(MsgId::APPEAR_ON) : tr(MsgId::SETTINGS_FRONTLIGHT_OFF));
-            text(btn, label.c_str(), FontBody, isOn ? Color::White : Color::Black, TextAlign::Center);
-            f.hit(btn, 5, 0);
-        }
-    }
+    // What a press does: off -> "Turn on" (filled), on -> "Turn off" (OK on the keys).
+    const bool isOn = ctx.config.frontlight > 0;
+    Rect btn = takeTop(area, (int16_t)(lineHeight(FontBody) + 24));
+    if (!isOn) fill(btn, Color::Black, 4);
+    else frameRect(btn, Color::Black, 2);
+    text(btn, tr(isOn ? MsgId::FRONTLIGHT_TURN_OFF : MsgId::FRONTLIGHT_TURN_ON), FontBody,
+         isOn ? Color::Black : Color::White, TextAlign::Center);
+    f.hit(btn, 5, 0);
+}
+
+}  // namespace
+
+void drawFrontlightScreen(AppContext& ctx, bool fullRefresh) {
+    Pass pass;
+    Frame& f = pass.frame();
+    clear();
+    Rect area = topBar(f, tr(MsgId::FRONTLIGHT_TITLE));
+    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_DONE), tr(MsgId::KEY_ON_OFF), "-", "+"});
+    area = insetXY(area, kMargin, 14);
+    drawFrontlightControls(f, area, ctx, ctx.selectedFrontlightIndex);
     present(fullRefresh);
+}
+
+void drawFrontlightPanel(const AppContext& ctx, int selected) {
+    Pass pass;
+    Frame& f = pass.frame();
+    // Pulled down from the top edge: the full width, as tall as its controls;
+    // the screen stays visible below it.
+    const int16_t bandH = (int16_t)(lineHeight(FontTitle) + 14);
+    const int16_t hintH = touchUi() ? (int16_t)(lineHeight(FontSmall) + 12) : 0;
+    const int16_t h = (int16_t)(bandH + 14 + frontlightControlsHeight() + hintH + 14);
+    Rect box{0, 0, width(), h};
+    fill(Rect{0, h, width(), 6}, Color::Black);   // a shadow along its bottom edge
+    fill(box, Color::White);
+    f.hit(box, 6, 0);   // a tap on the panel does not close it (one below it does)
+    Rect band = takeTop(box, bandH);
+    fill(band, Color::Black);
+    text(insetX(band, kMargin), tr(MsgId::FRONTLIGHT_TITLE), FontTitle, Color::White);
+    Rect area = insetXY(box, kMargin, 14);
+    drawFrontlightControls(f, area, ctx, selected);
+    if (hintH) {
+        takeTop(area, 6);
+        text(takeTop(area, (int16_t)(hintH - 6)), tr(MsgId::FRONTLIGHT_PANEL_HINT), FontSmall, Color::Black,
+             TextAlign::Center);
+    }
+    present(false);
 }
 
 // ============================================================================
