@@ -1,5 +1,5 @@
 #include "appearance.h"
-#include "../../platform/hal/imu.h"
+#include "../../platform/device.h"
 
 #include "../../reader/reader.h"
 #include "../../ui/font.h"
@@ -7,7 +7,21 @@
 
 namespace Appearance {
 
-int count() { return BoardImu.present() ? COUNT : COUNT - 1; }
+namespace {
+const int kBookRows[] = {TYPEFACE, SIZE, LINE_SPACING, PARAGRAPH_SPACING, MARGINS, ALIGNMENT,
+                         HYPHENATION, KEEP_LINES, BOOK_STYLES, FOCUS_READING, ORIENTATION};
+const int kBookCount = sizeof(kBookRows) / sizeof(kBookRows[0]);
+// UP / DOWN: not on boards whose keys always turn pages.
+const int kReadingRows[] = {STATUS_BAR, FULL_REFRESH, IMAGES, UPDOWN_KEYS};
+}  // namespace
+
+int count() { return kBookCount; }
+int rowAt(int index) { return index >= 0 && index < kBookCount ? kBookRows[index] : -1; }
+
+namespace Reading {
+int count() { return Platform::kDevice.upDownTurnPages ? 3 : 4; }
+int rowAt(int index) { return index >= 0 && index < count() ? kReadingRows[index] : -1; }
+}  // namespace Reading
 
 namespace {
 

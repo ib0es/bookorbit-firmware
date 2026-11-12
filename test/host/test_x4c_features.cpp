@@ -58,10 +58,11 @@ static void testX4ClassicDefaultsAndSettingsLayout() {
 
     CHECK(hasUsbMscSetting());
     CHECK(!hasTouchWakeSetting());
-    CHECK(orientationSettingIndex() == 7);
-    CHECK(usbMscSettingIndex() == 8);
+    CHECK(readingSettingIndex() == 7);
+    CHECK(orientationSettingIndex() == 8);
+    CHECK(usbMscSettingIndex() == 9);
     CHECK(touchWakeSettingIndex() == -1);
-    CHECK(settingsItemCount() == 9);
+    CHECK(settingsItemCount() == 10);
 }
 
 static void testPowerPolicyLeaveUsbMsc() {

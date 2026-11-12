@@ -350,8 +350,7 @@ void AppController::loop() {
     // coming from it, and dropping it would mean laying the chapter out again.
     const AppState st = _ctx.currentState;
     const bool readerScreens = st == STATE_READING || st == STATE_TOC || st == STATE_READER_MENU || st == STATE_FONT_MENU ||
-                               st == STATE_TYPEFACE_MENU || st == STATE_APPEARANCE_MENU || st == STATE_BOOKMARKS ||
-                               st == STATE_STATUSBAR_MENU;
+                               st == STATE_TYPEFACE_MENU || st == STATE_APPEARANCE_MENU || st == STATE_BOOKMARKS;
     if (!readerScreens || SyncService::backgroundActive()) {
         if (Reader.backgroundActive()) Reader.stopBackground();
     } else if (st == STATE_READING && !Modal.isActive() && millis() - _ctx.lastActivityTime > kPrelayoutIdleMs &&

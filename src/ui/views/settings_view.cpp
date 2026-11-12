@@ -67,6 +67,9 @@ SettingItemDef getSettingItemDef(const AppContext& ctx, int index) {
             tr(MsgId::SETTINGS_TAG_SLEEP_LIGHT)
         };
     }
+    if (index == readingSettingIndex()) {
+        return { tr(MsgId::SETTINGS_ITEM_READING), tr(MsgId::SETTINGS_READING_SUB), tr(MsgId::SETTINGS_TAG_READING) };
+    }
     if (index == orientationSettingIndex()) {   // the interface (a book turns on top of it: Appearance)
         static const MsgId k[] = {MsgId::APPEAR_ORIENT_PORTRAIT, MsgId::APPEAR_ORIENT_LANDSCAPE,
                                   MsgId::APPEAR_ORIENT_PORTRAIT_FLIPPED, MsgId::APPEAR_ORIENT_LANDSCAPE_FLIPPED};

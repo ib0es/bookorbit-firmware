@@ -627,5 +627,9 @@
   "SETTINGS_ITEM_TOUCH_WAKE": "Touch Wake (Light Sleep)",
   "SETTINGS_TOUCH_WAKE_ON": "[ON] Wake on touch & keys during idle",
   "SETTINGS_TOUCH_WAKE_OFF": "[OFF] Stay active until deep sleep",
-  "SETTINGS_TAG_SLEEP_LIGHT": "SLEEP"
+  "SETTINGS_TAG_SLEEP_LIGHT": "SLEEP",
+  "SETTINGS_ITEM_READING": "Reading",
+  "SETTINGS_TAG_READING": "READING >",
+  "SETTINGS_READING_SUB": "Status bar, refresh, pictures, keys",
+  "READING_TITLE": "READING"
 }

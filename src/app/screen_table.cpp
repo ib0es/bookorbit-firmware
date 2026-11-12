@@ -40,6 +40,7 @@ const ScreenEntry kScreens[] = {
     { STATE_SD_SETTINGS,          SettingsScreen::handleSdSettingsEvent,       drawSdSettingsScreen,         &C::selectedSdSettingIndex,     true  },
     { STATE_USB_MSC_SETTINGS,     SettingsScreen::handleUsbMscSettingsEvent,   drawUsbMscSettingsScreen,     &C::selectedUsbMscIndex,        true  },
     { STATE_USB_MSC,              SettingsScreen::handleUsbMscEvent,           drawUsbMsc,                   nullptr,                        false },
+    { STATE_READING_SETTINGS,     SettingsScreen::handleReadingSettingsEvent,  drawReadingSettingsScreen,    &C::selectedReadingSettingIndex, false },
 };
 
 }  // namespace

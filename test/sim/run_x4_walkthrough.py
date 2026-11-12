@@ -31,6 +31,7 @@ READER_MENU = "C"                  # reading: the book menu
 APPEARANCE = READER_MENU + "DC"    # reading -> menu -> Appearance
 SETTINGS = "DDC"                   # home -> settings
 SETTINGS_FILE = SETTINGS + "DDDDC" # -> "Settings file" submenu
+READING = SETTINGS + "UUC"         # -> Reading (just above Screen orientation, the last item)
 HOME_SYNC = "UCww"                 # home: "Sync now"
 SORTED = ["01. Frankenstein (1818)", "Alice in Wonderland", "Frankenstein", "Pride and Prejudice",
           "Тестовая книга", "Moby Dick", "The Time Machine"]
@@ -277,8 +278,8 @@ CASES = [
                      and "Background upload cancelled" in after(log, ">>> CONFIRM")
                      and "Radio off: the book needs the memory" in after(log, ">>> CONFIRM")),
     ("reader: UP/DOWN turn pages when set so (U4)", updown_pages, {}, OPEN_BOOK + "DD", updown_turns),
-    ("appearance: the Up/Down keys row switches to pages (U4)", None, {},
-     OPEN_BOOK + APPEARANCE + "UU" + "R" + "B",
+    ("settings: Reading, the Up/Down keys row switches to pages (U4)", None, {},
+     READING + "U" + "R" + "B",
      lambda log, sd: cfg(sd).get("updown_pages") is True),
     ("appearance: the preview is laid out once a redraw (P3)", None, {},
      OPEN_BOOK + APPEARANCE + "DDDR", preview_once),
@@ -338,7 +339,7 @@ CASES = [
      OPEN_BOOK + "ww", clock_redraw_fast),
     ("status bar: clock and UTC+3 saved and active from RTC",
      None, {"SIM_RTC_UTC": "1794391200"},
-     OPEN_BOOK + APPEARANCE + "U" + "C" + "UU" + "C" + "D" + "RRRRRR" + "BB",
+     READING + "C" + "UU" + "C" + "D" + "RRRRRR" + "BBB" + "UU" + OPEN_BOOK,
      lambda log, sd: "[RTC] Ready" in log and "[Clock] Restored from RTC" in log
                      and cfg(sd).get("sb_clock") is True and cfg(sd).get("utc_offset_min") == 180
                      and "Page drawn" in after(log, ">>> BACK")),

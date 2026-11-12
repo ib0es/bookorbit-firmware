@@ -30,14 +30,15 @@ RMENU_TOC, RMENU_FONT, RMENU_MARKS = "T240,200;", "T240,278;", "T240,354;"
 RMENU_SYNC, RMENU_RESUME, RMENU_CLOSE = "T240,430;", "T240,506;", "T240,582;"
 MARKS_THIS_PAGE = "T240,90;"   # first row of the Bookmarks screen
 APPEAR_TYPEFACE, APPEAR_SIZE = "T240,67;", "T240,103;"   # rows of the Appearance screen
-APPEAR_ORIENTATION = "T100,463;"   # on the label: the middle of a value row is its "-" (C5)
-APPEAR_STATUS_BAR = "T240,584;"   # after "Up / Down keys"
+APPEAR_ORIENTATION = "T100,427;"   # on the label: the middle of a value row is its "-" (C5)
 SB_BOTTOM = "T100,211;"   # the last row of the status bar menu, on its label (the middle is "-")
 # Settings rows (nine of them with the frontlight and the screen orientation)
-SET_LANG, SET_WIFI, SET_SERVER, SET_SLEEP, SET_INFO, SET_LIGHT = "T240,85;", "T240,150;", "T240,215;", "T240,280;", "T240,475;", "T240,605;"
-SET_SYNC = "T240,540;"
+SET_LANG, SET_WIFI, SET_SERVER, SET_SLEEP, SET_INFO, SET_LIGHT = "T240,85;", "T240,150;", "T240,215;", "T240,280;", "T240,410;", "T240,540;"
+SET_SYNC = "T240,475;"
+SET_READING = "T240,605;"   # Settings -> Reading: status bar, full refresh, pictures
+READING_STATUS_BAR = "T240,67;"   # its first row
 SET_ORIENTATION = "T240,670;"
-SET_ORIENTATION_LANDSCAPE = "T290,400;"   # the same row once the screen is turned (nine rows, two pages)
+SET_ORIENTATION_LANDSCAPE = "T224,400;"   # the same row once the screen is turned (ten rows, two pages)
 
 def pages(log):
     return [tuple(map(int, m)) for m in re.findall(r"\[Reader\] Page (\d+)/(\d+)", log)]
@@ -71,9 +72,15 @@ CASES = [
     ("reader menu: landscape pages, the tap zones turn with them",
      HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + APPEAR_ORIENTATION + TITLE + "w" + "T264,700;T264,700;T264,100;",
      lambda log, sd: config(sd)["orientation"] == 1 and [p for p, _ in pages(log)][-3:] == [2, 3, 2]),
-    ("reader menu: status bar menu, the bottom line off gives the text its room",
-     HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + APPEAR_STATUS_BAR + SB_BOTTOM + SB_BOTTOM + TITLE + TITLE + "w",
-     lambda log, sd: config(sd)["sb_bottom"] == 2 and "[Reader] Page" in log.split("TAP_100_211")[-1]),
+    ("settings: Reading -> status bar menu, the bottom line off gives the text its room",
+     HOME_SETTINGS + SET_READING + READING_STATUS_BAR + SB_BOTTOM + SB_BOTTOM + TITLE + TITLE + TITLE + HOME_CARD + "w",
+     lambda log, sd: config(sd)["sb_bottom"] == 2
+                     and "[Reader] Page" in log.split("TAP_100_211")[-1]),
+    # Full refresh and pictures are in Settings -> Reading, no longer in the book's Appearance.
+    ("settings: Reading -> full refresh and pictures stepped by their + buttons",
+     HOME_SETTINGS + SET_READING + "T432,103;" + "T432,140;" + TITLE,
+     lambda log, sd: config(sd)["full_refresh_every"] == 8 and config(sd)["sharp_images"] is True
+                     and "drawSettingsScreen" in log.split("TAP_240_20")[-1]),
     ("reader menu: table of contents, tap a chapter",
      HOME_CARD + "w" + READ_MIDDLE + RMENU_TOC + "T240,300;",
      lambda log, sd: len(pages(log)) >= 2 and pages(log)[-1][0] != pages(log)[-2][0]),

@@ -627,5 +627,9 @@
   "SETTINGS_ITEM_TOUCH_WAKE": "Сон по тачу (Light Sleep)",
   "SETTINGS_TOUCH_WAKE_ON": "[ВКЛ] Мгновенный выход тачем и кнопками",
   "SETTINGS_TOUCH_WAKE_OFF": "[ВЫКЛ] Не усыплять до Deep Sleep",
-  "SETTINGS_TAG_SLEEP_LIGHT": "СОН"
+  "SETTINGS_TAG_SLEEP_LIGHT": "СОН",
+  "SETTINGS_ITEM_READING": "Чтение",
+  "SETTINGS_TAG_READING": "ЧТЕНИЕ >",
+  "SETTINGS_READING_SUB": "Строка состояния, обновление, картинки, клавиши",
+  "READING_TITLE": "ЧТЕНИЕ"
 }

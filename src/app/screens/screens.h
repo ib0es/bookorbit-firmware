@@ -51,6 +51,7 @@ void handleSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleWifiSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleServerSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleSyncSettingsEvent(AppContext& ctx, const ButtonEvent& event);
+void handleReadingSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleSleepCoverSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleLanguageSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleSdSettingsEvent(AppContext& ctx, const ButtonEvent& event);
