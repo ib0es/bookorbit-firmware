@@ -20,7 +20,7 @@ HOME_CARD = "T200,200;"
 HOME_CATALOG = "T200,385;"
 CATALOG_ALL_BOOKS = "T200,145;"
 HOME_ALL_BOOKS = HOME_CATALOG + CATALOG_ALL_BOOKS
-LIB_FRANKENSTEIN = "T200,171;"  # 3rd row of All Books (sorted by title)
+LIB_FRANKENSTEIN = "T200,225;"  # 3rd row of All Books (sorted by title; two-line rows, U1)
 HOME_SETTINGS = "T200,447;"
 HOME_SYNC = "T200,515;"
 READ_MIDDLE = "T240,400;"         # reading: middle third = book menu
@@ -90,8 +90,8 @@ CASES = [
      HOME_ALL_BOOKS + LIB_FRANKENSTEIN + "T240,256;" + "T140,475;",
      lambda log, sd: "Deleting" not in log and os.path.exists(os.path.join(sd, "books/Frankenstein.epub"))),
     ("catalog: a book's formats list, tap a format in the cloud downloads and opens it",
-     HOME_SYNC + "ww" + HOME_CATALOG + CATALOG_ALL_BOOKS + "T200,123;" + "T240,275;" + "T200,267;" + "w",
-     lambda log, sd: "Alice in Wonderland [1].fb2 downloaded successfully" in log.split("TAP_200_267", 1)[1]
+     HOME_SYNC + "ww" + HOME_CATALOG + CATALOG_ALL_BOOKS + "T200,156;" + "T240,275;" + "T200,363;" + "w",
+     lambda log, sd: "Alice in Wonderland [1].fb2 downloaded successfully" in log.split(">>> TAP_200_363", 1)[1]
      and "Opening book: /books/Alice in Wonderland [1].fb2" in log),
     ("library: book menu Back and title tap return",
      HOME_ALL_BOOKS + LIB_FRANKENSTEIN + TITLE + LIB_FRANKENSTEIN + BACK + TITLE + TITLE,
