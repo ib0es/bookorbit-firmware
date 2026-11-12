@@ -116,8 +116,15 @@ void handleEvent(AppContext& ctx, const ButtonEvent& event) {
             activateItem(ctx, sel);
             break;
         case Action::Prev:
-            if (sel == HOME_RECENT_BOOK) cycleRecentBook(ctx, -1);
-            else if (sel == HOME_SYNC_NOW) SyncService::syncWithBookOrbit(ctx);
+            // On the recent book: the one before. Elsewhere LEFT goes back to the
+            // book card, as in the other menus; it no longer starts a sync on
+            // the "Sync now" row (U7).
+            if (sel == HOME_RECENT_BOOK) {
+                cycleRecentBook(ctx, -1);
+            } else {
+                ctx.selectedHomeIndex = HOME_RECENT_BOOK;
+                drawHomeScreen(ctx, false);
+            }
             break;
         case Action::Back:
             if (sel != HOME_RECENT_BOOK) {
