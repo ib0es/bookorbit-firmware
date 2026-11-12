@@ -475,6 +475,7 @@
   "SYNC_CATALOG_PARSE_FMT2": "Память %u/%u КБ, ошибка %d",
   "SYNC_SUCCESS_TITLE": "СИНХРОНИЗАЦИЯ УСПЕШНА",
   "SYNC_FOUND_BOOKS_FMT": "-> В каталоге найдено: %d книг",
+  "SYNC_CATALOG_TRUNCATED_FMT": "Каталог не весь: первые %d книг (предел устройства).",
   "SYNC_CATALOG_UPDATED_L2": "-> Каталог и прогресс обновлены!",
   "SYNC_SERVER_UNREACHABLE_TITLE": "ОШИБКА ПОДКЛЮЧЕНИЯ",
   "SYNC_SERVER_UNREACHABLE_L1": "-> Сервер Book Orbit недоступен!",

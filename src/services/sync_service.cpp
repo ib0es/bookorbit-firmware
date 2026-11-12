@@ -602,6 +602,7 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
         Serial.printf("[Sync] Catalog fetched: %d books available.\n", (int)catalog.size());
         MemStats::log("sync: catalog parsed");
         const CatalogFetchInfo& ci = BookOrbit.lastCatalog;
+        const int fetched = (int)catalog.size();   // before the saved books are merged back in
 
         if (catalog.empty() && !ci.cleanEmpty()) {
             // Something went wrong on the device side (stream error, unrecognised
@@ -655,8 +656,18 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
 
         char catInfo[64];
         snprintf(catInfo, sizeof(catInfo), tr(MsgId::SYNC_FOUND_BOOKS_FMT), (int)catalog.size());
-        drawStatusModal(tr(MsgId::SYNC_SUCCESS_TITLE), catInfo, tr(MsgId::SYNC_CATALOG_UPDATED_L2));
-        PowerService::waitOrKey(800);
+        if (ci.truncated) {
+            // U6: the server has more than the device took in (its limit, or memory):
+            // said, not only logged.
+            char cut[96];
+            snprintf(cut, sizeof(cut), tr(MsgId::SYNC_CATALOG_TRUNCATED_FMT), fetched);
+            Serial.printf("[Sync] Catalog incomplete: %d books taken from the server\n", fetched);
+            drawStatusModal(tr(MsgId::SYNC_SUCCESS_TITLE), catInfo, cut, tr(MsgId::SYNC_CATALOG_UPDATED_L2));
+            PowerService::waitOrKey(3000);
+        } else {
+            drawStatusModal(tr(MsgId::SYNC_SUCCESS_TITLE), catInfo, tr(MsgId::SYNC_CATALOG_UPDATED_L2));
+            PowerService::waitOrKey(800);
+        }
     } else {
         Serial.println("[Sync] Book Orbit server not reachable or catalog fetch failed!");
         drawStatusModal(tr(MsgId::SYNC_SERVER_UNREACHABLE_TITLE), tr(MsgId::SYNC_SERVER_UNREACHABLE_L1), tr(MsgId::SYNC_SERVER_UNREACHABLE_L2));
