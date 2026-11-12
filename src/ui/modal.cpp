@@ -49,9 +49,25 @@ void ModalManager::showConfirm(const String& title, const String& line1, const S
                      okLabel.length() ? okLabel.c_str() : tr(MsgId::MODAL_BTN_OK), tr(MsgId::MODAL_BTN_CANCEL));
 }
 
+void ModalManager::showPanel(PanelDraw draw, PanelHandle handle, Action onClose) {
+    _autoCloseMs = 0;
+    _fullRedraw = false;
+    _onClose = std::move(onClose);
+    _onConfirm = nullptr;
+    _onCancel = nullptr;
+    _panelDraw = std::move(draw);
+    _panelHandle = std::move(handle);
+    _active = true;
+    _kind = Kind::Panel;
+    _openedAt = millis();
+    if (_panelDraw) _panelDraw();
+}
+
 void ModalManager::close(Action callback) {
     const bool full = _fullRedraw;
     _active = false;
+    _panelDraw = nullptr;
+    _panelHandle = nullptr;
     _onClose = nullptr;
     _onConfirm = nullptr;
     _onCancel = nullptr;
@@ -65,7 +81,9 @@ bool ModalManager::handleEvent(const ButtonEvent& event) {
     if (!_active) return false;
     if (event.action != ACTION_CLICK) return true;   // swallow non-click events too
 
-    if (_kind == Kind::Message) {
+    if (_kind == Kind::Panel) {
+        if (!_panelHandle || !_panelHandle(event)) close(_onClose);
+    } else if (_kind == Kind::Message) {
         close(_onClose);
     } else if (event.id == BTN_CONFIRM) {
         close(_onConfirm);

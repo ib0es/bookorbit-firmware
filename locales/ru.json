@@ -633,5 +633,8 @@
   "SETTINGS_READING_SUB": "Строка состояния, обновление, картинки, клавиши",
   "READING_TITLE": "ЧТЕНИЕ",
   "SB_TAG": "СТРОКА >",
-  "SB_SCREEN_TITLE": "СТРОКА СОСТОЯНИЯ"
+  "SB_SCREEN_TITLE": "СТРОКА СОСТОЯНИЯ",
+  "FRONTLIGHT_PANEL_HINT": "Нажмите ниже или смахните вверх, чтобы закрыть",
+  "FRONTLIGHT_TURN_ON": "Включить",
+  "FRONTLIGHT_TURN_OFF": "Выключить"
 }

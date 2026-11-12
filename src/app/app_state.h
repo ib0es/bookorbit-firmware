@@ -120,7 +120,6 @@ struct AppContext {
     int selectedTocIndex = 0;
     int selectedReaderMenuIndex = 0;
     int selectedFrontlightIndex = 0;
-    AppState frontlightReturnState = STATE_SETTINGS;   // where BACK leaves the frontlight screen for
     int selectedBookMenuIndex = 0;
     int selectedFontIndex = 0;
     int selectedTypefaceIndex = 0;

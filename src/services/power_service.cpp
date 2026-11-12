@@ -233,8 +233,8 @@ void PowerService::enterDeepSleep(AppContext& ctx, bool syncAllowed) {
 
     // Save active state to RTC memory across deep sleep
     rtcSavedState = ctx.currentState;
-    // The frontlight screen saves on BACK: going to sleep from it keeps the level too.
-    if (ctx.currentState == STATE_FRONTLIGHT_SETTINGS) ctx.config.save();
+    // The frontlight screen and panel save when left: going to sleep from them keeps the level too.
+    if (ctx.currentState == STATE_FRONTLIGHT_SETTINGS || Ui::modalActive()) ctx.config.save();
 
     auto& lib = LibraryManager::getInstance();
 
