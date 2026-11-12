@@ -57,6 +57,11 @@ SRCS_CXX = \
     src/services/power_service.cpp \
     src/services/bookmarks.cpp \
     src/services/sync_service.cpp \
+    src/services/sync_common.cpp \
+    src/services/sync_book.cpp \
+    src/services/sync_download.cpp \
+    src/services/sync_full.cpp \
+    src/services/sync_background.cpp \
     src/services/usb_msc_session.cpp \
     src/services/wifi_session.cpp \
     src/core/progress_sync.cpp \
