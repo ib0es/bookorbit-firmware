@@ -31,7 +31,7 @@ READER_MENU = "C"                  # reading: the book menu
 APPEARANCE = READER_MENU + "DC"    # reading -> menu -> Appearance
 SETTINGS = "DDC"                   # home -> settings
 SETTINGS_FILE = SETTINGS + "DDDDC" # -> "Settings file" submenu
-READING = SETTINGS + "UUC"         # -> Reading (just above Screen orientation, the last item)
+READING = SETTINGS + "UUUC"        # -> Reading (above Screen orientation and Web)
 HOME_SYNC = "UCww"                 # home: "Sync now"
 SORTED = ["01. Frankenstein (1818)", "Alice in Wonderland", "Frankenstein", "Pride and Prejudice",
           "Тестовая книга", "Moby Dick", "The Time Machine"]
@@ -347,9 +347,14 @@ CASES = [
      None if (any(d in BIN for d in ("build-x3", "build-x4c")) or os.environ.get("DEVICE") in ("x3", "x4c"))
      else (lambda sd: merge_config(sd, auto_rotate=True)),
      {"SIM_IMU_PRESENT": "1"},
-     "A-1.0,0.0,0.0;w" + SETTINGS + ("UUC" if ("build-x4c" in BIN or os.environ.get("DEVICE") == "x4c") else "UC"),
+     "A-1.0,0.0,0.0;w" + SETTINGS + ("UUUC" if ("build-x4c" in BIN or os.environ.get("DEVICE") == "x4c") else "UUC"),
      lambda log, sd: "[IMU] Ready" in log and "[App] Auto-rotated UI 0 -> 1" in log
                      and "[IMU] Put to sleep" in log and cfg(sd).get("auto_rotate") is False),
+    ("web: Settings -> Web opens Web submenu and Web Config QR portal",
+     None, {},
+     SETTINGS + "UC" + "[RB]" + "C" + "wB",
+     lambda log, sd: "drawWebSettingsScreen" in log and log.count(" FULL]") >= 3
+                     and "drawSettingsScreen" in after(log, ">>> BACK")),
 ]
 
 def run_case(case):

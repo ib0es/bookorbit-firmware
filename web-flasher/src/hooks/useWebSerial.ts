@@ -4,12 +4,12 @@ import type { FlashSizeValues, IEspLoaderTerminal } from 'esptool-js';
 import { decodeNVS } from '@m1kad0/esp-nvs-utils';
 import type { NVSNamespaces } from '@m1kad0/esp-nvs-utils';
 import {
-  ConnectionStatus, DetectionResult, DeviceInitialConfig, DeviceInfo, DeviceKey, FlashMode, FlashPhase, EMPTY_DETECTION,
+  ConnectionStatus, DetectionResult, DeviceInitialConfig, DeviceInfo, DeviceKey, FlashMode, FlashPhase, Language, EMPTY_DETECTION,
 } from '../types';
 import { DEVICES } from '../constants/devices';
 import { probeC3Board, probeS3Board, scanInstalledFirmware } from '../services/hardwareProbe';
 import {
-  FlasherError, md5Hex, PARTITION_TABLE_OFFSET, parsePartitionTable, samePartitionTables, validateMergedImage,
+  FlasherError, md5Hex, PARTITION_TABLE_OFFSET, parsePartitionTable, samePartitionTables, supportsSdWipe, validateMergedImage,
 } from '../services/firmwareImage';
 import { buildConfigEntries, buildNvsPartition } from '../services/nvsConfig';
 import { readFlash } from '../services/flashRead';
@@ -61,6 +61,8 @@ export interface FlashRequest {
   device: DeviceInfo;
   mode: FlashMode;
   config: DeviceInitialConfig;
+  wipeSd?: boolean;
+  lang?: Language;
 }
 
 export function useWebSerial() {
@@ -286,7 +288,7 @@ export function useWebSerial() {
     addLog('Port released. The reader is booting.');
   }, [addLog, releasePort, markDisconnected]);
 
-  const flash = useCallback(async ({ image, device, mode, config }: FlashRequest): Promise<void> => {
+  const flash = useCallback(async ({ image, device, mode, config, wipeSd = false, lang = 'en' }: FlashRequest): Promise<void> => {
     const detected = detectionRef.current;
     if (!knownPortRef.current || !detected.chipFamily) throw new FlasherError('err_not_connected');
     if (detected.chipFamily !== device.chip) {
@@ -295,7 +297,10 @@ export function useWebSerial() {
 
     // Validate everything before touching the reader.
     const info = validateMergedImage(image, device.chip);
-    const entries = buildConfigEntries(config);
+    if (wipeSd && !supportsSdWipe(image, info.appOffset)) {
+      throw new FlasherError('err_wipe_sd_unsupported');
+    }
+    const entries = buildConfigEntries(config, { wipeSd, lang });
 
     setStatus('flashing');
     setPhase('preparing');
@@ -367,6 +372,7 @@ export function useWebSerial() {
 
       if (entries.length > 0) {
         addLog(`Writing ${entries.length} setting(s) to NVS at 0x${nvs.offset.toString(16)}.`);
+        if (wipeSd) addLog('SD card will be cleared on first boot.');
         fileArray.push({ data: buildNvsPartition(existingNvs, entries, nvs.size), address: nvs.offset });
       }
 

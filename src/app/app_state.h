@@ -29,7 +29,8 @@ enum AppState {
     STATE_SD_SETTINGS,
     STATE_USB_MSC_SETTINGS,
     STATE_USB_MSC,
-    STATE_READING_SETTINGS
+    STATE_READING_SETTINGS,
+    STATE_WEB_SETTINGS
 };
 
 struct AppConfig {
@@ -97,8 +98,10 @@ int settingsItemCount();
 int orientationSettingIndex();
 int usbMscSettingIndex();
 int touchWakeSettingIndex();
+int webSettingIndex();
 int readingSettingIndex();   // Settings -> Reading: just before screen orientation
-const int NUM_WIFI_SETTINGS_ITEMS = 6;
+const int NUM_WIFI_SETTINGS_ITEMS = 5;
+const int NUM_WEB_SETTINGS_ITEMS = 1;
 const int NUM_SERVER_SETTINGS_ITEMS = 4;
 const int NUM_SYNC_SETTINGS_ITEMS = 4;
 const int NUM_SLEEP_COVER_ITEMS = 3;
@@ -115,6 +118,7 @@ struct AppContext {
     int selectedCatalogIndex = 0;
     int selectedSettingIndex = 0;
     int selectedWifiSettingIndex = 0;
+    int selectedWebSettingIndex = 0;
     int selectedServerSettingIndex = 0;
     int selectedLanguageIndex = 0;
     int selectedTocIndex = 0;

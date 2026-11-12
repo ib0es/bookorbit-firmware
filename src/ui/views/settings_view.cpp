@@ -69,6 +69,9 @@ SettingItemDef getSettingItemDef(const AppContext& ctx, int index) {
             tr(MsgId::SETTINGS_TAG_SLEEP_LIGHT)
         };
     }
+    if (index == webSettingIndex()) {
+        return { tr(MsgId::SETTINGS_ITEM_WEB), tr(MsgId::SETTINGS_ITEM_WEB_SUB), tr(MsgId::SETTINGS_TAG_WEB) };
+    }
     if (index == readingSettingIndex()) {
         return { tr(MsgId::SETTINGS_ITEM_READING), tr(MsgId::SETTINGS_READING_SUB), tr(MsgId::SETTINGS_TAG_READING) };
     }
@@ -157,10 +160,16 @@ SettingItemDef getWifiSettingItemDef(const AppContext& ctx, int index) {
             return { tr(MsgId::WIFI_ITEM_TEST), String(testBuf), tr(MsgId::WIFI_TAG_TEST) };
         }
         case 4:
-            return { tr(MsgId::WIFI_ITEM_WEB), tr(MsgId::WIFI_ITEM_WEB_SUB), tr(MsgId::WIFI_TAG_WEB) };
-        case 5:
         default:
             return { tr(MsgId::WIFI_ITEM_FORGET), tr(MsgId::WIFI_ITEM_FORGET_SUB), tr(MsgId::WIFI_TAG_RESET) };
+    }
+}
+
+SettingItemDef getWebSettingItemDef(const AppContext&, int index) {
+    switch (index) {
+        case 0:
+        default:
+            return { tr(MsgId::WIFI_ITEM_WEB), tr(MsgId::WIFI_ITEM_WEB_SUB), tr(MsgId::WIFI_TAG_WEB) };
     }
 }
 
@@ -285,6 +294,12 @@ void drawWifiSettingsScreen(AppContext& ctx, bool fullRefresh) {
     drawCardScreen(ctx, tr(MsgId::WIFI_TITLE), getWifiSettingItemDef, NUM_WIFI_SETTINGS_ITEMS,
                    ctx.selectedWifiSettingIndex, tr(MsgId::WIFI_HINT_NAV), tr(MsgId::WIFI_HINT_BACK), fullRefresh,
                    "drawWifiSettingsScreen");
+}
+
+void drawWebSettingsScreen(AppContext& ctx, bool fullRefresh) {
+    drawCardScreen(ctx, tr(MsgId::WEB_MENU_TITLE), getWebSettingItemDef, NUM_WEB_SETTINGS_ITEMS,
+                   ctx.selectedWebSettingIndex, tr(MsgId::SETTINGS_HINT_NAV), tr(MsgId::SETTINGS_HINT_BACK),
+                   fullRefresh, "drawWebSettingsScreen");
 }
 
 void drawServerSettingsScreen(AppContext& ctx, bool fullRefresh) {
@@ -520,6 +535,10 @@ void updateWifiSettingsSelection(AppContext& ctx, int prevIndex, int newIndex) {
     if (prevIndex != newIndex) drawWifiSettingsScreen(ctx, false);
 }
 void updateWifiSettingsItem(AppContext& ctx, int) { drawWifiSettingsScreen(ctx, false); }
+
+void updateWebSettingsSelection(AppContext& ctx, int prevIndex, int newIndex) {
+    if (prevIndex != newIndex) drawWebSettingsScreen(ctx, false);
+}
 
 void updateServerSettingsSelection(AppContext& ctx, int prevIndex, int newIndex) {
     if (prevIndex != newIndex) drawServerSettingsScreen(ctx, false);

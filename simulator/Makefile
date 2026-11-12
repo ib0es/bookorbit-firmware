@@ -99,6 +99,7 @@ SRCS_CXX = \
     src/ui/kit/ui_kit.cpp \
     freeink-sdk/libs/ui/FreeInkUI/src/FreeInkUI.cpp \
     src/ui/font.cpp \
+    src/ui/qr_code.cpp \
     src/ui/jpeg_viewer.cpp \
     src/ui/keyboard_ui.cpp \
     src/ui/wifi_manager_ui.cpp \
@@ -149,7 +150,8 @@ SRCS_C = \
     freeink-sdk/libs/book/FreeInkBook/src/vendor/unibreak_impl.c \
     freeink-sdk/libs/book/FreeInkBook/src/vendor/pngle_impl.c \
     freeink-sdk/libs/book/FreeInkBook/src/vendor/tjpgd_impl.c \
-    freeink-sdk/libs/font/FreeInkFont/src/FontAlloc.c
+    freeink-sdk/libs/font/FreeInkFont/src/FontAlloc.c \
+    src/ui/vendor/qrcodegen.c
 
 ifeq ($(DEVICE),x3)
 BUILD_DIR = simulator/build-x3

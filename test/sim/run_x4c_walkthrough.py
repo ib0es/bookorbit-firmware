@@ -14,8 +14,8 @@ BIN = os.environ.get("X4C_HEADLESS") or os.path.join(ROOT, "test/sim/build-x4c/x
 OPEN_BOOK = "C"
 READER_MENU = "C"
 
-SETTINGS = "DDC"  # Home -> Settings (row 0 = Language; 10 items total: 0..9)
-READING = SETTINGS + "UUUC"  # -> Reading (7: above Screen orientation 8 and USB Drive 9)
+SETTINGS = "DDC"  # Home -> Settings (row 0 = Language; 11 items total: 0..10)
+READING = SETTINGS + "UUUUC"  # -> Reading (7: above Screen orientation 8, USB Drive 9, Web 10)
 
 
 def config(sd):
@@ -41,7 +41,7 @@ CASES = [
                      and "[IMU] Ready" in log,
      None, {"SIM_RTC_UTC": "1735689600", "SIM_IMU_PRESENT": "1"}),
 
-    ("settings: 10-row button layout (Reading=7, Orientation=8, USB Drive=9, Device Info=5, no frontlight)",
+    ("settings: 11-row button layout (Reading=7, Orientation=8, USB Drive=9, Web=10, Device Info=5)",
      SETTINGS + "DDDDDC" + "B",
      lambda log, sd: "device info" in log
                      and "[RTC] Ready (UTC 1735689600)" in log
@@ -49,7 +49,7 @@ CASES = [
      None, {"SIM_RTC_UTC": "1735689600", "SIM_IMU_PRESENT": "1"}),
 
     ("imu: auto_rotate is ON by default on X4 Classic, rotates on gravity, sleeps when disabled",
-     "A-1.0,0.0,0.0;w" + SETTINGS + "UUC",
+     "A-1.0,0.0,0.0;w" + SETTINGS + "UUUC",
      lambda log, sd: "[IMU] Ready" in log
                      and "[App] Auto-rotated UI 0 -> 1" in log
                      and "[IMU] Put to sleep" in log
@@ -57,7 +57,7 @@ CASES = [
      None, {"SIM_IMU_PRESENT": "1"}),
 
     ("usb-msc: pure button workflow (disable guard, enable, host events, CONFIRM & BACK exits)",
-     SETTINGS + "UC"       # Settings -> wrap up to USB Drive (index 8) -> submenu (0 = Connect)
+     SETTINGS + "UUC"      # Settings -> wrap up to USB Drive (index 9, above Web) -> submenu (0 = Connect)
      + "DC"                # Toggle USB Drive Mode OFF
      + "UC"                # Attempt Connect while disabled -> modal guard
      + "B"                 # Close modal
@@ -84,14 +84,14 @@ CASES = [
     # B8: in USB mode with no computer (never connected here) for the idle timeout
     # (3 s in this case), the mode is left; the usual idle sleep follows.
     ("usb-msc: no computer for the idle timeout leaves the mode, then the device sleeps (B8)",
-     SETTINGS + "UCC" + "www",
+     SETTINGS + "UUCC" + "www",
      lambda log, sd: "Detaching filesystem" in log
                      and "No computer for the idle timeout: leaving USB mass storage" in log
                      and log.count("MicroSD mounted successfully") == 2
                      and "Entering Deep Sleep" in after(log, "leaving USB mass storage"),
      None, {"SIM_SLEEP_TIMEOUT_MS": "3000", "SIM_USB": "0"}),
     ("usb-msc: POWER exits USB-MSC safely without sleeping, then POWER sleeps/wakes normally",
-     SETTINGS + "UCC" + "P" + "B" + "PZ",
+     SETTINGS + "UUCC" + "P" + "B" + "PZ",
      lambda log, sd: "Detaching filesystem" in log
                      and log.count("Entering Deep Sleep") == 1
                      and "MicroSD mounted successfully" in log.split(">>> POWER", 1)[1].split(">>> BACK")[0]
@@ -115,7 +115,7 @@ CASES = [
      None, {"SIM_RTC_UTC": "1794391200"}),
 
     ("orientation: 180-deg turn swaps LEFT/RIGHT keys (RIGHT acts as Back from Settings)",
-     SETTINGS + "UU" + "CCC" + "R",
+     SETTINGS + "UUU" + "CCC" + "R",
      lambda log, sd: config(sd).get("auto_rotate") is False
                      and config(sd).get("ui_orientation") == 2
                      and "drawHomeScreen" in after(log, ">>> RIGHT"),

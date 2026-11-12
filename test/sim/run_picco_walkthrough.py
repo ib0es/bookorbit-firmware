@@ -32,14 +32,14 @@ MARKS_THIS_PAGE = "T240,90;"   # first row of the Bookmarks screen
 APPEAR_TYPEFACE, APPEAR_SIZE = "T240,67;", "T240,103;"   # rows of the Appearance screen
 APPEAR_ORIENTATION = "T100,427;"   # on the label: the middle of a value row is its "-" (C5)
 SB_BOTTOM = "T240,393;"   # the "Bottom" card of the status bar menu
-# Settings rows (ten of them with the frontlight, Reading and the screen orientation)
-SET_LANG, SET_WIFI, SET_SERVER, SET_SLEEP, SET_INFO, SET_LIGHT = "T240,85;", "T240,150;", "T240,215;", "T240,280;", "T240,410;", "T240,540;"
-SET_SYNC = "T240,475;"
-SET_READING = "T240,605;"   # Settings -> Reading: status bar, full refresh, pictures
+# Settings rows (eleven of them with Frontlight, Reading, Screen orientation, and Web)
+SET_LANG, SET_WIFI, SET_SERVER, SET_SLEEP, SET_INFO, SET_LIGHT = "T240,85;", "T240,140;", "T240,200;", "T240,260;", "T240,380;", "T240,500;"
+SET_SYNC = "T240,440;"
+SET_READING = "T240,560;"   # Settings -> Reading: status bar, full refresh, pictures
 FL_BRIGHT_PLUS, FL_ONOFF, FL_OUTSIDE = "T425,122;", "T240,303;", "T240,600;"   # the frontlight panel (top edge swipe)
 READING_STATUS_BAR = "T240,67;"   # its first row
-SET_ORIENTATION = "T240,670;"
-SET_ORIENTATION_LANDSCAPE = "T224,400;"   # the same row once the screen is turned (ten rows, two pages)
+SET_ORIENTATION = "T240,600;"
+SET_ORIENTATION_LANDSCAPE = "T224,400;"   # the same row once the screen is turned (eleven rows, two pages)
 
 def pages(log):
     return [tuple(map(int, m)) for m in re.findall(r"\[Reader\] Page (\d+)/(\d+)", log)]

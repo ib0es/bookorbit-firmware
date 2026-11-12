@@ -112,6 +112,12 @@ void executeSetting(AppContext& ctx, int index) {
         updateSettingsItem(ctx, index);
         return;
     }
+    if (index == webSettingIndex()) {
+        ctx.currentState = STATE_WEB_SETTINGS;
+        ctx.selectedWebSettingIndex = 0;
+        drawWebSettingsScreen(ctx, false);
+        return;
+    }
     if (index == readingSettingIndex()) {
         ctx.selectedReadingSettingIndex = 0;
         ctx.currentState = STATE_READING_SETTINGS;
@@ -309,12 +315,7 @@ void executeWifiSetting(AppContext& ctx, int index) {
         case 3:
             testWifi(ctx);
             break;
-        case 4:  // Web config portal
-            WebConfig.runPortal(ctx.config);
-            LibraryManager::getInstance().cardMayHaveChanged();   // files can be uploaded there
-            drawWifiSettingsScreen(ctx, false);
-            break;
-        case 5:  // Forget network
+        case 4:  // Forget network
             if (ctx.config.wifiSsid.length() == 0 && ctx.config.wifiPass.length() == 0) {
                 Modal.showMessage(tr(MsgId::WIFI_FORGET_EMPTY_TITLE), tr(MsgId::WIFI_FORGET_EMPTY_L1), "", "", "", 1500);
             } else {
@@ -324,6 +325,19 @@ void executeWifiSetting(AppContext& ctx, int index) {
                 Modal.showMessage(tr(MsgId::WIFI_FORGET_RESET_TITLE), tr(MsgId::WIFI_FORGET_RESET_L1), tr(MsgId::WIFI_FORGET_RESET_L2));
             }
             break;
+    }
+}
+
+// ---------------------------------------------------------------- web settings
+void executeWebSetting(AppContext& ctx, int index) {
+    if (index == 0) {
+        if (WebConfig.runPortal(ctx.config)) {
+            AppController::getInstance().applyConfig();
+            if (Reader.isOpened()) LibraryManager::getInstance().flushReaderPosition();
+            LibraryManager::getInstance().touch();
+        }
+        LibraryManager::getInstance().cardMayHaveChanged();   // files can be uploaded there
+        drawWebSettingsScreen(ctx, false);
     }
 }
 
@@ -500,6 +514,11 @@ void handleUsbMscTap(AppContext& ctx, int action) {
 void handleWifiSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
     handleMenu(ctx, event, ctx.selectedWifiSettingIndex, NUM_WIFI_SETTINGS_ITEMS, updateWifiSettingsSelection,
                executeWifiSetting, STATE_SETTINGS, drawSettingsScreen, false);
+}
+
+void handleWebSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
+    handleMenu(ctx, event, ctx.selectedWebSettingIndex, NUM_WEB_SETTINGS_ITEMS, updateWebSettingsSelection,
+               executeWebSetting, STATE_SETTINGS, drawSettingsScreen, false);
 }
 
 void handleServerSettingsEvent(AppContext& ctx, const ButtonEvent& event) {

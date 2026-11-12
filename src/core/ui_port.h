@@ -17,6 +17,12 @@ struct SleepScreen {
     float progress = 0.0f;         // 0..1, 0 when unknown
 };
 
+enum class PortalAction : uint8_t {
+    Stay = 0,
+    Redraw,
+    Close,
+};
+
 struct UiPort {
     void (*status)(const char* title, const char* l1, const char* l2, const char* l3, const char* l4,
                    const char* footer, bool fullRefresh) = nullptr;
@@ -27,7 +33,8 @@ struct UiPort {
     uint32_t (*modalRemainingMs)() = nullptr;
     void (*coverCacheChanged)() = nullptr;           // covers on the card changed: drop decoded ones
     void (*sleepScreen)(const SleepScreen& s) = nullptr;   // drawn, not yet on the panel
-    void (*portalScreen)(const char* apPass) = nullptr;
+    void (*portalScreen)(const char* apSsid, const char* apPass, const char* url, int page) = nullptr;
+    PortalAction (*portalEvent)(int btnId, int btnAction, int16_t x, int16_t y, int& page) = nullptr;
 };
 
 namespace Ui {
@@ -50,6 +57,11 @@ inline bool modalActive() { return port().modalActive && port().modalActive(); }
 inline uint32_t modalRemainingMs() { return port().modalRemainingMs ? port().modalRemainingMs() : 0; }
 inline void coverCacheChanged() { if (port().coverCacheChanged) port().coverCacheChanged(); }
 inline void sleepScreen(const SleepScreen& s) { if (port().sleepScreen) port().sleepScreen(s); }
-inline void portalScreen(const char* apPass) { if (port().portalScreen) port().portalScreen(apPass); }
+inline void portalScreen(const char* apSsid, const char* apPass, const char* url, int page = 0) {
+    if (port().portalScreen) port().portalScreen(apSsid, apPass, url, page);
+}
+inline PortalAction portalEvent(int btnId, int btnAction, int16_t x, int16_t y, int& page) {
+    return port().portalEvent ? port().portalEvent(btnId, btnAction, x, y, page) : PortalAction::Stay;
+}
 
 }  // namespace Ui

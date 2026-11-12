@@ -309,6 +309,14 @@ public:
         }
     }
 
+    bool rmdir(const char* path) {
+        try {
+            return fs::remove(resolvePath(path));
+        } catch (...) {
+            return false;
+        }
+    }
+
     bool mkdir(const char* path) {
         return ensureDirectoryExists(path);
     }

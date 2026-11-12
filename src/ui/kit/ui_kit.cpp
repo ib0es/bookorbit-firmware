@@ -399,6 +399,7 @@ Rect keyHints(Frame& f, Rect area, const KeyLabels& keys, const char* info) {
     const char* labels[4] = {keys.back, keys.ok, edge == 1 ? keys.right : keys.left, edge == 1 ? keys.left : keys.right};
     const int16_t W = width(), H = height();
     const int16_t tabH = keyTabHeight();
+    if (edge == 0) takeBottom(area, (int16_t)(tabH + 8));
     int16_t infoH = 0;
     if (info && *info) infoH = (int16_t)(wrappedHeight(info, FontSmall, (int16_t)(W - 2 * (kMargin + 4)), 2) + 6);
     if (infoH) {
@@ -415,7 +416,6 @@ Rect keyHints(Frame& f, Rect area, const KeyLabels& keys, const char* info) {
     if (edge <= 1) {
         const int16_t panelW = W;   // portrait: the keys run along the width
         const int16_t tabW = (int16_t)(78 * panelW / 480);
-        if (edge == 0) takeBottom(area, (int16_t)(tabH + 8));
         for (int i = 0; i < 4; i++) {
             int16_t cx = (int16_t)(kCentre[i] * panelW / 480);
             if (edge == 1) cx = (int16_t)(panelW - cx);

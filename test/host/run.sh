@@ -22,6 +22,7 @@ build i18n     "$ROOT/test/host/test_i18n.cpp" "$ROOT/src/ui/i18n.cpp"
 build opds     "$ROOT/test/host/test_opds_stream_parser.cpp" "$ROOT/src/core/opds_stream_parser.cpp" "$ROOT/src/core/book_formats.cpp"
 build formats  "$ROOT/test/host/test_book_formats.cpp" "$ROOT/src/core/book_formats.cpp"
 build textutil "$ROOT/test/host/test_text_utils.cpp"
+build qrcode   "$ROOT/test/host/test_qr_code.cpp" "$ROOT/src/ui/qr_code.cpp" "$ROOT/src/ui/vendor/qrcodegen.c"
 build jsonwr   "$ROOT/test/host/test_json_writer.cpp"
 build cfi      "$ROOT/test/host/test_epub_cfi.cpp" "$ROOT/src/core/epub_cfi.cpp"
 build cfimap   "$ROOT/test/host/test_cfi_map.cpp" "$ROOT/src/core/cfi_map.cpp" "$ROOT/src/core/epub_cfi.cpp"
@@ -31,6 +32,7 @@ build wififail "$ROOT/test/host/test_wifi_failure.cpp"
 build x3sens   "$ROOT/test/host/test_x3_sensors.cpp" "$ROOT/src/core/time_utils.cpp" "$ROOT/src/core/auto_rotate.cpp"
 build x4pro    "$ROOT/test/host/test_x4pro_features.cpp"
 build x4c      -I"$ROOT/include" -DFREEINK_DEVICE_X4CLASSIC=1 -DFREEINK_CAP_USB_MSC=1 "$ROOT/test/host/test_x4c_features.cpp" "$ROOT/src/app/app_state.cpp" "$ROOT/src/ui/i18n.cpp"
+build wipe     -I"$ROOT/include" -DFREEINK_DEVICE_X4=1 "$ROOT/test/host/test_storage_wipe.cpp" "$ROOT/src/platform/hal/storage.cpp" "$ROOT/src/core/book_formats.cpp"
 # FreeInkBook (the layout engine) for the tests that check against it: vendored C
 # libraries once, the C++ core with each test.
 FIB="$ROOT/freeink-sdk/libs/book/FreeInkBook"
@@ -57,6 +59,7 @@ echo "== I18n";              "$OUT/i18n/test" || rc=1
 echo "== OpdsStreamParser";  "$OUT/opds/test" || rc=1
 echo "== BookFormats";       "$OUT/formats/test" || rc=1
 echo "== utf8Prefix";        "$OUT/textutil/test" || rc=1
+echo "== QrCode";            "$OUT/qrcode/test" || rc=1
 echo "== JsonFileWriter";    "$OUT/jsonwr/test" || rc=1
 echo "== EpubCfi";          "$OUT/cfi/test" | tail -1 || rc=1
 echo "== CfiMap";           "$OUT/cfimap/test" | grep -v "^ *pub\|^ *loc" | tail -40 || rc=1
@@ -66,6 +69,7 @@ echo "== WifiFailure";       "$OUT/wififail/test" || rc=1
 echo "== X3Sensors";         "$OUT/x3sens/test" || rc=1
 echo "== X4ProFeatures";     "$OUT/x4pro/test" || rc=1
 echo "== X4ClassicFeatures"; "$OUT/x4c/test" || rc=1
+echo "== StorageWipe";       "$OUT/wipe/test" || rc=1
 echo "== FB2 to EPUB";       "$OUT/fb2/test" "$ROOT/test/books" || rc=1
 echo "== MOBI to EPUB";      "$OUT/mobi/test" "$ROOT/test/books" || rc=1
 echo "== TXT to EPUB";       "$OUT/txt/test" "$ROOT/test/books" || rc=1
