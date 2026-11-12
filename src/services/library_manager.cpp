@@ -219,6 +219,10 @@ void LibraryManager::deleteBookArtifacts(const BookItem& book, bool removeCover)
         }
     }
 
+    // U7: the book's bookmarks go with it (a download again brings back the
+    // server's copies).
+    removeIfExists("/bookmarks/" + BookReader::cacheKeyFor(book.filePath) + ".json");
+
     if (removeCover) {
         removeCoverStem(stemOf(BookReader::cacheKeyFor(book.filePath)));   // extracted from the EPUB
         if (book.bookId > 0) removeCoverStem(catalogStem(book.title, book.bookId));  // downloaded from the server

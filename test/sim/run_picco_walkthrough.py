@@ -42,6 +42,11 @@ SET_ORIENTATION_LANDSCAPE = "T290,400;"   # the same row once the screen is turn
 def pages(log):
     return [tuple(map(int, m)) for m in re.findall(r"\[Reader\] Page (\d+)/(\d+)", log)]
 
+def bookmarks_of_frankenstein(sd):
+    os.makedirs(os.path.join(sd, "bookmarks"), exist_ok=True)
+    with open(os.path.join(sd, "bookmarks", "Frankenstein.epub.json"), "w") as f:
+        f.write('{"bookmarks":[{"spine":1,"chars":10,"percent":0.01,"chapter":"I","snippet":"x"}],"deleted":[]}')
+
 def config(sd):
     with open(os.path.join(sd, "config.json")) as f:
         return json.load(f)
@@ -82,10 +87,12 @@ CASES = [
     ("library: tap a book opens its menu, Read opens it, back to library by swipe",
      HOME_ALL_BOOKS + LIB_FRANKENSTEIN + "T240,180;w" + READ_MIDDLE + RMENU_CLOSE,
      lambda log, sd: "Opening book: /books/Frankenstein.epub" in log and pages(log)),
-    ("library: delete a book with the dialog's Delete button",
+    ("library: delete a book with the dialog's Delete button; its bookmarks go too (U7)",
      HOME_ALL_BOOKS + LIB_FRANKENSTEIN + "T240,256;" + "T340,475;",
      lambda log, sd: "Deleting downloaded book file: /books/Frankenstein.epub" in log
-                     and not os.path.exists(os.path.join(sd, "books/Frankenstein.epub"))),
+                     and not os.path.exists(os.path.join(sd, "books/Frankenstein.epub"))
+                     and not os.path.exists(os.path.join(sd, "bookmarks/Frankenstein.epub.json")),
+     None, None, None, bookmarks_of_frankenstein),
     ("library: Cancel in the delete dialog keeps the book",
      HOME_ALL_BOOKS + LIB_FRANKENSTEIN + "T240,256;" + "T140,475;",
      lambda log, sd: "Deleting" not in log and os.path.exists(os.path.join(sd, "books/Frankenstein.epub"))),
@@ -200,10 +207,12 @@ CASES = [
      lambda log, sd: "Entering Deep Sleep" in log and log.count("drawHomeScreen") >= 2),
 ]
 
-def run(script, config=None, srv=None, env=None):
+def run(script, config=None, srv=None, env=None, setup=None):
     sd = tempfile.mkdtemp(); shutil.rmtree(sd)
     shutil.copytree(os.path.join(ROOT, "simulator/sdcard"), sd)
     shutil.copy(os.path.join(ROOT, "test/sim/config.json"), os.path.join(sd, "config.json"))
+    if setup:   # files the case starts with
+        setup(sd)
     if srv is not None:   # the fake server's state (test/sim/fake_bookorbit.cpp)
         json.dump(srv, open(os.path.join(sd, "server.json"), "w"))
     if config:   # settings the case starts with (merged into config.json)
@@ -221,7 +230,7 @@ def main():
     failed = 0
     for case in CASES:
         name, script, check = case[:3]
-        code, log, sd = run(script, *[case[i] if len(case) > i else None for i in (3, 4, 5)])
+        code, log, sd = run(script, *[case[i] if len(case) > i else None for i in (3, 4, 5, 6)])
         problems = []
         if "KEY_NOT_ON_DEVICE" in log: problems.append("used a key Picco does not have")
         if "STUCK" in log: problems.append("stuck in a screen's input loop")
