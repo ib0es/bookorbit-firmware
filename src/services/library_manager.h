@@ -117,6 +117,11 @@ public:
     void rebuildFilteredIndices();
     // Picks up books copied to / removed from the card since the master scan.
     void refreshLocalFiles();
+    // P3: the card is walked again (refreshLocalFiles) only when it may have
+    // changed under the app: at start-up, after USB mass storage, the web
+    // portal or a download. Entering the catalog otherwise trusts the list.
+    void cardMayHaveChanged() { _cardMayHaveChanged = true; }
+    void refreshLocalFilesIfChanged();
     // Books downloaded by firmware before November 2026 are named by their title
     // alone: renamed to their catalogStem, with the cache, cover, bookmarks and
     // position records that go by the name. Run on the saved catalog when the
@@ -231,6 +236,7 @@ public:
     static int catalogBookId(const BookMetadata& b);
 
 private:
+    bool _cardMayHaveChanged = true;
     LibraryManager() = default;
     bool _scanned = false;
     bool _countsDirty = true;

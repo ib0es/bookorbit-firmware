@@ -314,6 +314,10 @@ CASES = [
     ("home: LEFT on 'Sync now' goes back to the book card, no sync (U7)", None, {},
      "U" + "L" + "w",
      lambda log, sd: "[Sync]" not in log and "Connecting" not in log and "drawHomeScreen" in after(log, ">>> LEFT")),
+    # P3: the first entry into the catalog walks the card, the second trusts the list.
+    ("catalog: entered again, the card is not walked again (P3)", None, {},
+     "DC" + "B" + "C",
+     lambda log, sd: log.count("Card unchanged since the last walk") == 1),
     ("library: a book in a subfolder gets a cache of its own (B13)", subfolder_book, {},
      "DC" + "DDDDD" + "C" + "D" + "C" + "D" + "C", subfolder_cache),
     ("names: two server books of one title get a file each; the old file goes to the one read here",

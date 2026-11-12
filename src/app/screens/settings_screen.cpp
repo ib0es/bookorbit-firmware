@@ -31,6 +31,7 @@
 #include "../../core/bookorbit_protocol.h"
 #include "../../ui/text_utils.h"
 #include "../../ui/wifi_messages.h"
+#include "../../services/library_manager.h"
 
 namespace {
 
@@ -303,6 +304,7 @@ void executeWifiSetting(AppContext& ctx, int index) {
             break;
         case 4:  // Web config portal
             WebConfig.runPortal(ctx.config);
+            LibraryManager::getInstance().cardMayHaveChanged();   // files can be uploaded there
             drawWifiSettingsScreen(ctx, false);
             break;
         case 5:  // Forget network
