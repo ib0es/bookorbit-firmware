@@ -44,6 +44,7 @@ void exit(AppContext& ctx) {
         PowerService::restartIntoSettings();
     }
     Storage.begin();
+    LibraryManager::getInstance().cardMayHaveChanged();
     LibraryManager::getInstance().scanLocalBooks();
     ctx.currentState = STATE_SETTINGS;
 }

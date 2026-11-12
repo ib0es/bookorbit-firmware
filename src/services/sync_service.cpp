@@ -397,6 +397,7 @@ bool SyncService::downloadBook(AppContext& ctx, BookItem& book, AppState returnS
         book.isDownloaded = true;
         if (book.activeFormat >= 0 && book.activeFormat < (int)book.formats.size()) book.formats[book.activeFormat].onCard = true;
         Serial.printf("[Sync] Book %s downloaded successfully!\n", book.filePath.c_str());
+        LibraryManager::getInstance().cardMayHaveChanged();
         if (book.coverPath.length() == 0) {
             book.coverPath = LibraryManager::resolveCoverPath(book.filePath, book.title);
             if (book.coverPath.length() == 0) {

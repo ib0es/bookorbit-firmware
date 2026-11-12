@@ -74,8 +74,9 @@ void activateItem(AppContext& ctx, int index) {
     switch (index) {
         case HOME_RECENT_BOOK: openRecentBook(ctx); break;
         case HOME_CATALOG:
-            // Books copied to / removed from the card since the last scan (USB, web portal).
-            LibraryManager::getInstance().refreshLocalFiles();
+            // Books copied to / removed from the card since the last scan (USB, web
+            // portal, a download): walked only when that may have happened (P3).
+            LibraryManager::getInstance().refreshLocalFilesIfChanged();
             ctx.currentState = STATE_CATALOG;
             ctx.selectedCatalogIndex = 0;
             drawCatalogScreen(ctx, false);

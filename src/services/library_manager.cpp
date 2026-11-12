@@ -838,7 +838,16 @@ void LibraryManager::refreshProgress() {
     }
 }
 
+void LibraryManager::refreshLocalFilesIfChanged() {
+    if (!_cardMayHaveChanged) {
+        Serial.println("[Library] Card unchanged since the last walk: list kept (P3)");
+        return;
+    }
+    refreshLocalFiles();
+}
+
 void LibraryManager::refreshLocalFiles() {
+    _cardMayHaveChanged = false;
     touch();
     if (!Storage.isAvailable()) return;
     std::vector<BookItem> found;
