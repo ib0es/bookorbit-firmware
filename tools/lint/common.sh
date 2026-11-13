@@ -4,13 +4,14 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
 # C/C++ sources owned by this repo (third-party and generated files: .clang-format-ignore).
-CPP_PATHS=(src include test/host test/sim simulator/src)
+CPP_PATHS=(src include test/host test/sim simulator/src simulator/include)
 CPP_EXT="c,cc,cpp,h,hpp"
 
-# Base for "changed lines": LINT_BASE, else the merge base with origin/main, else HEAD.
-lint_base() {
-    if [ -n "${LINT_BASE:-}" ]; then echo "$LINT_BASE"; return; fi
-    git merge-base HEAD origin/main 2>/dev/null || echo HEAD
+# Tracked C/C++ files (clang-format skips the ones in .clang-format-ignore).
+cpp_files() {
+    local specs=() p e
+    for p in "${CPP_PATHS[@]}"; do for e in ${CPP_EXT//,/ }; do specs+=("$p/*.$e"); done; done
+    git ls-files -- "${specs[@]}"
 }
 
 need() {

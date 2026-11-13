@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Formats the repo in place.
-#   tools/format.sh          C/C++: only lines changed since LINT_BASE (default: merge base with origin/main),
-#                            Python and web-flasher: whole files
-#   tools/format.sh FILE...  C/C++ files given: formatted whole
+#   tools/format.sh          everything: C/C++, Python, web-flasher
+#   tools/format.sh FILE...  only the C/C++ files given
 source "$(dirname "$0")/lint/common.sh"
 
 if [ $# -gt 0 ]; then
@@ -11,10 +10,9 @@ if [ $# -gt 0 ]; then
     exit 0
 fi
 
-need git-clang-format; need ruff
-base="$(lint_base)"
-section "clang-format (lines changed since ${base:0:12})"
-git-clang-format --force --extensions "$CPP_EXT" "$base" -- "${CPP_PATHS[@]}" || true
+need clang-format; need ruff
+section "clang-format"
+cpp_files | xargs clang-format -i
 
 section "ruff"
 ruff check --fix . || true

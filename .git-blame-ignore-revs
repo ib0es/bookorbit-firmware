@@ -1,0 +1,7 @@
+# Bulk formatting commits, skipped by `git blame` (GitHub does this on its own;
+# locally: git config blame.ignoreRevsFile .git-blame-ignore-revs).
+
+# style(web-flasher): apply prettier
+73233f8f4c0f0d5b221d68b49e3fa5bce5a06f22
+# style: apply clang-format to all C/C++ sources
+58784fd162ee14fd0b02a7e20b39beac36b26884

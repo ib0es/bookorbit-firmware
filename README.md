@@ -244,7 +244,7 @@ tools/lint.sh            # everything (or: tools/lint.sh cpp|py|web); CI runs th
 tools/format.sh          # fix in place
 tools/format.sh src/x.cpp  # format whole C/C++ files
 ```
-C/C++ is formatted only on the lines changed since the merge base with `origin/main` (`LINT_BASE` overrides), so existing code is reformatted gradually as it is touched. cppcheck findings that predate the linter are listed as a baseline at the end of the suppressions file.
+CI (`Lint & Format`, part of the required `All Platform Builds & Tests` check) fails on unformatted code and on linter findings. cppcheck false positives: `// cppcheck-suppress <id>` on the line above, with the reason.
 
 ---
 

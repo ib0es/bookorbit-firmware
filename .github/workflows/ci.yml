@@ -131,8 +131,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -151,10 +149,7 @@ jobs:
           pip install -r tools/lint/requirements.txt
           (cd web-flasher && npm ci)
 
-      - name: Lint (C++ format on changed lines, cppcheck, ruff, eslint, prettier)
-        env:
-          # PR: lines changed against the target branch; push: against the previous head.
-          LINT_BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || 'HEAD~1' }}
+      - name: Lint (clang-format, cppcheck, ruff, mypy, eslint, prettier)
         run: tools/lint.sh
 
   host-tests:
