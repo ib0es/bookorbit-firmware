@@ -11,9 +11,9 @@ For a family that goes on the card only (/fonts), --sd-only writes just the
 cut .ttf files.
 
 Usage (from firmware/):
-    python3 tools/gen_ttf_fonts.py --name "Noto Serif" \\
-        fonts/src/NotoSerif-Regular.ttf fonts/src/NotoSerif-Bold.ttf \\
-        fonts/src/NotoSerif-Italic.ttf fonts/src/NotoSerif-BoldItalic.ttf
+    python3 tools/gen_ttf_fonts.py --name "Noto Serif" --ttf-dir fonts/sd/NotoSerif \\
+        fonts/src/NotoSerif/NotoSerif-Regular.ttf fonts/src/NotoSerif/NotoSerif-Bold.ttf \\
+        fonts/src/NotoSerif/NotoSerif-Italic.ttf fonts/src/NotoSerif/NotoSerif-BoldItalic.ttf
 """
 
 import argparse

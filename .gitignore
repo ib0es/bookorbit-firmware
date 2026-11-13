@@ -49,6 +49,7 @@ sdcard/config.json
 *.tar.gz
 *.tgz
 *.zip
+!web-flasher/public/fonts.zip
 *.bak
 web-flasher-backup-*.tgz
 
@@ -68,6 +69,8 @@ opds*.xml
 sim_out_*/
 test/sim/build-*/
 test/sim/build/
+simulator/sdcard/cache/
+simulator/sdcard/offline/
 
 # Web flasher site: built by CI (.github/workflows) and published from docs/.
 # Local builds may carry credentials from include/secrets.h.

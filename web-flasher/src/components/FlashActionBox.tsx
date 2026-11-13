@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useI18n } from '../context/i18n';
-import { DeviceKey, ConnectionStatus, GitHubRelease, DeviceInitialConfig, FlashPhase } from '../types';
+import { DeviceKey, ConnectionStatus, GitHubRelease, DeviceInitialConfig, FlashPhase, FontFamilyMeta } from '../types';
 import { resolveFirmwareUrls } from '../services/releases';
 import { DEVICES } from '../constants/devices';
 import { ReleaseSelector } from './ReleaseSelector';
@@ -23,6 +23,9 @@ interface FlashActionBoxProps {
   setDoErase: (v: boolean) => void;
   wipeSd: boolean;
   setWipeSd: (v: boolean) => void;
+  selectedFontFamily: FontFamilyMeta | null;
+  onSelectFontFamily: (font: FontFamilyMeta | null) => void;
+  fontFamilies: FontFamilyMeta[];
   isBookOrbitInstalled?: boolean;
   progress: number;
   flashSuccess: boolean;
@@ -46,6 +49,9 @@ export const FlashActionBox: React.FC<FlashActionBoxProps> = ({
   setDoErase,
   wipeSd,
   setWipeSd,
+  selectedFontFamily,
+  onSelectFontFamily,
+  fontFamilies,
   isBookOrbitInstalled,
   progress,
   flashSuccess,
@@ -109,6 +115,29 @@ export const FlashActionBox: React.FC<FlashActionBoxProps> = ({
       )}
 
       <InitialConfigBox config={initialConfig} onChange={onInitialConfigChange} disabled={isFlashing} />
+
+      {fontFamilies.length > 0 && (
+        <div className="w-full max-w-md bg-[#06091a] border border-[#17234d] rounded-xl p-3 text-left space-y-1.5">
+          <label className="block text-xs font-semibold text-slate-200">{t('fonts_embedded_label')}</label>
+          <select
+            value={selectedFontFamily?.id ?? ''}
+            disabled={isFlashing}
+            onChange={(e) => {
+              const f = fontFamilies.find((item) => item.id === e.target.value) ?? null;
+              onSelectFontFamily(f);
+            }}
+            className="w-full bg-[#0b112c] border border-[#17234d] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 cursor-pointer"
+          >
+            <option value="">{t('fonts_embedded_none')}</option>
+            {fontFamilies.map((fam) => (
+              <option key={fam.id} value={fam.id}>
+                {fam.name} ({Math.round(fam.bytes / 1024)} KB)
+              </option>
+            ))}
+          </select>
+          <div className="text-[10px] text-[#8a9fc2] leading-tight">{t('fonts_embedded_hint')}</div>
+        </div>
+      )}
 
       {confirmingWipe ? (
         <div className="w-full max-w-md p-4 bg-rose-950/40 border border-rose-500/50 rounded-xl text-left space-y-3 animate-in fade-in duration-150">

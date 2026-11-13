@@ -56,8 +56,6 @@ bool BookOrbitClient::fetchCatalog(const String& serverHost, const String& usern
     b1.formats.push_back(BookFormatEntry{101, 1 /* EPUB */, "/api/v1/download/101"});
     b1.formats.push_back(BookFormatEntry{111, 2 /* FB2 */, "/api/v1/download/111"});
     b1.coverUrl = "/api/v1/covers/101.jpg";
-    b1.lastProgress = 0.42f;
-    b1.lastPage = 145;
     outBooks.push_back(b1);
 
     BookMetadata b2;
@@ -67,8 +65,6 @@ bool BookOrbitClient::fetchCatalog(const String& serverHost, const String& usern
     b2.author = "H. G. Wells";
     b2.formats.push_back(BookFormatEntry{102, 1 /* EPUB */, "/api/v1/download/102"});
     b2.coverUrl = "/api/v1/covers/102.jpg";
-    b2.lastProgress = 0.15f;
-    b2.lastPage = 32;
     outBooks.push_back(b2);
 
     BookMetadata b3;
@@ -78,8 +74,6 @@ bool BookOrbitClient::fetchCatalog(const String& serverHost, const String& usern
     b3.author = "Herman Melville";
     b3.formats.push_back(BookFormatEntry{103, 1 /* EPUB */, "/api/v1/download/103"});
     b3.coverUrl = "/api/v1/covers/103.jpg";
-    b3.lastProgress = 0.90f;
-    b3.lastPage = 280;
     outBooks.push_back(b3);
 
     return true;

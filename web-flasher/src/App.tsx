@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { useI18n } from './context/i18n';
 import { useWebSerial } from './hooks/useWebSerial';
-import { DeviceKey, GitHubRelease, DeviceInitialConfig } from './types';
+import { DeviceKey, GitHubRelease, DeviceInitialConfig, FontFamilyMeta } from './types';
 import { Header } from './components/Header';
 import { ConnectCard } from './components/ConnectCard';
 import { DeviceGrid } from './components/DeviceGrid';
 import { FlashActionBox } from './components/FlashActionBox';
+import { SdFontsBox } from './components/SdFontsBox';
 import { FlashConsole } from './components/FlashConsole';
 import { StepsGuide } from './components/StepsGuide';
 import { FaqSection } from './components/FaqSection';
@@ -14,6 +15,7 @@ import { Footer } from './components/Footer';
 import { DEVICES } from './constants/devices';
 import { FlasherError } from './services/firmwareImage';
 import { loadReleases, resolveFirmwareUrls } from './services/releases';
+import { fetchFontManifest } from './services/sdCardFonts';
 
 const isBin = (name: string) => name.toLowerCase().endsWith('.bin');
 
@@ -43,11 +45,17 @@ export const App: React.FC = () => {
   const [customFileName, setCustomFileName] = useState<string>('');
   const [customFileSizeMb, setCustomFileSizeMb] = useState<string>('');
 
+  const [fontFamilies, setFontFamilies] = useState<FontFamilyMeta[]>([]);
+  const [selectedFontFamily, setSelectedFontFamily] = useState<FontFamilyMeta | null>(null);
+
   const isWebSerialSupported = typeof navigator !== 'undefined' && 'serial' in navigator;
   const isFlashing = status === 'flashing';
 
   useEffect(() => {
     loadReleases().then(setReleases);
+    fetchFontManifest()
+      .then(setFontFamilies)
+      .catch(() => {});
   }, []);
 
   // Closing the tab mid-write leaves the reader without a bootable firmware.
@@ -137,6 +145,7 @@ export const App: React.FC = () => {
         config: initialConfig,
         wipeSd,
         lang,
+        fontFamily: selectedFontFamily,
       });
       setFlashSuccess(true);
     } catch (err) {
@@ -198,6 +207,9 @@ export const App: React.FC = () => {
               setDoErase={setDoErase}
               wipeSd={wipeSd}
               setWipeSd={setWipeSd}
+              selectedFontFamily={selectedFontFamily}
+              onSelectFontFamily={setSelectedFontFamily}
+              fontFamilies={fontFamilies}
               isBookOrbitInstalled={detection.isBookOrbitInstalled}
               progress={progress}
               flashSuccess={flashSuccess}
@@ -205,6 +217,8 @@ export const App: React.FC = () => {
               onFlash={handleFlash}
             />
           </div>
+
+          <SdFontsBox />
 
           <FlashConsole logs={logs} onClear={clearLogs} />
         </div>
