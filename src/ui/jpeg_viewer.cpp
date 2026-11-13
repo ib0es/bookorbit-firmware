@@ -69,13 +69,14 @@ CoverSlot* findSlot(const char* filePath, int maxW, int maxH, CoverFitMode fit) 
 // A slot to decode a new thumbnail into, cleared to white paper and not valid
 // until commitSlot().
 CoverSlot* takeSlot() {
-    CoverSlot* pick = nullptr;
+    // Slot 0 always has bits (the static buffer): there is always a slot to return.
+    CoverSlot* pick = &s_slots[0];
     for (int i = 0; i < kCoverSlots; i++) {
         CoverSlot& c = s_slots[i];
         if (!c.bits) c.bits = i == 0 ? s_firstSlotBits : (uint8_t*)malloc(CACHE_BYTES);
         if (!c.bits) continue;
         if (!c.valid) { pick = &c; break; }
-        if (!pick || c.lastUse < pick->lastUse) pick = &c;
+        if (c.lastUse < pick->lastUse) pick = &c;
     }
     pick->valid = false;
     memset(pick->bits, 0, CACHE_BYTES);   // 0 = white paper

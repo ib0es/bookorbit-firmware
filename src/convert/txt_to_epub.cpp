@@ -420,9 +420,9 @@ struct Piece {
 };
 
 struct TocEntry {
-    uint8_t depth;
-    uint16_t file;
-    uint16_t id;
+    uint8_t depth = 0;
+    uint16_t file = 0;
+    uint16_t id = 0;
     std::string label;
 };
 
@@ -1000,7 +1000,7 @@ bool TxtConverter::writeNcx() {
             "\"><navLabel><text>" + xmlEscape(label) + "</text></navLabel><content src=\"" + src + "\"/>");
         open++;
     };
-    auto shortLabel = [](std::string c) {   // ~48 characters, cut at a space
+    auto shortLabel = [](const std::string& c) -> std::string {  // ~48 characters, cut at a space
         if (cpCount(c) <= 48) return c;
         size_t at = 0;
         for (size_t n = 0; at < c.size() && n < 48; at++)

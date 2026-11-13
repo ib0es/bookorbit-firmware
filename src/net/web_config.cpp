@@ -872,6 +872,10 @@ struct PortalUploadState {
         }
     }
 
+    PortalUploadState() = default;
+    PortalUploadState(const PortalUploadState&) = delete;   // owns buf (freed in the destructor)
+    PortalUploadState& operator=(const PortalUploadState&) = delete;
+
     ~PortalUploadState() {
         if (targetFile && partPath.length() > 0) dropPart();   // the portal closed mid-upload
         free(buf);

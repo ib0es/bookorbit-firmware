@@ -108,9 +108,9 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
     src.n = (uint32_t)strlen(text);
     // The first page, drawn moved down to the box.
     struct Draw : PageSink {
-        FontChain* fonts;
+        FontChain* fonts = nullptr;
         FrameRotation rotation = FrameRotation::Portrait;
-        int dy;
+        int dy = 0;
         int clipTop = 0, ascent = 0;
         bool drawn = false;
         bool onPage(const Page& page) override {
@@ -153,7 +153,7 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
     struct Lines : PageSink {
         const char* firstWord = nullptr;   // of the last paragraph
         size_t wordLen = 0;
-        int base[64];                      // the first page's line baselines
+        int base[64] = {};                 // the first page's line baselines
         int count = 0, found = -1;         // the second paragraph's first line
         bool pageSeen = false;
         bool onPage(const Page& page) override {

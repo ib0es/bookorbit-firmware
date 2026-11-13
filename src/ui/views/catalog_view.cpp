@@ -8,9 +8,9 @@ using namespace uikit;
 namespace {
 
 struct CatalogItemDef {
-    const char* title;
+    const char* title = nullptr;
     String value;
-    const char* tag;
+    const char* tag = nullptr;
 };
 
 // Counts come from LibraryManager::counts (kept current by the library), so a

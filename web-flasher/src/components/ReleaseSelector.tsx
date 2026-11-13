@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useI18n } from '../context/I18nContext';
+import { useI18n } from '../context/i18n';
 import { GitHubRelease } from '../types';
 import { Layers, Upload, FileCode } from 'lucide-react';
 

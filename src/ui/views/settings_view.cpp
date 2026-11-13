@@ -15,9 +15,9 @@ using namespace uikit;
 namespace {
 
 struct SettingItemDef {
-    const char* title;
+    const char* title = nullptr;
     String value;
-    const char* tag;
+    const char* tag = nullptr;
 };
 
 struct LangDef {

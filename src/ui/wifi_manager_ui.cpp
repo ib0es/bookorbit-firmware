@@ -23,8 +23,8 @@ static String lastEnteredPass = "";
 
 struct ScannedNet {
     String ssid;
-    int rssi;
-    bool isOpen;
+    int rssi = 0;
+    bool isOpen = false;
     wifi_auth_mode_t authMode;
 };
 

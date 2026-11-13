@@ -1574,7 +1574,8 @@ bool Fb2Converter::writeNcx() {
                     cut = 56;
                     while (cut > 0 && ((uint8_t)l[cut] & 0xC0) == 0x80) cut--;   // not inside a UTF-8 character
                 }
-                l = l.substr(0, cut) + "\xE2\x80\xA6";
+                l.resize(cut);
+                l += "\xE2\x80\xA6";
             }
             navPoint(std::to_string(f) + (l.empty() ? "" : ". " + l), f, std::string());
             _zip.write("</navPoint>\n", 12);

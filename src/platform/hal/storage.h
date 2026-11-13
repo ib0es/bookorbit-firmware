@@ -7,8 +7,8 @@
 struct DirEntry {
     String name;
     String fullPath;
-    bool isDirectory;
-    size_t size;
+    bool isDirectory = false;
+    size_t size = 0;
 };
 
 class StorageManager {

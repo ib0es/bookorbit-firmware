@@ -131,9 +131,9 @@ bool TtfFamily::ensureCaches() {
                  g = sizeof(GlyphEntry) * TTF_GLYPH_SLOTS;
     _mem = (uint8_t*)malloc(a + k + g + TTF_GLYPH_BITS_BYTES);
     if (!_mem) return false;
-    _advances = (AdvanceEntry*)_mem;
-    _kerns = (KernEntry*)(_mem + a);
-    _glyphs = (GlyphEntry*)(_mem + a + k);
+    _advances = reinterpret_cast<AdvanceEntry*>(_mem);
+    _kerns = reinterpret_cast<KernEntry*>(_mem + a);
+    _glyphs = reinterpret_cast<GlyphEntry*>(_mem + a + k);
     _bits = _mem + a + k + g;
     for (size_t i = 0; i < TTF_ADVANCE_SLOTS; i++) _advances[i].key = kEmpty;
     for (size_t i = 0; i < TTF_KERN_SLOTS; i++) _kerns[i].key = kEmpty;

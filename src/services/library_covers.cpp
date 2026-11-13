@@ -217,7 +217,7 @@ namespace {
 struct CoverMemo {
     uint32_t gen = 0;
     uint32_t key = 0;
-    char path[160];
+    char path[160] = {};
 };
 CoverMemo g_coverMemo[8];
 int g_coverNext = 0;

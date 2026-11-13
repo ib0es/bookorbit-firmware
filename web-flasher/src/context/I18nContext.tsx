@@ -1,19 +1,12 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Language } from '../types';
+import { I18nContext } from './i18n';
 import en from '../locales/en.json';
 import ru from '../locales/ru.json';
 
 type Dict = Record<string, string>;
 const DICTS: Record<Language, Dict> = { en, ru };
 const STORAGE_KEY = 'bookorbit-flasher-lang';
-
-interface I18nContextType {
-  lang: Language;
-  setLang: (lang: Language) => void;
-  t: (key: string, params?: Record<string, string | number>) => string;
-}
-
-const I18nContext = createContext<I18nContextType | null>(null);
 
 function initialLang(): Language {
   try {
@@ -48,10 +41,4 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const value = useMemo(() => ({ lang, setLang, t }), [lang, setLang, t]);
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
-};
-
-export const useI18n = () => {
-  const context = useContext(I18nContext);
-  if (!context) throw new Error('useI18n must be used within an I18nProvider');
-  return context;
 };

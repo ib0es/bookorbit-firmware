@@ -1,5 +1,5 @@
 import React from 'react';
-import { useI18n } from '../context/I18nContext';
+import { useI18n } from '../context/i18n';
 import { ConnectionStatus, DetectionResult } from '../types';
 import { Usb, CheckCircle2, Loader2, Unplug, RotateCcw } from 'lucide-react';
 
