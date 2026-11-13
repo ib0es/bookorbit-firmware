@@ -27,3 +27,30 @@ comment at the top of `test/sim/fake_bookorbit.cpp`.
 from `include/secrets.h`) and prints every change, to see what the server really sends.
 
 How progress sync works is described at the top of `src/core/progress_sync.h`.
+
+## Hardware TCP-window experiment
+
+The normal `x4` and `picco` environments retain the SDK's 5760-byte receive
+window. Two opt-in environments rebuild the five lwIP objects that depend on
+receive-window / receive-mailbox settings, from the exact ESP-IDF 5.5.5 lwIP
+revision. The original SDK archives are not modified. The first build downloads
+a checksum-verified source archive from Espressif into `.pio/lwip-window/`.
+
+```sh
+pio run -e picco_tcp_window          # 32768-byte window, 25 receive mailbox slots
+pio run -e x4_tcp_window             # 16384-byte window, 14 receive mailbox slots
+pio run -e picco_tcp_window -t upload
+```
+
+Confirm `[NetPerf] TCP receive window: 32768 bytes` (Picco) or `16384 bytes`
+(X4) after starting a network operation. The value comes from the rebuilt TCP
+object, so an accidentally linked stock archive cannot pass this check.
+The build's `tcp-window/manifest.json` records the source revision and settings.
+
+Compare the same book on the same network with the normal and experimental
+builds: record HTTP-header time, body bytes/time, SD-write time, RSSI and heap.
+Repeat the download, cancel once during transfer, and update the catalog to
+check memory pressure, especially on the X4. Window scaling and SDK structure
+layouts remain unchanged; do not enable the experiment by adding a define to a
+normal environment. Return to the normal build with `pio run -e picco -t upload`
+(or `-e x4`). No speed improvement is assumed until measured on hardware.

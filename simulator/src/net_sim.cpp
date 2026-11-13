@@ -136,7 +136,8 @@ bool BookOrbitClient::downloadFile(const String& serverHost, const String& fileU
     if (onProgress) {
         for (int p = 0; p <= 100; p += 25) {
             onProgress(p);
-            delay(40);
+            // Download callbacks run on a worker; Arduino delay() pumps SDL input.
+            std::this_thread::sleep_for(std::chrono::milliseconds(40));
             if (checkCancel && checkCancel()) return false;
         }
     }

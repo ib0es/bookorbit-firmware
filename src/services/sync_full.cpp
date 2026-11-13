@@ -174,7 +174,9 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
     MemStats::log("sync: Wi-Fi up");
     Ui::status(tr(MsgId::SYNC_MODAL_TITLE), tr(MsgId::SYNC_WIFI_CONNECTED), tr(MsgId::SYNC_FETCHING_CATALOG_PROGRESS),
                ctx.config.serverHost.c_str(), nullptr, tr(MsgId::COMMON_CANCEL));
+    const uint32_t authStarted = millis();
     ensureToken(ctx);
+    Serial.printf("[NetPerf] sync authentication: %lu ms\n", (unsigned long)(millis() - authStarted));
     if (s_syncCancelled || checkSyncCancel()) {
         abortSync(ctx, prevState);
         return;
@@ -184,7 +186,9 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
     //    it must not depend on the catalog fitting into memory, and the heap is
     //    at its largest now.
     std::vector<int> synced;
+    const uint32_t progressStarted = millis();
     syncOpenedBooks(ctx, synced);
+    Serial.printf("[NetPerf] opened books progress+bookmarks: %lu ms\n", (unsigned long)(millis() - progressStarted));
     // The saved catalog read for the ids goes before the fresh one is fetched (the
     // heap is at its tightest then); the books of step 3 get their ids from it.
     std::vector<BookMetadata>().swap(batch.catalog);
@@ -195,6 +199,7 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
 
     // 2. OPDS catalog (re-login once if the token went stale).
     std::vector<BookMetadata> catalog;
+    const uint32_t catalogStarted = millis();
     bool catOk = BookOrbit.fetchCatalog(ctx.config.serverHost, ctx.config.bookOrbitUser, ctx.config.bookOrbitPass,
                                         ctx.config.authToken, catalog);
     if (!catOk && ctx.config.bookOrbitUser.length() > 0 && ctx.config.bookOrbitPass.length() > 0) {
@@ -204,6 +209,7 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
                                        ctx.config.authToken, catalog);
     }
 
+    Serial.printf("[NetPerf] catalog including discovery/retry: %lu ms\n", (unsigned long)(millis() - catalogStarted));
     if (catOk) {
         if (s_syncCancelled || checkSyncCancel()) {
             abortSync(ctx, prevState);
@@ -260,7 +266,9 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
         CatalogStore::save(catalog);
         ProgressStore::instance().save();
 
+        const uint32_t coversStarted = millis();
         downloadCovers(ctx, catalog);
+        Serial.printf("[NetPerf] catalog covers: %lu ms\n", (unsigned long)(millis() - coversStarted));
         if (s_syncCancelled || checkSyncCancel()) {
             abortSync(ctx, prevState);
             return;

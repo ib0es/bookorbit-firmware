@@ -34,6 +34,8 @@
 #include "services/power_service.h"
 #include <ArduinoJson.h>
 #include <algorithm>
+#include <atomic>
+#include <thread>
 #include <cstdio>
 #include <ctime>
 #include <fstream>
@@ -522,8 +524,20 @@ Response route(const Request& rq, JsonDocument& st, bool& dirty) {
 
 namespace {
 uint32_t g_backReleaseAt = 0;
+const std::thread::id g_inputThread = std::this_thread::get_id();
+std::atomic<bool> g_queuedBack{false};
+std::atomic<bool> g_backHandled{false};
 
 void pressBack() {
+    if (std::this_thread::get_id() != g_inputThread) {
+        // Download requests now run on a worker. Deliver simulated input only
+        // on the UI thread, and keep the request open until that thread has
+        // seen the held key (a tiny fake body could otherwise finish first).
+        g_backHandled.store(false);
+        g_queuedBack.store(true);
+        while (!g_backHandled.load()) std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        return;
+    }
     InputManager::simPress(InputManager::BTN_BACK);
     g_backReleaseAt = millis() + 400;
     printf("[FakeHttp] *** BACK pressed\n");
@@ -534,9 +548,11 @@ namespace FakeNet {
 
 // Called from the headless driver's simPumpEvents(): releases an injected BACK.
 void pump() {
+    if (g_queuedBack.exchange(false)) pressBack();
     if (g_backReleaseAt && millis() >= g_backReleaseAt) {
         InputManager::simRelease(InputManager::BTN_BACK);
         g_backReleaseAt = 0;
+        g_backHandled.store(true);
     }
 }
 
