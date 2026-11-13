@@ -299,6 +299,25 @@ def offline_traces_gone(log, sd):
     )
 
 
+def offline_legacy_cover(sd):
+    """A managed, already-dithered BMP must be replaced from its EPUB once."""
+    import struct
+
+    offline_progressive_cover(sd)
+    width, height = 64, 64
+    pixels = bytes([0x55, 0xAA] * (width * height // 16))
+    header = bytearray(62)
+    header[:2] = b"BM"
+    struct.pack_into("<I", header, 2, 62 + len(pixels))
+    header[6:9] = b"FS\x05"  # Even a current render is not a grayscale source.
+    struct.pack_into("<I", header, 10, 62)
+    struct.pack_into("<IiiHH", header, 14, 40, width, height, 1, 1)
+    header[54:58] = bytes([255, 255, 255, 0])
+    open(os.path.join(sd, "covers/offline#Prog.jpg"), "wb").write(header + pixels)
+    for suffix in ("_thumb_fit.bmp", "_thumb_crop.bmp", "_fit.bmp", "_crop.bmp"):
+        open(os.path.join(sd, "covers/offline#Prog" + suffix), "wb").write(header + pixels)
+
+
 def offline_progressive_cover(sd):
     """An offline EPUB whose cover is a progressive JPEG (TJpgDec cannot draw it),
     and the empty no-cover marker an older firmware left for it."""
@@ -938,6 +957,18 @@ CASES = [
             "progressive JPEG as BMP" in log
             and open(os.path.join(sd, "covers/offline#Prog.jpg"), "rb").read(2) == b"BM"
             and not os.path.exists(os.path.join(sd, "covers/offline#Prog.jpg.nocover"))
+        ),
+    ),
+    (
+        "offline: legacy dithered cover is replaced once and derived caches removed",
+        offline_legacy_cover,
+        {},
+        "ww",
+        lambda log, sd: (
+            log.count("Refreshing legacy EPUB cover: /covers/offline#Prog.jpg") == 1
+            and open(os.path.join(sd, "covers/offline#Prog.jpg"), "rb").read(9)[6:9] == b"BG\x01"
+            and all(not os.path.exists(os.path.join(sd, "covers/offline#Prog" + suffix))
+                    for suffix in ("_thumb_fit.bmp", "_thumb_crop.bmp", "_fit.bmp", "_crop.bmp"))
         ),
     ),
     (
