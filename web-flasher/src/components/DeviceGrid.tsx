@@ -14,7 +14,7 @@ export const DeviceGrid: React.FC<DeviceGridProps> = ({
   selectedDevice,
   onSelectDevice,
   detection,
-  disabled = false
+  disabled = false,
 }) => {
   const { t } = useI18n();
 
@@ -26,7 +26,7 @@ export const DeviceGrid: React.FC<DeviceGridProps> = ({
     if (detection.exactMatchKey) {
       return {
         isExact: detection.exactMatchKey === key,
-        isCompat: false
+        isCompat: false,
       };
     }
 
@@ -45,9 +45,7 @@ export const DeviceGrid: React.FC<DeviceGridProps> = ({
   return (
     <div className="space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-[#8a9fc2]">
-          {t('step2_title')}
-        </h3>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-[#8a9fc2]">{t('step2_title')}</h3>
         <span className={`text-xs ${isConnected ? 'text-cyan-400 font-medium' : 'text-[#8a9fc2]'}`}>
           {getHintText()}
         </span>
@@ -76,10 +74,10 @@ export const DeviceGrid: React.FC<DeviceGridProps> = ({
                 isExact
                   ? 'border-cyan-400 bg-cyan-950/25 shadow-cyan-950/40 ring-2 ring-cyan-500/40'
                   : isCompat
-                  ? 'border-blue-500/70 bg-blue-950/20'
-                  : isConnected
-                  ? 'opacity-65 hover:opacity-100'
-                  : ''
+                    ? 'border-blue-500/70 bg-blue-950/20'
+                    : isConnected
+                      ? 'opacity-65 hover:opacity-100'
+                      : ''
               }`}
             >
               <div className="font-bold text-sm text-white">{dev.name}</div>

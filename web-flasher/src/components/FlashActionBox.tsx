@@ -50,7 +50,7 @@ export const FlashActionBox: React.FC<FlashActionBoxProps> = ({
   progress,
   flashSuccess,
   flashError,
-  onFlash
+  onFlash,
 }) => {
   const { lang, t } = useI18n();
   const [confirmingWipe, setConfirmingWipe] = useState(false);
@@ -77,14 +77,20 @@ export const FlashActionBox: React.FC<FlashActionBoxProps> = ({
   const downloadUrls = selectedDevice ? resolveFirmwareUrls(selectedDevice, selectedRelease, releases) : null;
   const releaseMissing = !!selectedDevice && selectedRelease.startsWith('tag:') && !downloadUrls;
 
-  const phaseText = phase === 'erasing' ? t('phase_erasing')
-    : phase === 'restarting' ? t('phase_restarting')
-    : phase === 'preparing' ? t('phase_preparing')
-    : `${t('flashing')} ${progress > 0 ? `${progress}%` : ''}`;
+  const phaseText =
+    phase === 'erasing'
+      ? t('phase_erasing')
+      : phase === 'restarting'
+        ? t('phase_restarting')
+        : phase === 'preparing'
+          ? t('phase_preparing')
+          : `${t('flashing')} ${progress > 0 ? `${progress}%` : ''}`;
 
   return (
     <div className="pt-6 border-t border-[#17234d] flex flex-col items-center text-center gap-4">
-      <div className={`text-xs bg-[#06091a] border px-4 py-1.5 rounded-full max-w-xl ${dev ? 'text-[#8a9fc2] border-[#17234d]' : 'text-amber-300 border-amber-500/30'}`}>
+      <div
+        className={`text-xs bg-[#06091a] border px-4 py-1.5 rounded-full max-w-xl ${dev ? 'text-[#8a9fc2] border-[#17234d]' : 'text-amber-300 border-amber-500/30'}`}
+      >
         {descText}
       </div>
 
@@ -102,11 +108,7 @@ export const FlashActionBox: React.FC<FlashActionBoxProps> = ({
         <div className="text-[11px] text-amber-300">{t('err_release_missing', { MODEL: dev.name })}</div>
       )}
 
-      <InitialConfigBox
-        config={initialConfig}
-        onChange={onInitialConfigChange}
-        disabled={isFlashing}
-      />
+      <InitialConfigBox config={initialConfig} onChange={onInitialConfigChange} disabled={isFlashing} />
 
       {confirmingWipe ? (
         <div className="w-full max-w-md p-4 bg-rose-950/40 border border-rose-500/50 rounded-xl text-left space-y-3 animate-in fade-in duration-150">
@@ -168,16 +170,16 @@ export const FlashActionBox: React.FC<FlashActionBoxProps> = ({
         </label>
 
         {isConnected && isBookOrbitInstalled !== undefined && (
-          <div className={`text-[11px] font-medium ${
-            isBookOrbitInstalled ? 'text-cyan-400' : 'text-amber-400/90'
-          }`}>
+          <div className={`text-[11px] font-medium ${isBookOrbitInstalled ? 'text-cyan-400' : 'text-amber-400/90'}`}>
             {isBookOrbitInstalled ? t('erase_hint_update') : t('erase_hint_clean')}
           </div>
         )}
 
-        <label className={`flex items-center gap-2 text-xs cursor-pointer select-none text-left mt-1 ${
-          wipeSd ? 'text-rose-300 font-medium' : 'text-[#8a9fc2] hover:text-slate-200'
-        }`}>
+        <label
+          className={`flex items-center gap-2 text-xs cursor-pointer select-none text-left mt-1 ${
+            wipeSd ? 'text-rose-300 font-medium' : 'text-[#8a9fc2] hover:text-slate-200'
+          }`}
+        >
           <input
             type="checkbox"
             checked={wipeSd}

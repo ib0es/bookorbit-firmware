@@ -20,7 +20,7 @@ export const ReleaseSelector: React.FC<ReleaseSelectorProps> = ({
   customFileName,
   customFileSizeMb,
   onFileSelect,
-  disabled = false
+  disabled = false,
 }) => {
   const { t } = useI18n();
   const [isDragging, setIsDragging] = useState(false);
@@ -87,9 +87,7 @@ export const ReleaseSelector: React.FC<ReleaseSelectorProps> = ({
 
           {releases.map((rel) => {
             const tag = rel.tag_name;
-            const dateStr = rel.published_at
-              ? ` (${new Date(rel.published_at).toLocaleDateString()})`
-              : '';
+            const dateStr = rel.published_at ? ` (${new Date(rel.published_at).toLocaleDateString()})` : '';
             return (
               <option key={tag} value={`tag:${tag}`}>
                 {tag}
@@ -115,32 +113,22 @@ export const ReleaseSelector: React.FC<ReleaseSelectorProps> = ({
                 : 'border-[#17234d] hover:border-blue-500/50 bg-[#0b112c] text-[#8a9fc2] hover:text-slate-200'
             }`}
           >
-            <div className={`p-2 rounded-lg transition-colors ${
-              isDragging ? 'bg-blue-500/20 text-cyan-400' : 'bg-[#06091a] text-[#8a9fc2]'
-            }`}>
+            <div
+              className={`p-2 rounded-lg transition-colors ${
+                isDragging ? 'bg-blue-500/20 text-cyan-400' : 'bg-[#06091a] text-[#8a9fc2]'
+              }`}
+            >
               <Upload className="w-5 h-5" />
             </div>
 
             <div className="text-center">
               <span className="text-xs font-medium block">
-                {isDragging
-                  ? t('custom_file_drop_active')
-                  : customFileName
-                  ? customFileName
-                  : t('custom_file_prompt')}
+                {isDragging ? t('custom_file_drop_active') : customFileName ? customFileName : t('custom_file_prompt')}
               </span>
-              <span className="text-[10px] text-[#8a9fc2] block mt-0.5 font-mono">
-                .bin firmware
-              </span>
+              <span className="text-[10px] text-[#8a9fc2] block mt-0.5 font-mono">.bin firmware</span>
             </div>
 
-            <input
-              type="file"
-              accept=".bin"
-              disabled={disabled}
-              onChange={handleInputChange}
-              className="hidden"
-            />
+            <input type="file" accept=".bin" disabled={disabled} onChange={handleInputChange} className="hidden" />
           </label>
 
           {customFileName && (

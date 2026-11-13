@@ -37,11 +37,14 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const t = useCallback((key: string, params: Record<string, string | number> = {}) => {
-    let text = DICTS[lang][key] ?? DICTS.en[key] ?? key;
-    for (const [k, v] of Object.entries(params)) text = text.split(`%${k}%`).join(String(v));
-    return text;
-  }, [lang]);
+  const t = useCallback(
+    (key: string, params: Record<string, string | number> = {}) => {
+      let text = DICTS[lang][key] ?? DICTS.en[key] ?? key;
+      for (const [k, v] of Object.entries(params)) text = text.split(`%${k}%`).join(String(v));
+      return text;
+    },
+    [lang],
+  );
 
   const value = useMemo(() => ({ lang, setLang, t }), [lang, setLang, t]);
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;

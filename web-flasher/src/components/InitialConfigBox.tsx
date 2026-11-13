@@ -15,16 +15,12 @@ export const InitialConfigBox: React.FC<InitialConfigBoxProps> = ({ config, onCh
   const handleChange = (field: keyof DeviceInitialConfig, val: string) => {
     onChange({
       ...config,
-      [field]: val
+      [field]: val,
     });
   };
 
   const hasAnyConfig = Boolean(
-    config.serverUrl?.trim() ||
-    config.username?.trim() ||
-    config.password ||
-    config.wifiSsid ||
-    config.wifiPass
+    config.serverUrl?.trim() || config.username?.trim() || config.password || config.wifiSsid || config.wifiPass,
   );
 
   return (
@@ -35,9 +31,7 @@ export const InitialConfigBox: React.FC<InitialConfigBoxProps> = ({ config, onCh
           <span>{t('setup_title')}</span>
         </div>
         <div className="flex items-center gap-2">
-          {hasAnyConfig && (
-            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-          )}
+          {hasAnyConfig && <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />}
           <span className="text-[10px] font-mono text-[#8a9fc2] bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full">
             {t('badge_optional')}
           </span>
@@ -45,10 +39,11 @@ export const InitialConfigBox: React.FC<InitialConfigBoxProps> = ({ config, onCh
         </div>
       </summary>
 
-      <fieldset disabled={disabled} className="p-4 pt-1 space-y-4 border-t border-[#17234d]/60 text-xs disabled:opacity-60">
-        <p className="text-[11px] text-[#8a9fc2] leading-relaxed">
-          {t('setup_subtitle')}
-        </p>
+      <fieldset
+        disabled={disabled}
+        className="p-4 pt-1 space-y-4 border-t border-[#17234d]/60 text-xs disabled:opacity-60"
+      >
+        <p className="text-[11px] text-[#8a9fc2] leading-relaxed">{t('setup_subtitle')}</p>
 
         {/* Server Section */}
         <div className="space-y-2.5">
@@ -58,9 +53,7 @@ export const InitialConfigBox: React.FC<InitialConfigBoxProps> = ({ config, onCh
           </div>
 
           <div>
-            <label className="block text-[11px] text-[#8a9fc2] mb-1">
-              {t('setup_server_url')}
-            </label>
+            <label className="block text-[11px] text-[#8a9fc2] mb-1">{t('setup_server_url')}</label>
             <input
               type="url"
               inputMode="url"
@@ -116,9 +109,7 @@ export const InitialConfigBox: React.FC<InitialConfigBoxProps> = ({ config, onCh
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
-              <label className="block text-[11px] text-[#8a9fc2] mb-1">
-                {t('setup_wifi_ssid')}
-              </label>
+              <label className="block text-[11px] text-[#8a9fc2] mb-1">{t('setup_wifi_ssid')}</label>
               <input
                 type="text"
                 autoComplete="off"
@@ -132,9 +123,7 @@ export const InitialConfigBox: React.FC<InitialConfigBoxProps> = ({ config, onCh
             </div>
 
             <div>
-              <label className="block text-[11px] text-[#8a9fc2] mb-1">
-                {t('setup_wifi_pass')}
-              </label>
+              <label className="block text-[11px] text-[#8a9fc2] mb-1">{t('setup_wifi_pass')}</label>
               <input
                 type="password"
                 autoComplete="new-password"

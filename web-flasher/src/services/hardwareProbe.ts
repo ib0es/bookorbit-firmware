@@ -1,6 +1,11 @@
 import type { ESPLoader } from 'esptool-js';
 import { readFlash } from './flashRead';
-import { detectFirmwareSignature, FirmwareSignature, PARTITION_TABLE_OFFSET, parsePartitionTable } from './firmwareImage';
+import {
+  detectFirmwareSignature,
+  FirmwareSignature,
+  PARTITION_TABLE_OFFSET,
+  parsePartitionTable,
+} from './firmwareImage';
 
 type Log = (msg: string) => void;
 type Chip = 'C3' | 'S3';
@@ -36,7 +41,12 @@ interface BusProbe {
 }
 
 async function probeI2cBus(
-  loader: ESPLoader, chip: Chip, sda: number, scl: number, addrs: number[], log: Log
+  loader: ESPLoader,
+  chip: Chip,
+  sda: number,
+  scl: number,
+  addrs: number[],
+  log: Log,
 ): Promise<BusProbe> {
   const pins = [sda, scl];
   const mask = (1 << sda) | (1 << scl);
@@ -49,7 +59,10 @@ async function probeI2cBus(
 
   const setIoMux = async (pullDown: boolean) => {
     for (let i = 0; i < pins.length; i++) {
-      let v = (saved.iomux[i] & ~IO_MUX_MCU_SEL_MASK & ~IO_MUX_FUN_WPU & ~IO_MUX_FUN_WPD) | IO_MUX_MCU_SEL_GPIO | IO_MUX_FUN_IE;
+      let v =
+        (saved.iomux[i] & ~IO_MUX_MCU_SEL_MASK & ~IO_MUX_FUN_WPU & ~IO_MUX_FUN_WPD) |
+        IO_MUX_MCU_SEL_GPIO |
+        IO_MUX_FUN_IE;
       if (pullDown) v |= IO_MUX_FUN_WPD;
       await loader.writeReg(ioMuxReg(pins[i]), v >>> 0);
     }
@@ -85,7 +98,8 @@ async function probeI2cBus(
       await drive(1 << scl);
       const byte = (addr << 1) & 0xfe;
       for (let bit = 7; bit >= 0; bit--) {
-        if ((byte >> bit) & 1) await release(1 << sda); else await drive(1 << sda);
+        if ((byte >> bit) & 1) await release(1 << sda);
+        else await drive(1 << sda);
         await release(1 << scl);
         await drive(1 << scl);
       }

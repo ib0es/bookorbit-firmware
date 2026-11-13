@@ -26,7 +26,12 @@ const u32 = (...words: number[]) => {
 const toHex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
 
 const SIZES: Record<string, number> = {
-  '1MB': 1 << 20, '2MB': 2 << 20, '4MB': 4 << 20, '8MB': 8 << 20, '16MB': 16 << 20, '32MB': 32 << 20,
+  '1MB': 1 << 20,
+  '2MB': 2 << 20,
+  '4MB': 4 << 20,
+  '8MB': 8 << 20,
+  '16MB': 16 << 20,
+  '32MB': 32 << 20,
 };
 
 const prepared = new WeakSet<ESPLoader>();
@@ -36,12 +41,16 @@ export async function prepareFlash(loader: ESPLoader): Promise<void> {
   if (prepared.has(loader)) return;
   const detected = await loader.detectFlashSize();
   const size = (detected && SIZES[detected]) || SIZES['4MB'];
-  await loader.checkCommand('set SPI params', ESP_SPI_SET_PARAMS,
-    u32(0, size, 64 * 1024, 4 * 1024, 256, 0xffff));
+  await loader.checkCommand('set SPI params', ESP_SPI_SET_PARAMS, u32(0, size, 64 * 1024, 4 * 1024, 256, 0xffff));
   prepared.add(loader);
 }
 
-export async function readFlash(loader: ESPLoader, offset: number, size: number, timeoutMs = 5000): Promise<Uint8Array> {
+export async function readFlash(
+  loader: ESPLoader,
+  offset: number,
+  size: number,
+  timeoutMs = 5000,
+): Promise<Uint8Array> {
   await prepareFlash(loader);
   await loader.checkCommand('read flash', ESP_READ_FLASH, u32(offset, size, PACKET_SIZE, MAX_IN_FLIGHT));
   const transport = loader.transport;

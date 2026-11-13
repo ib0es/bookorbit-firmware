@@ -23,7 +23,7 @@ export const FlashConsole: React.FC<FlashConsoleProps> = ({ logs, onClear }) => 
       <div className="flex items-center justify-between px-3.5 py-2.5 bg-[#0b112c] border-b border-[#17234d]/60 text-[11px] font-mono text-[#8a9fc2]">
         <button
           type="button"
-          onClick={() => setIsExpanded(prev => !prev)}
+          onClick={() => setIsExpanded((prev) => !prev)}
           className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer select-none"
         >
           <Terminal className="w-3.5 h-3.5 text-cyan-400" />

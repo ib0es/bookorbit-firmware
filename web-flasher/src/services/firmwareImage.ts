@@ -2,7 +2,10 @@ import { DeviceKey, DeviceInfo } from '../types';
 
 /** Error whose message is an i18n key, so the UI can show it translated. */
 export class FlasherError extends Error {
-  constructor(public key: string, public params: Record<string, string | number> = {}) {
+  constructor(
+    public key: string,
+    public params: Record<string, string | number> = {},
+  ) {
     super(key);
     this.name = 'FlasherError';
   }
@@ -27,8 +30,7 @@ export interface PartitionEntry {
   size: number;
 }
 
-const u32 = (b: Uint8Array, o: number) =>
-  (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0;
+const u32 = (b: Uint8Array, o: number) => (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0;
 
 /** Parses an ESP partition table (from an image or raw flash read starting at the table). */
 export function parsePartitionTable(table: Uint8Array): PartitionEntry[] {
@@ -47,9 +49,17 @@ export function imageChipId(bin: Uint8Array): number {
 }
 
 export function samePartitionTables(a: PartitionEntry[], b: PartitionEntry[]): boolean {
-  return a.length === b.length && a.every((p, i) =>
-    p.name === b[i].name && p.type === b[i].type && p.subtype === b[i].subtype &&
-    p.offset === b[i].offset && p.size === b[i].size);
+  return (
+    a.length === b.length &&
+    a.every(
+      (p, i) =>
+        p.name === b[i].name &&
+        p.type === b[i].type &&
+        p.subtype === b[i].subtype &&
+        p.offset === b[i].offset &&
+        p.size === b[i].size,
+    )
+  );
 }
 
 export interface MergedImageInfo {
@@ -166,10 +176,10 @@ export function detectFirmwareSignature(appStart: Uint8Array): FirmwareSignature
 
 /* ---------------------------------- MD5 ---------------------------------- */
 
-const MD5_S = [7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
-  5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
-  4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
-  6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21];
+const MD5_S = [
+  7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 4,
+  11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21,
+];
 const MD5_K = Array.from({ length: 64 }, (_, i) => Math.floor(Math.abs(Math.sin(i + 1)) * 2 ** 32) >>> 0);
 
 /** MD5 as lowercase hex; used by esptool-js to verify what was written. */
@@ -182,17 +192,32 @@ export function md5Hex(data: Uint8Array): string {
   view.setUint32(padded.length - 8, (len * 8) >>> 0, true);
   view.setUint32(padded.length - 4, Math.floor(len / 0x20000000), true);
 
-  let a0 = 0x67452301, b0 = 0xefcdab89, c0 = 0x98badcfe, d0 = 0x10325476;
+  let a0 = 0x67452301,
+    b0 = 0xefcdab89,
+    c0 = 0x98badcfe,
+    d0 = 0x10325476;
   const m = new Uint32Array(16);
   for (let off = 0; off < padded.length; off += 64) {
     for (let i = 0; i < 16; i++) m[i] = view.getUint32(off + i * 4, true);
-    let a = a0, b = b0, c = c0, d = d0;
+    let a = a0,
+      b = b0,
+      c = c0,
+      d = d0;
     for (let i = 0; i < 64; i++) {
       let f: number, g: number;
-      if (i < 16) { f = (b & c) | (~b & d); g = i; }
-      else if (i < 32) { f = (d & b) | (~d & c); g = (5 * i + 1) & 15; }
-      else if (i < 48) { f = b ^ c ^ d; g = (3 * i + 5) & 15; }
-      else { f = c ^ (b | ~d); g = (7 * i) & 15; }
+      if (i < 16) {
+        f = (b & c) | (~b & d);
+        g = i;
+      } else if (i < 32) {
+        f = (d & b) | (~d & c);
+        g = (5 * i + 1) & 15;
+      } else if (i < 48) {
+        f = b ^ c ^ d;
+        g = (3 * i + 5) & 15;
+      } else {
+        f = c ^ (b | ~d);
+        g = (7 * i) & 15;
+      }
       const tmp = d;
       d = c;
       c = b;
@@ -200,8 +225,12 @@ export function md5Hex(data: Uint8Array): string {
       b = (b + ((x << MD5_S[i]) | (x >>> (32 - MD5_S[i])))) >>> 0;
       a = tmp;
     }
-    a0 = (a0 + a) >>> 0; b0 = (b0 + b) >>> 0; c0 = (c0 + c) >>> 0; d0 = (d0 + d) >>> 0;
+    a0 = (a0 + a) >>> 0;
+    b0 = (b0 + b) >>> 0;
+    c0 = (c0 + c) >>> 0;
+    d0 = (d0 + d) >>> 0;
   }
-  const hex = (n: number) => Array.from({ length: 4 }, (_, i) => ((n >>> (i * 8)) & 0xff).toString(16).padStart(2, '0')).join('');
+  const hex = (n: number) =>
+    Array.from({ length: 4 }, (_, i) => ((n >>> (i * 8)) & 0xff).toString(16).padStart(2, '0')).join('');
   return hex(a0) + hex(b0) + hex(c0) + hex(d0);
 }
