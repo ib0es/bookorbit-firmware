@@ -10,7 +10,6 @@
 #include "../net/bookorbit_client.h"
 #include "../core/book_formats.h"
 #include "../ui/i18n.h"
-#include "../ui/jpeg_viewer.h"
 #include <algorithm>
 #include <functional>
 #include <string>
@@ -127,7 +126,7 @@ String LibraryManager::resolveCoverPath(const String& filePath, const String& ti
         if (f) f.close();
         if (legacy) {
             Serial.printf("[Library] Refreshing legacy EPUB cover: %s\n", managed.c_str());
-            if (BookReader::extractCover(filePath, managed)) JpegViewer::clearCache();
+            if (BookReader::extractCover(filePath, managed)) Ui::coverCacheChanged();
         }
     }
     if (isValidCoverFile(explicitCoverPath)) {
