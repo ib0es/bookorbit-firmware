@@ -1,5 +1,5 @@
 import React from 'react';
-import { useI18n } from '../context/I18nContext';
+import { useI18n } from '../context/i18n';
 import { HelpCircle } from 'lucide-react';
 
 export const FaqSection: React.FC = () => {

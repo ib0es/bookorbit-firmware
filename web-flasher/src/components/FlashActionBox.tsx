@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useI18n } from '../context/I18nContext';
+import { useI18n } from '../context/i18n';
 import { DeviceKey, ConnectionStatus, GitHubRelease, DeviceInitialConfig, FlashPhase } from '../types';
 import { resolveFirmwareUrls } from '../services/releases';
 import { DEVICES } from '../constants/devices';

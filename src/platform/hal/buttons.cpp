@@ -3,9 +3,8 @@
 
 ButtonManager Buttons;
 
-ButtonManager::ButtonManager() : _hasPendingEvent(false), _powerLongPressFired(false) {
-    _pendingEvent = { BTN_NONE, ACTION_NONE };
-}
+ButtonManager::ButtonManager()
+    : _pendingEvent{BTN_NONE, ACTION_NONE}, _hasPendingEvent(false), _powerLongPressFired(false) {}
 
 bool ButtonManager::hasHomeKey() const {
     return BoardConfig::hasHomeKey();

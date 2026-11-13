@@ -574,7 +574,11 @@ private:
     uint32_t _textEnd = 0;                       // end of the XHTML flow (FDST)
     std::vector<std::pair<uint32_t, uint32_t>> _flows;   // CSS flows: [start, end)
     std::vector<int> _cssFlows;                  // flow numbers written as CSS
-    struct KfToc { uint32_t target; uint8_t depth; std::string label; };
+    struct KfToc {
+        uint32_t target = 0;
+        uint8_t depth = 0;
+        std::string label;
+    };
     std::vector<KfToc> _kfToc;
     // decompressed text records, two at a time (skeleton and fragment reads alternate)
     uint32_t _cacheRec[2] = {UINT32_MAX, UINT32_MAX};
@@ -1607,9 +1611,12 @@ void MobiConverter::kfTag(const std::string& raw, uint32_t offset) {
     if (t.end) {
         std::string en = raw.substr(1);
         while (!en.empty() && isspace((unsigned char)en.back())) en.pop_back();
+        // d < size() in the loop, and size() > d >= 0 makes back() valid (cppcheck can't see it).
         for (size_t d = _kfStack.size(); d-- > 0;) {
+            // cppcheck-suppress containerOutOfBounds
             if (_kfStack[d].name != en) continue;
             while (_kfStack.size() > d) {
+                // cppcheck-suppress containerOutOfBounds
                 KfOpen& o = _kfStack.back();
                 if (_pass == 2) emit(("</" + o.name + ">").c_str());
                 if (o.wrapped && _pass == 2) {
@@ -1942,7 +1949,8 @@ bool MobiConverter::writeNcx() {
                     cut = 56;
                     while (cut > 0 && ((uint8_t)c[cut] & 0xC0) == 0x80) cut--;
                 }
-                c = c.substr(0, cut) + "\xE2\x80\xA6";
+                c.resize(cut);
+                c += "\xE2\x80\xA6";
             }
             nav(std::to_string(f) + (c.empty() ? "" : ". " + c), f, std::string());
         }

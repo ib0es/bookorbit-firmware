@@ -28,8 +28,8 @@ enum ButtonAction {
 };
 
 struct ButtonEvent {
-    ButtonId id;
-    ButtonAction action;
+    ButtonId id = BTN_NONE;
+    ButtonAction action = ACTION_NONE;
     int16_t x = 0;   // BTN_TAP only
     int16_t y = 0;
     // 0 for a press; 1, 2, 3... for the clicks an arrow key repeats while held

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { useI18n } from './context/I18nContext';
+import { useI18n } from './context/i18n';
 import { useWebSerial } from './hooks/useWebSerial';
 import { DeviceKey, GitHubRelease, DeviceInitialConfig } from './types';
 import { Header } from './components/Header';

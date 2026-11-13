@@ -81,7 +81,7 @@ private:
     friend class TtfFace;
     struct Slot {
         TtfFace face;
-        alignas(8) uint8_t info[160];
+        alignas(8) uint8_t info[160] = {};
         bool ready = false;
         bool fontReady() const { return ready; }
     };

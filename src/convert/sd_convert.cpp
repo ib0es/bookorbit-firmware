@@ -40,6 +40,9 @@ private:
 class SdOut : public OutFile {
 public:
     static constexpr uint32_t kBuf = 8192;
+    SdOut() = default;
+    SdOut(const SdOut&) = delete;   // owns _buf (freed in the destructor)
+    SdOut& operator=(const SdOut&) = delete;
     bool open(const String& p) {
         _f = Storage.open(p.c_str(), O_RDWR | O_CREAT | O_TRUNC);
         _buf = (uint8_t*)malloc(kBuf);
@@ -101,7 +104,7 @@ private:
 
 struct TimedProgress {
     ProgressFn fn;
-    void* user;
+    void* user = nullptr;
     uint32_t us = 0;
     int calls = 0;
     static void call(void* self, int permille) {

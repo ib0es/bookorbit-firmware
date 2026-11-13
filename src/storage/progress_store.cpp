@@ -9,8 +9,8 @@ namespace {
 void writePos(JsonObject o, const ProgressSync::Position& p) {
     o["p"] = p.percent;
     if (p.page > 0) o["pg"] = p.page;
-    if (!p.xpath.empty()) o["x"] = p.xpath.c_str();
-    if (!p.cfi.empty()) o["c"] = p.cfi.c_str();
+    if (!p.xpath.empty()) o["x"] = p.xpath;
+    if (!p.cfi.empty()) o["c"] = p.cfi;
 }
 
 ProgressSync::Position readPos(JsonObjectConst o) {

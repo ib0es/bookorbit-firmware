@@ -54,7 +54,7 @@ public:
     bool done() const { return _done; }
     bool reached() const { return _reached; }  // the point was inside the document
     uint32_t textOffset() const { return _result; }
-    Location location() const { return _loc; }
+    const Location& location() const { return _loc; }
 
 private:
     enum class Mode { ToOffset, ToLocation };

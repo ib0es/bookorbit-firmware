@@ -120,7 +120,7 @@ bool StorageManager::wipeAll() {
     bool allRemoved = true;
     struct DirFrame {
         String path;
-        bool expanded;
+        bool expanded = false;
     };
     std::vector<DirFrame> stack;
     stack.push_back({String("/"), false});
