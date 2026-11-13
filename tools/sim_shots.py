@@ -10,6 +10,7 @@ script and writes every screen update as PNG, plus a contact sheet.
 Script letters (see test/sim/headless_main.cpp): U D L R C B P = buttons,
 w = wait 2.2 s, S = apply server_next.json, Z = sleep and wake up.
 """
+
 import argparse
 import glob
 import json

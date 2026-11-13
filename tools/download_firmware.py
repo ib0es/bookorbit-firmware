@@ -29,7 +29,7 @@ DEVICES = {
 }
 
 
-def format_bytes(size: int) -> str:
+def format_bytes(size: float) -> str:
     for unit in ("B", "KB", "MB", "GB"):
         if size < 1024.0:
             return f"{size:.1f} {unit}" if unit != "B" else f"{size} {unit}"
@@ -44,10 +44,7 @@ def download_file(url: str, dest_path: Path):
     print(f"Downloading: {url}")
     print(f"Destination: {dest_path}")
 
-    req = urllib.request.Request(
-        url,
-        headers={"User-Agent": "BookOrbit-Firmware-Downloader/1.0"}
-    )
+    req = urllib.request.Request(url, headers={"User-Agent": "BookOrbit-Firmware-Downloader/1.0"})
 
     try:
         with urllib.request.urlopen(req) as resp, open(tmp_path, "wb") as out_file:
@@ -64,7 +61,6 @@ def download_file(url: str, dest_path: Path):
                 downloaded += len(chunk)
 
                 if total_size:
-                    percent = downloaded * 100.0 / total_size
                     print(
                         f"\r  [{downloaded * 100 // total_size:3d}%] "
                         f"{format_bytes(downloaded)} / {format_bytes(total_size)}",
@@ -142,7 +138,7 @@ def main() -> int:
     out_dir = Path(args.output_dir).resolve()
 
     tag_desc = args.tag or ("Latest Master Build" if args.channel == "latest" else "Latest Official Release")
-    print(f"Book Orbit Firmware Downloader")
+    print("Book Orbit Firmware Downloader")
     print(f"  Device:  {device_name} ({device})")
     print(f"  Version: {tag_desc}")
     print(f"  Repo:    {args.repo}")
@@ -157,7 +153,7 @@ def main() -> int:
         # Fallback to GitHub Pages mirror for master builds
         if args.channel == "latest" and not args.tag:
             pages_url = f"https://ib0es.github.io/bookorbit-firmware/builds/{device}/{filename}"
-            print(f"Release asset not found. Retrying via GitHub Pages mirror...")
+            print("Release asset not found. Retrying via GitHub Pages mirror...")
             try:
                 download_file(pages_url, dest)
             except Exception as fallback_exc:
@@ -179,7 +175,7 @@ def main() -> int:
         print(f"\nDownload failed: {exc}", file=sys.stderr)
         return 1
 
-    print(f"\nFlash command (offset 0x0):")
+    print("\nFlash command (offset 0x0):")
     print(f"  esptool.py write_flash 0x0 {dest.name}")
     return 0
 

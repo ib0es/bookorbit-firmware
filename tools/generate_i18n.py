@@ -3,6 +3,7 @@ import json
 import os
 import sys
 
+
 def escape_cpp(s: str) -> str:
     # Replace backslash first, then quotes, newlines, etc.
     s = s.replace('\\', '\\\\')
@@ -10,6 +11,7 @@ def escape_cpp(s: str) -> str:
     s = s.replace('\n', '\\n')
     s = s.replace('\r', '')
     return s
+
 
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -32,7 +34,7 @@ def main():
         print(f"[i18n] Error: Base locale file not found: {en_path}", file=sys.stderr)
         sys.exit(1)
 
-    with open(en_path, "r", encoding="utf-8") as f:
+    with open(en_path, encoding="utf-8") as f:
         en_data = json.load(f)
 
     keys = list(en_data.keys())
@@ -44,12 +46,15 @@ def main():
             print(f"[i18n] Warning: Locale file {code}.json not found. Using English fallback.", file=sys.stderr)
             lang_data = dict(en_data)
         else:
-            with open(lang_path, "r", encoding="utf-8") as f:
+            with open(lang_path, encoding="utf-8") as f:
                 lang_data = json.load(f)
 
             missing = [k for k in keys if k not in lang_data]
             if missing:
-                print(f"[i18n] Warning: {len(missing)} keys missing in {code}.json. Using English fallback.", file=sys.stderr)
+                print(
+                    f"[i18n] Warning: {len(missing)} keys missing in {code}.json. Using English fallback.",
+                    file=sys.stderr,
+                )
                 for k in missing:
                     lang_data[k] = en_data[k]
 
@@ -63,7 +68,7 @@ def main():
     lines.append("#include <Arduino.h>")
     lines.append("")
     lines.append("enum class AppLanguage : uint8_t {")
-    for idx, (enum_name, code, name, native_name, _) in enumerate(languages):
+    for idx, (enum_name, *_) in enumerate(languages):
         lines.append(f"    {enum_name} = {idx},")
     lines.append(f"    COUNT = {len(languages)}")
     lines.append("};")
@@ -76,7 +81,7 @@ def main():
     lines.append("")
 
     # Generate string tables for each language
-    for enum_name, code, name, native_name, lang_dict in languages:
+    for enum_name, code, name, _native_name, lang_dict in languages:
         lines.append(f"// Language: {name} ({code})")
         lines.append(f"static const char* const STRINGS_{enum_name}[(size_t)MsgId::COUNT] PROGMEM = {{")
         for k in keys:
@@ -86,20 +91,20 @@ def main():
         lines.append("};")
         lines.append("")
 
-    lines.append(f"static const char* const* const I18N_ALL_TABLES[(size_t)AppLanguage::COUNT] = {{")
+    lines.append("static const char* const* const I18N_ALL_TABLES[(size_t)AppLanguage::COUNT] = {")
     for enum_name, _, _, _, _ in languages:
         lines.append(f"    STRINGS_{enum_name},")
     lines.append("};")
     lines.append("")
 
-    lines.append(f"static const char* const I18N_LANG_CODES[(size_t)AppLanguage::COUNT] = {{")
+    lines.append("static const char* const I18N_LANG_CODES[(size_t)AppLanguage::COUNT] = {")
     for _, code, _, _, _ in languages:
         lines.append(f'    "{code}",')
     lines.append("};")
     lines.append("")
 
-    lines.append(f"static const char* const I18N_LANG_NAMES[(size_t)AppLanguage::COUNT] = {{")
-    for _, _, name, native_name, _ in languages:
+    lines.append("static const char* const I18N_LANG_NAMES[(size_t)AppLanguage::COUNT] = {")
+    for _, _, _, native_name, _ in languages:
         lines.append(f'    "{native_name}",')
     lines.append("};")
     lines.append("")
@@ -108,7 +113,7 @@ def main():
 
     # Only write if file changed
     if os.path.exists(output_path):
-        with open(output_path, "r", encoding="utf-8") as f:
+        with open(output_path, encoding="utf-8") as f:
             existing = f.read()
         if existing == content:
             print(f"[i18n] Generated header is up to date: {output_path}")
@@ -119,9 +124,10 @@ def main():
         f.write(content)
     print(f"[i18n] Generated {len(keys)} strings for {len(languages)} languages -> {output_path}")
 
+
 # Support PlatformIO extra_scripts execution
 try:
-    Import("env")
+    Import("env")  # type: ignore[name-defined]  # noqa: F821 (PlatformIO SCons builtin)
     main()
 except NameError:
     if __name__ == "__main__":

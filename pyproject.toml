@@ -1,0 +1,8 @@
+# Python tooling only (tools/, test/): this repo is not a Python package.
+# Ruff settings: ruff.toml. Type check: mypy (or tools/lint.sh).
+
+[tool.mypy]
+files = ["tools", "test"]
+# Not ours, or not Python sources of this repo (also when run as `mypy .`).
+exclude = ["^freeink-sdk/", "^web-flasher/", "^simulator/", "^picco_stock/", "^test/build-cov-host/", "^\\.pio/"]
+ignore_missing_imports = true   # PIL, SCons, ... are optional here

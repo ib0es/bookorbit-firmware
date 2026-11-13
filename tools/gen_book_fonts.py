@@ -11,6 +11,7 @@ Each font is a sorted code point table plus glyph metrics and packed bitmaps
 Usage (from firmware/):
     python3 tools/gen_book_fonts.py [--fonts-dir /usr/share/fonts/truetype]
 """
+
 import argparse
 import os
 
@@ -18,10 +19,15 @@ from PIL import Image, ImageDraw, ImageFont
 
 FACE = "dejavu/DejaVuSerifCondensed.ttf"
 SIZES = list(range(12, 49, 2))
-THRESHOLD = 112   # coverage (0..255) that inks a pixel: a little under half keeps thin serifs
-CODEPOINTS = sorted(set(range(0x20, 0x7F)) | set(range(0xA0, 0x100)) | set(range(0x400, 0x460)) |
-                    set(range(0x2010, 0x2016)) | set(range(0x2018, 0x201F)) |
-                    {0x2020, 0x2021, 0x2022, 0x2026, 0x2030, 0x2039, 0x203A, 0x2116})
+THRESHOLD = 112  # coverage (0..255) that inks a pixel: a little under half keeps thin serifs
+CODEPOINTS = sorted(
+    set(range(0x20, 0x7F))
+    | set(range(0xA0, 0x100))
+    | set(range(0x400, 0x460))
+    | set(range(0x2010, 0x2016))
+    | set(range(0x2018, 0x201F))
+    | {0x2020, 0x2021, 0x2022, 0x2026, 0x2030, 0x2039, 0x203A, 0x2116}
+)
 
 
 def glyph(font, cp):
@@ -97,7 +103,7 @@ def main():
         f"static const uint16_t kCodepoints[{len(CODEPOINTS)}] = {{",
     ]
     for i in range(0, len(CODEPOINTS), 12):
-        lines.append("    " + ", ".join(f"0x{c:04X}" for c in CODEPOINTS[i:i + 12]) + ",")
+        lines.append("    " + ", ".join(f"0x{c:04X}" for c in CODEPOINTS[i : i + 12]) + ",")
     lines.append("};")
     lines.append("")
     total = 0
@@ -112,7 +118,7 @@ def main():
         total += len(blob) + len(glyphs) * 10
         lines.append(f"static const uint8_t kBitmaps{px}[{max(1, len(blob))}] = {{")
         for i in range(0, len(blob), 24):
-            lines.append("    " + ",".join(str(b) for b in blob[i:i + 24]) + ",")
+            lines.append("    " + ",".join(str(b) for b in blob[i : i + 24]) + ",")
         if not blob:
             lines.append("    0,")
         lines.append("};")

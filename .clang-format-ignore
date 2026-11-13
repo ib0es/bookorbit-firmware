@@ -1,0 +1,10 @@
+# Generated or third-party sources: never reformatted.
+src/ui/book_fonts.h
+src/ui/kit/ui_fonts.h
+src/ui/i18n_generated.h
+src/ui/vendor/*
+src/reader/fonts/builtin_font_data.h
+src/reader/engine/stb_truetype_small.h
+src/reader/engine/hyph_ru.h
+freeink-sdk/*
+simulator/lib_*/*
