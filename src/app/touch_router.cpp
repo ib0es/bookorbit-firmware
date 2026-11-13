@@ -58,6 +58,11 @@ bool translate(AppContext& ctx, const ButtonEvent& tap, ButtonEvent& out) {
             return true;
         }
     }
+    if (ctx.currentState == STATE_TYPEFACE_MENU && action == ActionTypefaceDelete) {
+        ctx.selectedTypefaceIndex = value;
+        out = make(BTN_LEFT);
+        return true;
+    }
     if (ctx.currentState == STATE_BOOKMARKS && action == ActionBookmarkDelete) {
         ctx.selectedBookmarkIndex = value;
         out = make(BTN_LEFT);

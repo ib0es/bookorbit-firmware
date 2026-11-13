@@ -37,6 +37,8 @@ bool matchesInstalled(const Family& family);
 String familyNameForFile(const String& file);
 bool sameFamilyName(const String& left, const String& right);
 bool removeInstalled(const String& name);
+// Remove all matching face files on the card; does not touch Flash.
+bool removeCard(const String& name);
 
 // Adds/replaces one family, retaining every other installed family. `progress`
 // gets 0..1000. Whatever reads the installed faces must have let go of them

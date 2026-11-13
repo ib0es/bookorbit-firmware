@@ -400,40 +400,38 @@ static void drawInstallProgress(void* name, int permille) {
 
 void handleTypefaceMenuEvent(AppContext& ctx, const ButtonEvent& event) {
     if (event.action != ACTION_CLICK) return;
+    const bool sources = ctx.typefaceStorage == 0;
     const auto& fams = typefaceFamilies(false);
-    const int n = 1 + (int)fams.size();
+    const int n = sources ? 3 : (int)fams.size();
     int& sel = ctx.selectedTypefaceIndex;
     switch (Actions::of(event)) {
         case Action::Down:
-            sel = (sel + 1) % n;
-            drawTypefaceMenuScreen(ctx, false);
-            break;
         case Action::Up:
-            sel = (sel - 1 + n) % n;
+            if (n) sel = (sel + (Actions::of(event) == Action::Down ? 1 : n - 1)) % n;
             drawTypefaceMenuScreen(ctx, false);
             break;
         case Action::Select:
         case Action::Next: {
-            String family;   // "" = built-in
-            if (sel > 0 && sel <= (int)fams.size()) {
-                const FontStore::Family& fam = fams[sel - 1];
+            if (sources && sel > 0) {
+                ctx.typefaceStorage = sel;
+                sel = 0;
+                typefaceFamilies(true, ctx.typefaceStorage);
+                drawTypefaceMenuScreen(ctx, false);
+                return;
+            }
+            if (!sources && (sel < 0 || sel >= n)) return;
+            String family;
+            if (!sources) {
+                const FontStore::Family fam = fams[sel];
                 if (!FontStore::contains(fam.name)) {
-                    // Into the flash partition first: the faces in use there are let go of.
                     Reader.setFontFamily("");
                     String name = fam.name;
                     drawInstallProgress(&name, 0);
                     if (!FontStore::install(fam, &drawInstallProgress, &name)) {
-                        // Failed additions leave the existing catalog and families intact.
-                        if (ctx.config.readerFont.length() > 0 && !FontStore::contains(ctx.config.readerFont)) {
-                            ctx.config.readerFont = "";
-                            ctx.config.save();
-                        }
                         Reader.setFontFamily(ctx.config.readerFont);
                         LibraryManager::getInstance().flushReaderPosition();
-                        Modal.showMessage(tr(MsgId::TYPEFACE_MENU_TITLE), tr(MsgId::TYPEFACE_INSTALL_FAILED),
-                                          fam.name.c_str(), "", "", 2500, true);
-                        typefaceFamilies(true);
-                        drawTypefaceMenuScreen(ctx, false);
+                        typefaceFamilies(true, ctx.typefaceStorage);
+                        Modal.showMessage(tr(MsgId::TYPEFACE_MENU_TITLE), tr(MsgId::TYPEFACE_INSTALL_FAILED), fam.name);
                         return;
                     }
                 }
@@ -448,10 +446,40 @@ void handleTypefaceMenuEvent(AppContext& ctx, const ButtonEvent& event) {
             drawAppearanceScreen(ctx, false);
             break;
         }
-        case Action::Back:
         case Action::Prev:
-            ctx.currentState = STATE_APPEARANCE_MENU;
-            drawAppearanceScreen(ctx, false);
+        case Action::Delete:
+            if (!sources && sel >= 0 && sel < n) {
+                const String name = fams[sel].name;
+                const int storage = ctx.typefaceStorage;
+                Modal.showConfirm(
+                        tr(MsgId::KEY_DELETE), name,
+                        tr(storage == 1 ? MsgId::TYPEFACE_FLASH_TITLE : MsgId::TYPEFACE_SD_TITLE),
+                        tr(MsgId::TYPEFACE_DELETE_CONFIRM), "",
+                        [&ctx, name, storage]() {
+                            Reader.setFontFamily("");
+                            const bool ok =
+                                    storage == 1 ? FontStore::removeInstalled(name) : FontStore::removeCard(name);
+                            if (FontStore::sameFamilyName(ctx.config.readerFont, name) && !FontStore::contains(name)) {
+                                ctx.config.readerFont = "";
+                                ctx.config.save();
+                            }
+                            Reader.setFontFamily(ctx.config.readerFont);
+                            LibraryManager::getInstance().flushReaderPosition();
+                            typefaceFamilies(true, storage);
+                            if (!ok) Modal.showMessage(tr(MsgId::KEY_DELETE), tr(MsgId::TYPEFACE_DELETE_FAILED), name);
+                        },
+                        nullptr, tr(MsgId::KEY_DELETE));
+            }
+            break;
+        case Action::Back:
+            if (!sources) {
+                sel = ctx.typefaceStorage;
+                ctx.typefaceStorage = 0;
+                drawTypefaceMenuScreen(ctx, false);
+            } else {
+                ctx.currentState = STATE_APPEARANCE_MENU;
+                drawAppearanceScreen(ctx, false);
+            }
             break;
         default:
             break;
@@ -459,13 +487,8 @@ void handleTypefaceMenuEvent(AppContext& ctx, const ButtonEvent& event) {
 }
 
 static void openTypefaces(AppContext& ctx) {
-    typefaceFamilies(true);
+    ctx.typefaceStorage = 0;
     ctx.selectedTypefaceIndex = 0;
-    if (!Reader.usingBuiltinFont()) {
-        const auto& fams = typefaceFamilies(false);
-        for (size_t i = 0; i < fams.size(); i++)
-            if (fams[i].name == Reader.fontFamilyName()) ctx.selectedTypefaceIndex = (int)i + 1;
-    }
     ctx.currentState = STATE_TYPEFACE_MENU;
     drawTypefaceMenuScreen(ctx, false);
 }

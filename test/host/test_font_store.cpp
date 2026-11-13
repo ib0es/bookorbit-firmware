@@ -160,6 +160,24 @@ int main() {
     auto extra = family(root, "ThirtyThird", 100, 123);
     assert(!FontStore::install(extra, nullptr, nullptr));
     assert(memory == fullCatalog);
+    // SD removal deletes every face and duplicate, retaining Flash and other families.
+    const auto flashBeforeCardDelete = memory;
+    fs::create_directories(root / "fonts" / "Family0");
+    fs::copy_file(root / "fonts" / "Family0-Regular.ttf", root / "fonts" / "Family0" / "Family0-Bold.ttf");
+    fs::copy_file(root / "fonts" / "Family0-Regular.ttf", root / "fonts" / "Family0" / "Family0-Regular.ttf");
+    assert(FontStore::removeCard("family0"));
+    assert(!fs::exists(root / "fonts" / "Family0-Regular.ttf"));
+    assert(!fs::exists(root / "fonts" / "Family0" / "Family0-Bold.ttf"));
+    assert(!fs::exists(root / "fonts" / "Family0" / "Family0-Regular.ttf"));
+    assert(fs::exists(root / "fonts" / "Family1-Regular.ttf"));
+    assert(FontStore::contains("Family0"));
+    assert(memory == flashBeforeCardDelete);
+    assert(!FontStore::removeCard("Family0"));
+    assert(!FontStore::removeCard("../Family1"));
+    assert(!FontStore::removeCard("Noto Serif"));
+    assert(fs::exists(root / "fonts" / "NotoSerif-Regular.ttf"));
+    assert(FontStore::removeInstalled("Family1"));
+    assert(fs::exists(root / "fonts" / "Family1-Regular.ttf"));
     fs::remove_all(root);
     puts("FontStore multi-family, legacy migration, bounds and interrupted-commit checks passed.");
 }

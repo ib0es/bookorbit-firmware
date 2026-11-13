@@ -81,7 +81,8 @@ bool read(uint32_t offset, void* dst, uint32_t len) {
 bool eraseRange(uint32_t offset, uint32_t bytes) {
     if (offset % 4096 || bytes % 4096 || (uint64_t)offset + bytes > kCapacity) return false;
     if (s_out) s_out.close();
-    s_out = Storage.open(kFile, O_RDWR | O_CREAT);
+    // The simulator file API treats O_CREAT as truncation, unlike SdFat.
+    s_out = Storage.open(kFile, Storage.exists(kFile) ? O_RDWR : (O_RDWR | O_CREAT));
     if (!s_out || !s_out.seek(offset)) return false;
     uint8_t erased[256];
     memset(erased, 0xff, sizeof(erased));
@@ -93,9 +94,7 @@ bool eraseRange(uint32_t offset, uint32_t bytes) {
 bool erase(uint32_t bytes, void (*)(void*, int), void*) { return eraseRange(0, (bytes + 4095) / 4096 * 4096); }
 
 bool write(uint32_t offset, const void* src, uint32_t len) {
-    s_out.seek(offset);
-    s_out.write((const uint8_t*)src, len);
-    return true;
+    return s_out && s_out.seek(offset) && s_out.write((const uint8_t*)src, len) == len;
 }
 
 bool finish() {

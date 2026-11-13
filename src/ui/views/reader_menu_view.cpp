@@ -261,15 +261,9 @@ void drawFontMenuScreen(AppContext& ctx, bool fullRefresh) {
 
 static std::vector<FontStore::Family> s_families;
 
-const std::vector<FontStore::Family>& typefaceFamilies(bool rescan) {
+const std::vector<FontStore::Family>& typefaceFamilies(bool rescan, int storage) {
     if (rescan) {
-        s_families = FontStore::scanCard();
-        for (const auto& installed : FontStore::installedFamilies()) {
-            if (std::none_of(s_families.begin(), s_families.end(), [&](const FontStore::Family& f) {
-                    return FontStore::sameFamilyName(f.name, installed.name);
-                }))
-                s_families.push_back(installed);
-        }
+        s_families = storage == 1 ? FontStore::installedFamilies() : FontStore::scanCard();
     }
     return s_families;
 }
@@ -278,40 +272,55 @@ void drawTypefaceMenuScreen(AppContext& ctx, bool fullRefresh) {
     Pass pass;
     Frame& f = pass.frame();
     clear();
+    const bool sources = ctx.typefaceStorage == 0;
     const auto& fams = s_families;
-    const int n = 1 + (int)fams.size();
+    const int n = sources ? 3 : (int)fams.size();
     int& sel = ctx.selectedTypefaceIndex;
-    if (sel < 0) sel = 0;
-    if (sel >= n) sel = n - 1;
-    Rect area = topBar(f, tr(MsgId::TYPEFACE_MENU_TITLE));
+    sel = std::max(0, std::min(sel, n - 1));
+    const MsgId titleId = sources ? MsgId::TYPEFACE_MENU_TITLE
+                                  : (ctx.typefaceStorage == 1 ? MsgId::TYPEFACE_FLASH_TITLE : MsgId::TYPEFACE_SD_TITLE);
+    Rect area = topBar(f, tr(titleId));
     area = keyHints(f, area,
-                    KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_APPLY), tr(MsgId::KEY_BACK), tr(MsgId::KEY_APPLY)});
+                    KeyLabels{tr(MsgId::KEY_BACK), tr(sources ? MsgId::KEY_SELECT : MsgId::KEY_APPLY),
+                              !sources && n ? tr(MsgId::KEY_DELETE) : "",
+                              tr(sources ? MsgId::KEY_SELECT : MsgId::KEY_APPLY)});
     area = insetXY(area, kMargin, 8);
-    const String current = Reader.fontFamilyName();
     const int16_t rowH = (int16_t)(lineHeight(FontBody) + lineHeight(FontSmall) + 18);
-    const int perPage = std::max(1, (int)((area.height - lineHeight(FontSmall) * 2) / (rowH + 6)));
+    const int perPage = std::max(1, (int)(area.height / (rowH + 6)));
     const int first = (sel / perPage) * perPage;
     if (n > perPage) setListPager(n, perPage);
     for (int i = first; i < n && i < first + perPage; i++) {
-        const bool builtin = i == 0;
-        const String name = builtin ? String(Reader.builtinFontName()) : fams[i - 1].name;
-        char note[96];
-        if (builtin)
-            snprintf(note, sizeof(note), "%s", tr(MsgId::TYPEFACE_BUILTIN));
-        else if (FontStore::contains(fams[i - 1].name))
-            snprintf(note, sizeof(note), "%s",
-                     tr(fams[i - 1].files[0].length() ? MsgId::TYPEFACE_INSTALLED_CARD : MsgId::TYPEFACE_INSTALLED));
-        else
-            snprintf(note, sizeof(note), tr(MsgId::TYPEFACE_ON_CARD_FMT), (unsigned)(fams[i - 1].bytes / 1024));
-        const bool cur = builtin ? Reader.usingBuiltinFont() : !Reader.usingBuiltinFont() && current == name;
-        char title[96];
-        snprintf(title, sizeof(title), cur ? "%s \xE2\x9C\x93" : "%s", name.c_str());   // U+2713
-        card(f, takeTop(area, rowH), title, note, nullptr, i == sel, ActionTypeface, (int16_t)i);
+        String name, note;
+        if (sources) {
+            name = i == 0 ? String(Reader.builtinFontName())
+                          : String(tr(i == 1 ? MsgId::TYPEFACE_FLASH_TITLE : MsgId::TYPEFACE_SD_TITLE));
+            if (i == 0) note = tr(MsgId::TYPEFACE_BUILTIN);
+        } else {
+            name = fams[i].name;
+            char buf[96];
+            if (ctx.typefaceStorage == 1)
+                snprintf(buf, sizeof(buf), "%s", tr(MsgId::TYPEFACE_INSTALLED));
+            else
+                snprintf(buf, sizeof(buf), tr(MsgId::TYPEFACE_ON_CARD_FMT), (unsigned)(fams[i].bytes / 1024));
+            note = buf;
+        }
+        const bool current = sources ? i == 0 && Reader.usingBuiltinFont()
+                                     : !Reader.usingBuiltinFont() && Reader.fontFamilyName() == name;
+        if (current) name += " \xE2\x9C\x93";
+        Rect row = takeTop(area, rowH);
+        if (!sources && touchUi()) {
+            const int16_t dw = (int16_t)std::min<int>(rowH, 96);
+            Rect del{(int16_t)(row.right() - dw), row.y, dw, row.height};
+            row.width = (int16_t)(row.width - dw - kGap);
+            frameRect(del, Color::Black, 1, 4);
+            text(del, tr(MsgId::KEY_DELETE), FontSmall, Color::Black, TextAlign::Center, 2);
+            f.hit(del, ActionTypefaceDelete, (int16_t)i);
+        }
+        card(f, row, name.c_str(), note.c_str(), nullptr, i == sel, ActionTypeface, (int16_t)i);
         takeTop(area, 6);
     }
-    if (fams.empty()) {
-        takeTop(area, 10);
-        text(takeTop(area, (int16_t)(lineHeight(FontSmall) * 2 + 4)), tr(MsgId::TYPEFACE_CARD_HINT), FontSmall,
+    if (!sources && n == 0) {
+        text(takeTop(area, (int16_t)(lineHeight(FontSmall) * 2 + 4)), tr(MsgId::TYPEFACE_STORAGE_EMPTY), FontSmall,
              Color::Black, TextAlign::Center, 2);
     }
     present(fullRefresh);

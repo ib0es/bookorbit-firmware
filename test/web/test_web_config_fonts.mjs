@@ -35,7 +35,7 @@ function portal(outcomes = [], fontState = {}) {
     }
   }
   const context = vm.createContext({
-    document: { getElementById: element, createElement: () => ({}) },
+    document: { getElementById: element, createElement: () => ({ children: [], appendChild(child) { this.children.push(child); } }) },
     XMLHttpRequest: XHR,
     FormData: class { append(...args) { this.args = args; } },
     Option: class { constructor(text, value) { this.text = text; this.value = value; } },
@@ -43,7 +43,7 @@ function portal(outcomes = [], fontState = {}) {
       fetchCalls.push({ url, options });
       return { ok: !fontState.failInstall || url !== '/api/fonts/install', json: async () => url === '/api/fonts'
         ? { capacity: 8192, free: 4096, used: 4096, families, installedFamilies: fontState.installedFamilies ?? ((fontState.installed ?? 'Noto Sans') ? [{ name: fontState.installed ?? 'Noto Sans', bytes: 1000 }] : []), builtin: 'Noto Serif' }
-        : (url === '/api/fonts/install' || url === '/api/fonts/flash/delete') ? (fontState.failInstall ? { ok: false, error: 'Does not fit' } : { ok: true }) : { books: [] } };
+        : (url === '/api/fonts/install' || url === '/api/fonts/flash/delete' || url === '/api/fonts/card/delete') ? (fontState.failInstall ? { ok: false, error: 'Does not fit' } : { ok: true }) : { books: [] } };
     },
     setTimeout, URLSearchParams, File, Blob, TextDecoder, DecompressionStream,
   });
@@ -66,6 +66,32 @@ test('font batch uses font endpoint and refreshes the settings family selector',
   assert.equal(element('font-progress').value, 100);
   assert.equal(element('font-up').disabled, false);
   assert.deepEqual(element('font-family').options.map(o => o.value), ['', 'Literata', 'Noto Sans']);
+});
+
+test('existing SD font is skipped and the remaining files are uploaded', async () => {
+  const { context, element, requests } = portal([
+    { ok: false, exists: true, error: 'File already exists' },
+    { ok: true }, { ok: true },
+  ]);
+  element('font-input').files = ['Literata-Regular.ttf', 'Literata-Bold.ttf', 'Literata-Italic.ttf']
+    .map(name => ({ name, size: 1000 }));
+  await context.uploadFonts();
+  assert.equal(requests.length, 3);
+  assert.match(element('font-result').textContent, /Literata-Regular.ttf: %JS_FONT_EXISTS%/);
+  assert.match(element('font-result').textContent, /Literata-Bold.ttf: OK/);
+  assert.match(element('font-result').textContent, /Literata-Italic.ttf: OK/);
+  assert.equal(element('font-progress').value, 100);
+  assert.equal(element('font-up').disabled, false);
+});
+
+test('overwrite enabled still sends every file with overwrite requested', async () => {
+  const { context, element, requests } = portal();
+  element('font-overwrite').checked = true;
+  element('font-input').files = [{ name: 'Literata-Regular.ttf', size: 1000 }];
+  await context.uploadFonts();
+  assert.equal(requests.length, 1);
+  assert.match(requests[0].url, /overwrite=1/);
+  assert.match(element('font-result').textContent, /Literata-Regular.ttf: OK/);
 });
 
 test('rejected upload stops the batch and restores the controls', async () => {
@@ -278,4 +304,36 @@ test('built-in font is read-only in the unified menu and cannot dispatch either 
   assert.equal(element('font-flash-install').disabled,true);
   assert.match(element('font-flash-install').textContent,/JS_FLASH_BUILTIN/);
   const before=fetchCalls.length;await context.runFontAction();assert.equal(fetchCalls.length,before);
+});
+
+for (const inFlash of [false, true]) {
+  test(`SD removal preserves the selected family only when also in Flash (${inFlash})`, async () => {
+    const { context, element, fetchCalls } = portal();
+    const originalFetch = context.fetch;
+    context.fetch = async (url, options) => {
+      if (url === '/api/fonts/card/delete') {
+        fetchCalls.push({ url, options });
+        return { ok: true, json: async () => ({ ok: true, inFlash }) };
+      }
+      return originalFetch(url, options);
+    };
+    element('font-family').value = 'Literata';
+    await context.deletePortalCardFont('Literata');
+    const request = fetchCalls.find(call => call.url === '/api/fonts/card/delete');
+    assert.equal(request.options.body, 'name=Literata');
+    assert.equal(element('font-family').value, inFlash ? 'Literata' : '');
+    assert.equal(element('btn-save').disabled, false);
+    assert.equal(context.fontUploading, false);
+    assert.ok(fetchCalls.some(call => call.url === '/api/fonts'));
+  });
+}
+
+test('SD removal failure restores controls and keeps the selected family', async () => {
+  const { context, element } = portal();
+  context.fetch = async () => ({ ok: false, json: async () => ({ ok: false, error: 'SD unavailable' }) });
+  element('font-family').value = 'Literata';
+  await context.deletePortalCardFont('Literata');
+  assert.equal(element('font-family').value, 'Literata');
+  assert.equal(context.fontUploading, false);
+  assert.equal(element('btn-close').disabled, false);
 });
