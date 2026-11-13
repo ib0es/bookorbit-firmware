@@ -1,19 +1,7 @@
 #pragma once
 
-// Book fonts beyond the built-in family: TrueType families in /fonts on the
-// card, one of them installed at a time into the flash partition the firmware
-// does not otherwise use (the "spiffs" data partition, ~3.4 MB), where it is
-// read in place (memory-mapped) like the built-in one: a family's files are
-// far too big for the heap.
-//
-// A family is the files of /fonts whose names share a stem ("Literata" for
-// Literata-Regular.ttf, Literata-Italic.ttf...); each file's style (bold,
-// italic) comes from its 'head' table, else from its name. Faces missing
-// from a family are drawn from its regular one (bold by double strike).
-//
-// The partition holds a header (family name, faces' offsets and sizes)
-// written last: an install cut short (power, card pulled) leaves no family.
-// In the simulator the partition is a file on the card, read into memory.
+// Multiple memory-mapped TrueType families in the dedicated Flash partition.
+// Two catalog sectors provide atomic updates; legacy single-family data is adopted.
 
 #include <Arduino.h>
 #include <stdint.h>
@@ -37,9 +25,20 @@ std::vector<Family> scanCard();
 uint32_t capacity();
 
 // The family installed in the partition ("" if none or broken).
-String installedName();
+String installedName(); // compatibility: first installed family
+std::vector<Family> installedFamilies();
+bool contains(const String& name);
+uint32_t freeBytes();
+uint32_t largestFreeBytes();
+bool canInstall(const Family& family);
 
-// Copies a family into the partition (erasing the one there). `progress`
+// Exact match of the family faces against the installed Flash data.
+bool matchesInstalled(const Family& family);
+String familyNameForFile(const String& file);
+bool sameFamilyName(const String& left, const String& right);
+bool removeInstalled(const String& name);
+
+// Adds/replaces one family, retaining every other installed family. `progress`
 // gets 0..1000. Whatever reads the installed faces must have let go of them
 // (unmap() is called first).
 using ProgressFn = void (*)(void* user, int permille);
@@ -47,7 +46,7 @@ bool install(const Family& family, ProgressFn progress, void* user);
 
 // The installed family's face files, read in place; null when absent. map()
 // once, then face() as often as needed; unmap() before an install.
-bool map();
+bool map(const String& name);
 void unmap();
 const uint8_t* face(int style, uint32_t* len);
 

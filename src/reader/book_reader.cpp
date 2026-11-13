@@ -43,7 +43,7 @@ void BookReader::setupFonts(const String& family) {
     _ttf.clearFaces();
     _family = "";
     // An installed family when asked for, mapped from flash; else the built-in one.
-    if (family.length() && FontStore::installedName() == family && FontStore::map()) {
+    if (family.length() && FontStore::contains(family) && FontStore::map(family)) {
         for (int style = 0; style < 4; style++) {
             uint32_t len = 0;
             const uint8_t* data = FontStore::face(style, &len);

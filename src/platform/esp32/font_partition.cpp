@@ -39,6 +39,12 @@ bool erase(uint32_t bytes, void (*progress)(void*, int), void* user) {
     return true;
 }
 
+bool eraseRange(uint32_t offset, uint32_t bytes) {
+    const auto* p = partition();
+    return p && offset % 4096 == 0 && bytes % 4096 == 0 && (uint64_t)offset + bytes <= p->size &&
+           esp_partition_erase_range(p, offset, bytes) == ESP_OK;
+}
+
 bool write(uint32_t offset, const void* src, uint32_t len) {
     const esp_partition_t* p = partition();
     return p && esp_partition_write(p, offset, src, len) == ESP_OK;

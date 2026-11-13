@@ -13,6 +13,7 @@ bool read(uint32_t offset, void* dst, uint32_t len);
 // Clears the first `bytes` for writing: the first 4 KB (the header) first, then
 // the rest, reporting 0..300 permille of the whole install as it goes.
 bool erase(uint32_t bytes, void (*progress)(void*, int), void* user);
+bool eraseRange(uint32_t offset, uint32_t bytes);
 bool write(uint32_t offset, const void* src, uint32_t len);   // erased area only
 bool finish();         // after the last write
 // The first `bytes` in memory (read-only) until unmap(); nullptr on failure.

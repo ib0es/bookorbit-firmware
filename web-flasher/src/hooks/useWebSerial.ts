@@ -16,7 +16,7 @@ import {
   EMPTY_DETECTION,
 } from '../types';
 import { DEVICES } from '../constants/devices';
-import { probeC3Board, probeS3Board, scanInstalledFirmware } from '../services/hardwareProbe';
+import { probeC3Board, probeS3Board, scanInstalledFirmware, scanInstalledFont } from '../services/hardwareProbe';
 import {
   FlasherError,
   md5Hex,
@@ -25,10 +25,18 @@ import {
   samePartitionTables,
   supportsSdWipe,
   validateMergedImage,
+  detectFirmwareSignature,
 } from '../services/firmwareImage';
 import { buildConfigEntries, buildNvsPartition } from '../services/nvsConfig';
+import { inspectReaderSession, inspectFlashState } from '../services/readerSession';
 import { readFlash } from '../services/flashRead';
-import { buildFontPartitionImage, findSpiffsPartition } from '../services/fontPartition';
+import {
+  loadFontFamilyImage,
+  checkFontPartition,
+  findSpiffsPartition,
+  sameFontFamily,
+} from '../services/fontPartition';
+import { installCatalogFont, removeCatalogFont } from '../services/fontCatalog';
 
 const ESPRESSIF_VID = 0x303a;
 
@@ -62,14 +70,18 @@ async function hardResetToApp(transport: Transport) {
  */
 async function findReaderPort(known: SerialPort): Promise<SerialPort> {
   const info = known.getInfo();
-  const ports = await navigator.serial.getPorts();
-  if (ports.includes(known)) return known;
-  const same = ports.filter((p) => {
-    const i = p.getInfo();
-    return i.usbVendorId === info.usbVendorId && i.usbProductId === info.usbProductId;
-  });
-  if (same.length === 0) throw new Error('reader not found — check the cable and press Connect again');
-  return same[0];
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const ports = await navigator.serial.getPorts();
+    if (ports.includes(known)) return known;
+    const same = ports.filter((p) => {
+      const i = p.getInfo();
+      return i.usbVendorId === info.usbVendorId && i.usbProductId === info.usbProductId;
+    });
+    if (same.length === 1) return same[0];
+    if (same.length > 1) throw new Error('More than one matching reader is connected. Select the reader again.');
+    await sleep(200);
+  }
+  throw new Error('Reader did not return after USB reset. Reconnect it and press Connect again.');
 }
 
 export interface FlashRequest {
@@ -204,6 +216,29 @@ export function useWebSerial() {
     [releasePort],
   );
 
+  const openScannedLoader = useCallback(
+    async (port: SerialPort, allowIncomplete = false) => {
+      const { session, result } = await inspectReaderSession(
+        async () => openLoader(await findReaderPort(port)),
+        async ({ loader }) => {
+          const mac = await loader.chip.readMac(loader).catch(() => '');
+          const state = await inspectFlashState(
+            () => scanInstalledFirmware(loader, addLog),
+            () => scanInstalledFont(loader, addLog),
+            allowIncomplete,
+          );
+          if (state.inspectionError)
+            addLog(`Connected to the loader, but optional Flash inspection failed: ${state.inspectionError}`);
+          return { ...state, mac };
+        },
+        async () => leaveDownloadMode(transportRef.current),
+        (error) => addLog(`USB inspection failed (${errText(error)}). Reconnecting once before continuing...`),
+      );
+      return { ...session, ...result };
+    },
+    [openLoader, addLog, leaveDownloadMode],
+  );
+
   const connect = useCallback(
     async (filterUsbOnly: boolean): Promise<DetectionResult | null> => {
       const serial = navigator.serial;
@@ -231,15 +266,23 @@ export function useWebSerial() {
       }
 
       try {
-        const { loader, transport, nativeUsb } = await openLoader(port);
+        const {
+          loader,
+          transport,
+          nativeUsb,
+          signature: sig,
+          installedFont,
+          firmwareInspected,
+          inspectionError,
+          mac,
+        } = await openScannedLoader(port, true);
         const chipFamily: string = loader.chip.CHIP_NAME;
-
-        // 1) What firmware is installed (exact build name, if it is Book Orbit)?
-        const sig = await scanInstalledFirmware(loader, addLog);
 
         // 2) What does the hardware say?
         let probed: DeviceKey | null = null;
-        if (chipFamily === 'ESP32-C3') {
+        if (inspectionError) {
+          addLog('Skipping hardware probes after the interrupted Flash read.');
+        } else if (chipFamily === 'ESP32-C3') {
           if (nativeUsb) probed = await probeC3Board(loader, addLog);
           else addLog('Skipping I2C probe: GPIO20 is the UART RX line on bridge-connected boards.');
         } else if (chipFamily === 'ESP32-S3') {
@@ -259,19 +302,15 @@ export function useWebSerial() {
         }
         if (exact && DEVICES[exact].chip !== chipFamily) exact = null;
 
-        let mac = '';
-        try {
-          mac = await loader.chip.readMac(loader);
-        } catch {
-          /* optional */
-        }
-
         const res: DetectionResult = {
           exactMatchKey: exact,
           exactMatchName: exact ? DEVICES[exact].name : null,
           chipFamily,
           mac,
-          isBookOrbitInstalled: sig.isBookOrbit,
+          isBookOrbitInstalled: firmwareInspected ? sig.isBookOrbit : undefined,
+          supportsFontCatalog: sig.supportsFontCatalog,
+          inspectionError,
+          installedFont,
           modelConflict,
         };
         addLog(`Connected: ${chipFamily} (MAC: ${mac || 'unknown'})${exact ? ` · model: ${DEVICES[exact].name}` : ''}`);
@@ -280,7 +319,7 @@ export function useWebSerial() {
         // until Install is pressed, and a reader left in download mode would
         // stay frozen after the cable is pulled.
         await leaveDownloadMode(transport);
-        knownPortRef.current = port;
+        knownPortRef.current = transport.device;
         detectionRef.current = res;
         addLog('Reader is back in its firmware; it switches to flashing mode when you press Install.');
         setDetection(res);
@@ -296,7 +335,7 @@ export function useWebSerial() {
         return null;
       }
     },
-    [addLog, openLoader, leaveDownloadMode],
+    [addLog, openScannedLoader, leaveDownloadMode],
   );
 
   const disconnect = useCallback(async () => {
@@ -433,32 +472,16 @@ export function useWebSerial() {
           fileArray.push({ data: buildNvsPartition(existingNvs, entries, nvs.size), address: nvs.offset });
         }
 
-        if (fontFamily) {
-          const spiffs = findSpiffsPartition(info.partitions);
-          if (!spiffs) {
-            addLog('⚠ No SPIFFS font partition found in the image layout, skipping font pre-installation.');
-          } else {
-            addLog(`\nPreparing embedded font: ${fontFamily.name}...`);
-            const faces: Uint8Array[] = [];
-            for (const fileName of fontFamily.files) {
-              const url = `/fonts/${fontFamily.dir}/${fileName}`;
-              const resp = await fetch(url);
-              if (!resp.ok) {
-                throw new Error(`Failed to download font face ${fileName}: HTTP ${resp.status}`);
-              }
-              faces.push(new Uint8Array(await resp.arrayBuffer()));
-            }
-            const fontPartitionData = buildFontPartitionImage(fontFamily.name, faces);
-            if (fontPartitionData.length > spiffs.size) {
-              throw new Error(
-                `Font image (${(fontPartitionData.length / 1024).toFixed(1)} KB) exceeds font partition size (${(spiffs.size / 1024).toFixed(1)} KB)`,
-              );
-            }
-            addLog(
-              `Writing font partition (${(fontPartitionData.length / 1024).toFixed(1)} KB) to SPIFFS at 0x${spiffs.offset.toString(16)}.`,
-            );
-            fileArray.push({ data: fontPartitionData, address: spiffs.offset });
-          }
+        const fontImage = fontFamily ? await loadFontFamilyImage(fontFamily) : null;
+        if (
+          fontImage &&
+          (!detectFirmwareSignature(image.subarray(info.appOffset, info.appOffset + 8192)).supportsFontCatalog ||
+            !findSpiffsPartition(info.partitions) ||
+            fontImage.length + 8192 > findSpiffsPartition(info.partitions)!.size)
+        ) {
+          throw new Error(
+            'This firmware does not support a multi-family font catalog, or the font does not fit. Update the firmware first.',
+          );
         }
 
         const eraseAll = mode === 'clean';
@@ -488,6 +511,13 @@ export function useWebSerial() {
           },
         });
 
+        if (fontImage) {
+          const partition = findSpiffsPartition(info.partitions)!;
+          await installCatalogFont(loader, partition, fontImage, setProgress);
+        }
+        const installedFont = await scanInstalledFont(loader, addLog);
+        detectionRef.current = { ...detectionRef.current, installedFont };
+        setDetection(detectionRef.current);
         setProgress(100);
         addLog('\n🎉 Firmware written and verified (MD5).');
       } catch (err) {
@@ -505,5 +535,76 @@ export function useWebSerial() {
     [addLog, resetDevice, openLoader, leaveDownloadMode],
   );
 
-  return { status, phase, logs, progress, detection, connect, disconnect, resetDevice, flash, clearLogs };
+  const fontWriteBusy = useRef(false);
+  const installFlashFont = useCallback(
+    async (family: FontFamilyMeta | string): Promise<boolean> => {
+      const port = knownPortRef.current;
+      const detected = detectionRef.current;
+      if (!port || status !== 'connected' || fontWriteBusy.current) throw new FlasherError('err_not_connected');
+      if (!detected.isBookOrbitInstalled) throw new Error('Install Book Orbit firmware before writing a font.');
+      fontWriteBusy.current = true;
+      setStatus('flashing');
+      setPhase('preparing');
+      setProgress(0);
+      let writing = false;
+      try {
+        const image = typeof family === 'string' ? null : await loadFontFamilyImage(family);
+        const { loader, signature } = await openScannedLoader(port);
+        const mac = await loader.chip.readMac(loader);
+        if (!detected.mac || mac !== detected.mac)
+          throw new Error('A different reader is connected. Reconnect the device.');
+        if (!signature.isBookOrbit || !signature.supportsFontCatalog)
+          throw new Error('Update Book Orbit firmware to enable multiple Flash fonts.');
+        const partitions = parsePartitionTable(await readFlash(loader, PARTITION_TABLE_OFFSET, 0xc00));
+        const size = await loader.detectFlashSize();
+        const partition = checkFontPartition(
+          partitions,
+          size ? loader.flashSizeBytes(size as FlashSizeValues) : 0,
+          image?.length ?? 0,
+        );
+        setPhase('writing');
+        writing = true;
+        const changed = image
+          ? await installCatalogFont(loader, partition, image, setProgress)
+          : await removeCatalogFont(loader, partition, family as string);
+        const installedFont = await scanInstalledFont(loader, addLog);
+        const name = typeof family === 'string' ? family : family.name;
+        const present = installedFont.families?.some((f) => sameFontFamily(f.name, name));
+        if (image ? !present : present) throw new Error('Font catalog verification failed.');
+        detectionRef.current = { ...detected, installedFont, supportsFontCatalog: true, inspectionError: undefined };
+        setDetection(detectionRef.current);
+        setProgress(100);
+        addLog(`${image ? 'Installed' : 'Removed'} ${name}; other Flash families are unchanged.`);
+        return changed;
+      } catch (error) {
+        if (writing) {
+          detectionRef.current = { ...detected, installedFont: { status: 'unknown' } };
+          setDetection(detectionRef.current);
+        }
+        addLog(`Font installation failed: ${errText(error)}`);
+        throw error;
+      } finally {
+        setPhase('restarting');
+        await leaveDownloadMode(transportRef.current);
+        setPhase('idle');
+        setStatus('connected');
+        fontWriteBusy.current = false;
+      }
+    },
+    [status, addLog, openScannedLoader, leaveDownloadMode],
+  );
+
+  return {
+    status,
+    phase,
+    logs,
+    progress,
+    detection,
+    connect,
+    disconnect,
+    resetDevice,
+    flash,
+    installFlashFont,
+    clearLogs,
+  };
 }

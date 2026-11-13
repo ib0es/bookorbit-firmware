@@ -417,18 +417,18 @@ void handleTypefaceMenuEvent(AppContext& ctx, const ButtonEvent& event) {
             String family;   // "" = built-in
             if (sel > 0 && sel <= (int)fams.size()) {
                 const FontStore::Family& fam = fams[sel - 1];
-                if (FontStore::installedName() != fam.name) {
+                if (!FontStore::contains(fam.name)) {
                     // Into the flash partition first: the faces in use there are let go of.
                     Reader.setFontFamily("");
                     String name = fam.name;
                     drawInstallProgress(&name, 0);
                     if (!FontStore::install(fam, &drawInstallProgress, &name)) {
-                        // The flash partition is erased by now: the family that was in
-                        // it is gone, the book is in the built-in one, and so is the config.
-                        if (ctx.config.readerFont.length() > 0) {
+                        // Failed additions leave the existing catalog and families intact.
+                        if (ctx.config.readerFont.length() > 0 && !FontStore::contains(ctx.config.readerFont)) {
                             ctx.config.readerFont = "";
                             ctx.config.save();
                         }
+                        Reader.setFontFamily(ctx.config.readerFont);
                         LibraryManager::getInstance().flushReaderPosition();
                         Modal.showMessage(tr(MsgId::TYPEFACE_MENU_TITLE), tr(MsgId::TYPEFACE_INSTALL_FAILED),
                                           fam.name.c_str(), "", "", 2500, true);

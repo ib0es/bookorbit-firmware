@@ -14,7 +14,7 @@ export function isFileSystemAccessSupported(): boolean {
  * Loads font metadata from /fonts/fonts.json.
  */
 export async function fetchFontManifest(): Promise<FontFamilyMeta[]> {
-  const resp = await fetch('/fonts/fonts.json');
+  const resp = await fetch(`${import.meta.env.BASE_URL}fonts/fonts.json`);
   if (!resp.ok) {
     throw new Error(`Failed to load font manifest: HTTP ${resp.status}`);
   }
@@ -43,7 +43,7 @@ export async function installFontsToDirectory(
         onProgress(`${family.name} / ${fileName}`, pct);
       }
 
-      const fileUrl = `/fonts/${family.dir}/${fileName}`;
+      const fileUrl = `${import.meta.env.BASE_URL}fonts/${family.dir}/${fileName}`;
       const resp = await fetch(fileUrl);
       if (!resp.ok) {
         throw new Error(`Failed to fetch ${fileUrl}: HTTP ${resp.status}`);
@@ -89,9 +89,15 @@ export async function installCustomFontFile(
  */
 export function downloadFontsZip(): void {
   const link = document.createElement('a');
-  link.href = '/fonts.zip';
+  link.href = `${import.meta.env.BASE_URL}fonts.zip`;
   link.download = 'fonts.zip';
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
 }
+
+export const fontFamilyKey = (name: string): string => name.toLowerCase().replace(/[ _-]/g, '');
+export const fontFamilyFromFile = (name: string): string =>
+  name
+    .replace(/\.(ttf|otf)$/i, '')
+    .replace(/[- ](regular|book|roman|normal|bolditalic|boldoblique|bold|italic|oblique|bi|it)$/i, '');

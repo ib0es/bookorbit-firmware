@@ -5,6 +5,7 @@
 
 #include <Arduino.h>
 #include <cstdlib>
+#include <cstring>
 
 #include "config.h"
 #include "platform/hal/storage.h"
@@ -69,20 +70,27 @@ uint32_t capacity() { return kCapacity; }
 
 bool read(uint32_t offset, void* dst, uint32_t len) {
     FsFile f = Storage.open(kFile, O_RDONLY);
-    if (!f) return false;
-    const bool ok = (offset == 0 || f.seek(offset)) && f.read(dst, len) == (int)len;
+    memset(dst, 0xff, len);
+    if (!f) return true;
+    const bool seek = offset == 0 || f.seek(offset);
+    const int n = seek ? f.read(dst, len) : 0;
     f.close();
-    return ok;
+    return n >= 0;
 }
 
-bool erase(uint32_t, void (*)(void*, int), void*) {
+bool eraseRange(uint32_t offset, uint32_t bytes) {
+    if (offset % 4096 || bytes % 4096 || (uint64_t)offset + bytes > kCapacity) return false;
     if (s_out) s_out.close();
-    s_out = Storage.open(kFile, O_RDWR | O_CREAT | O_TRUNC);
-    if (!s_out) return false;
-    static const uint8_t zero[256] = {0};
-    for (uint32_t z = 0; z < 4096; z += sizeof(zero)) s_out.write(zero, sizeof(zero));
+    s_out = Storage.open(kFile, O_RDWR | O_CREAT);
+    if (!s_out || !s_out.seek(offset)) return false;
+    uint8_t erased[256];
+    memset(erased, 0xff, sizeof(erased));
+    for (uint32_t at = 0; at < bytes; at += sizeof(erased))
+        if (s_out.write(erased, sizeof(erased)) != sizeof(erased)) return false;
     return true;
 }
+
+bool erase(uint32_t bytes, void (*)(void*, int), void*) { return eraseRange(0, (bytes + 4095) / 4096 * 4096); }
 
 bool write(uint32_t offset, const void* src, uint32_t len) {
     s_out.seek(offset);

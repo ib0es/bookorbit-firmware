@@ -18,6 +18,8 @@ build() {   # name sources...
     mkdir -p "$OUT/$name"
     (cd "$OUT/$name" && $CXX $FLAGS "$@" -o "$OUT/$name/test")
 }
+build portalstream "$ROOT/test/host/test_template_stream.cpp"
+build fontstore -I"$ROOT/include" -DFREEINK_DEVICE_X4=1 "$ROOT/test/host/test_font_store.cpp" "$ROOT/src/reader/font_store.cpp" "$ROOT/src/platform/hal/storage.cpp" "$ROOT/src/core/book_formats.cpp"
 build i18n     "$ROOT/test/host/test_i18n.cpp" "$ROOT/src/ui/i18n.cpp"
 build opds     "$ROOT/test/host/test_opds_stream_parser.cpp" "$ROOT/src/core/opds_stream_parser.cpp" "$ROOT/src/core/book_formats.cpp"
 build formats  "$ROOT/test/host/test_book_formats.cpp" "$ROOT/src/core/book_formats.cpp"
@@ -56,6 +58,8 @@ build_fib ttf "$ROOT/test/host/test_ttf_font.cpp" "$ROOT/src/reader/engine/ttf_b
 build_fib counter "$ROOT/test/host/test_engine_text_counter.cpp" "$ROOT/src/reader/engine/engine_text_counter.cpp" "$ROOT/src/core/epub_cfi.cpp"
 
 rc=0
+"$OUT/portalstream/test" || rc=1
+"$OUT/fontstore/test" || rc=1
 echo "== I18n";              "$OUT/i18n/test" || rc=1
 echo "== OpdsStreamParser";  "$OUT/opds/test" || rc=1
 echo "== BookFormats";       "$OUT/formats/test" || rc=1

@@ -1,3 +1,7 @@
+import { readFontCatalog } from './fontCatalog';
+import { fontCatalogUsage } from './fontPartition';
+import type { InstalledFont } from '../types';
+import { findSpiffsPartition, FONT_HEADER_BYTES } from './fontPartition';
 import type { ESPLoader } from 'esptool-js';
 import { readFlash } from './flashRead';
 import {
@@ -190,7 +194,27 @@ export async function scanInstalledFirmware(loader: ESPLoader, log: Log): Promis
     else log('No Book Orbit firmware found (factory or other firmware)');
     return sig;
   } catch (err) {
-    log(`Firmware scan skipped: ${err instanceof Error ? err.message : err}`);
-    return { isBookOrbit: false, board: null };
+    throw new Error(`Cannot read installed firmware over USB: ${err instanceof Error ? err.message : err}`);
+  }
+}
+
+/** ROM/stub access can inspect internal Flash, but cannot list the MicroSD. */
+export async function scanInstalledFont(loader: ESPLoader, log: Log): Promise<InstalledFont> {
+  try {
+    const table = parsePartitionTable(await readFlash(loader, PARTITION_TABLE_OFFSET, 0xc00));
+    const partition = findSpiffsPartition(table);
+    if (!partition || partition.size < FONT_HEADER_BYTES) return { status: 'unavailable' };
+    const catalog = await readFontCatalog(loader, partition);
+    const families = catalog.families;
+    log(`Flash fonts: ${families.map((f) => f.name).join(', ') || 'none'}`);
+    return {
+      status: families.length ? 'installed' : 'empty',
+      name: families[0]?.name,
+      families,
+      capacityBytes: catalog.dataLimit,
+      ...fontCatalogUsage(catalog),
+    };
+  } catch (err) {
+    throw new Error(`Cannot read Flash font over USB: ${err instanceof Error ? err.message : err}`);
   }
 }

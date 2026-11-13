@@ -2,6 +2,7 @@ import { DeviceInfo, DeviceKey } from '../types';
 
 export const DEVICES: Record<DeviceKey, DeviceInfo> = {
   x4: {
+    usbMassStorage: false,
     name: 'Xteink X4',
     chip: 'ESP32-C3',
     chipSubtitle: 'ESP32-C3',
@@ -10,6 +11,7 @@ export const DEVICES: Record<DeviceKey, DeviceInfo> = {
     merged: 'builds/x4/bookorbit-x4.bin',
   },
   x3: {
+    usbMassStorage: false,
     name: 'Xteink X3',
     chip: 'ESP32-C3',
     chipSubtitle: 'ESP32-C3',
@@ -18,6 +20,7 @@ export const DEVICES: Record<DeviceKey, DeviceInfo> = {
     merged: 'builds/x3/bookorbit-x3.bin',
   },
   x4c: {
+    usbMassStorage: true,
     name: 'X4 Classic',
     chip: 'ESP32-S3',
     chipSubtitle: 'ESP32-S3',
@@ -26,6 +29,7 @@ export const DEVICES: Record<DeviceKey, DeviceInfo> = {
     merged: 'builds/x4c/bookorbit-x4c.bin',
   },
   x4pro: {
+    usbMassStorage: true,
     name: 'X4 Pro',
     chip: 'ESP32-S3',
     chipSubtitle: 'ESP32-S3 Touch',
@@ -34,6 +38,7 @@ export const DEVICES: Record<DeviceKey, DeviceInfo> = {
     merged: 'builds/x4pro/bookorbit-x4pro.bin',
   },
   picco: {
+    usbMassStorage: false,
     name: 'BOOX Picco',
     chip: 'ESP32-S3',
     chipSubtitle: 'ESP32-S3 Touch',

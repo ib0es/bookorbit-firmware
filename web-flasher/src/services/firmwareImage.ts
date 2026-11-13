@@ -154,6 +154,7 @@ function printableStrings(bytes: Uint8Array, minLen = 4): string[] {
 }
 
 export interface FirmwareSignature {
+  supportsFontCatalog?: boolean;
   isBookOrbit: boolean;
   board: DeviceKey | null;
 }
@@ -171,7 +172,11 @@ export function detectFirmwareSignature(appStart: Uint8Array): FirmwareSignature
     const key = BOARD_SIGNATURES[s.trim()];
     if (key) boards.add(key);
   }
-  return { isBookOrbit, board: isBookOrbit && boards.size === 1 ? [...boards][0] : null };
+  return {
+    isBookOrbit,
+    board: isBookOrbit && boards.size === 1 ? [...boards][0] : null,
+    supportsFontCatalog: strings.includes('BookOrbitFontStoreV2'),
+  };
 }
 
 /* ---------------------------------- MD5 ---------------------------------- */
