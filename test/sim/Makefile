@@ -72,9 +72,9 @@ $(BUILD)/engine_shots: $(filter-out $(BUILD)/src/main.o,$(APP_OBJS)) $(BUILD)/te
 $(BUILD)/cover_shots: $(filter-out $(BUILD)/src/main.o,$(APP_OBJS)) $(BUILD)/test/sim/cover_shots.o
 	$(CXX) $(LDEXTRA) $^ -o $@ -lpthread
 
-# The vendor wrapper includes the decoder C source; CFLAGS has no -MMD.
-$(BUILD)/freeink-sdk/libs/book/FreeInkBook/src/vendor/tjpgd_impl.o: \
-    freeink-sdk/libs/book/FreeInkBook/third_party/tjpgd/tjpgd.c \
+# Cover decoder shares the pinned SDK ABI; CFLAGS has no -MMD.
+$(BUILD)/src/ui/vendor/cover_tjpgd.o: \
+    freeink-sdk/libs/book/FreeInkBook/third_party/tjpgd/tjpgd.h \
     freeink-sdk/libs/book/FreeInkBook/third_party/tjpgd/tjpgdcnf.h
 
 $(BUILD)/%.o: %.cpp

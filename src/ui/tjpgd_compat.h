@@ -1,20 +1,14 @@
 #pragma once
 
-// TJpgDec for the cover viewer: FreeInkBook's vendored decoder (8-bit grayscale
-// output, see its tjpgdcnf.h), not the ESP32 ROM one. FreeInkBook links that
-// decoder and its definitions override the ROM's weak (PROVIDE) symbols, so the
-// viewer has to compile against the same header and struct layout.
-
-// Names a FreeInkBook header so PlatformIO's dependency finder links the library
-// (and with it the decoder) into every build that has the cover viewer.
-#include <BookProfile.h>
-
+// The cover viewer uses its own saturating grayscale decoder implementation.
+// FreeInkBook's decoder, configuration and public symbols stay unchanged.
 #include <cstddef>
 #include <cstdint>
 typedef size_t UINT;
 typedef uint8_t BYTE;
 
+#define jd_prepare bookorbit_cover_jd_prepare
+#define jd_decomp bookorbit_cover_jd_decomp
 #include "../../freeink-sdk/libs/book/FreeInkBook/third_party/tjpgd/tjpgd.h"
-
-// The vendored jd_decomp takes an int-returning output callback.
-#define jd_decomp(jd, outfunc, scale) jd_decomp((jd), reinterpret_cast<int (*)(JDEC*, void*, JRECT*)>(outfunc), (scale))
+#undef jd_decomp
+#define jd_decomp(jd, outfunc, scale) bookorbit_cover_jd_decomp((jd), reinterpret_cast<int (*)(JDEC*, void*, JRECT*)>(outfunc), (scale))

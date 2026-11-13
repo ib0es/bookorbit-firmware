@@ -153,6 +153,7 @@ SRCS_C = \
     freeink-sdk/libs/book/FreeInkBook/src/vendor/pngle_impl.c \
     freeink-sdk/libs/book/FreeInkBook/src/vendor/tjpgd_impl.c \
     freeink-sdk/libs/font/FreeInkFont/src/FontAlloc.c \
+    src/ui/vendor/cover_tjpgd.c \
     src/ui/vendor/qrcodegen.c
 
 ifeq ($(DEVICE),x3)
