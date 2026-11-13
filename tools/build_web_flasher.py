@@ -14,9 +14,11 @@ Usage:
 """
 
 import argparse
+import json
 import shutil
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 # Map environment -> (chip_family, display_name, description)
@@ -183,6 +185,70 @@ def generate_manifests(targets):
     with open(DOCS_DIR / "manifest.json", "w", encoding="utf-8") as f:
         json.dump(universal_manifest, f, indent=2)
     print("✓ Generated universal manifest: docs/manifest.json")
+
+
+def pack_fonts():
+    src_fonts = REPO_ROOT / "fonts" / "sd"
+    if not src_fonts.exists():
+        return
+    dest_public = REPO_ROOT / "web-flasher" / "public" / "fonts"
+    dest_zip = REPO_ROOT / "web-flasher" / "public" / "fonts.zip"
+    dest_public.mkdir(parents=True, exist_ok=True)
+    manifest = []
+    descriptions = {
+        "AtkinsonHyperlegibleNext": (
+            "Atkinson Hyperlegible Next",
+            "Сверхчёткий гротеск для комфортного чтения (латиница)",
+            "High-legibility sans-serif (Latin)",
+        ),
+        "NotoSans": (
+            "Noto Sans",
+            "Универсальный чёткий гротеск (латиница и кириллица)",
+            "Clean universal sans-serif (Latin and Cyrillic)",
+        ),
+        "Literata": (
+            "Literata",
+            "Элегантная книжная антиква (латиница и кириллица)",
+            "Elegant book serif (Latin and Cyrillic)",
+        ),
+        "NotoSerif": (
+            "Noto Serif",
+            "Классическая антиква (латиница и кириллица)",
+            "Classic serif typeface (Latin and Cyrillic)",
+        ),
+    }
+    with zipfile.ZipFile(dest_zip, "w", zipfile.ZIP_DEFLATED) as z:
+        for family_dir in sorted(src_fonts.iterdir()):
+            if not family_dir.is_dir() or family_dir.name.startswith("."):
+                continue
+            fam_name = family_dir.name
+            files = sorted(f.name for f in family_dir.glob("*.ttf"))
+            if not files:
+                continue
+            dest_family = dest_public / fam_name
+            dest_family.mkdir(parents=True, exist_ok=True)
+            total_bytes = 0
+            for fname in files:
+                s = family_dir / fname
+                d = dest_family / fname
+                shutil.copy2(s, d)
+                total_bytes += d.stat().st_size
+                z.write(d, f"fonts/{fam_name}/{fname}")
+            info = descriptions.get(fam_name, (fam_name, fam_name, fam_name))
+            manifest.append(
+                {
+                    "id": fam_name,
+                    "name": info[0],
+                    "description": info[1],
+                    "descriptionEn": info[2],
+                    "dir": fam_name,
+                    "files": files,
+                    "bytes": total_bytes,
+                }
+            )
+    with open(dest_public / "fonts.json", "w", encoding="utf-8") as f:
+        json.dump(manifest, f, indent=2, ensure_ascii=False)
+    print(f"✓ Packed fonts to {dest_public.relative_to(REPO_ROOT)} and {dest_zip.relative_to(REPO_ROOT)}")
 
 
 def main():

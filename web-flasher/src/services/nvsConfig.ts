@@ -10,6 +10,7 @@ const utf8Len = (s: string) => new TextEncoder().encode(s).length;
 export interface BuildConfigOptions {
   wipeSd?: boolean;
   lang?: Language;
+  font?: string;
 }
 
 /**
@@ -40,6 +41,9 @@ export function buildConfigEntries(cfg: DeviceInitialConfig, options: BuildConfi
   if (options.wipeSd) {
     add('wipe_sd', '1');
     add('wipe_lang', options.lang ?? 'en');
+  }
+  if (options.font) {
+    add('reader_font', options.font);
   }
   return entries;
 }

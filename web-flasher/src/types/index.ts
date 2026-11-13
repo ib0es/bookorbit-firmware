@@ -59,3 +59,13 @@ export interface DeviceInitialConfig {
 
 /** 'clean': erase whole flash; 'update': keep the NVS partition (settings, token). */
 export type FlashMode = 'clean' | 'update';
+
+export interface FontFamilyMeta {
+  id: string;
+  name: string;
+  description: string;
+  descriptionEn: string;
+  dir: string;
+  files: string[];
+  bytes: number;
+}

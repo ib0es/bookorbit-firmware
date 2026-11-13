@@ -75,15 +75,27 @@ int styleOf(const String& path) {
 String familyOf(const String& stem, int* nameStyle) {
     *nameStyle = -1;
     const int dash = stem.lastIndexOf('-');
-    if (dash <= 0) return stem;
-    String suffix = stem.substring(dash + 1);
-    suffix.toLowerCase();
-    suffix.replace(" ", "");
     struct {
         const char* s;
         int style;
     } k[] = {{"regular", 0}, {"book", 0},       {"roman", 0},       {"normal", 0}, {"bold", 1}, {"italic", 2},
              {"oblique", 2}, {"bolditalic", 3}, {"boldoblique", 3}, {"bi", 3},     {"it", 2}};
+
+    if (dash <= 0) {
+        String lower = stem;
+        lower.toLowerCase();
+        lower.replace(" ", "");
+        for (const auto& e : k) {
+            if (lower == e.s) {
+                *nameStyle = e.style;
+                return "";
+            }
+        }
+        return stem;
+    }
+    String suffix = stem.substring(dash + 1);
+    suffix.toLowerCase();
+    suffix.replace(" ", "");
     for (const auto& e : k)
         if (suffix == e.s) {
             *nameStyle = e.style;
@@ -109,28 +121,43 @@ uint32_t capacity() {
 std::vector<Family> scanCard() {
     std::vector<Family> out;
     if (!Storage.exists(kDir)) return out;
-    for (const String& n : Storage.listFileNames(kDir)) {
-        String lower = n;
-        lower.toLowerCase();
-        if (n.startsWith(".") || !(lower.endsWith(".ttf") || lower.endsWith(".otf"))) continue;
-        const String path = String(kDir) + "/" + n;
-        int nameStyle;
-        const String fam = familyOf(n.substring(0, n.length() - 4), &nameStyle);
-        int style = styleOf(path);
-        if (style < 0) continue;   // not a font
-        if (nameStyle >= 0 && style == 0) style = nameStyle;   // some fonts leave macStyle at 0
-        auto it = std::find_if(out.begin(), out.end(), [&](const Family& f) { return f.name == fam; });
-        if (it == out.end()) {
-            out.push_back(Family());
-            it = out.end() - 1;
-            it->name = fam;
+
+    std::vector<String> dirs = {String(kDir)};
+    for (const String& sub : Storage.listSubdirs(kDir)) {
+        if (!sub.startsWith(".")) {
+            dirs.push_back(String(kDir) + "/" + sub);
         }
-        if (it->files[style].length()) continue;   // two files for one style: the first
-        it->files[style] = path;
-        FsFile f = Storage.open(path.c_str(), O_RDONLY);
-        if (f) {
-            it->bytes += (uint32_t)f.size();
-            f.close();
+    }
+
+    for (const String& dir : dirs) {
+        for (const String& n : Storage.listFileNames(dir)) {
+            String lower = n;
+            lower.toLowerCase();
+            if (n.startsWith(".") || !(lower.endsWith(".ttf") || lower.endsWith(".otf"))) continue;
+            const String path = dir + "/" + n;
+            int nameStyle;
+            String fam = familyOf(n.substring(0, n.length() - 4), &nameStyle);
+            if (fam.length() == 0 && dir != kDir) {
+                const int slash = dir.lastIndexOf('/');
+                if (slash >= 0) fam = dir.substring(slash + 1);
+            }
+            if (fam.length() == 0) continue;
+            int style = styleOf(path);
+            if (style < 0) continue;   // not a font
+            if (nameStyle >= 0 && style == 0) style = nameStyle;   // some fonts leave macStyle at 0
+            auto it = std::find_if(out.begin(), out.end(), [&](const Family& f) { return f.name == fam; });
+            if (it == out.end()) {
+                out.push_back(Family());
+                it = out.end() - 1;
+                it->name = fam;
+            }
+            if (it->files[style].length()) continue;   // two files for one style: the first
+            it->files[style] = path;
+            FsFile f = Storage.open(path.c_str(), O_RDONLY);
+            if (f) {
+                it->bytes += (uint32_t)f.size();
+                f.close();
+            }
         }
     }
     // A family needs its regular face (or one face, taken as regular).

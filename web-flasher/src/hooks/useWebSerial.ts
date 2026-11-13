@@ -11,6 +11,7 @@ import {
   DeviceKey,
   FlashMode,
   FlashPhase,
+  FontFamilyMeta,
   Language,
   EMPTY_DETECTION,
 } from '../types';
@@ -27,6 +28,7 @@ import {
 } from '../services/firmwareImage';
 import { buildConfigEntries, buildNvsPartition } from '../services/nvsConfig';
 import { readFlash } from '../services/flashRead';
+import { buildFontPartitionImage, findSpiffsPartition } from '../services/fontPartition';
 
 const ESPRESSIF_VID = 0x303a;
 
@@ -77,6 +79,7 @@ export interface FlashRequest {
   config: DeviceInitialConfig;
   wipeSd?: boolean;
   lang?: Language;
+  fontFamily?: FontFamilyMeta | null;
 }
 
 export function useWebSerial() {
@@ -322,7 +325,15 @@ export function useWebSerial() {
   }, [addLog, releasePort, markDisconnected]);
 
   const flash = useCallback(
-    async ({ image, device, mode, config, wipeSd = false, lang = 'en' }: FlashRequest): Promise<void> => {
+    async ({
+      image,
+      device,
+      mode,
+      config,
+      wipeSd = false,
+      lang = 'en',
+      fontFamily = null,
+    }: FlashRequest): Promise<void> => {
       const detected = detectionRef.current;
       if (!knownPortRef.current || !detected.chipFamily) throw new FlasherError('err_not_connected');
       if (detected.chipFamily !== device.chip) {
@@ -338,7 +349,11 @@ export function useWebSerial() {
       if (wipeSd && !supportsSdWipe(image, info.appOffset)) {
         throw new FlasherError('err_wipe_sd_unsupported');
       }
-      const entries = buildConfigEntries(config, { wipeSd, lang });
+      const entries = buildConfigEntries(config, {
+        wipeSd,
+        lang,
+        font: fontFamily ? fontFamily.name : undefined,
+      });
 
       setStatus('flashing');
       setPhase('preparing');
@@ -416,6 +431,34 @@ export function useWebSerial() {
           addLog(`Writing ${entries.length} setting(s) to NVS at 0x${nvs.offset.toString(16)}.`);
           if (wipeSd) addLog('SD card will be cleared on first boot.');
           fileArray.push({ data: buildNvsPartition(existingNvs, entries, nvs.size), address: nvs.offset });
+        }
+
+        if (fontFamily) {
+          const spiffs = findSpiffsPartition(info.partitions);
+          if (!spiffs) {
+            addLog('⚠ No SPIFFS font partition found in the image layout, skipping font pre-installation.');
+          } else {
+            addLog(`\nPreparing embedded font: ${fontFamily.name}...`);
+            const faces: Uint8Array[] = [];
+            for (const fileName of fontFamily.files) {
+              const url = `/fonts/${fontFamily.dir}/${fileName}`;
+              const resp = await fetch(url);
+              if (!resp.ok) {
+                throw new Error(`Failed to download font face ${fileName}: HTTP ${resp.status}`);
+              }
+              faces.push(new Uint8Array(await resp.arrayBuffer()));
+            }
+            const fontPartitionData = buildFontPartitionImage(fontFamily.name, faces);
+            if (fontPartitionData.length > spiffs.size) {
+              throw new Error(
+                `Font image (${(fontPartitionData.length / 1024).toFixed(1)} KB) exceeds font partition size (${(spiffs.size / 1024).toFixed(1)} KB)`,
+              );
+            }
+            addLog(
+              `Writing font partition (${(fontPartitionData.length / 1024).toFixed(1)} KB) to SPIFFS at 0x${spiffs.offset.toString(16)}.`,
+            );
+            fileArray.push({ data: fontPartitionData, address: spiffs.offset });
+          }
         }
 
         const eraseAll = mode === 'clean';

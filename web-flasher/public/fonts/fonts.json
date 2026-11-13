@@ -1,0 +1,58 @@
+[
+  {
+    "id": "AtkinsonHyperlegibleNext",
+    "name": "Atkinson Hyperlegible Next",
+    "description": "Сверхчёткий гротеск для комфортного чтения (латиница)",
+    "descriptionEn": "High-legibility sans-serif (Latin)",
+    "dir": "AtkinsonHyperlegibleNext",
+    "files": [
+      "AtkinsonHyperlegibleNext-Regular.ttf",
+      "AtkinsonHyperlegibleNext-Bold.ttf",
+      "AtkinsonHyperlegibleNext-Italic.ttf",
+      "AtkinsonHyperlegibleNext-BoldItalic.ttf"
+    ],
+    "bytes": 153552
+  },
+  {
+    "id": "NotoSans",
+    "name": "Noto Sans",
+    "description": "Универсальный чёткий гротеск (латиница и кириллица)",
+    "descriptionEn": "Clean universal sans-serif (Latin and Cyrillic)",
+    "dir": "NotoSans",
+    "files": [
+      "NotoSans-Regular.ttf",
+      "NotoSans-Bold.ttf",
+      "NotoSans-Italic.ttf",
+      "NotoSans-BoldItalic.ttf"
+    ],
+    "bytes": 180964
+  },
+  {
+    "id": "Literata",
+    "name": "Literata",
+    "description": "Элегантная книжная антиква (латиница и кириллица)",
+    "descriptionEn": "Elegant book serif (Latin and Cyrillic)",
+    "dir": "Literata",
+    "files": [
+      "Literata-Regular.ttf",
+      "Literata-Bold.ttf",
+      "Literata-Italic.ttf",
+      "Literata-BoldItalic.ttf"
+    ],
+    "bytes": 292416
+  },
+  {
+    "id": "NotoSerif",
+    "name": "Noto Serif",
+    "description": "Классическая антиква (латиница и кириллица)",
+    "descriptionEn": "Classic serif typeface (Latin and Cyrillic)",
+    "dir": "NotoSerif",
+    "files": [
+      "NotoSerif-Regular.ttf",
+      "NotoSerif-Bold.ttf",
+      "NotoSerif-Italic.ttf",
+      "NotoSerif-BoldItalic.ttf"
+    ],
+    "bytes": 219124
+  }
+]

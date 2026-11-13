@@ -72,6 +72,7 @@ SRCS_CXX = \
     src/services/sync_clock.cpp \
     src/core/time_utils.cpp \
     src/core/book_formats.cpp \
+    src/core/bookorbit_protocol.cpp \
     src/ui/views/status_modal.cpp \
     src/ui/views/home_view.cpp \
     src/ui/views/catalog_view.cpp \

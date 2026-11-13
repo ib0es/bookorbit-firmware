@@ -130,6 +130,9 @@ bool ConfigStore::load(AppConfig& cfg) {
             cfg.bookOrbitUser = prefs.getString("username", cfg.bookOrbitUser);
             cfg.bookOrbitPass = prefs.getString("password", cfg.bookOrbitPass);
             cfg.authToken = prefs.getString("token", cfg.authToken);
+            if (prefs.isKey("reader_font")) {
+                cfg.readerFont = prefs.getString("reader_font", cfg.readerFont);
+            }
             prefs.end();
             Serial.println("[Storage] No config on the card: network settings taken from NVS.");
         }
@@ -153,7 +156,8 @@ bool ConfigStore::save(const AppConfig& cfg) {
             const char* key;
             const String& value;
         } fields[] = {{"server_url", cfg.serverHost},  {"wifi_ssid", cfg.wifiSsid},     {"wifi_pass", cfg.wifiPass},
-                      {"username", cfg.bookOrbitUser}, {"password", cfg.bookOrbitPass}, {"token", cfg.authToken}};
+                      {"username", cfg.bookOrbitUser}, {"password", cfg.bookOrbitPass}, {"token", cfg.authToken},
+                      {"reader_font", cfg.readerFont}};
         for (const auto& f : fields) {
             if (f.value.length() == 0) {
                 if (prefs.isKey(f.key)) prefs.remove(f.key);
