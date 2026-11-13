@@ -10,6 +10,7 @@
 #include "../net/bookorbit_client.h"
 #include "../core/book_formats.h"
 #include "../ui/i18n.h"
+#include "../ui/jpeg_viewer.h"
 #include <algorithm>
 #include <functional>
 #include <string>
@@ -112,6 +113,23 @@ bool LibraryInternal::isEpubPath(const String& filePath) {
 
 String LibraryManager::resolveCoverPath(const String& filePath, const String& title, const String& explicitCoverPath,
                                         bool allowExtract) {
+    // Old extracted BMPs bypass the rendered-cache version check entirely.
+    // Refresh only the managed EPUB copy; user-supplied neighbouring covers
+    // and covers of books no longer on the card are left alone. Extraction
+    // replaces atomically, so an allocation/IO failure keeps the old cover.
+    if (allowExtract && isEpubPath(filePath) && Storage.exists(filePath.c_str())) {
+        const String managed = epubCoverPath(filePath);
+        FsFile f = Storage.open(managed.c_str(), O_RDONLY);
+        uint8_t header[30] = {};
+        const bool legacy = f && f.read(header, sizeof(header)) == sizeof(header) &&
+                            header[0] == 'B' && header[1] == 'M' &&
+                            !(header[6] == 'B' && header[7] == 'G' && header[8] == 1 && header[28] == 8);
+        if (f) f.close();
+        if (legacy) {
+            Serial.printf("[Library] Refreshing legacy EPUB cover: %s\n", managed.c_str());
+            if (BookReader::extractCover(filePath, managed)) JpegViewer::clearCache();
+        }
+    }
     if (isValidCoverFile(explicitCoverPath)) {
         return explicitCoverPath;
     }

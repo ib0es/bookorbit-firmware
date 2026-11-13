@@ -55,6 +55,7 @@ bool writeGrayBmpHeader(FsFile& out, uint16_t w, uint16_t h, size_t stride) {
         p[3] = v >> 24;
     };
     uint8_t hdr[54] = {'B', 'M'};
+    hdr[6] = 'B'; hdr[7] = 'G'; hdr[8] = 1; // Versioned grayscale source, never pre-dithered.
     le32(hdr + 2, fileSize);
     le32(hdr + 10, offset);
     le32(hdr + 14, 40);
@@ -380,6 +381,17 @@ bool BookReader::extractCover(const String& epubPath, const String& outPath, boo
         }
     }
     Storage.remove(tmp.c_str());
+    if (ok) {
+        // Source replacement also invalidates already rendered thumbnails and
+        // sleep covers, even when their rendering version is still current.
+        String base = outPath.substring(outPath.lastIndexOf('/') + 1);
+        const int dot = base.lastIndexOf('.');
+        if (dot > 0) base = base.substring(0, dot);
+        for (const char* suffix : {"_thumb_crop.bmp", "_thumb_fit.bmp", "_crop.bmp", "_fit.bmp"}) {
+            const String rendered = "/covers/" + base + suffix;
+            Storage.remove(rendered.c_str());
+        }
+    }
     Serial.printf("[Reader] Cover of %s: %s%s\n", epubPath.c_str(),
                   ok                     ? outPath.c_str()
                   : oom                  ? "no memory"

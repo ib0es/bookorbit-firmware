@@ -126,14 +126,37 @@ static const uint8_t bayer8x8[8][8] = {{2, 130, 34, 162, 10, 138, 42, 170},  {19
                                        {14, 142, 46, 174, 6, 134, 38, 166},  {206, 78, 238, 110, 198, 70, 230, 102},
                                        {62, 190, 30, 158, 54, 182, 22, 150}, {254, 126, 222, 94, 246, 118, 214, 86}};
 
+// Keep diffusion errors in sixteenths: rounding each neighbour separately
+// biases pale tones. Alternate row direction and decorrelate the
+// threshold to break the periodic patterns on flat cover backgrounds.
+static bool coverDitherBlack(uint8_t gray, int x, int y, int direction,
+                             int16_t* current, int16_t* next) {
+    uint32_t noise = (uint32_t)x * 0x1f123bb5u ^ (uint32_t)y * 0x5f356495u;
+    noise ^= noise >> 16;
+    noise *= 0x7feb352du;
+    noise ^= noise >> 15;
+    const int threshold = 2040 + (int)(noise & 2047) - 1024;
+    int value = (int)gray * 16 + current[x + 1];
+    value = std::max(0, std::min(4080, value));
+    const bool black = value <= threshold;
+    const int error = value - (black ? 0 : 4080);
+    current[x + 1 + direction] += error * 7 / 16;
+    next[x + 1 - direction] += error * 3 / 16;
+    next[x + 1] += error * 5 / 16;
+    next[x + 1 + direction] += error / 16;
+    return black;
+}
+
 static void finalizeDstRow(JpegContext* ctx) {
     if (!ctx || ctx->curDstY < 0 || ctx->curDstY >= ctx->finalH) return;
 
     int py = ctx->targetY + ctx->curDstY;
     bool inBoxY = (py >= ctx->boxY && py < ctx->boxY + ctx->maxH);
 
-    uint8_t left = ctx->lastGray[0];
-    for (int dx = 0; dx < ctx->finalW; dx++) {
+    uint8_t left = 255;
+    const int direction = (ctx->curDstY & 1) ? -1 : 1;
+    for (int dx = direction > 0 ? 0 : ctx->finalW - 1;
+         dx >= 0 && dx < ctx->finalW; dx += direction) {
         if (ctx->accCnt[dx] > 0) {
             left = (uint8_t)(ctx->accSum[dx] / ctx->accCnt[dx]);
             ctx->lastGray[dx] = left;
@@ -141,17 +164,8 @@ static void finalizeDstRow(JpegContext* ctx) {
             left = ctx->lastGray[dx];
         }
 
-        int v = left + ctx->errCur[dx + 1];
-        if (v < 0) v = 0;
-        if (v > 255) v = 255;
-
-        EPDColor color = (v > 127) ? EPD_WHITE : EPD_BLACK;
-        int err = v - (color == EPD_WHITE ? 255 : 0);
-
-        ctx->errCur[dx + 2] += err * 7 / 16;
-        ctx->errNext[dx] += err * 3 / 16;
-        ctx->errNext[dx + 1] += err * 5 / 16;
-        ctx->errNext[dx + 2] += err * 1 / 16;
+        const EPDColor color = coverDitherBlack(left, dx, ctx->curDstY, direction,
+                                                ctx->errCur, ctx->errNext) ? EPD_BLACK : EPD_WHITE;
 
         int px = ctx->targetX + dx;
         if (inBoxY && px >= ctx->boxX && px < ctx->boxX + ctx->maxW) {
@@ -186,18 +200,36 @@ static void flushBandRows(JpegContext* ctx, int upToSrcY) {
         int srcY = ctx->bandTop;
         const uint8_t* srcRow = ctx->band + (srcY % 16) * ctx->srcW;
 
+        // Downsampling accumulates source pixels into destination bins. When
+        // enlarging, visit every destination pixel instead: source-driven bins
+        // leave holes, which used to become black columns and stale rows.
         int dstY = (int)((int64_t)srcY * ctx->finalH / ctx->srcH);
-        if (dstY >= ctx->finalH) dstY = ctx->finalH - 1;
-
-        while (ctx->curDstY < dstY) {
-            finalizeDstRow(ctx);
-            ctx->curDstY++;
+        if (ctx->finalH > ctx->srcH) {
+            dstY = (int)(((int64_t)srcY * ctx->finalH + ctx->srcH - 1) / ctx->srcH);
         }
+        int endY = dstY + 1;
+        if (ctx->finalH > ctx->srcH) {
+            endY = (int)(((int64_t)(srcY + 1) * ctx->finalH + ctx->srcH - 1) / ctx->srcH);
+        }
+        for (int dy = dstY; dy < endY; ++dy) {
+            while (ctx->curDstY < dy) {
+                finalizeDstRow(ctx);
+                ctx->curDstY++;
+            }
 
-        for (int sx = 0; sx < ctx->srcW; ++sx) {
-            int dx = ctx->colMap[sx];
-            ctx->accSum[dx] += srcRow[sx];
-            ctx->accCnt[dx]++;
+            if (ctx->finalW > ctx->srcW) {
+                for (int dx = 0; dx < ctx->finalW; ++dx) {
+                    int sx = (int)((int64_t)dx * ctx->srcW / ctx->finalW);
+                    ctx->accSum[dx] += srcRow[sx];
+                    ctx->accCnt[dx]++;
+                }
+            } else {
+                for (int sx = 0; sx < ctx->srcW; ++sx) {
+                    int dx = ctx->colMap[sx];
+                    ctx->accSum[dx] += srcRow[sx];
+                    ctx->accCnt[dx]++;
+                }
+            }
         }
 
         ctx->bandTop++;
@@ -331,6 +363,7 @@ bool JpegViewer::save1BitBmp(const char* filePath, int w, int h, const uint8_t* 
     header[5] = (uint8_t)(fileSize >> 24);
     header[6] = 'F'; // BookOrbit Floyd-Steinberg quality signature
     header[7] = 'S';
+    header[8] = 5; // Cover rendering version (scaling and halftone algorithm).
     header[10] = 62; // Offset to pixel data
 
     header[14] = 40; // DIB header size
@@ -439,7 +472,7 @@ bool JpegViewer::drawBmp(const char* filePath, int x, int y, int maxW, int maxH,
     uint8_t* thumbBits = slot ? slot->bits : nullptr;
 
     // Fast path: dimensions already match maxW x maxH (e.g. pre-rendered cache)
-    if (w == maxW && h == maxH) {
+    if (bpp == 1 && w == maxW && h == maxH) {
         for (int row = 0; row < h; row++) {
             int py = y + row;
             int srcRow = topDown ? row : (h - 1 - row);
@@ -517,7 +550,9 @@ bool JpegViewer::drawBmp(const char* filePath, int x, int y, int maxW, int maxH,
                 lastSrcRow = srcRow;
             }
 
-            for (int dx = 0; dx < finalW; dx++) {
+            const int direction = (dy & 1) ? -1 : 1;
+            for (int dx = direction > 0 ? 0 : finalW - 1;
+                 dx >= 0 && dx < finalW; dx += direction) {
                 int px = targetX + dx;
                 int sx0 = (int32_t)dx * w / finalW;
                 int sx1 = (int32_t)(dx + 1) * w / finalW;
@@ -547,15 +582,7 @@ bool JpegViewer::drawBmp(const char* filePath, int x, int y, int maxW, int maxH,
 
                 EPDColor c;
                 if (errCur && errNext) {
-                    int v = gray + errCur[dx + 1];
-                    if (v < 0) v = 0;
-                    if (v > 255) v = 255;
-                    c = (v > 127) ? EPD_WHITE : EPD_BLACK;
-                    int err = v - (c == EPD_WHITE ? 255 : 0);
-                    errCur[dx + 2] += err * 7 / 16;
-                    errNext[dx] += err * 3 / 16;
-                    errNext[dx + 1] += err * 5 / 16;
-                    errNext[dx + 2] += err * 1 / 16;
+                    c = coverDitherBlack(gray, dx, dy, direction, errCur, errNext) ? EPD_BLACK : EPD_WHITE;
                 } else {
                     uint8_t threshold = bayer8x8[py & 7][px & 7];
                     c = (gray > threshold) ? EPD_WHITE : EPD_BLACK;
@@ -650,7 +677,7 @@ bool JpegViewer::drawCover(const char* filePath, int x, int y, int maxW, int max
                 int32_t cw = (int32_t)(hdr[18] | (hdr[19] << 8) | (hdr[20] << 16) | (hdr[21] << 24));
                 int32_t ch = (int32_t)(hdr[22] | (hdr[23] << 8) | (hdr[24] << 16) | (hdr[25] << 24));
                 if (ch < 0) ch = -ch;
-                if (cw == maxW && ch == maxH && hdr[6] == 'F' && hdr[7] == 'S') {
+                if (cw == maxW && ch == maxH && hdr[6] == 'F' && hdr[7] == 'S' && hdr[8] == 5) {
                     sizeMatches = true;
                 }
             }
