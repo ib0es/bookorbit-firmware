@@ -18,4 +18,5 @@ inline constexpr DeviceProfile kX4ClassicProfile = {
         /*sdPowerPin*/ -1,                    // SDMMC enable, in the SDK profile
         /*imuMountRot*/ 0,
         /*imuMountFlipY*/ false,
+        /*keyHintWidth*/ 78,
 };

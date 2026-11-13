@@ -38,4 +38,7 @@ struct DeviceProfile {
     // The sensor's Y axis mirrored (applied before the turn, as imu_flip_y;
     // combined with the user's flip).
     bool imuMountFlipY;
+
+    // Width of one physical key zone, in the same 480 px coordinates as keyCentres.
+    int16_t keyHintWidth;
 };

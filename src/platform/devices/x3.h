@@ -17,4 +17,5 @@ inline constexpr DeviceProfile kX3Profile = {
         /*sdPowerPin*/ -1,                    // GPIO13, in the SDK profile
         /*imuMountRot*/ 0,
         /*imuMountFlipY*/ false,
+        /*keyHintWidth*/ 78,
 };

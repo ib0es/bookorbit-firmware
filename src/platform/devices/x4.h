@@ -11,7 +11,7 @@ inline constexpr DeviceProfile kX4Profile = {
         /*touchOnly*/ false,
         /*upDownTurnPages*/ false,
         /*okOpensBookMenu*/ false,
-        /*keyCentres*/ {96, 178, 279, 370},   // measured on the X4: two rockers of two keys
+        /*keyCentres*/ {86, 186, 294, 394},   // two rocker pairs centred on the screen
         /*autoRotateByDefault*/ false,
         /*usbMassStorage*/ false,
         /*touchWake*/ false,
@@ -20,4 +20,5 @@ inline constexpr DeviceProfile kX4Profile = {
         /*sdPowerPin*/ 13,
         /*imuMountRot*/ 0,
         /*imuMountFlipY*/ false,
+        /*keyHintWidth*/ 85,
 };

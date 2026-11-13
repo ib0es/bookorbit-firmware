@@ -439,7 +439,7 @@ Rect keyHints(Frame& f, Rect area, const KeyLabels& keys, const char* info) {
     };
     if (edge <= 1) {
         const int16_t panelW = W;   // portrait: the keys run along the width
-        const int16_t tabW = (int16_t)(78 * panelW / 480);
+        const int16_t tabW = (int16_t)(Platform::kDevice.keyHintWidth * panelW / 480);
         for (int i = 0; i < 4; i++) {
             int16_t cx = (int16_t)(kCentre[i] * panelW / 480);
             if (edge == 1) cx = (int16_t)(panelW - cx);
@@ -454,7 +454,7 @@ Rect keyHints(Frame& f, Rect area, const KeyLabels& keys, const char* info) {
     // Landscape: the keys run down the right edge (bottom to top: BACK, OK, LEFT,
     // RIGHT) or, upside down, the left one (top to bottom).
     const int16_t panelH = H;   // the keys' axis is the screen's height now
-    const int16_t tabW = 96, keyTabH = (int16_t)(70 * panelH / 480);
+    const int16_t tabW = 96, keyTabH = (int16_t)(Platform::kDevice.keyHintWidth * panelH / 480);
     Rect strip = edge == 2 ? Rect{(int16_t)(area.right() - tabW - 6), area.y, (int16_t)(tabW + 6), area.height}
                            : Rect{area.x, area.y, (int16_t)(tabW + 6), area.height};
     if (edge == 2)
