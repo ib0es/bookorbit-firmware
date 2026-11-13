@@ -13,9 +13,7 @@ export const StepsGuide: React.FC = () => {
 
   return (
     <div className="bg-[#0b112c] border border-[#17234d] rounded-2xl p-6 shadow-md">
-      <h3 className="text-xs font-bold uppercase tracking-wider text-[#8a9fc2] mb-4">
-        {t('steps_title')}
-      </h3>
+      <h3 className="text-xs font-bold uppercase tracking-wider text-[#8a9fc2] mb-4">{t('steps_title')}</h3>
 
       <div className="grid grid-cols-1 gap-4">
         {steps.map((s) => (

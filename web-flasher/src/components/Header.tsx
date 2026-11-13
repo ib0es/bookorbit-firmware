@@ -13,16 +13,12 @@ export const Header: React.FC = () => {
         </div>
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-extrabold tracking-tight text-white">
-              Book Orbit
-            </h1>
+            <h1 className="text-2xl font-extrabold tracking-tight text-white">Book Orbit</h1>
             <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded-full">
               Web Flasher
             </span>
           </div>
-          <p className="text-xs text-[#8a9fc2] mt-0.5">
-            {t('subtitle')}
-          </p>
+          <p className="text-xs text-[#8a9fc2] mt-0.5">{t('subtitle')}</p>
         </div>
       </div>
 
@@ -42,9 +38,7 @@ export const Header: React.FC = () => {
           <button
             onClick={() => setLang('en')}
             className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
-              lang === 'en'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-[#8a9fc2] hover:text-white'
+              lang === 'en' ? 'bg-blue-600 text-white shadow-sm' : 'text-[#8a9fc2] hover:text-white'
             }`}
           >
             EN
@@ -52,9 +46,7 @@ export const Header: React.FC = () => {
           <button
             onClick={() => setLang('ru')}
             className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
-              lang === 'ru'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-[#8a9fc2] hover:text-white'
+              lang === 'ru' ? 'bg-blue-600 text-white shadow-sm' : 'text-[#8a9fc2] hover:text-white'
             }`}
           >
             RU

@@ -19,7 +19,8 @@ const isBin = (name: string) => name.toLowerCase().endsWith('.bin');
 
 export const App: React.FC = () => {
   const { lang, t } = useI18n();
-  const { status, phase, logs, progress, detection, connect, disconnect, resetDevice, flash, clearLogs } = useWebSerial();
+  const { status, phase, logs, progress, detection, connect, disconnect, resetDevice, flash, clearLogs } =
+    useWebSerial();
 
   const [selectedDevice, setSelectedDevice] = useState<DeviceKey | null>(null);
   const [selectedRelease, setSelectedRelease] = useState<string>('latest');
@@ -31,7 +32,11 @@ export const App: React.FC = () => {
   const [flashError, setFlashError] = useState<string | null>(null);
 
   const [initialConfig, setInitialConfig] = useState<DeviceInitialConfig>({
-    serverUrl: '', username: '', password: '', wifiSsid: '', wifiPass: '',
+    serverUrl: '',
+    username: '',
+    password: '',
+    wifiSsid: '',
+    wifiPass: '',
   });
 
   const [customFileBuffer, setCustomFileBuffer] = useState<Uint8Array | null>(null);
@@ -70,7 +75,9 @@ export const App: React.FC = () => {
     } else {
       // Never guess between several models on the same chip: let the user choose.
       const compatible = (Object.keys(DEVICES) as DeviceKey[]).filter((k) => DEVICES[k].chip === res.chipFamily);
-      setSelectedDevice((cur) => (cur && compatible.includes(cur) ? cur : compatible.length === 1 ? compatible[0] : null));
+      setSelectedDevice((cur) =>
+        cur && compatible.includes(cur) ? cur : compatible.length === 1 ? compatible[0] : null,
+      );
     }
   };
 
@@ -138,7 +145,11 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div onDragOver={handlePageDragOver} onDrop={handlePageDrop} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div
+      onDragOver={handlePageDragOver}
+      onDrop={handlePageDrop}
+      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8"
+    >
       <Header />
 
       {!isWebSerialSupported && (

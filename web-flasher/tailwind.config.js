@@ -1,9 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   darkMode: 'class',
   theme: {
     extend: {
@@ -15,16 +12,16 @@ export default {
           border: '#17234d',
           borderHover: '#23366f',
           muted: '#8a9fc2',
-          text: '#f1f5f9'
+          text: '#f1f5f9',
         },
         orbit: {
           blue: '#2563eb',
           blueHover: '#3b82f6',
           cyan: '#22d3ee',
-          glow: '#1d4ed8'
-        }
-      }
+          glow: '#1d4ed8',
+        },
+      },
     },
   },
   plugins: [],
-}
+};

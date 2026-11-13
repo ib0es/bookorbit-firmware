@@ -14,9 +14,7 @@ export const legacyMergedAssetName = (key: DeviceKey) => `bookorbit-${key}-merge
  * downloads do not send CORS headers and cannot be fetched from the browser.
  * Returns null when this release has no build for the model.
  */
-export function resolveFirmwareUrls(
-  key: DeviceKey, release: string, releases: GitHubRelease[]
-): FirmwareUrls | null {
+export function resolveFirmwareUrls(key: DeviceKey, release: string, releases: GitHubRelease[]): FirmwareUrls | null {
   if (release === 'latest') {
     return { merged: DEVICES[key].merged };
   }

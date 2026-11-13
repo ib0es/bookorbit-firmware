@@ -20,7 +20,7 @@ export const ConnectCard: React.FC<ConnectCardProps> = ({
   setFilterUsb,
   onConnect,
   onDisconnect,
-  onReset
+  onReset,
 }) => {
   const { t } = useI18n();
   const isConnected = status === 'connected' || status === 'flashing';
@@ -28,11 +28,11 @@ export const ConnectCard: React.FC<ConnectCardProps> = ({
   const isFlashing = status === 'flashing';
 
   return (
-    <div className={`p-6 rounded-2xl border transition-all ${
-      isConnected
-        ? 'bg-blue-950/25 border-blue-500/40 shadow-xl shadow-blue-950/30'
-        : 'bg-[#0b112c] border-[#17234d]'
-    }`}>
+    <div
+      className={`p-6 rounded-2xl border transition-all ${
+        isConnected ? 'bg-blue-950/25 border-blue-500/40 shadow-xl shadow-blue-950/30' : 'bg-[#0b112c] border-[#17234d]'
+      }`}
+    >
       <div className="flex items-center gap-2 mb-4">
         <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-1 rounded-md">
           {t('step1_badge')}
@@ -59,9 +59,7 @@ export const ConnectCard: React.FC<ConnectCardProps> = ({
             )}
           </button>
 
-          <p className="text-xs text-[#8a9fc2] mt-3">
-            {t('connect_hint')}
-          </p>
+          <p className="text-xs text-[#8a9fc2] mt-3">{t('connect_hint')}</p>
 
           <label className="flex items-center gap-2 text-xs text-[#8a9fc2] hover:text-slate-200 mt-4 cursor-pointer select-none">
             <input
