@@ -214,6 +214,26 @@ def offline_undeclared_cover(sd):
     json.dump({"filePath": "/offline/NoDecl.epub", "title": "NoDecl", "author": "", "coverPath": "",
                "progress": 0, "page": 1, "totalPages": 1}, open(os.path.join(sd, "books/last_book.json"), "w"))
 
+def offline_cover_property(sd):
+    """An offline EPUB that marks its cover properties="cover" (not "cover-image"),
+    on an image whose name does not say cover."""
+    import zipfile
+    os.makedirs(os.path.join(sd, "offline"), exist_ok=True)
+    src = zipfile.ZipFile(os.path.join(sd, "books/Frankenstein.epub"))
+    out = zipfile.ZipFile(os.path.join(sd, "offline/PropCover.epub"), "w")
+    for n in src.namelist():
+        d = src.read(n)
+        if n.endswith(".opf"):
+            d = re.sub(r'\s*<meta name="cover"[^>]*/>', "", d.decode())
+            d = d.replace('properties="cover-image"', 'properties="cover"').replace("_cover.jpg", "_front.jpg").encode()
+        elif n.endswith(".xhtml"):
+            d = d.replace(b"_cover.jpg", b"_front.jpg")
+        out.writestr(n.replace("_cover.jpg", "_front.jpg"), d,
+                     zipfile.ZIP_STORED if n == "mimetype" else zipfile.ZIP_DEFLATED)
+    out.close()
+    json.dump({"filePath": "/offline/PropCover.epub", "title": "PropCover", "author": "", "coverPath": "",
+               "progress": 0, "page": 1, "totalPages": 1}, open(os.path.join(sd, "books/last_book.json"), "w"))
+
 def offline_covers(sd):
     os.makedirs(os.path.join(sd, "offline"), exist_ok=True)
     shutil.copy(os.path.join(ROOT, "test/books/Alice's Adventures in Wonderland - Lewis Carroll - FB2.fb2"),
@@ -473,6 +493,10 @@ CASES = [
      offline_undeclared_cover, {},
      "w",
      lambda log, sd: "Cover of /offline/NoDecl.epub: /covers/offline#NoDecl.jpg" in log),
+    ("offline: a cover marked properties=\"cover\" is found",
+     offline_cover_property, {},
+     "w",
+     lambda log, sd: "Cover of /offline/PropCover.epub: /covers/offline#PropCover.jpg" in log),
     ("offline: unconverted FB2 and MOBI extract covers directly into /covers",
      offline_covers, {},
      "w" + "DDC" + "D" + "C" + "w",
