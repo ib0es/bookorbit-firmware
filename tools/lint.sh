@@ -2,28 +2,20 @@
 # Lint and format check for the whole repo; exits non-zero on any finding.
 #   tools/lint.sh            all checks
 #   tools/lint.sh cpp|py|web only one part
-# C/C++ formatting is checked on the lines changed since LINT_BASE (default: merge base with origin/main).
+# Fails on unformatted code anywhere in the repo (clang-format, ruff format, prettier).
 source "$(dirname "$0")/lint/common.sh"
 
 part="${1:-all}"
 fail=0
 
 if [[ $part == all || $part == cpp ]]; then
-    need clang-format; need git-clang-format; need cppcheck
-    base="$(lint_base)"
-    section "clang-format (lines changed since ${base:0:12})"
-    rc=0
-    out="$(git-clang-format --diff --extensions "$CPP_EXT" "$base" -- "${CPP_PATHS[@]}" 2>&1)" || rc=$?
-    if [[ $out == diff\ --git* ]]; then
-        echo "$out"
+    need clang-format; need cppcheck
+    section "clang-format"
+    if cpp_files | xargs clang-format --dry-run --Werror; then
+        echo ok
+    else
         echo "-> run tools/format.sh" >&2
         fail=1
-    elif [ $rc -ne 0 ]; then
-        echo "$out" >&2
-        echo "error: git-clang-format failed" >&2
-        fail=1
-    else
-        echo ok
     fi
 
     section "cppcheck (src)"
