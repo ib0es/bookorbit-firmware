@@ -7,7 +7,14 @@
 #include "storage/json_writer.h"
 
 static int g_fail = 0, g_checks = 0;
-#define CHECK(c) do { g_checks++; if (!(c)) { g_fail++; printf("FAIL %s:%d %s\n", __FILE__, __LINE__, #c); } } while (0)
+#define CHECK(c)                                               \
+    do {                                                       \
+        g_checks++;                                            \
+        if (!(c)) {                                            \
+            g_fail++;                                          \
+            printf("FAIL %s:%d %s\n", __FILE__, __LINE__, #c); \
+        }                                                      \
+    } while (0)
 
 // A file that takes at most `limit` bytes, as a full card or a failing write.
 struct FakeFile {

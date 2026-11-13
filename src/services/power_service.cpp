@@ -102,12 +102,11 @@ void PowerService::handleAccidentalWakeup() {
     }
 }
 
-int PowerService::getSavedRtcState() {
-    return rtcSavedState;
+int PowerService::getSavedRtcState() { return rtcSavedState; }
+
+namespace {
+AppContext* g_ctx = nullptr;
 }
-
-
-namespace { AppContext* g_ctx = nullptr; }
 
 void PowerService::setContext(AppContext& ctx) { g_ctx = &ctx; }
 
@@ -117,8 +116,8 @@ void PowerService::noteActivity() {
 
 void PowerService::sleepIfIdle(AppContext& ctx) {
     const uint32_t idleMs = millis() - ctx.lastActivityTime;
-    if (PowerPolicy::shouldEnterIdleDeepSleep(UsbMsc.active(), Battery.isCharging(), isUsbCdcConnected(),
-                                              idleMs, sleepTimeoutMs())) {
+    if (PowerPolicy::shouldEnterIdleDeepSleep(UsbMsc.active(), Battery.isCharging(), isUsbCdcConnected(), idleMs,
+                                              sleepTimeoutMs())) {
         Serial.println("[Power] Idle timeout reached.");
         enterDeepSleep(ctx);
     }
@@ -247,11 +246,12 @@ void PowerService::enterDeepSleep(AppContext& ctx, bool syncAllowed) {
     // 1. Sync reading progress before sleep only if explicitly enabled and local changes exist
     // (never on a critical battery: the progress stays queued for the next sync)
     if (!syncAllowed) Serial.println("[Power] Critical battery: no sync before sleep; progress stays queued.");
-    if (syncAllowed && ctx.config.syncOnSleep && ctx.config.wifiSsid.length() > 0 && ctx.config.serverHost.length() > 0 &&
-        lib.lastBook.filePath.length() > 0 && !LibraryManager::isOfflinePath(lib.lastBook.filePath) &&
-        lib.currentRecord().state.localDirty) {
+    if (syncAllowed && ctx.config.syncOnSleep && ctx.config.wifiSsid.length() > 0 &&
+        ctx.config.serverHost.length() > 0 && lib.lastBook.filePath.length() > 0 &&
+        !LibraryManager::isOfflinePath(lib.lastBook.filePath) && lib.currentRecord().state.localDirty) {
         Serial.println("[Power] syncOnSleep enabled: uploading progress to Book Orbit...");
-        Ui::status(tr(MsgId::POWER_SYNC_BEFORE_SLEEP), tr(MsgId::POWER_SYNC_SAVING), utf8Prefix(lib.lastBook.title, 64).c_str());
+        Ui::status(tr(MsgId::POWER_SYNC_BEFORE_SLEEP), tr(MsgId::POWER_SYNC_SAVING),
+                   utf8Prefix(lib.lastBook.title, 64).c_str());
         SyncService::syncCurrentBookProgress(ctx, true);
     }
 
@@ -261,9 +261,11 @@ void PowerService::enterDeepSleep(AppContext& ctx, bool syncAllowed) {
         String coverPath;
         s.withCover = ctx.config.coverOnSleep && lib.lastBook.filePath.length() > 0;
         if (s.withCover) {
-            coverPath = LibraryManager::resolveCoverPath(lib.lastBook.filePath, lib.lastBook.title, lib.lastBook.coverPath, true);
+            coverPath = LibraryManager::resolveCoverPath(lib.lastBook.filePath, lib.lastBook.title,
+                                                         lib.lastBook.coverPath, true);
             if (coverPath.length() > 0) {
-                Serial.printf("[Power] Drawing sleep cover: %s (mode=%d)\n", coverPath.c_str(), ctx.config.sleepCoverFitMode);
+                Serial.printf("[Power] Drawing sleep cover: %s (mode=%d)\n", coverPath.c_str(),
+                              ctx.config.sleepCoverFitMode);
             }
         }
         s.coverPath = coverPath.c_str();

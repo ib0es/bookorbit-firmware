@@ -8,7 +8,14 @@
 using namespace EpubCfi;
 
 static int g_failed = 0, g_checks = 0;
-#define CHECK(cond) do { g_checks++; if (!(cond)) { g_failed++; printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); } } while (0)
+#define CHECK(cond)                                                  \
+    do {                                                             \
+        g_checks++;                                                  \
+        if (!(cond)) {                                               \
+            g_failed++;                                              \
+            printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
+        }                                                            \
+    } while (0)
 
 // Minimal stand-in for the HTML stripper: emits text outside tags, a newline per
 // block start tag, decodes &amp; and skips <head>. Enough to check the walker's
@@ -25,8 +32,14 @@ public:
                     if (tag.size() >= 6 && tag.compare(tag.size() - 3, 3, "-->") == 0) inTag = false;
                     continue;
                 }
-                if (quote) { if (c == quote) quote = 0; continue; }
-                if (c == '"' || c == '\'') { quote = c; continue; }
+                if (quote) {
+                    if (c == quote) quote = 0;
+                    continue;
+                }
+                if (c == '"' || c == '\'') {
+                    quote = c;
+                    continue;
+                }
                 if (c == '>') {
                     inTag = false;
                     if (tag.rfind("head", 0) == 0) inHead = true;
@@ -34,11 +47,15 @@ public:
                     if (tag.rfind("p", 0) == 0 || tag.rfind("div", 0) == 0) out += '\n';
                 }
             } else if (c == '<') {
-                inTag = true; tag.clear();
+                inTag = true;
+                tag.clear();
             } else if (!inHead) {
                 if (ent.size() || c == '&') {
                     ent += c;
-                    if (c == ';') { out += (ent == "&amp;") ? "&" : "?"; ent.clear(); }
+                    if (c == ';') {
+                        out += (ent == "&amp;") ? "&" : "?";
+                        ent.clear();
+                    }
                 } else {
                     out += c;
                 }
@@ -46,6 +63,7 @@ public:
         }
     }
     uint32_t emitted() const override { return (uint32_t)out.size(); }
+
 private:
     bool inTag = false, inHead = false;
     char quote = 0;
@@ -53,13 +71,13 @@ private:
 };
 
 static const char* kDoc =
-    "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html>\n"
-    "<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>Око</title></head>\n"
-    "<body class=\"z\">\n<span id=\"id12\"><div class=\"title1\">\n"
-    "<p class=\"p\">Глава 10</p>\n<p class=\"p\"><em>Отъезд</em></p>\n"
-    "</div><div class=\"image\"><img alt=\"a>b\" src=\"i.jpg\"/></div>"
-    "<!-- note <p>x</p> --><p class=\"p1\">Единственный фонарь &amp; столб.</p><br/><p>Второй 😀 абзац.</p></span>\n"
-    "</body></html>\n";
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html>\n"
+        "<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>Око</title></head>\n"
+        "<body class=\"z\">\n<span id=\"id12\"><div class=\"title1\">\n"
+        "<p class=\"p\">Глава 10</p>\n<p class=\"p\"><em>Отъезд</em></p>\n"
+        "</div><div class=\"image\"><img alt=\"a>b\" src=\"i.jpg\"/></div>"
+        "<!-- note <p>x</p> --><p class=\"p1\">Единственный фонарь &amp; столб.</p><br/><p>Второй 😀 абзац.</p></span>\n"
+        "</body></html>\n";
 
 static uint32_t offsetOf(const std::string& cfi, bool* reached = nullptr, size_t chunk = 7) {
     Location loc;
@@ -90,8 +108,9 @@ static void testParseFormat() {
     CHECK(parse("epubcfi(/6/14!/4/2,/1:0,/1:20)", l));               // range -> start
     CHECK(l.ordinal == 7 && l.steps == std::vector<int>({4, 2, 1}) && l.offset == 0);
     CHECK(parse("epubcfi(/6/8!/4/6)", l) && l.offset == 0 && format(l) == "epubcfi(/6/8!/4/6)");
-    for (const char* bad : {"", "epubcfi()", "epubcfi(/6/34)", "epubcfi(/6/33!/4/1:0)", "epubcfi(/6!/4)",
-                            "cfi(/6/2!/4)", "epubcfi(/6/2!/x)", "epubcfi(/6/2!/4[id)", "epubcfi(/6/2!/4/1:x)", "epubcfi(/6/2!)"}) {
+    for (const char* bad :
+         {"", "epubcfi()", "epubcfi(/6/34)", "epubcfi(/6/33!/4/1:0)", "epubcfi(/6!/4)", "cfi(/6/2!/4)",
+          "epubcfi(/6/2!/x)", "epubcfi(/6/2!/4[id)", "epubcfi(/6/2!/4/1:x)", "epubcfi(/6/2!)"}) {
         CHECK(!parse(bad, l));
     }
 }
@@ -141,10 +160,15 @@ static void testRoundTrip() {
         w2.finish();
         // Lands on the first non-space character at or after the target.
         uint32_t expect = target;
-        while (expect < all.out.size() && (all.out[expect] == ' ' || all.out[expect] == '\n' ||
-               ((unsigned char)all.out[expect] & 0xC0) == 0x80)) expect++;
+        while (expect < all.out.size() &&
+               (all.out[expect] == ' ' || all.out[expect] == '\n' || ((unsigned char)all.out[expect] & 0xC0) == 0x80))
+            expect++;
         checked++;
-        if (w2.textOffset() != expect) { bad++; if (bad < 5) printf("  target %u -> %s -> %u, want %u\n", target, format(loc).c_str(), w2.textOffset(), expect); }
+        if (w2.textOffset() != expect) {
+            bad++;
+            if (bad < 5)
+                printf("  target %u -> %s -> %u, want %u\n", target, format(loc).c_str(), w2.textOffset(), expect);
+        }
     }
     printf("  %d positions\n", checked);
     CHECK(checked > 50);

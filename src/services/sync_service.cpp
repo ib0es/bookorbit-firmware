@@ -42,7 +42,9 @@ bool SyncService::checkSyncCancel() {
 void SyncService::abortSync(AppContext& ctx, AppState returnState, const char* title) {
     Serial.println("[Sync] Operation aborted by user.");
     BookOrbit.disconnectWiFi();
-    Ui::status(title ? title : tr(MsgId::SYNC_ABORTED_TITLE), tr(MsgId::SYNC_ABORTED_USER), tr(MsgId::SYNC_ABORTED_BY_USER_L2), tr(MsgId::SYNC_ABORT_DISCONNECTING), tr(MsgId::SYNC_ABORT_RETURNING));
+    Ui::status(title ? title : tr(MsgId::SYNC_ABORTED_TITLE), tr(MsgId::SYNC_ABORTED_USER),
+               tr(MsgId::SYNC_ABORTED_BY_USER_L2), tr(MsgId::SYNC_ABORT_DISCONNECTING),
+               tr(MsgId::SYNC_ABORT_RETURNING));
     delay(1200);
     Buttons.clearEvents();
     s_syncCancelled = false;
@@ -80,6 +82,7 @@ void SyncService::reportDownloadProgress(int percent) {
         bar[p++] = ']';
         bar[p] = '\0';
 
-        Ui::status(tr(MsgId::LIB_HINT_DOWNLOAD_BOOK), s_downloadingBookTitle.c_str(), pctText, bar, nullptr, tr(MsgId::COMMON_CANCEL));
+        Ui::status(tr(MsgId::LIB_HINT_DOWNLOAD_BOOK), s_downloadingBookTitle.c_str(), pctText, bar, nullptr,
+                   tr(MsgId::COMMON_CANCEL));
     }
 }

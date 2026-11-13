@@ -18,17 +18,22 @@ bool endsWith(const std::string& s, const char* sfx) {
     return s.size() >= n && s.compare(s.size() - n, n, sfx) == 0;
 }
 
-struct Info { Kind kind; const char* ext; const char* label; int rank; bool readable; };
+struct Info {
+    Kind kind;
+    const char* ext;
+    const char* label;
+    int rank;
+    bool readable;
+};
 // Rank: EPUB is what the reader handles best; AZW3 (KF8) keeps the most of the
 // book's formatting of the converted ones; old MOBI / AZW last.
 const Info kInfo[] = {
-    { Unknown, "",      "?",    99, false },
-    { Epub,    ".epub", "EPUB", 0,  true  },
-    { Fb2,     ".fb2",  "FB2",  2,  true  },   // converted to EPUB on first open
-    { Mobi,    ".mobi", "MOBI", 3,  true  },   // converted to EPUB on first open
-    { Azw3,    ".azw3", "AZW3", 1,  true  },   // KF8: converted to EPUB on first open
-    { Azw,     ".azw",  "AZW",  4,  true  },   // old Kindle: MOBI 6 (refused if DRM-protected)
-    { Txt,     ".txt",  "TXT",  5,  true  },
+        {Unknown, "", "?", 99, false},    {Epub, ".epub", "EPUB", 0, true},
+        {Fb2, ".fb2", "FB2", 2, true},   // converted to EPUB on first open
+        {Mobi, ".mobi", "MOBI", 3, true},   // converted to EPUB on first open
+        {Azw3, ".azw3", "AZW3", 1, true},   // KF8: converted to EPUB on first open
+        {Azw, ".azw", "AZW", 4, true},   // old Kindle: MOBI 6 (refused if DRM-protected)
+        {Txt, ".txt", "TXT", 5, true},
 };
 
 const Info& info(Kind k) { return kInfo[k < KindCount ? k : Unknown]; }
@@ -108,10 +113,16 @@ std::string compactUrl(const std::string& url, const std::string& bookId, int fi
 int preferred(const std::vector<Ref>& refs) {
     int best = -1;
     for (int i = 0; i < (int)refs.size(); i++) {
-        if (best < 0) { best = i; continue; }
+        if (best < 0) {
+            best = i;
+            continue;
+        }
         const Ref& a = refs[i];
         const Ref& b = refs[best];
-        if (readable(a.kind) != readable(b.kind)) { if (readable(a.kind)) best = i; continue; }
+        if (readable(a.kind) != readable(b.kind)) {
+            if (readable(a.kind)) best = i;
+            continue;
+        }
         if (rank(a.kind) < rank(b.kind)) best = i;
     }
     return best;

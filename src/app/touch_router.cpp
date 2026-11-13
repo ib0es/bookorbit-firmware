@@ -16,7 +16,7 @@ namespace TouchRouter {
 namespace {
 
 ButtonEvent make(ButtonId id) {
-    ButtonEvent e{ id, ACTION_CLICK };
+    ButtonEvent e{id, ACTION_CLICK};
     return e;
 }
 
@@ -144,7 +144,8 @@ bool translateSwipe(AppContext& ctx, const ButtonEvent& swipe, ButtonEvent& out)
         const int sy = swipe.id == BTN_SWIPE_UP ? -1 : swipe.id == BTN_SWIPE_DOWN ? 1 : 0;
         int16_t ax, ay, bx, by;
         interfaceToPage(ctx.config.uiOrientation, Reader.orientation(), 200, 200, ax, ay);
-        interfaceToPage(ctx.config.uiOrientation, Reader.orientation(), (int16_t)(200 + sx), (int16_t)(200 + sy), bx, by);
+        interfaceToPage(ctx.config.uiOrientation, Reader.orientation(), (int16_t)(200 + sx), (int16_t)(200 + sy), bx,
+                        by);
         (void)vertical;
         if (bx == ax) return false;   // along the page's height
         out = make(bx < ax ? BTN_RIGHT : BTN_LEFT);

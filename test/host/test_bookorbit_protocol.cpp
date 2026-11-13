@@ -10,7 +10,14 @@
 using namespace BookOrbitProtocol;
 
 static int g_failed = 0, g_checks = 0;
-#define CHECK(cond) do { g_checks++; if (!(cond)) { g_failed++; printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); } } while (0)
+#define CHECK(cond)                                                  \
+    do {                                                             \
+        g_checks++;                                                  \
+        if (!(cond)) {                                               \
+            g_failed++;                                              \
+            printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
+        }                                                            \
+    } while (0)
 static bool near(float a, float b) { return std::fabs(a - b) < 1e-4f; }
 
 // GET /api/v1/books/1/progress after the web reader moved (bare array, CFI, no xpath).
@@ -41,7 +48,8 @@ static void testBookProgress() {
     CHECK(parseBookProgress(R"J({"items":[
         {"percentage":10,"updatedAt":"2026-11-07T10:00:00Z","koreaderProgress":"/body/DocFragment[3]/body/p[2]/text().0"},
         {"percentage":55.5,"updatedAt":"2026-11-07T12:00:00.5Z","text":{"page":42},"koreader":"/body/DocFragment[9]/body/p[1]/text().4"},
-        {"percentage":30,"updatedAt":"2026-11-07T11:00:00Z"}]})J", p));
+        {"percentage":30,"updatedAt":"2026-11-07T11:00:00Z"}]})J",
+                            p));
     CHECK(near(p.percent, 0.555f) && p.page == 42 && p.cfi.empty());
 
     // Records without a percentage are not positions; clamping; missing timestamps keep the first.
@@ -109,11 +117,14 @@ static void testWrite() {
 static void testBookmarks() {
     std::vector<BookOrbitProtocol::Bookmark> b;
     // Like the server: text bookmarks, an audiobook one, one without a CFI in this file.
-    CHECK(parseBookmarks(R"J([{"id":5,"bookId":1,"cfi":"epubcfi(/6/4!/4/2,/1:0)","title":"Chapter 1","positionSeconds":null,"note":null},
+    CHECK(parseBookmarks(
+            R"J([{"id":5,"bookId":1,"cfi":"epubcfi(/6/4!/4/2,/1:0)","title":"Chapter 1","positionSeconds":null,"note":null},
                               {"id":6,"bookId":1,"cfi":null,"title":"Audio","positionSeconds":12.5},
-                              {"id":7,"bookId":1,"cfi":null,"title":"Other file","positionSeconds":null}])J", b));
+                              {"id":7,"bookId":1,"cfi":null,"title":"Other file","positionSeconds":null}])J",
+            b));
     CHECK(b.size() == 1 && b[0].id == 5 && b[0].cfi == "epubcfi(/6/4!/4/2,/1:0)" && b[0].title == "Chapter 1");
-    CHECK(parseBookmarks(R"J({"items":[{"id":9,"cfi":"epubcfi(/6/2!/4)","title":"x"}]})J", b) && b.size() == 1 && b[0].id == 9);
+    CHECK(parseBookmarks(R"J({"items":[{"id":9,"cfi":"epubcfi(/6/2!/4)","title":"x"}]})J", b) && b.size() == 1 &&
+          b[0].id == 9);
     CHECK(parseBookmarks("[]", b) && b.empty());
     CHECK(!parseBookmarks("<html>", b));
 
@@ -123,7 +134,8 @@ static void testBookmarks() {
     std::string longTitle;
     for (int i = 0; i < 300; i++) longTitle += "я";   // 600 bytes
     const std::string body = buildBookmarkCreate(1, "c", longTitle);
-    CHECK(body.find("\"title\":\"") != std::string::npos && body.size() < 560 && body.find("\xD1\"") == std::string::npos);
+    CHECK(body.find("\"title\":\"") != std::string::npos && body.size() < 560 &&
+          body.find("\xD1\"") == std::string::npos);
     CHECK(parseCreatedBookmarkId(R"J({"id":42,"bookId":1,"cfi":"c","title":"t"})J") == 42);
     CHECK(parseCreatedBookmarkId("{}") == 0);
 }

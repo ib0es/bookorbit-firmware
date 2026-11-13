@@ -23,7 +23,7 @@ constexpr uint8_t kHandshakeTimeout = 204;
 constexpr uint8_t kNoApCompatibleSecurity = 210;
 constexpr uint8_t kNoApAuthmodeThreshold = 211;
 constexpr uint8_t kNoApRssiThreshold = 212;
-}
+}  // namespace WifiReason
 
 // Disconnect reasons seen during one connection attempt. A single reason can
 // be a fluke (a missed beacon, a slow handshake), so most need to come twice;
@@ -33,7 +33,11 @@ struct WifiFailureTracker {
     uint8_t badPassword = 0;
     bool authFail = false;
 
-    void reset() { noNetwork = 0; badPassword = 0; authFail = false; }
+    void reset() {
+        noNetwork = 0;
+        badPassword = 0;
+        authFail = false;
+    }
 
     void onDisconnect(uint8_t reason) {
         switch (reason) {

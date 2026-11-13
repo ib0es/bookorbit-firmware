@@ -7,11 +7,17 @@ enum wifi_mode_t { WIFI_OFF = 0, WIFI_STA = 1, WIFI_AP = 2, WIFI_AP_STA = 3 };
 enum wifi_auth_mode_t { WIFI_AUTH_OPEN = 0, WIFI_AUTH_WPA2_PSK = 3 };
 enum { WL_IDLE_STATUS = 0, WL_CONNECTED = 3, WL_DISCONNECTED = 6 };
 
-namespace FakeNet { bool wifiBegin(uint32_t& connectMs, uint8_t& failReason); }   // test/sim/fake_bookorbit.cpp
+namespace FakeNet {
+bool wifiBegin(uint32_t& connectMs, uint8_t& failReason);
+}   // namespace FakeNet
 
 // Station events, as Arduino-ESP32 has them (only the disconnect is used).
 enum arduino_event_id_t { ARDUINO_EVENT_WIFI_STA_DISCONNECTED = 5, ARDUINO_EVENT_MAX = 100 };
-struct arduino_event_info_t { struct { uint8_t reason; } wifi_sta_disconnected; };
+struct arduino_event_info_t {
+    struct {
+        uint8_t reason;
+    } wifi_sta_disconnected;
+};
 typedef void (*WiFiEventSimCb)(arduino_event_id_t, arduino_event_info_t);
 
 class IPAddress {
@@ -21,7 +27,8 @@ public:
     bool operator!=(const IPAddress& o) const { return _v != o._v; }
     bool operator==(const IPAddress& o) const { return _v == o._v; }
     String toString() const {
-        char b[20]; snprintf(b, sizeof(b), "%u.%u.%u.%u", _v >> 24, (_v >> 16) & 255, (_v >> 8) & 255, _v & 255);
+        char b[20];
+        snprintf(b, sizeof(b), "%u.%u.%u.%u", _v >> 24, (_v >> 16) & 255, (_v >> 8) & 255, _v & 255);
         return String(b);
     }
     uint32_t _v;
@@ -29,7 +36,10 @@ public:
 
 class WiFiClass {
 public:
-    void mode(wifi_mode_t m) { _mode = m; if (m == WIFI_OFF) _connected = false; }
+    void mode(wifi_mode_t m) {
+        _mode = m;
+        if (m == WIFI_OFF) _connected = false;
+    }
     wifi_mode_t getMode() { return _mode; }
     void setSleep(bool) {}
     void begin(const char* ssid, const char*) {
@@ -62,6 +72,7 @@ public:
     bool softAP(const char*, const char* = nullptr) { return true; }
     IPAddress softAPIP() { return IPAddress(192, 168, 4, 1); }
     bool softAPdisconnect(bool = false) { return true; }
+
 private:
     wifi_mode_t _mode = WIFI_OFF;
     uint32_t _connectedAt = 0;

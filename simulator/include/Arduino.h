@@ -15,19 +15,19 @@ typedef uint8_t byte;
 typedef bool boolean;
 
 #define HIGH 1
-#define LOW  0
+#define LOW 0
 #define INPUT 0
 #define OUTPUT 1
 #define INPUT_PULLUP 2
 #define INPUT_PULLDOWN 3
 
 #define PROGMEM
-#define pgm_read_byte(addr) (*(const uint8_t *)(addr))
-#define pgm_read_word(addr) (*(const uint16_t *)(addr))
-#define pgm_read_dword(addr) (*(const uint32_t *)(addr))
+#define pgm_read_byte(addr) (*(const uint8_t*)(addr))
+#define pgm_read_word(addr) (*(const uint16_t*)(addr))
+#define pgm_read_dword(addr) (*(const uint32_t*)(addr))
 
 class __FlashStringHelper;
-#define F(string_literal) (reinterpret_cast<const __FlashStringHelper *>(PSTR(string_literal)))
+#define F(string_literal) (reinterpret_cast<const __FlashStringHelper*>(PSTR(string_literal)))
 #define PSTR(s) (s)
 
 inline float radians(float deg) { return deg * 0.017453292519943295769236907684886f; }
@@ -41,14 +41,14 @@ using std::min;
 using std::max;
 #else
 #ifndef min
-#define min(a,b) ((a)<(b)?(a):(b))
+#define min(a, b) ((a) < (b) ? (a) : (b))
 #endif
 #ifndef max
-#define max(a,b) ((a)>(b)?(a):(b))
+#define max(a, b) ((a) > (b) ? (a) : (b))
 #endif
 #endif
 #ifndef constrain
-#define constrain(amt,low,high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))
+#define constrain(amt, low, high) ((amt) < (low) ? (low) : ((amt) > (high) ? (high) : (amt)))
 #endif
 
 inline uint32_t millis() {
@@ -73,13 +73,9 @@ inline void delay(uint32_t ms) {
     }
 }
 
-inline void delayMicroseconds(uint32_t us) {
-    std::this_thread::sleep_for(std::chrono::microseconds(us));
-}
+inline void delayMicroseconds(uint32_t us) { std::this_thread::sleep_for(std::chrono::microseconds(us)); }
 
-inline void vTaskDelay(int) {
-    simPumpEvents();
-}
+inline void vTaskDelay(int) { simPumpEvents(); }
 
 inline void yield() {}
 inline void pinMode(int, int) {}
@@ -138,9 +134,7 @@ public:
         return String(_s.substr(fromIndex, toIndex - fromIndex));
     }
 
-    bool startsWith(const String& prefix) const {
-        return _s.rfind(prefix._s, 0) == 0;
-    }
+    bool startsWith(const String& prefix) const { return _s.rfind(prefix._s, 0) == 0; }
     bool endsWith(const String& suffix) const {
         if (_s.length() < suffix._s.length()) return false;
         return _s.compare(_s.length() - suffix._s.length(), suffix._s.length(), suffix._s) == 0;
@@ -164,16 +158,36 @@ public:
     }
 
     int toInt() const {
-        try { return std::stoi(_s); } catch (...) { return 0; }
+        try {
+            return std::stoi(_s);
+        } catch (...) {
+            return 0;
+        }
     }
     float toFloat() const {
-        try { return std::stof(_s); } catch (...) { return 0.0f; }
+        try {
+            return std::stof(_s);
+        } catch (...) {
+            return 0.0f;
+        }
     }
 
-    String& operator+=(const String& rhs) { _s += rhs._s; return *this; }
-    String& operator+=(const char* rhs) { if (rhs) _s += rhs; return *this; }
-    String& operator+=(char c) { _s += c; return *this; }
-    String& operator+=(int val) { _s += std::to_string(val); return *this; }
+    String& operator+=(const String& rhs) {
+        _s += rhs._s;
+        return *this;
+    }
+    String& operator+=(const char* rhs) {
+        if (rhs) _s += rhs;
+        return *this;
+    }
+    String& operator+=(char c) {
+        _s += c;
+        return *this;
+    }
+    String& operator+=(int val) {
+        _s += std::to_string(val);
+        return *this;
+    }
 
     bool operator==(const String& rhs) const { return _s == rhs._s; }
     bool operator==(const char* rhs) const { return rhs && _s == rhs; }
@@ -191,9 +205,7 @@ public:
     void toUpperCase() {
         for (char& c : _s) c = toupper((unsigned char)c);
     }
-    int compareTo(const String& other) const {
-        return _s.compare(other._s);
-    }
+    int compareTo(const String& other) const { return _s.compare(other._s); }
     bool concat(const char* s) {
         if (s) _s += s;
         return true;
@@ -205,8 +217,10 @@ public:
 
     void remove(size_t index, size_t count = std::string::npos) {
         if (index < _s.length()) {
-            if (count == std::string::npos) _s.erase(index);
-            else _s.erase(index, count);
+            if (count == std::string::npos)
+                _s.erase(index);
+            else
+                _s.erase(index, count);
         }
     }
 
@@ -249,17 +263,43 @@ public:
     void begin(unsigned long) {}
     void end() {}
     void setTxTimeoutMs(uint32_t) {}
-    size_t write(uint8_t b) override { putchar(b); return 1; }
+    size_t write(uint8_t b) override {
+        putchar(b);
+        return 1;
+    }
     int available() override { return 0; }
     int read() override { return -1; }
     int peek() override { return -1; }
-    void print(const char* s) { if (s) { fputs(s, stdout); fflush(stdout); } }
-    void print(int val) { printf("%d", val); fflush(stdout); }
-    void println(const char* s = "") { if (s) puts(s); else putchar('\n'); fflush(stdout); }
-    void println(int val) { printf("%d\n", val); fflush(stdout); }
-    void println(const String& s) { puts(s.c_str()); fflush(stdout); }
+    void print(const char* s) {
+        if (s) {
+            fputs(s, stdout);
+            fflush(stdout);
+        }
+    }
+    void print(int val) {
+        printf("%d", val);
+        fflush(stdout);
+    }
+    void println(const char* s = "") {
+        if (s)
+            puts(s);
+        else
+            putchar('\n');
+        fflush(stdout);
+    }
+    void println(int val) {
+        printf("%d\n", val);
+        fflush(stdout);
+    }
+    void println(const String& s) {
+        puts(s.c_str());
+        fflush(stdout);
+    }
     template <typename... Args>
-    void printf(const char* fmt, Args... args) { ::printf(fmt, args...); fflush(stdout); }
+    void printf(const char* fmt, Args... args) {
+        ::printf(fmt, args...);
+        fflush(stdout);
+    }
 };
 
 inline HardwareSerial Serial;

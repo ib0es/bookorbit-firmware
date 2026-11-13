@@ -275,7 +275,9 @@ private:
     void commitLaidOut(int spine, uint32_t pages, uint32_t chars);
     bool walkChapter(int spine, EpubCfi::Walker& walker);
     bool resolve();                           // applies _want; false if the chapter is not available
-    void settle() const { if (_want != Want::None) const_cast<BookReader*>(this)->resolve(); }
+    void settle() const {
+        if (_want != Want::None) const_cast<BookReader*>(this)->resolve();
+    }
     void loadSpineTable();
     void saveSpineTable();
     void buildToc();
@@ -327,6 +329,7 @@ private:
     bool _sharpImages = false;
     int _orient = 0;
     StatusBar _bar;
+
 public:
     freeink::book::FrameRotation frameRotation() const;   // the screen's turn, for the book's frames
 private:
@@ -349,7 +352,10 @@ private:
     uint32_t _wantValue = 0;
     // Where the page on screen starts, kept when its layout job is stopped (for a
     // sync, sleep): its position is then known without laying the chapter out again.
-    struct Held { int spine = -1; uint32_t page = 0, chars = 0; } _held;
+    struct Held {
+        int spine = -1;
+        uint32_t page = 0, chars = 0;
+    } _held;
     bool heldHere() const { return _want == Want::Page && _held.spine == _spine && _held.page == _wantValue; }
     float _wantFraction = 0.0f;   // Want::Fraction: share of the chapter's characters
 

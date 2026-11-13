@@ -53,8 +53,8 @@ void drawQrCode(Rect box, const char* payload) {
             }
             int run = 1;
             while (x + run < n && code.module(x + run, y)) ++run;
-            fill(Rect{(int16_t)(ox + x * mod), (int16_t)(oy + y * mod),
-                      (int16_t)(run * mod), (int16_t)mod}, Color::Black);
+            fill(Rect{(int16_t)(ox + x * mod), (int16_t)(oy + y * mod), (int16_t)(run * mod), (int16_t)mod},
+                 Color::Black);
             x += run;
         }
     }
@@ -76,16 +76,15 @@ void drawHeaderBand(Rect& area, int stepNo, TextAlign titleAlign, const char* ti
         snprintf(counter, sizeof(counter), "%d / 2", stepNo);
         const int16_t cw = (int16_t)(row.width - bw - 8);
         if (cw > 0) {
-            text(Rect{(int16_t)(row.x + bw + 8), row.y, cw, row.height}, counter,
-                 FontSmall, Color::Black, TextAlign::Right);
+            text(Rect{(int16_t)(row.x + bw + 8), row.y, cw, row.height}, counter, FontSmall, Color::Black,
+                 TextAlign::Right);
         }
 
         takeTop(area, 8);
     }
     if (title && *title) {
-        const fi::FontId tf = wrappedHeight(title, FontTitle, area.width, 2) <= lineHeight(FontTitle) * 2
-                                  ? FontTitle
-                                  : FontBody;
+        const fi::FontId tf =
+                wrappedHeight(title, FontTitle, area.width, 2) <= lineHeight(FontTitle) * 2 ? FontTitle : FontBody;
         const int16_t th = wrappedHeight(title, tf, area.width, 2);
         text(takeTop(area, th), title, tf, Color::Black, titleAlign, 2);
     }
@@ -124,9 +123,8 @@ void drawPortraitPage(Frame& f, Rect in, const PortalPageContent& c) {
 
     const int16_t qrSide = std::min<int16_t>(380, std::min<int16_t>(in.width, in.height));
     if (qrSide > 20) {
-        Rect qrBox{(int16_t)(in.x + (in.width - qrSide) / 2),
-                   (int16_t)(in.y + (in.height - qrSide) / 2),
-                   qrSide, qrSide};
+        Rect qrBox{(int16_t)(in.x + (in.width - qrSide) / 2), (int16_t)(in.y + (in.height - qrSide) / 2), qrSide,
+                   qrSide};
         drawQrCode(qrBox, c.qrPayload);
     }
 }

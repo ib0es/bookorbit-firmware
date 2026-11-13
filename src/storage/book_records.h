@@ -36,7 +36,8 @@ struct BookMetadata {
         return String("/api/v1/opds/") + id + "/download?fileId=" + String(f.fileId);
     }
     const BookFormatEntry* preferredFormat() const {
-        for (const auto& f : formats) if (f.fileId == fileId) return &f;
+        for (const auto& f : formats)
+            if (f.fileId == fileId) return &f;
         return formats.empty() ? nullptr : &formats[0];
     }
     String downloadUrl() const {

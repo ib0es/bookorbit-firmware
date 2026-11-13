@@ -3,7 +3,9 @@
 #include <Arduino.h>
 #include "../platform/hal/display.h"
 
-namespace bookfonts { struct Font; }
+namespace bookfonts {
+struct Font;
+}
 
 // Where book text goes on the page, in logical (rotated) pixels. Shared by the
 // paginator and the page renderer so both agree; derived from the screen size,
@@ -52,7 +54,8 @@ public:
                    int maxY = -1);
 
     // Book page typography: centered headings, bold via overstrike, paragraph indents, and \f break
-    int drawBookPage(int x, int y, const char* text, int maxWidth = 440, bool startsWithParagraph = true, int fontScale = 1);
+    int drawBookPage(int x, int y, const char* text, int maxWidth = 440, bool startsWithParagraph = true,
+                     int fontScale = 1);
 
     // Calculate pixel width of a string (UTF-8 supported)
     int getTextWidth(const char* text, int scale = 1);

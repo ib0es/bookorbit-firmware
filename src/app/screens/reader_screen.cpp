@@ -88,8 +88,8 @@ void executeMenuAction(AppContext& ctx, int index) {
                 ctx.selectedTocIndex = std::max(0, Reader.getCurrentChapterIndex());
                 drawTocScreen(ctx, uikit::periodicFullRefresh());
             } else {
-                Modal.showMessage(tr(MsgId::READER_TOC_TITLE), tr(MsgId::READER_TOC_NOT_FOUND_L1), tr(MsgId::READER_TOC_NOT_FOUND_L2), "", "",
-                                  1500, /*fullRedraw=*/true);
+                Modal.showMessage(tr(MsgId::READER_TOC_TITLE), tr(MsgId::READER_TOC_NOT_FOUND_L1),
+                                  tr(MsgId::READER_TOC_NOT_FOUND_L2), "", "", 1500, /*fullRedraw=*/true);
             }
             break;
         case 1:  // Оформление
@@ -121,9 +121,8 @@ void executeMenuAction(AppContext& ctx, int index) {
 
 namespace ReaderScreen {
 
-bool openBook(AppContext& ctx, const String& path, const String& title, const String& author,
-              const String& coverPath, float progress, int page, const String& xpath,
-              const String& docId, int fileId) {
+bool openBook(AppContext& ctx, const String& path, const String& title, const String& author, const String& coverPath,
+              float progress, int page, const String& xpath, const String& docId, int fileId) {
     auto& lib = LibraryManager::getInstance();
     auto& store = ProgressStore::instance();
     Buttons.clearEvents();
@@ -141,7 +140,8 @@ bool openBook(AppContext& ctx, const String& path, const String& title, const St
         const auto why = (convert::ConvertProblem)Reader.lastConvertProblem();
         if (why == convert::ConvertProblem::Drm || why == convert::ConvertProblem::Unsupported) {
             Modal.showMessage(tr(MsgId::READER_OPEN_ERR_TITLE), tr(MsgId::READER_OPEN_ERR_L1),
-                              tr(why == convert::ConvertProblem::Drm ? MsgId::READER_OPEN_DRM : MsgId::READER_OPEN_VARIANT),
+                              tr(why == convert::ConvertProblem::Drm ? MsgId::READER_OPEN_DRM
+                                                                     : MsgId::READER_OPEN_VARIANT),
                               "", "", 4000, false, tr(MsgId::READER_OPEN_ERR_FOOTER));
         } else if (Reader.lastFailedForMemory()) {
             // The heap is cut up (typically right after a download over Wi-Fi): a
@@ -161,8 +161,8 @@ bool openBook(AppContext& ctx, const String& path, const String& title, const St
             lib.lastBook.totalPages = 1;
             lib.saveLastBook();
             PowerService::restartIntoLastBook();
-            Modal.showMessage(tr(MsgId::COMMON_ERROR), tr(MsgId::READER_OPEN_ERR_L1),
-                              tr(MsgId::READER_OPEN_ERR_MEMORY), "", "", 4000, false, tr(MsgId::READER_OPEN_ERR_FOOTER));
+            Modal.showMessage(tr(MsgId::COMMON_ERROR), tr(MsgId::READER_OPEN_ERR_L1), tr(MsgId::READER_OPEN_ERR_MEMORY),
+                              "", "", 4000, false, tr(MsgId::READER_OPEN_ERR_FOOTER));
         } else {
             Modal.showMessage(tr(MsgId::READER_OPEN_ERR_TITLE), tr(MsgId::READER_OPEN_ERR_L1),
                               tr(MsgId::READER_OPEN_ERR_L2), "", "", 3500, false, tr(MsgId::READER_OPEN_ERR_FOOTER));
@@ -199,7 +199,8 @@ bool openBook(AppContext& ctx, const String& path, const String& title, const St
     lib.lastBook.fileId = fileId;
     lib.lastBook.docId = docId;   // KOReader document hash: kept for a future KOSync, not computed now
     for (const auto& b : lib.masterBooks) {   // server ids from the library list (exact match)
-        if (lib.lastBook.fileId <= 0 && b.filePath.equalsIgnoreCase(path) && b.fileId > 0) lib.lastBook.fileId = b.fileId;
+        if (lib.lastBook.fileId <= 0 && b.filePath.equalsIgnoreCase(path) && b.fileId > 0)
+            lib.lastBook.fileId = b.fileId;
     }
 
     BookProgressRecord& rec = lib.currentRecord();
@@ -256,10 +257,10 @@ void handleReadingEvent(AppContext& ctx, const ButtonEvent& event) {
             } else if (Reader.atEnd()) {
                 // The last page (U2): close the book, or stay on it.
                 Serial.println("[Reader] End of the book");
-                Modal.showConfirm(tr(MsgId::READER_END_TITLE), utf8Prefix(lib.lastBook.title, 64),
-                                  tr(MsgId::READER_END_L1), "", tr(MsgId::READER_END_FOOTER),
-                                  [&ctx]() { closeBookAndGoHome(ctx, false, /*draw=*/false); }, nullptr,
-                                  tr(MsgId::READER_END_CLOSE));
+                Modal.showConfirm(
+                        tr(MsgId::READER_END_TITLE), utf8Prefix(lib.lastBook.title, 64), tr(MsgId::READER_END_L1), "",
+                        tr(MsgId::READER_END_FOOTER), [&ctx]() { closeBookAndGoHome(ctx, false, /*draw=*/false); },
+                        nullptr, tr(MsgId::READER_END_CLOSE));
             }
             break;
         case Action::Prev:
@@ -300,8 +301,10 @@ void handleTocEvent(AppContext& ctx, const ButtonEvent& event) {
         const bool byPage = key == Action::Prev || key == Action::Next || event.repeat >= 4;
         const bool down = key == Action::Down || key == Action::Next;
         int to = prev;
-        if (byPage) to = down ? (prev / perPage + 1) * perPage : (prev / perPage - (prev % perPage == 0 ? 1 : 0)) * perPage;
-        else to = down ? prev + 1 : prev - 1;
+        if (byPage)
+            to = down ? (prev / perPage + 1) * perPage : (prev / perPage - (prev % perPage == 0 ? 1 : 0)) * perPage;
+        else
+            to = down ? prev + 1 : prev - 1;
         ctx.selectedTocIndex = std::max(0, std::min(to, n - 1));
         if (prev != ctx.selectedTocIndex) {
             const bool pageChanged = (prev / perPage != ctx.selectedTocIndex / perPage);
@@ -327,7 +330,8 @@ void handleMenuEvent(AppContext& ctx, const ButtonEvent& event) {
             drawReaderMenuScreen(ctx, false);
             break;
         case Action::Up:
-            ctx.selectedReaderMenuIndex = (ctx.selectedReaderMenuIndex - 1 + readerMenuItemCount()) % readerMenuItemCount();
+            ctx.selectedReaderMenuIndex =
+                    (ctx.selectedReaderMenuIndex - 1 + readerMenuItemCount()) % readerMenuItemCount();
             drawReaderMenuScreen(ctx, false);
             break;
         case Action::Prev:
@@ -384,7 +388,8 @@ static void drawInstallProgress(void* name, int permille) {
     static uint32_t s_lastAt = 0;
     const int step = permille / 100;
     // An e-ink refresh blocks ~0.5 s: at most every 3 s (and at the start).
-    if (permille < 1000 && (step == s_lastStep || (s_lastStep >= 0 && permille > 0 && millis() - s_lastAt < 3000))) return;
+    if (permille < 1000 && (step == s_lastStep || (s_lastStep >= 0 && permille > 0 && millis() - s_lastAt < 3000)))
+        return;
     if (permille == 0) s_lastStep = -1;
     s_lastStep = step;
     s_lastAt = millis();
@@ -425,8 +430,8 @@ void handleTypefaceMenuEvent(AppContext& ctx, const ButtonEvent& event) {
                             ctx.config.save();
                         }
                         LibraryManager::getInstance().flushReaderPosition();
-                        Modal.showMessage(tr(MsgId::TYPEFACE_MENU_TITLE), tr(MsgId::TYPEFACE_INSTALL_FAILED), fam.name.c_str(),
-                                          "", "", 2500, true);
+                        Modal.showMessage(tr(MsgId::TYPEFACE_MENU_TITLE), tr(MsgId::TYPEFACE_INSTALL_FAILED),
+                                          fam.name.c_str(), "", "", 2500, true);
                         typefaceFamilies(true);
                         drawTypefaceMenuScreen(ctx, false);
                         return;
@@ -560,13 +565,14 @@ void handleBookmarksEvent(AppContext& ctx, const ButtonEvent& event) {
                     b.snippet = Reader.pageSnippet();
                     b.cfi = Reader.getCfi();   // for the web reader (uploaded at the next sync)
                     Bookmarks.add(b);
-                    Serial.printf("[Bookmarks] added at %d:%u (%.1f%%)\n", b.spine, (unsigned)b.chars, b.percent * 100.0f);
+                    Serial.printf("[Bookmarks] added at %d:%u (%.1f%%)\n", b.spine, (unsigned)b.chars,
+                                  b.percent * 100.0f);
                 }
                 Bookmarks.save();
                 returnToReading(ctx);   // the ribbon shows on the page
             } else if (sel <= Bookmarks.count()) {
                 const Bookmark& b = Bookmarks.items()[sel - 1];
-                    if (!b.placed()) {
+                if (!b.placed()) {
                     // From the server and not placed yet (its chapter could not be read).
                     if (!Reader.setPageByCfi(b.cfi, 0.0f)) break;
                 } else {

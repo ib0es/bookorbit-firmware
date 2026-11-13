@@ -1,7 +1,6 @@
 # C/C++ formatting (clang-format >= 18). Matches the existing code style:
 # 4-space indent, attached braces, 120 columns, `public:` flush with `class`.
-# Format only what you touch: tools/format.sh formats the lines changed
-# against origin/main, it does not rewrite whole files.
+# tools/format.sh formats the repo, tools/lint.sh (and CI) checks it.
 ---
 Language: Cpp
 BasedOnStyle: Google
@@ -31,6 +30,9 @@ PenaltyBreakBeforeFirstCallParameter: 1000
 BreakBeforeBinaryOperators: None
 # Include order is meaningful in places (Arduino.h first, config macros before headers).
 SortIncludes: Never
+SortUsingDeclarations: Never
+# Log and format strings stay whole (greppable), even past the column limit.
+BreakStringLiterals: false
 IncludeBlocks: Preserve
 ReflowComments: false
 KeepEmptyLinesAtTheStartOfBlocks: false

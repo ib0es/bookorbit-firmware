@@ -19,16 +19,16 @@ using namespace freeink::book;
 
 namespace Platform {
 __attribute__((weak)) void feedWatchdog() {}
-}
+}  // namespace Platform
 
 static int g_failed = 0, g_checks = 0;
-#define CHECK(c)                                                         \
-    do {                                                                 \
-        g_checks++;                                                      \
-        if (!(c)) {                                                      \
-            g_failed++;                                                  \
-            printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #c);         \
-        }                                                                \
+#define CHECK(c)                                                  \
+    do {                                                          \
+        g_checks++;                                               \
+        if (!(c)) {                                               \
+            g_failed++;                                           \
+            printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #c); \
+        }                                                         \
     } while (0)
 
 // ------------------------------------------------------------------ files
@@ -36,8 +36,15 @@ static int g_failed = 0, g_checks = 0;
 class MemIn : public convert::InFile {
 public:
     explicit MemIn(std::string d) : _d(std::move(d)) {}
-    bool rewind() override { _pos = 0; return true; }
-    bool seek(uint64_t pos) override { if (pos > _d.size()) return false; _pos = (size_t)pos; return true; }
+    bool rewind() override {
+        _pos = 0;
+        return true;
+    }
+    bool seek(uint64_t pos) override {
+        if (pos > _d.size()) return false;
+        _pos = (size_t)pos;
+        return true;
+    }
     int32_t read(void* dst, uint32_t len) override {
         const size_t n = std::min<size_t>(len, _d.size() - _pos);
         memcpy(dst, _d.data() + _pos, n);
@@ -45,6 +52,7 @@ public:
         return (int32_t)n;
     }
     uint64_t size() const override { return _d.size(); }
+
 private:
     std::string _d;
     size_t _pos = 0;
@@ -59,23 +67,37 @@ public:
         _pos += n;
         return true;
     }
-    bool seek(uint32_t pos) override { _pos = pos; return pos <= d.size(); }
+    bool seek(uint32_t pos) override {
+        _pos = pos;
+        return pos <= d.size();
+    }
     uint32_t tell() override { return (uint32_t)_pos; }
+
 private:
     size_t _pos = 0;
 };
 
 class MemTemp : public convert::TempFile {
 public:
-    bool beginWrite() override { _d.clear(); return true; }
-    bool write(const void* p, uint32_t n) override { _d.append((const char*)p, n); return true; }
-    bool beginRead() override { _pos = 0; return true; }
+    bool beginWrite() override {
+        _d.clear();
+        return true;
+    }
+    bool write(const void* p, uint32_t n) override {
+        _d.append((const char*)p, n);
+        return true;
+    }
+    bool beginRead() override {
+        _pos = 0;
+        return true;
+    }
     int32_t read(void* dst, uint32_t len) override {
         const size_t n = std::min<size_t>(len, _d.size() - _pos);
         memcpy(dst, _d.data() + _pos, n);
         _pos += n;
         return (int32_t)n;
     }
+
 private:
     std::string _d;
     size_t _pos = 0;
@@ -91,6 +113,7 @@ public:
         return (int32_t)n;
     }
     uint64_t size() const override { return _d.size(); }
+
 private:
     const std::string& _d;
 };
@@ -159,12 +182,18 @@ static Opened openEpub(const std::string& epub) {
     for (size_t s = 0; s < book.spineCount(); s++) {
         const ManifestItem* item = book.spineItem(s);
         const ZipEntry* entry = book.zip().find(item->href);
-        if (!entry) { o.ok = false; continue; }
+        if (!entry) {
+            o.ok = false;
+            continue;
+        }
         std::string x;
         {
             const size_t m = scratch.mark();
             ZipEntryReader r;
-            if (r.open(src, *entry, scratch) != BookStatus::Ok) { o.ok = false; continue; }
+            if (r.open(src, *entry, scratch) != BookStatus::Ok) {
+                o.ok = false;
+                continue;
+            }
             char buf[4096];
             for (int32_t n; (n = r.read(buf, sizeof(buf))) > 0;) x.append(buf, (size_t)n);
             scratch.release(m);
@@ -173,8 +202,8 @@ static Opened openEpub(const std::string& epub) {
         CountSink sink;
         Arena parse(g_parse, sizeof(g_parse));
         const size_t m = scratch.mark();
-        const BookStatus st = ChapterLayout::layout(src, book.zip(), *entry, item->href, params, scratch, sink,
-                                                    nullptr, nullptr, &parse);
+        const BookStatus st = ChapterLayout::layout(src, book.zip(), *entry, item->href, params, scratch, sink, nullptr,
+                                                    nullptr, &parse);
         scratch.release(m);
         if (st != BookStatus::Ok) {
             printf("  chapter %zu (%s): %s\n", s, item->href, bookStatusName(st));
@@ -185,7 +214,6 @@ static Opened openEpub(const std::string& epub) {
     }
     return o;
 }
-
 
 static bool contains(const std::vector<std::string>& v, const std::string& s) {
     for (const auto& x : v)

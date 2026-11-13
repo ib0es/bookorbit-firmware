@@ -271,12 +271,23 @@ String htmlEscape(const String& s) {
     for (size_t i = 0; i < s.length(); i++) {
         const char c = s[i];
         switch (c) {
-            case '&': out += "&amp;"; break;
-            case '<': out += "&lt;"; break;
-            case '>': out += "&gt;"; break;
-            case '\'': out += "&#39;"; break;
-            case '"': out += "&quot;"; break;
-            default: out += c;
+            case '&':
+                out += "&amp;";
+                break;
+            case '<':
+                out += "&lt;";
+                break;
+            case '>':
+                out += "&gt;";
+                break;
+            case '\'':
+                out += "&#39;";
+                break;
+            case '"':
+                out += "&quot;";
+                break;
+            default:
+                out += c;
         }
     }
     return out;
@@ -288,14 +299,29 @@ String jsEscape(const String& s) {
     for (size_t i = 0; i < s.length(); i++) {
         const char c = s[i];
         switch (c) {
-            case '\\': out += "\\\\"; break;
-            case '\'': out += "\\'"; break;
-            case '"': out += "\\\""; break;
-            case '\n': out += "\\n"; break;
-            case '\r': out += "\\r"; break;
-            case '<': out += "\\x3c"; break;
-            case '>': out += "\\x3e"; break;
-            default: out += c;
+            case '\\':
+                out += "\\\\";
+                break;
+            case '\'':
+                out += "\\'";
+                break;
+            case '"':
+                out += "\\\"";
+                break;
+            case '\n':
+                out += "\\n";
+                break;
+            case '\r':
+                out += "\\r";
+                break;
+            case '<':
+                out += "\\x3c";
+                break;
+            case '>':
+                out += "\\x3e";
+                break;
+            default:
+                out += c;
         }
     }
     return out;
@@ -306,13 +332,20 @@ String jsonEscape(const String& s) {
     out.reserve(s.length() + 8);
     for (size_t i = 0; i < s.length(); i++) {
         const uint8_t c = (uint8_t)s[i];
-        if (c == '\\') out += "\\\\";
-        else if (c == '"') out += "\\\"";
-        else if (c == '\n') out += "\\n";
-        else if (c == '\r') out += "\\r";
-        else if (c == '\t') out += "\\t";
-        else if (c < 0x20) out += ' ';
-        else out += (char)c;
+        if (c == '\\')
+            out += "\\\\";
+        else if (c == '"')
+            out += "\\\"";
+        else if (c == '\n')
+            out += "\\n";
+        else if (c == '\r')
+            out += "\\r";
+        else if (c == '\t')
+            out += "\\t";
+        else if (c < 0x20)
+            out += ' ';
+        else
+            out += (char)c;
     }
     return out;
 }
@@ -329,8 +362,8 @@ bool sanitizeUploadFilename(const String& raw, String& outName) {
     clean.reserve(base.length());
     for (size_t i = 0; i < base.length(); i++) {
         const uint8_t c = (uint8_t)base[i];
-        if (c < 0x20 || c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' ||
-            c == '"' || c == '<' || c == '>' || c == '|') {
+        if (c < 0x20 || c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' ||
+            c == '|') {
             clean += '_';
         } else {
             clean += (char)c;
@@ -496,10 +529,8 @@ void streamPortalPage(WebServer& server, const AppConfig& cfg, const std::vector
     endSelect(out);
 
     beginSelect(out, "ui_orient", tr(MsgId::SETTINGS_ITEM_ORIENTATION));
-    const MsgId uiOrientLabels[4] = {
-        MsgId::APPEAR_ORIENT_PORTRAIT, MsgId::APPEAR_ORIENT_LANDSCAPE,
-        MsgId::APPEAR_ORIENT_PORTRAIT_FLIPPED, MsgId::APPEAR_ORIENT_LANDSCAPE_FLIPPED
-    };
+    const MsgId uiOrientLabels[4] = {MsgId::APPEAR_ORIENT_PORTRAIT, MsgId::APPEAR_ORIENT_LANDSCAPE,
+                                     MsgId::APPEAR_ORIENT_PORTRAIT_FLIPPED, MsgId::APPEAR_ORIENT_LANDSCAPE_FLIPPED};
     for (int i = 0; i < 4; i++) {
         addOption(out, String(i), tr(uiOrientLabels[i]), cfg.uiOrientation == i);
     }
@@ -517,7 +548,8 @@ void streamPortalPage(WebServer& server, const AppConfig& cfg, const std::vector
     endSelect(out);
 
     if (Frontlight.present()) {
-        static constexpr int kPctSteps[] = {0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100};
+        static constexpr int kPctSteps[] = {0,  5,  10, 15, 20, 25, 30, 35, 40, 45, 50,
+                                            55, 60, 65, 70, 75, 80, 85, 90, 95, 100};
         constexpr int kPctCount = sizeof(kPctSteps) / sizeof(kPctSteps[0]);
         addIntSelect(out, "fl_bright", tr(MsgId::FRONTLIGHT_BRIGHTNESS), kPctSteps, kPctCount,
                      clampInt(cfg.frontlight, 0, 100), buildPercentText);
@@ -918,8 +950,8 @@ void sendBooksListJson(WebServer& server) {
     json.reserve(1024);
 
     char hdr[96];
-    snprintf(hdr, sizeof(hdr), "{\"total\":%llu,\"free\":%llu,\"books\":[",
-             (unsigned long long)s_portalTotalBytes, (unsigned long long)s_portalFreeBytes);
+    snprintf(hdr, sizeof(hdr), "{\"total\":%llu,\"free\":%llu,\"books\":[", (unsigned long long)s_portalTotalBytes,
+             (unsigned long long)s_portalFreeBytes);
     json += hdr;
 
     if (Storage.isAvailable()) {
@@ -984,15 +1016,17 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
 #endif
         dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
         dnsStarted = dnsServer.start(53, "*", hostIp);
-        Serial.printf("[WebConfig] DNS server %s on %s:53\n", dnsStarted ? "started" : "FAILED", hostIp.toString().c_str());
+        Serial.printf("[WebConfig] DNS server %s on %s:53\n", dnsStarted ? "started" : "FAILED",
+                      hostIp.toString().c_str());
     } else {
         if (cfg.wifiSsid.length() == 0) return false;
         screenSsid = cfg.wifiSsid.c_str();
         WifiSession::prepare();
-        Ui::status(tr(MsgId::WEB_STA_TITLE), tr(MsgId::WEB_WIFI_CONNECTING), screenSsid, nullptr, nullptr, tr(MsgId::COMMON_CANCEL));
+        Ui::status(tr(MsgId::WEB_STA_TITLE), tr(MsgId::WEB_WIFI_CONNECTING), screenSsid, nullptr, nullptr,
+                   tr(MsgId::COMMON_CANCEL));
         if (!BookOrbit.connectWiFi(cfg.wifiSsid.c_str(), cfg.wifiPass.c_str(), 12000)) {
-            Ui::message(tr(MsgId::WEB_STA_TITLE), tr(MsgId::WEB_WIFI_FAILED_L1), tr(MsgId::WEB_WIFI_FAILED_L2),
-                        "", "", 2500);
+            Ui::message(tr(MsgId::WEB_STA_TITLE), tr(MsgId::WEB_WIFI_FAILED_L1), tr(MsgId::WEB_WIFI_FAILED_L2), "", "",
+                        2500);
             return false;
         }
         WiFi.setSleep(false);   // modem sleep halves the upload rate
@@ -1050,117 +1084,122 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
         sendBooksListJson(server);
     });
 
-    server.on("/api/upload", HTTP_POST,
-        [&]() {
-            PowerService::noteActivity();
-            sendNoCache();
-            String json = "{\"ok\":";
-            json += up.okCount > 0 ? "true" : "false";
-            json += ",\"files\":[";
-            json += up.results;
-            json += "]}";
-            server.send(up.part > 0 ? 200 : 400, "application/json; charset=utf-8", json);
-            up.resetRequest();
-        },
-        [&]() {
-            HTTPUpload& upload = server.upload();
-            if (upload.status == UPLOAD_FILE_START) {
+    server.on(
+            "/api/upload", HTTP_POST,
+            [&]() {
                 PowerService::noteActivity();
-                if (up.part == 0) {
-                    // Sizes of the files in their order (the page sends them): space check and preallocation.
-                    up.sizes.clear();
-                    const String s = server.arg("sizes");
-                    for (int i = 0; i < (int)s.length();) {
-                        int c = s.indexOf(',', i);
-                        if (c < 0) c = s.length();
-                        up.sizes.push_back((uint64_t)strtoull(s.substring(i, c).c_str(), nullptr, 10));
-                        i = c + 1;
+                sendNoCache();
+                String json = "{\"ok\":";
+                json += up.okCount > 0 ? "true" : "false";
+                json += ",\"files\":[";
+                json += up.results;
+                json += "]}";
+                server.send(up.part > 0 ? 200 : 400, "application/json; charset=utf-8", json);
+                up.resetRequest();
+            },
+            [&]() {
+                HTTPUpload& upload = server.upload();
+                if (upload.status == UPLOAD_FILE_START) {
+                    PowerService::noteActivity();
+                    if (up.part == 0) {
+                        // Sizes of the files in their order (the page sends them): space check and preallocation.
+                        up.sizes.clear();
+                        const String s = server.arg("sizes");
+                        for (int i = 0; i < (int)s.length();) {
+                            int c = s.indexOf(',', i);
+                            if (c < 0) c = s.length();
+                            up.sizes.push_back((uint64_t)strtoull(s.substring(i, c).c_str(), nullptr, 10));
+                            i = c + 1;
+                        }
                     }
-                }
-                const uint64_t declared = up.part < (int)up.sizes.size() ? up.sizes[up.part] : 0;
-                up.part++;
-                up.resetFile();
-                up.fileName = upload.filename;
-                if (!Storage.isAvailable()) return up.reject("SD card unavailable");
-                String cleanName;
-                if (!sanitizeUploadFilename(upload.filename, cleanName)) return up.reject("Unsupported file");
-                up.fileName = cleanName;
-                up.targetPath = String(LibraryManager::kOfflineDir) + "/" + cleanName;
-                up.partPath = up.targetPath + ".part";
+                    const uint64_t declared = up.part < (int)up.sizes.size() ? up.sizes[up.part] : 0;
+                    up.part++;
+                    up.resetFile();
+                    up.fileName = upload.filename;
+                    if (!Storage.isAvailable()) return up.reject("SD card unavailable");
+                    String cleanName;
+                    if (!sanitizeUploadFilename(upload.filename, cleanName)) return up.reject("Unsupported file");
+                    up.fileName = cleanName;
+                    up.targetPath = String(LibraryManager::kOfflineDir) + "/" + cleanName;
+                    up.partPath = up.targetPath + ".part";
 
-                const String owArg = server.arg("overwrite");
-                const bool overwrite = (owArg == "1" || owArg == "true");
-                if (!overwrite && Storage.exists(up.targetPath.c_str())) return up.reject("File already exists", true);
-                if (declared > 0 && s_portalFreeKnown && declared + 64 * 1024 > s_portalFreeBytes)
-                    return up.reject("Not enough space on the SD card");
+                    const String owArg = server.arg("overwrite");
+                    const bool overwrite = (owArg == "1" || owArg == "true");
+                    if (!overwrite && Storage.exists(up.targetPath.c_str()))
+                        return up.reject("File already exists", true);
+                    if (declared > 0 && s_portalFreeKnown && declared + 64 * 1024 > s_portalFreeBytes)
+                        return up.reject("Not enough space on the SD card");
 
-                Storage.mkdir(LibraryManager::kOfflineDir);
-                Storage.remove(up.partPath.c_str());   // a .part of an earlier, broken upload
-                up.targetFile = Storage.open(up.partPath.c_str(), O_WRITE | O_CREAT | O_TRUNC);
-                if (!up.targetFile) {
-                    Serial.printf("[WebConfig] Cannot create file: %s\n", up.partPath.c_str());
-                    return up.reject("Cannot create file");
-                }
-                up.startedAt = millis();
-                // One run of clusters for the whole book: no FAT walk per cluster while writing.
-                const uint32_t t0 = micros();
-                const bool pre = declared > 0 && up.targetFile.preAllocate(declared);
-                up.writeUs += micros() - t0;
-                up.takeBuffer();
-                const MemStats::Snapshot m = MemStats::now();
-                Serial.printf("[WebConfig] Receiving %s (%llu B, preallocated: %d, buffer %u KB, heap %u KB free, %u KB block)\n",
-                              up.fileName.c_str(), (unsigned long long)declared, (int)pre, (unsigned)(up.bufCap / 1024),
-                              (unsigned)(m.freeBytes / 1024), (unsigned)(m.largestBlock / 1024));
-            } else if (upload.status == UPLOAD_FILE_WRITE) {
-                if (up.rejected || !up.targetFile || upload.currentSize == 0) return;
-                if (!up.append(upload.buf, upload.currentSize)) {
-                    up.dropPart();
-                    return up.reject("SD write failed");
-                }
-                up.written += upload.currentSize;
-                // Every ~64 KB: cheap enough, and the watchdog / sleep timer never see a long upload as idle.
-                if ((up.written & 0xFFFF) < upload.currentSize) {
+                    Storage.mkdir(LibraryManager::kOfflineDir);
+                    Storage.remove(up.partPath.c_str());   // a .part of an earlier, broken upload
+                    up.targetFile = Storage.open(up.partPath.c_str(), O_WRITE | O_CREAT | O_TRUNC);
+                    if (!up.targetFile) {
+                        Serial.printf("[WebConfig] Cannot create file: %s\n", up.partPath.c_str());
+                        return up.reject("Cannot create file");
+                    }
+                    up.startedAt = millis();
+                    // One run of clusters for the whole book: no FAT walk per cluster while writing.
+                    const uint32_t t0 = micros();
+                    const bool pre = declared > 0 && up.targetFile.preAllocate(declared);
+                    up.writeUs += micros() - t0;
+                    up.takeBuffer();
+                    const MemStats::Snapshot m = MemStats::now();
+                    Serial.printf(
+                            "[WebConfig] Receiving %s (%llu B, preallocated: %d, buffer %u KB, heap %u KB free, %u KB block)\n",
+                            up.fileName.c_str(), (unsigned long long)declared, (int)pre, (unsigned)(up.bufCap / 1024),
+                            (unsigned)(m.freeBytes / 1024), (unsigned)(m.largestBlock / 1024));
+                } else if (upload.status == UPLOAD_FILE_WRITE) {
+                    if (up.rejected || !up.targetFile || upload.currentSize == 0) return;
+                    if (!up.append(upload.buf, upload.currentSize)) {
+                        up.dropPart();
+                        return up.reject("SD write failed");
+                    }
+                    up.written += upload.currentSize;
+                    // Every ~64 KB: cheap enough, and the watchdog / sleep timer never see a long upload as idle.
+                    if ((up.written & 0xFFFF) < upload.currentSize) {
+                        PowerService::noteActivity();
+                        Platform::feedWatchdog();
+                    }
+                } else if (upload.status == UPLOAD_FILE_END) {
+                    if (!up.rejected) {
+                        bool ok = up.targetFile && up.flushBuffer();
+                        if (ok) {
+                            up.targetFile.truncate(up.written);   // gives back what preAllocate took beyond the file
+                            up.targetFile.flush();
+                        }
+                        if (up.targetFile) up.targetFile.close();
+                        if (ok && Storage.exists(up.targetPath.c_str())) {
+                            // Replaced by a new copy: its page cache, cover and position go with the old one.
+                            BookItem old;
+                            old.filePath = up.targetPath;
+                            LibraryManager::deleteBookArtifacts(old, true);
+                        }
+                        ok = ok && Storage.replaceFile(up.partPath.c_str(), up.targetPath.c_str());
+                        if (ok) {
+                            booksChanged = true;
+                            const uint32_t ms = millis() - up.startedAt;
+                            Serial.printf(
+                                    "[WebConfig] Uploaded offline book: %s (%llu B in %lu ms, %lu KB/s; card writes %lu ms)\n",
+                                    up.targetPath.c_str(), (unsigned long long)up.written, (unsigned long)ms,
+                                    (unsigned long)(ms ? up.written / ms : 0), (unsigned long)(up.writeUs / 1000));
+                            if (s_portalFreeBytes >= up.written)
+                                s_portalFreeBytes -= up.written;
+                            else
+                                s_portalFreeBytes = 0;
+                        } else {
+                            up.reject("SD write failed");
+                        }
+                    }
+                    if (up.rejected) up.dropPart();
+                    up.record(up.fileName);
                     PowerService::noteActivity();
                     Platform::feedWatchdog();
+                } else if (upload.status == UPLOAD_FILE_ABORTED) {
+                    up.dropPart();
+                    up.reject("Upload aborted");
+                    up.record(up.fileName);
                 }
-            } else if (upload.status == UPLOAD_FILE_END) {
-                if (!up.rejected) {
-                    bool ok = up.targetFile && up.flushBuffer();
-                    if (ok) {
-                        up.targetFile.truncate(up.written);   // gives back what preAllocate took beyond the file
-                        up.targetFile.flush();
-                    }
-                    if (up.targetFile) up.targetFile.close();
-                    if (ok && Storage.exists(up.targetPath.c_str())) {
-                        // Replaced by a new copy: its page cache, cover and position go with the old one.
-                        BookItem old;
-                        old.filePath = up.targetPath;
-                        LibraryManager::deleteBookArtifacts(old, true);
-                    }
-                    ok = ok && Storage.replaceFile(up.partPath.c_str(), up.targetPath.c_str());
-                    if (ok) {
-                        booksChanged = true;
-                        const uint32_t ms = millis() - up.startedAt;
-                        Serial.printf("[WebConfig] Uploaded offline book: %s (%llu B in %lu ms, %lu KB/s; card writes %lu ms)\n",
-                                      up.targetPath.c_str(), (unsigned long long)up.written, (unsigned long)ms,
-                                      (unsigned long)(ms ? up.written / ms : 0), (unsigned long)(up.writeUs / 1000));
-                        if (s_portalFreeBytes >= up.written) s_portalFreeBytes -= up.written;
-                        else s_portalFreeBytes = 0;
-                    } else {
-                        up.reject("SD write failed");
-                    }
-                }
-                if (up.rejected) up.dropPart();
-                up.record(up.fileName);
-                PowerService::noteActivity();
-                Platform::feedWatchdog();
-            } else if (upload.status == UPLOAD_FILE_ABORTED) {
-                up.dropPart();
-                up.reject("Upload aborted");
-                up.record(up.fileName);
-            }
-        }
-    );
+            });
 
     server.on("/api/books/delete", HTTP_POST, [&]() {
         PowerService::noteActivity();

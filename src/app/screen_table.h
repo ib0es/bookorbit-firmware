@@ -12,7 +12,7 @@ struct ScreenEntry {
     AppState state;
     void (*handle)(AppContext& ctx, const ButtonEvent& event);   // nullptr: input ignored
     void (*draw)(AppContext& ctx, bool fullRefresh);            // nullptr: nothing to redraw
-    int AppContext::*selection;   // set by a tap on a row, then OK; nullptr: taps handled elsewhere
+    int AppContext::* selection;   // set by a tap on a row, then OK; nullptr: taps handled elsewhere
     bool pagedList;               // a vertical swipe moves the selection a page
 };
 

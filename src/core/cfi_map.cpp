@@ -53,9 +53,12 @@ bool CfiMap::parse(const char* text, size_t len) {
         if (!header) {
             // "fb2cfi 1": offsets from the root element's children (FB2: the
             // section is the one element of <body>); "cfimap 2": from <body>'s.
-            if (eol - p >= 8 && strncmp(p, "fb2cfi 1", 8) == 0) _belowRoot = true;
-            else if (eol - p >= 8 && strncmp(p, "cfimap 2", 8) == 0) _belowRoot = false;
-            else return false;
+            if (eol - p >= 8 && strncmp(p, "fb2cfi 1", 8) == 0)
+                _belowRoot = true;
+            else if (eol - p >= 8 && strncmp(p, "cfimap 2", 8) == 0)
+                _belowRoot = false;
+            else
+                return false;
             header = true;
         } else if (*p == 'F') {
             const char* q = p + 1;

@@ -49,4 +49,4 @@ void exit(AppContext& ctx) {
     ctx.currentState = STATE_SETTINGS;
 }
 
-}
+}  // namespace UsbMscSession

@@ -44,8 +44,10 @@ void drawFeatured(Frame& f, Rect card, AppContext& ctx, const RecentBookInfo& bo
     }
 
     char carBuf[32];
-    if (total > 0) snprintf(carBuf, sizeof(carBuf), tr(MsgId::HOME_CAROUSEL_FMT), index + 1, total);
-    else snprintf(carBuf, sizeof(carBuf), "%s", tr(MsgId::HOME_CAROUSEL_EMPTY));
+    if (total > 0)
+        snprintf(carBuf, sizeof(carBuf), tr(MsgId::HOME_CAROUSEL_FMT), index + 1, total);
+    else
+        snprintf(carBuf, sizeof(carBuf), "%s", tr(MsgId::HOME_CAROUSEL_EMPTY));
     text(Rect{cover.x, (int16_t)(cover.bottom() + 4), cover.width, (int16_t)(indicatorH - 4)}, carBuf, FontSmall,
          Color::Black, TextAlign::Center);
 

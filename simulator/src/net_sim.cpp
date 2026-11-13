@@ -16,7 +16,8 @@ WebConfigManager WebConfig;
 BookOrbitClient::BookOrbitClient() {}
 
 void BookOrbitClient::beginWiFi(const char* ssid, const char* pass) {
-    (void)ssid; (void)pass;
+    (void)ssid;
+    (void)pass;
 }
 
 bool BookOrbitClient::connectWiFi(const char* ssid, const char* pass, uint32_t timeoutMs, bool (*checkCancel)()) {
@@ -28,28 +29,22 @@ bool BookOrbitClient::connectWiFi(const char* ssid, const char* pass, uint32_t t
     return true;
 }
 
-void BookOrbitClient::disconnectWiFi() {
-    Serial.println("[SimNet] WiFi disconnected.");
-}
+void BookOrbitClient::disconnectWiFi() { Serial.println("[SimNet] WiFi disconnected."); }
 
-bool BookOrbitClient::isConnected() {
-    return true;
-}
+bool BookOrbitClient::isConnected() { return true; }
 
-int BookOrbitClient::getRssi() {
-    return -55;
-}
+int BookOrbitClient::getRssi() { return -55; }
 
-bool BookOrbitClient::pingServer(const String& serverHost) {
-    return true;
-}
+bool BookOrbitClient::pingServer(const String& serverHost) { return true; }
 
-bool BookOrbitClient::login(const String& serverHost, const String& username, const String& password, String& outToken) {
+bool BookOrbitClient::login(const String& serverHost, const String& username, const String& password,
+                            String& outToken) {
     outToken = "simulated_jwt_token_12345";
     return true;
 }
 
-bool BookOrbitClient::fetchCatalog(const String& serverHost, const String& username, const String& password, const String& token, std::vector<BookMetadata>& outBooks) {
+bool BookOrbitClient::fetchCatalog(const String& serverHost, const String& username, const String& password,
+                                   const String& token, std::vector<BookMetadata>& outBooks) {
     Serial.println("[SimNet] Fetching simulated OPDS catalog...");
     outBooks.clear();
 
@@ -90,17 +85,22 @@ bool BookOrbitClient::fetchCatalog(const String& serverHost, const String& usern
     return true;
 }
 
-bool BookOrbitClient::downloadFile(const String& serverHost, const String& fileUrl, const String& destSdPath, const String& username, const String& password, const String& token, void (*onProgress)(int percent), bool (*checkCancel)()) {
+bool BookOrbitClient::downloadFile(const String& serverHost, const String& fileUrl, const String& destSdPath,
+                                   const String& username, const String& password, const String& token,
+                                   void (*onProgress)(int percent), bool (*checkCancel)()) {
     String cleanUrl = fileUrl;
     cleanUrl.replace("&amp;", "&");
-    String fullUrl = cleanUrl.startsWith("http") ? cleanUrl : (serverHost + (cleanUrl.startsWith("/") ? "" : "/") + cleanUrl);
+    String fullUrl =
+            cleanUrl.startsWith("http") ? cleanUrl : (serverHost + (cleanUrl.startsWith("/") ? "" : "/") + cleanUrl);
     std::string realDest = SDCardManager::getInstance().resolvePath(destSdPath.c_str());
 
     // Ensure target folder exists
     size_t lastSlash = realDest.find_last_of("/\\");
     if (lastSlash != std::string::npos) {
         std::string parentDir = realDest.substr(0, lastSlash);
-        try { fs::create_directories(parentDir); } catch (...) {}
+        try {
+            fs::create_directories(parentDir);
+        } catch (...) {}
     }
 
     bool downloaded = false;
@@ -112,17 +112,18 @@ bool BookOrbitClient::downloadFile(const String& serverHost, const String& fileU
             snprintf(cmd, sizeof(cmd), "curl -s -L -f --connect-timeout 4 -u \"%s:%s\" \"%s\" -o \"%s\"",
                      username.c_str(), password.c_str(), fullUrl.c_str(), realDest.c_str());
         } else if (token.length() > 0) {
-            snprintf(cmd, sizeof(cmd), "curl -s -L -f --connect-timeout 4 -H \"Authorization: Bearer %s\" \"%s\" -o \"%s\"",
+            snprintf(cmd, sizeof(cmd),
+                     "curl -s -L -f --connect-timeout 4 -H \"Authorization: Bearer %s\" \"%s\" -o \"%s\"",
                      token.c_str(), fullUrl.c_str(), realDest.c_str());
         } else {
-            snprintf(cmd, sizeof(cmd), "curl -s -L -f --connect-timeout 4 \"%s\" -o \"%s\"",
-                     fullUrl.c_str(), realDest.c_str());
+            snprintf(cmd, sizeof(cmd), "curl -s -L -f --connect-timeout 4 \"%s\" -o \"%s\"", fullUrl.c_str(),
+                     realDest.c_str());
         }
         int ret = system(cmd);
         if (ret == 0 && fs::exists(realDest) && fs::file_size(realDest) > 200) {
             downloaded = true;
-            Serial.printf("[SimNet] Real book downloaded via curl: %s (%lu bytes)\n", 
-                          realDest.c_str(), (unsigned long)fs::file_size(realDest));
+            Serial.printf("[SimNet] Real book downloaded via curl: %s (%lu bytes)\n", realDest.c_str(),
+                          (unsigned long)fs::file_size(realDest));
         }
     }
 
@@ -148,37 +149,48 @@ bool BookOrbitClient::downloadFile(const String& serverHost, const String& fileU
     return downloaded;
 }
 
-bool BookOrbitClient::downloadBook(const String& serverHost, const String& downloadUrl, const String& destSdPath, const String& username, const String& password, const String& token, void (*onProgress)(int percent), bool (*checkCancel)()) {
+bool BookOrbitClient::downloadBook(const String& serverHost, const String& downloadUrl, const String& destSdPath,
+                                   const String& username, const String& password, const String& token,
+                                   void (*onProgress)(int percent), bool (*checkCancel)()) {
     return downloadFile(serverHost, downloadUrl, destSdPath, username, password, token, onProgress, checkCancel);
 }
 
-bool BookOrbitClient::downloadCover(const String& serverHost, const String& coverUrl, const String& destSdPath, const String& username, const String& password, const String& token, bool (*checkCancel)()) {
+bool BookOrbitClient::downloadCover(const String& serverHost, const String& coverUrl, const String& destSdPath,
+                                    const String& username, const String& password, const String& token,
+                                    bool (*checkCancel)()) {
     String cleanUrl = coverUrl;
     cleanUrl.replace("&amp;", "&");
-    String fullUrl = cleanUrl.startsWith("http") ? cleanUrl : (serverHost + (cleanUrl.startsWith("/") ? "" : "/") + cleanUrl);
+    String fullUrl =
+            cleanUrl.startsWith("http") ? cleanUrl : (serverHost + (cleanUrl.startsWith("/") ? "" : "/") + cleanUrl);
     std::string realDest = SDCardManager::getInstance().resolvePath(destSdPath.c_str());
 
     size_t lastSlash = realDest.find_last_of("/\\");
     if (lastSlash != std::string::npos) {
-        try { fs::create_directories(realDest.substr(0, lastSlash)); } catch (...) {}
+        try {
+            fs::create_directories(realDest.substr(0, lastSlash));
+        } catch (...) {}
     }
 
     if (fullUrl.startsWith("http://") || fullUrl.startsWith("https://")) {
         char cmd[1024];
-        snprintf(cmd, sizeof(cmd), "curl -s -L -f --connect-timeout 3 \"%s\" -o \"%s\"", fullUrl.c_str(), realDest.c_str());
+        snprintf(cmd, sizeof(cmd), "curl -s -L -f --connect-timeout 3 \"%s\" -o \"%s\"", fullUrl.c_str(),
+                 realDest.c_str());
         system(cmd);
     }
 
     if (!fs::exists(realDest) || fs::file_size(realDest) < 50) {
         std::string sampleCover = SDCardManager::getInstance().resolvePath("/covers/Pride and Prejudice.jpg");
         if (fs::exists(sampleCover)) {
-            try { fs::copy_file(sampleCover, realDest, fs::copy_options::overwrite_existing); } catch (...) {}
+            try {
+                fs::copy_file(sampleCover, realDest, fs::copy_options::overwrite_existing);
+            } catch (...) {}
         }
     }
     return true;
 }
 
-bool BookOrbitClient::fetchBookProgress(const String& serverHost, const String& username, const String& password, String& token, int bookId, int fileId, ServerProgress& out) {
+bool BookOrbitClient::fetchBookProgress(const String& serverHost, const String& username, const String& password,
+                                        String& token, int bookId, int fileId, ServerProgress& out) {
     out.exists = true;
     out.percent = 0.42f;
     out.page = 145;
@@ -187,30 +199,29 @@ bool BookOrbitClient::fetchBookProgress(const String& serverHost, const String& 
     return true;
 }
 
-bool BookOrbitClient::updateBookProgress(const String& serverHost, const String& username, const String& password, String& token, int fileId, float percent, int page, const String& cfi, uint32_t* outUpdatedAt) {
+bool BookOrbitClient::updateBookProgress(const String& serverHost, const String& username, const String& password,
+                                         String& token, int fileId, float percent, int page, const String& cfi,
+                                         uint32_t* outUpdatedAt) {
     if (outUpdatedAt) *outUpdatedAt = (uint32_t)time(nullptr);
-    Serial.printf("[SimNet] Progress updated on server: %.1f%% (page %d, cfi=%s)\n", percent * 100.0f, page, cfi.c_str());
+    Serial.printf("[SimNet] Progress updated on server: %.1f%% (page %d, cfi=%s)\n", percent * 100.0f, page,
+                  cfi.c_str());
     return true;
 }
 
-bool BookOrbitClient::fetchBookmarks(const String&, const String&, const String&, String&,
-                                     int, int, std::vector<BookOrbitProtocol::Bookmark>& out) {
+bool BookOrbitClient::fetchBookmarks(const String&, const String&, const String&, String&, int, int,
+                                     std::vector<BookOrbitProtocol::Bookmark>& out) {
     out.clear();
     return true;
 }
 
-int BookOrbitClient::createBookmark(const String&, const String&, const String&, String&,
-                                    int, int, const String&, const String&) {
+int BookOrbitClient::createBookmark(const String&, const String&, const String&, String&, int, int, const String&,
+                                    const String&) {
     return 1;
 }
 
-bool BookOrbitClient::deleteBookmark(const String&, const String&, const String&, String&, int, int) {
-    return true;
-}
+bool BookOrbitClient::deleteBookmark(const String&, const String&, const String&, String&, int, int) { return true; }
 
-String BookOrbitClient::buildUrl(const String& host, const String& path) {
-    return host + path;
-}
+String BookOrbitClient::buildUrl(const String& host, const String& path) { return host + path; }
 
 WebConfigManager::WebConfigManager() {}
 

@@ -10,4 +10,4 @@ namespace ConfigStore {
 // network settings come from NVS (and a new config.json is written).
 bool load(AppConfig& cfg);
 bool save(const AppConfig& cfg);
-}
+}  // namespace ConfigStore

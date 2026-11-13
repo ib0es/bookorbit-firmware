@@ -37,7 +37,8 @@ void handleEvent(AppContext& ctx, const ButtonEvent& event) {
             switch (ctx.selectedCatalogIndex) {
                 case 0: { // Search
                     String query = lib.searchQuery;
-                    if (KeyboardUI::show(tr(MsgId::CATALOG_SEARCH_TITLE), tr(MsgId::CATALOG_SEARCH_HINT), query, KB_MODE_TEXT)) {
+                    if (KeyboardUI::show(tr(MsgId::CATALOG_SEARCH_TITLE), tr(MsgId::CATALOG_SEARCH_HINT), query,
+                                         KB_MODE_TEXT)) {
                         lib.searchQuery = query;
                         Serial.printf("[Library] Search '%s'\n", query.c_str());
                         lib.currentFilter = FILTER_SEARCH;

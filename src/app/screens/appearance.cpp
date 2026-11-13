@@ -8,8 +8,8 @@
 namespace Appearance {
 
 namespace {
-const int kBookRows[] = {TYPEFACE, SIZE, LINE_SPACING, PARAGRAPH_SPACING, MARGINS, ALIGNMENT,
-                         HYPHENATION, KEEP_LINES, BOOK_STYLES, FOCUS_READING, ORIENTATION};
+const int kBookRows[] = {TYPEFACE,    SIZE,       LINE_SPACING, PARAGRAPH_SPACING, MARGINS,    ALIGNMENT,
+                         HYPHENATION, KEEP_LINES, BOOK_STYLES,  FOCUS_READING,     ORIENTATION};
 const int kBookCount = sizeof(kBookRows) / sizeof(kBookRows[0]);
 // UP / DOWN: not on boards whose keys always turn pages.
 const int kReadingRows[] = {STATUS_BAR, FULL_REFRESH, IMAGES, UPDOWN_KEYS};
@@ -39,8 +39,10 @@ int stepIn(const int (&list)[N], int current, int dir) {
         const int d = abs(list[i] - current);
         if (d < best) best = d, at = i;
     }
-    if (dir > 0) at = at + 1 < N ? at + 1 : 0;
-    else at = at > 0 ? at - 1 : N - 1;
+    if (dir > 0)
+        at = at + 1 < N ? at + 1 : 0;
+    else
+        at = at > 0 ? at - 1 : N - 1;
     return list[at];
 }
 
@@ -50,59 +52,103 @@ const char* onOff(bool on) { return tr(on ? MsgId::APPEAR_ON : MsgId::APPEAR_OFF
 
 const char* label(int row) {
     switch (row) {
-        case TYPEFACE: return tr(MsgId::APPEAR_TYPEFACE);
-        case SIZE: return tr(MsgId::APPEAR_SIZE);
-        case LINE_SPACING: return tr(MsgId::APPEAR_LINE_SPACING);
-        case PARAGRAPH_SPACING: return tr(MsgId::APPEAR_PARAGRAPH_SPACING);
-        case MARGINS: return tr(MsgId::APPEAR_MARGINS);
-        case ALIGNMENT: return tr(MsgId::APPEAR_ALIGNMENT);
-        case HYPHENATION: return tr(MsgId::APPEAR_HYPHENATION);
-        case KEEP_LINES: return tr(MsgId::APPEAR_KEEP_LINES);
-        case BOOK_STYLES: return tr(MsgId::APPEAR_BOOK_STYLES);
-        case FOCUS_READING: return tr(MsgId::APPEAR_FOCUS_READING);
-        case IMAGES: return tr(MsgId::APPEAR_IMAGES);
-        case ORIENTATION: return tr(MsgId::APPEAR_ORIENTATION);
-        case FULL_REFRESH: return tr(MsgId::APPEAR_FULL_REFRESH);
-        case UPDOWN_KEYS: return tr(MsgId::APPEAR_UPDOWN_KEYS);
-        case STATUS_BAR: return tr(MsgId::APPEAR_STATUS_BAR);
-        case AUTO_ROTATE: return tr(MsgId::APPEAR_AUTO_ROTATE);
+        case TYPEFACE:
+            return tr(MsgId::APPEAR_TYPEFACE);
+        case SIZE:
+            return tr(MsgId::APPEAR_SIZE);
+        case LINE_SPACING:
+            return tr(MsgId::APPEAR_LINE_SPACING);
+        case PARAGRAPH_SPACING:
+            return tr(MsgId::APPEAR_PARAGRAPH_SPACING);
+        case MARGINS:
+            return tr(MsgId::APPEAR_MARGINS);
+        case ALIGNMENT:
+            return tr(MsgId::APPEAR_ALIGNMENT);
+        case HYPHENATION:
+            return tr(MsgId::APPEAR_HYPHENATION);
+        case KEEP_LINES:
+            return tr(MsgId::APPEAR_KEEP_LINES);
+        case BOOK_STYLES:
+            return tr(MsgId::APPEAR_BOOK_STYLES);
+        case FOCUS_READING:
+            return tr(MsgId::APPEAR_FOCUS_READING);
+        case IMAGES:
+            return tr(MsgId::APPEAR_IMAGES);
+        case ORIENTATION:
+            return tr(MsgId::APPEAR_ORIENTATION);
+        case FULL_REFRESH:
+            return tr(MsgId::APPEAR_FULL_REFRESH);
+        case UPDOWN_KEYS:
+            return tr(MsgId::APPEAR_UPDOWN_KEYS);
+        case STATUS_BAR:
+            return tr(MsgId::APPEAR_STATUS_BAR);
+        case AUTO_ROTATE:
+            return tr(MsgId::APPEAR_AUTO_ROTATE);
     }
     return "";
 }
 
 const char* value(const AppConfig& cfg, int row, char* buf, size_t len) {
     switch (row) {
-        case TYPEFACE: snprintf(buf, len, "%s", Reader.fontFamilyName().c_str()); break;
-        case SIZE: snprintf(buf, len, "%s", BookReader::getFontSizeName(cfg.readerFontSize)); break;
-        case LINE_SPACING: snprintf(buf, len, "%d%%", cfg.lineSpacing); break;
-        case PARAGRAPH_SPACING: snprintf(buf, len, "%d%%", cfg.paragraphSpacing); break;
-        case MARGINS: snprintf(buf, len, tr(MsgId::APPEAR_MARGINS_FMT), cfg.marginPx); break;
+        case TYPEFACE:
+            snprintf(buf, len, "%s", Reader.fontFamilyName().c_str());
+            break;
+        case SIZE:
+            snprintf(buf, len, "%s", BookReader::getFontSizeName(cfg.readerFontSize));
+            break;
+        case LINE_SPACING:
+            snprintf(buf, len, "%d%%", cfg.lineSpacing);
+            break;
+        case PARAGRAPH_SPACING:
+            snprintf(buf, len, "%d%%", cfg.paragraphSpacing);
+            break;
+        case MARGINS:
+            snprintf(buf, len, tr(MsgId::APPEAR_MARGINS_FMT), cfg.marginPx);
+            break;
         case ALIGNMENT:
             snprintf(buf, len, "%s", tr(cfg.justify ? MsgId::APPEAR_ALIGN_JUSTIFY : MsgId::APPEAR_ALIGN_LEFT));
             break;
-        case HYPHENATION: snprintf(buf, len, "%s", onOff(cfg.hyphenation)); break;
-        case KEEP_LINES: snprintf(buf, len, "%s", onOff(cfg.keepLines)); break;
-        case BOOK_STYLES: snprintf(buf, len, "%s", onOff(cfg.bookStyles)); break;
-        case FOCUS_READING: snprintf(buf, len, "%s", onOff(cfg.focusReading)); break;
+        case HYPHENATION:
+            snprintf(buf, len, "%s", onOff(cfg.hyphenation));
+            break;
+        case KEEP_LINES:
+            snprintf(buf, len, "%s", onOff(cfg.keepLines));
+            break;
+        case BOOK_STYLES:
+            snprintf(buf, len, "%s", onOff(cfg.bookStyles));
+            break;
+        case FOCUS_READING:
+            snprintf(buf, len, "%s", onOff(cfg.focusReading));
+            break;
         case IMAGES:
             snprintf(buf, len, "%s", tr(cfg.sharpImages ? MsgId::APPEAR_IMAGES_SHARP : MsgId::APPEAR_IMAGES_DITHERED));
             break;
         case ORIENTATION: {
             // on top of the interface's turn, a quarter turn a step
-            if ((cfg.orientation & 3) == 0) snprintf(buf, len, "%s", tr(MsgId::APPEAR_ORIENT_AS_UI));
-            else snprintf(buf, len, tr(MsgId::APPEAR_ORIENT_TURNED_FMT), (cfg.orientation & 3) * 90);
+            if ((cfg.orientation & 3) == 0)
+                snprintf(buf, len, "%s", tr(MsgId::APPEAR_ORIENT_AS_UI));
+            else
+                snprintf(buf, len, tr(MsgId::APPEAR_ORIENT_TURNED_FMT), (cfg.orientation & 3) * 90);
             break;
         }
         case FULL_REFRESH:
-            if (cfg.fullRefreshEvery <= 0) snprintf(buf, len, "%s", tr(MsgId::APPEAR_REFRESH_NEVER));
-            else snprintf(buf, len, tr(MsgId::APPEAR_REFRESH_FMT), cfg.fullRefreshEvery);
+            if (cfg.fullRefreshEvery <= 0)
+                snprintf(buf, len, "%s", tr(MsgId::APPEAR_REFRESH_NEVER));
+            else
+                snprintf(buf, len, tr(MsgId::APPEAR_REFRESH_FMT), cfg.fullRefreshEvery);
             break;
         case UPDOWN_KEYS:
-            snprintf(buf, len, "%s", tr(cfg.upDownTurnPages ? MsgId::APPEAR_UPDOWN_PAGES : MsgId::APPEAR_UPDOWN_CHAPTERS));
+            snprintf(buf, len, "%s",
+                     tr(cfg.upDownTurnPages ? MsgId::APPEAR_UPDOWN_PAGES : MsgId::APPEAR_UPDOWN_CHAPTERS));
             break;
-        case STATUS_BAR: snprintf(buf, len, "%s", "\xE2\x96\xB6"); break;   // a menu of its own
-        case AUTO_ROTATE: snprintf(buf, len, "%s", tr(cfg.autoRotate ? MsgId::APPEAR_ON : MsgId::APPEAR_OFF)); break;
-        default: buf[0] = 0;
+        case STATUS_BAR:
+            snprintf(buf, len, "%s", "\xE2\x96\xB6");
+            break;   // a menu of its own
+        case AUTO_ROTATE:
+            snprintf(buf, len, "%s", tr(cfg.autoRotate ? MsgId::APPEAR_ON : MsgId::APPEAR_OFF));
+            break;
+        default:
+            buf[0] = 0;
     }
     return buf;
 }
@@ -110,20 +156,45 @@ const char* value(const AppConfig& cfg, int row, char* buf, size_t len) {
 bool step(AppConfig& cfg, int row, int dir) {
     switch (row) {
         case SIZE:
-            cfg.readerFontSize = (cfg.readerFontSize + (dir > 0 ? 1 : FontEngine::kSizeCount - 1)) % FontEngine::kSizeCount;
+            cfg.readerFontSize =
+                    (cfg.readerFontSize + (dir > 0 ? 1 : FontEngine::kSizeCount - 1)) % FontEngine::kSizeCount;
             return true;
-        case LINE_SPACING: cfg.lineSpacing = stepIn(kLineSpacing, cfg.lineSpacing, dir); return true;
-        case PARAGRAPH_SPACING: cfg.paragraphSpacing = stepIn(kParagraphSpacing, cfg.paragraphSpacing, dir); return true;
-        case MARGINS: cfg.marginPx = stepIn(kMargins, cfg.marginPx, dir); return true;
-        case ALIGNMENT: cfg.justify = !cfg.justify; return true;
-        case HYPHENATION: cfg.hyphenation = !cfg.hyphenation; return true;
-        case KEEP_LINES: cfg.keepLines = !cfg.keepLines; return true;
-        case BOOK_STYLES: cfg.bookStyles = !cfg.bookStyles; return true;
-        case FOCUS_READING: cfg.focusReading = !cfg.focusReading; return true;
-        case IMAGES: cfg.sharpImages = !cfg.sharpImages; return true;
-        case UPDOWN_KEYS: cfg.upDownTurnPages = !cfg.upDownTurnPages; return true;
-        case AUTO_ROTATE: cfg.autoRotate = !cfg.autoRotate; return true;   // the sensor follows (reader screen)
-        case ORIENTATION: cfg.orientation = (cfg.orientation + (dir > 0 ? 1 : 3)) & 3; return true;
+        case LINE_SPACING:
+            cfg.lineSpacing = stepIn(kLineSpacing, cfg.lineSpacing, dir);
+            return true;
+        case PARAGRAPH_SPACING:
+            cfg.paragraphSpacing = stepIn(kParagraphSpacing, cfg.paragraphSpacing, dir);
+            return true;
+        case MARGINS:
+            cfg.marginPx = stepIn(kMargins, cfg.marginPx, dir);
+            return true;
+        case ALIGNMENT:
+            cfg.justify = !cfg.justify;
+            return true;
+        case HYPHENATION:
+            cfg.hyphenation = !cfg.hyphenation;
+            return true;
+        case KEEP_LINES:
+            cfg.keepLines = !cfg.keepLines;
+            return true;
+        case BOOK_STYLES:
+            cfg.bookStyles = !cfg.bookStyles;
+            return true;
+        case FOCUS_READING:
+            cfg.focusReading = !cfg.focusReading;
+            return true;
+        case IMAGES:
+            cfg.sharpImages = !cfg.sharpImages;
+            return true;
+        case UPDOWN_KEYS:
+            cfg.upDownTurnPages = !cfg.upDownTurnPages;
+            return true;
+        case AUTO_ROTATE:
+            cfg.autoRotate = !cfg.autoRotate;
+            return true;   // the sensor follows (reader screen)
+        case ORIENTATION:
+            cfg.orientation = (cfg.orientation + (dir > 0 ? 1 : 3)) & 3;
+            return true;
         case FULL_REFRESH: {
             // "never" sits after the largest
             const int cur = cfg.fullRefreshEvery <= 0 ? 0 : cfg.fullRefreshEvery;
@@ -135,7 +206,8 @@ bool step(AppConfig& cfg, int row, int dir) {
             cfg.fullRefreshEvery = kRefresh[at];
             return true;
         }
-        default: return false;
+        default:
+            return false;
     }
 }
 

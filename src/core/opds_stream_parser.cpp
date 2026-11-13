@@ -8,9 +8,7 @@ namespace {
 const char kEntryClose[] = "</entry>";
 const size_t kEntryCloseLen = sizeof(kEntryClose) - 1;
 
-bool isTagNameEnd(char c) {
-    return c == '>' || c == '/' || c == ' ' || c == '\t' || c == '\r' || c == '\n';
-}
+bool isTagNameEnd(char c) { return c == '>' || c == '/' || c == ' ' || c == '\t' || c == '\r' || c == '\n'; }
 
 // Finds "<name" followed by a tag-name terminator (so "<id" does not match "<identifier").
 size_t findTag(const std::string& s, const char* name, size_t from, size_t end = std::string::npos) {
@@ -108,28 +106,42 @@ std::string OpdsStreamParser::decodeEntities(const std::string& in) {
     std::string out;
     out.reserve(in.size());
     for (size_t i = 0; i < in.size(); i++) {
-        if (in[i] != '&') { out += in[i]; continue; }
+        if (in[i] != '&') {
+            out += in[i];
+            continue;
+        }
         size_t semi = in.find(';', i + 1);
-        if (semi == std::string::npos || semi - i > 10) { out += in[i]; continue; }
+        if (semi == std::string::npos || semi - i > 10) {
+            out += in[i];
+            continue;
+        }
         std::string ent = in.substr(i + 1, semi - i - 1);
         bool ok = true;
-        if (ent == "amp") out += '&';
-        else if (ent == "lt") out += '<';
-        else if (ent == "gt") out += '>';
-        else if (ent == "quot") out += '"';
-        else if (ent == "apos") out += '\'';
+        if (ent == "amp")
+            out += '&';
+        else if (ent == "lt")
+            out += '<';
+        else if (ent == "gt")
+            out += '>';
+        else if (ent == "quot")
+            out += '"';
+        else if (ent == "apos")
+            out += '\'';
         else if (ent.size() > 1 && ent[0] == '#') {
             char* endp = nullptr;
-            unsigned long cp = (ent[1] == 'x' || ent[1] == 'X')
-                ? strtoul(ent.c_str() + 2, &endp, 16)
-                : strtoul(ent.c_str() + 1, &endp, 10);
-            if (endp && *endp == '\0' && cp > 0) appendUtf8(out, cp);
-            else ok = false;
+            unsigned long cp = (ent[1] == 'x' || ent[1] == 'X') ? strtoul(ent.c_str() + 2, &endp, 16)
+                                                                : strtoul(ent.c_str() + 1, &endp, 10);
+            if (endp && *endp == '\0' && cp > 0)
+                appendUtf8(out, cp);
+            else
+                ok = false;
         } else {
             ok = false;
         }
-        if (ok) i = semi;
-        else out += in[i];
+        if (ok)
+            i = semi;
+        else
+            out += in[i];
     }
     return out;
 }
@@ -159,7 +171,8 @@ bool OpdsStreamParser::parseEntry(const std::string& xml, OpdsBookEntry& out) {
         if (href.empty()) continue;
 
         const bool isThumb = tag.find("thumbnail") != std::string::npos;
-        const bool isFullCover = !isThumb && (tag.find("cover") != std::string::npos || tag.find("image") != std::string::npos);
+        const bool isFullCover =
+                !isThumb && (tag.find("cover") != std::string::npos || tag.find("image") != std::string::npos);
         if (isThumb) {
             out.coverUrl = href;
             hasThumb = true;

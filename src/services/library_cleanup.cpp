@@ -41,8 +41,9 @@ void removeCoverStem(const String& stem) {
     if (stem.length() == 0) return;
     // ".jpg.nocover": the marker of a book found to have no cover; ".jpg.tmp" /
     // ".jpg.bmp.tmp": an extraction cut short.
-    const char* suffixes[] = { ".jpg", ".jpeg", ".bmp", ".jpg.bad", ".jpg.nocover", ".nocover", ".jpg.tmp", ".jpg.bmp.tmp",
-                               "_thumb_crop.bmp", "_thumb_fit.bmp", "_crop.bmp", "_fit.bmp" };
+    const char* suffixes[] = {".jpg",      ".jpeg",    ".bmp",         ".jpg.bad",        ".jpg.nocover",
+                              ".nocover",  ".jpg.tmp", ".jpg.bmp.tmp", "_thumb_crop.bmp", "_thumb_fit.bmp",
+                              "_crop.bmp", "_fit.bmp"};
     for (const char* sfx : suffixes) removeIfExists("/covers/" + stem + sfx);
 }
 
@@ -66,8 +67,8 @@ void LibraryManager::deleteBookArtifacts(const BookItem& book, bool removeCover)
         const String txt = stem + ".txt";
         for (const String& n : Storage.listFileNames("/cache")) {
             const bool mine = n.startsWith(txt) ||                 // .txt, .txt.idx, .txt_f1[_WxH].idx, .txt.tmp
-                              n == stem + ".toc" || n == stem + ".toc.tmp" ||
-                              n == stem + ".spine" || n == stem + ".cfimap";
+                              n == stem + ".toc" || n == stem + ".toc.tmp" || n == stem + ".spine" ||
+                              n == stem + ".cfimap";
             if (mine) removeIfExists("/cache/" + n);
         }
     }
@@ -113,14 +114,15 @@ void collectBookStems(const String& dir, int depth, std::vector<String>& out, in
 }
 
 bool contains(const std::vector<String>& v, const String& s) {
-    for (const String& x : v) if (x == s) return true;
+    for (const String& x : v)
+        if (x == s) return true;
     return false;
 }
 
 // The cover stem a /covers file belongs to, "" if the name is not one we write.
 String coverOwner(const String& n) {
-    const char* sfx[] = { "_thumb_crop.bmp", "_thumb_fit.bmp", "_crop.bmp", "_fit.bmp", ".jpg.bad", ".jpg.nocover",
-                          ".jpg.bmp.tmp", ".jpg.tmp", ".jpeg", ".jpg" };
+    const char* sfx[] = {"_thumb_crop.bmp", "_thumb_fit.bmp", "_crop.bmp", "_fit.bmp", ".jpg.bad",
+                         ".jpg.nocover",    ".jpg.bmp.tmp",   ".jpg.tmp",  ".jpeg",    ".jpg"};
     for (const char* x : sfx) {
         if (n.endsWith(x)) return n.substring(0, n.length() - strlen(x));
     }
@@ -203,7 +205,6 @@ void LibraryManager::updateLastBookAfterDeletion(const String& deletedPath) {
     LastBookStore::save(lastBook);
 }
 
-
 namespace {
 String replaceChars(const String& title, const char* bad, const String& fallbackId) {
     String safe = title;
@@ -248,7 +249,8 @@ bool renameIfThere(const String& from, const String& to) {
 
 // A cover stem in /covers: the JPEG and the BMP renders JpegViewer caches for it.
 void renameCoverStem(const String& from, const String& to) {
-    const char* suffixes[] = { ".jpg", ".jpeg", ".jpg.bad", "_thumb_crop.bmp", "_thumb_fit.bmp", "_crop.bmp", "_fit.bmp" };
+    const char* suffixes[] = {".jpg",           ".jpeg",     ".jpg.bad", "_thumb_crop.bmp",
+                              "_thumb_fit.bmp", "_crop.bmp", "_fit.bmp"};
     for (const char* sfx : suffixes) renameIfThere("/covers/" + from + sfx, "/covers/" + to + sfx);
 }
 
@@ -261,7 +263,8 @@ void LibraryManager::migrateLegacyNames(const std::vector<BookMetadata>& catalog
 
     ProgressStore& store = ProgressStore::instance();
     auto hasRecord = [&](const BookMetadata& b) {
-        for (const auto& f : b.formats) if (f.fileId > 0 && store.find(f.fileId, "")) return true;
+        for (const auto& f : b.formats)
+            if (f.fileId > 0 && store.find(f.fileId, "")) return true;
         return false;
     };
     // The old name of each server book. Two books of one title shared it: the
@@ -274,8 +277,10 @@ void LibraryManager::migrateLegacyNames(const std::vector<BookMetadata>& catalog
         if (local.find(oldKey) == local.end()) continue;
         if (local.find(bookKey(catalogBookPath(b))) != local.end()) continue;   // already under its new name
         auto it = owner.find(oldKey);
-        if (it == owner.end()) owner.emplace(oldKey, c);
-        else if (!hasRecord(catalog[it->second]) && hasRecord(b)) it->second = c;
+        if (it == owner.end())
+            owner.emplace(oldKey, c);
+        else if (!hasRecord(catalog[it->second]) && hasRecord(b))
+            it->second = c;
     }
     if (owner.empty()) return;
 
@@ -290,7 +295,8 @@ void LibraryManager::migrateLegacyNames(const std::vector<BookMetadata>& catalog
         BookItem& item = masterBooks[local[o.first]];
         // The book open in the reader keeps its name (its cache directory is in
         // use): it is renamed when the list is built again, at the next start or sync.
-        if (Reader.isOpened() && withoutExtension(Reader.getOriginalFilePath()).equalsIgnoreCase(withoutExtension(item.filePath)))
+        if (Reader.isOpened() &&
+            withoutExtension(Reader.getOriginalFilePath()).equalsIgnoreCase(withoutExtension(item.filePath)))
             continue;
         const String oldStem = legacyStem(b);
         const String newStem = catalogStem(b.title, catalogBookId(b));
@@ -324,13 +330,19 @@ void LibraryManager::migrateLegacyNames(const std::vector<BookMetadata>& catalog
                 store.touch();
             }
             if (lastBook.filePath.equalsIgnoreCase(from)) lastBook.filePath = to;
-            if (haveSaved && saved.filePath.equalsIgnoreCase(from)) { saved.filePath = to; savedChanged = true; }
+            if (haveSaved && saved.filePath.equalsIgnoreCase(from)) {
+                saved.filePath = to;
+                savedChanged = true;
+            }
             moved++;
         }
         renameCoverStem(oldStem, newStem);
         const String oldCover = "/covers/" + oldStem + ".", newCover = "/covers/" + newStem + ".jpg";
         if (lastBook.coverPath.startsWith(oldCover)) lastBook.coverPath = newCover;
-        if (haveSaved && saved.coverPath.startsWith(oldCover)) { saved.coverPath = newCover; savedChanged = true; }
+        if (haveSaved && saved.coverPath.startsWith(oldCover)) {
+            saved.coverPath = newCover;
+            savedChanged = true;
+        }
         // The list entry follows the files.
         const int8_t active = item.activeFormat;
         item.filePath = "/books/" + newStem + BookFormats::extension((BookFormats::Kind)item.activeKind());
@@ -350,4 +362,3 @@ int LibraryManager::catalogBookId(const BookMetadata& b) {
     int id = b.id.toInt();
     return id > 0 ? id : b.fileId;
 }
-

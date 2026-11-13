@@ -2,11 +2,7 @@
 
 #include <Arduino.h>
 
-enum KeyboardMode {
-    KB_MODE_TEXT = 0,
-    KB_MODE_PASSWORD,
-    KB_MODE_URL
-};
+enum KeyboardMode { KB_MODE_TEXT = 0, KB_MODE_PASSWORD, KB_MODE_URL };
 
 class KeyboardUI {
 public:
@@ -16,5 +12,6 @@ public:
     // inOutText: String to edit; updated if confirmed (OK).
     // mode: KB_MODE_PASSWORD, KB_MODE_TEXT, or KB_MODE_URL
     // Returns true if user clicked [OK ✓], false if cancelled.
-    static bool show(const String& title, const String& subtitle, String& inOutText, KeyboardMode mode = KB_MODE_PASSWORD);
+    static bool show(const String& title, const String& subtitle, String& inOutText,
+                     KeyboardMode mode = KB_MODE_PASSWORD);
 };

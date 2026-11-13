@@ -7,10 +7,14 @@ freeink::book::FrameRotation uiFrameRotation() {
     using freeink::ui::Orientation;
     using freeink::book::FrameRotation;
     switch (uikit::target().orientation()) {
-        case Orientation::LandscapeCounterClockwise: return FrameRotation::None;
-        case Orientation::PortraitInverted: return FrameRotation::PortraitInverted;
-        case Orientation::LandscapeClockwise: return FrameRotation::UpsideDown;
-        default: return FrameRotation::Portrait;
+        case Orientation::LandscapeCounterClockwise:
+            return FrameRotation::None;
+        case Orientation::PortraitInverted:
+            return FrameRotation::PortraitInverted;
+        case Orientation::LandscapeClockwise:
+            return FrameRotation::UpsideDown;
+        default:
+            return FrameRotation::Portrait;
     }
 }
 }  // namespace
@@ -19,8 +23,12 @@ int BookReader::drawSample(int x, int y, int width, int height, const char* utf8
                            uint16_t lineSpacingPct) {
     uint8_t* fb = Display.getBuffer();
     if (!fb) return 0;
-    freeink::book::FrameTarget frame{fb, (int16_t)EPD_WIDTH, (int16_t)EPD_HEIGHT, (int16_t)(EPD_WIDTH / 8),
-                                     freeink::book::FrameFormat::Mono1Sharp, uiFrameRotation()};
+    freeink::book::FrameTarget frame{fb,
+                                     (int16_t)EPD_WIDTH,
+                                     (int16_t)EPD_HEIGHT,
+                                     (int16_t)(EPD_WIDTH / 8),
+                                     freeink::book::FrameFormat::Mono1Sharp,
+                                     uiFrameRotation()};
     const int lh = _fonts.lineHeight(sizePx) * lineSpacingPct / 100, asc = _fonts.ascent(sizePx);
     int top = y;
     const char* p = utf8;
@@ -116,8 +124,12 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
         bool onPage(const Page& page) override {
             if (drawn) return true;   // the first page only (see Lines)
             uint8_t* fb = Display.getBuffer();
-            FrameTarget frame{fb, (int16_t)EPD_WIDTH, (int16_t)EPD_HEIGHT, (int16_t)(EPD_WIDTH / 8),
-                              FrameFormat::Mono1Sharp, rotation};
+            FrameTarget frame{fb,
+                              (int16_t)EPD_WIDTH,
+                              (int16_t)EPD_HEIGHT,
+                              (int16_t)(EPD_WIDTH / 8),
+                              FrameFormat::Mono1Sharp,
+                              rotation};
             PageTextRun runs[48];
             uint16_t n = 0;
             for (uint16_t i = 0; i < page.runCount; i++) {
@@ -191,8 +203,8 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
     for (size_t i = 0; i < _family.length(); i++) familyKey = (familyKey ^ (uint8_t)_family[i]) * 16777619u;
     static size_t s_cap = 40 * 1024;
     const bool cutKnown = s_cut.o == o && s_cut.size == sizeIndex && s_cut.width == p.pageWidth &&
-                          s_cut.height == height && s_cut.text == text &&
-                          s_cut.family == familyKey && s_cut.styles == (p.stylesheet != nullptr);
+                          s_cut.height == height && s_cut.text == text && s_cut.family == familyKey &&
+                          s_cut.styles == (p.stylesheet != nullptr);
     const size_t kCaps[] = {(size_t)40 * 1024, (size_t)52 * 1024, (size_t)64 * 1024};
     for (size_t cap : kCaps) {
         if (cap < s_cap) continue;
@@ -219,7 +231,8 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
             Arena a(mem.p, cap);
             const BookStatus s1 = ChapterLayout::layoutPlainText(src, loose, a, lines);
             if (s1 == BookStatus::OutOfMemory) {
-                Serial.printf("[Reader] Appearance preview: %u B is not enough (%u used)\n", (unsigned)cap, (unsigned)a.highWater());
+                Serial.printf("[Reader] Appearance preview: %u B is not enough (%u used)\n", (unsigned)cap,
+                              (unsigned)a.highWater());
                 continue;
             }
             // A page that ends just under line k: line k+1 no longer fits.
@@ -239,8 +252,8 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
         Arena a(mem.p, cap);
         st = ChapterLayout::layoutPlainText(src, q, a, sink);
         if (sink.drawn) {
-            Serial.printf("[Reader] Appearance preview laid out: %u of %u B%s\n", (unsigned)a.highWater(), (unsigned)cap,
-                          cutKnown ? " (cut kept)" : "");
+            Serial.printf("[Reader] Appearance preview laid out: %u of %u B%s\n", (unsigned)a.highWater(),
+                          (unsigned)cap, cutKnown ? " (cut kept)" : "");
             s_cap = cap;
             s_cut.o = o;
             s_cut.size = sizeIndex;
@@ -256,8 +269,8 @@ void BookReader::drawPreview(int y, int height, const char* text, const LayoutOp
     }
     if (!sink.drawn) {
         Serial.printf("[Reader] Appearance preview not laid out (%s): a plain sample instead\n", bookStatusName(st));
-        drawSample(o.marginPx, y, Display.width() - 2 * o.marginPx, height, text, (uint16_t)FontEngine::sizePx(sizeIndex),
-                   o.lineSpacingPct);
+        drawSample(o.marginPx, y, Display.width() - 2 * o.marginPx, height, text,
+                   (uint16_t)FontEngine::sizePx(sizeIndex), o.lineSpacingPct);
     }
 }
 
@@ -268,4 +281,3 @@ const char* BookReader::getFontSizeName(int size) {
     snprintf(out, sizeof(buf[0]), "%d pt", FontEngine::sizePx(size));
     return out;
 }
-

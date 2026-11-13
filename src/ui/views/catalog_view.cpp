@@ -20,22 +20,30 @@ CatalogItemDef getCatalogItemDef(const AppContext& ctx, int index) {
     const LibraryManager::Counts& c = lib.getCounts();
     switch (index) {
         case 0: {
-            String sub = lib.searchQuery.length() > 0 ? ("\"" + lib.searchQuery + "\"") : String(tr(MsgId::CATALOG_SEARCH_HINT));
-            return { tr(MsgId::CATALOG_SEARCH), sub, tr(MsgId::CATALOG_TAG_SEARCH) };
+            String sub = lib.searchQuery.length() > 0 ? ("\"" + lib.searchQuery + "\"")
+                                                      : String(tr(MsgId::CATALOG_SEARCH_HINT));
+            return {tr(MsgId::CATALOG_SEARCH), sub, tr(MsgId::CATALOG_TAG_SEARCH)};
         }
-        case 1: return { tr(MsgId::CATALOG_ALL_BOOKS), String(c.total), tr(MsgId::CATALOG_TAG_ALL) };
-        case 2: return { tr(MsgId::CATALOG_BY_LIBRARIES), String(c.libraries), tr(MsgId::CATALOG_TAG_LIBRARIES) };
-        case 3: return { tr(MsgId::CATALOG_BY_AUTHORS), String(c.authors), tr(MsgId::CATALOG_TAG_AUTHORS) };
-        case 4: return { tr(MsgId::CATALOG_BY_SERIES), String(c.series), tr(MsgId::CATALOG_TAG_SERIES) };
-        case 5: return { tr(MsgId::CATALOG_BY_FOLDERS), String(c.folders), tr(MsgId::CATALOG_TAG_FOLDERS) };
-        case 6: return { tr(MsgId::CATALOG_DOWNLOADED), String(c.downloaded), tr(MsgId::CATALOG_TAG_DOWNLOADED) };
-        case 7: return { tr(MsgId::CATALOG_COMPLETED), String(c.completed), tr(MsgId::CATALOG_TAG_COMPLETED) };
+        case 1:
+            return {tr(MsgId::CATALOG_ALL_BOOKS), String(c.total), tr(MsgId::CATALOG_TAG_ALL)};
+        case 2:
+            return {tr(MsgId::CATALOG_BY_LIBRARIES), String(c.libraries), tr(MsgId::CATALOG_TAG_LIBRARIES)};
+        case 3:
+            return {tr(MsgId::CATALOG_BY_AUTHORS), String(c.authors), tr(MsgId::CATALOG_TAG_AUTHORS)};
+        case 4:
+            return {tr(MsgId::CATALOG_BY_SERIES), String(c.series), tr(MsgId::CATALOG_TAG_SERIES)};
+        case 5:
+            return {tr(MsgId::CATALOG_BY_FOLDERS), String(c.folders), tr(MsgId::CATALOG_TAG_FOLDERS)};
+        case 6:
+            return {tr(MsgId::CATALOG_DOWNLOADED), String(c.downloaded), tr(MsgId::CATALOG_TAG_DOWNLOADED)};
+        case 7:
+            return {tr(MsgId::CATALOG_COMPLETED), String(c.completed), tr(MsgId::CATALOG_TAG_COMPLETED)};
         case 8:
-            return { tr(MsgId::CATALOG_HIDE_COMPLETED),
-                     ctx.config.hideCompleted ? tr(MsgId::CATALOG_HIDE_ON) : tr(MsgId::CATALOG_HIDE_OFF),
-                     tr(MsgId::CATALOG_TAG_OPTION) };
+            return {tr(MsgId::CATALOG_HIDE_COMPLETED),
+                    ctx.config.hideCompleted ? tr(MsgId::CATALOG_HIDE_ON) : tr(MsgId::CATALOG_HIDE_OFF),
+                    tr(MsgId::CATALOG_TAG_OPTION)};
         default:
-            return { "", "", "" };
+            return {"", "", ""};
     }
 }
 
@@ -48,7 +56,8 @@ void drawCatalogScreen(AppContext& ctx, bool fullRefresh) {
     clear();
 
     Rect area = topBar(f, tr(MsgId::CATALOG_TITLE));
-    area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_OPEN), tr(MsgId::KEY_BACK), tr(MsgId::KEY_OPEN)});
+    area = keyHints(f, area,
+                    KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_OPEN), tr(MsgId::KEY_BACK), tr(MsgId::KEY_OPEN)});
     area = insetXY(area, kMargin, 8);
 
     const int count = NUM_CATALOG_ITEMS;
@@ -57,8 +66,8 @@ void drawCatalogScreen(AppContext& ctx, bool fullRefresh) {
                                 (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 16), 4);
     for (int i = l.first; i < count && i < l.first + l.perPage; i++) {
         CatalogItemDef item = getCatalogItemDef(ctx, i);
-        card(f, takeTop(area, l.cardH), item.title, item.value.c_str(), item.tag,
-             i == ctx.selectedCatalogIndex, 1, (int16_t)i);
+        card(f, takeTop(area, l.cardH), item.title, item.value.c_str(), item.tag, i == ctx.selectedCatalogIndex, 1,
+             (int16_t)i);
         takeTop(area, l.gap);
     }
 

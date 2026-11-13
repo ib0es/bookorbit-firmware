@@ -20,12 +20,7 @@ enum ButtonId {
     BTN_SWIPE_DOWN
 };
 
-enum ButtonAction {
-    ACTION_NONE = 0,
-    ACTION_PRESS,
-    ACTION_CLICK,
-    ACTION_LONG_PRESS
-};
+enum ButtonAction { ACTION_NONE = 0, ACTION_PRESS, ACTION_CLICK, ACTION_LONG_PRESS };
 
 struct ButtonEvent {
     ButtonId id = BTN_NONE;
@@ -72,7 +67,11 @@ public:
     bool hasLightSwitch() const { return _freeinkInput.hasToggleSwitch(); }
     bool lightSwitchOn() const { return _freeinkInput.isToggleSwitchOn(); }
     // True once after the switch moved; consumed by the call.
-    bool takeLightSwitchChange() { bool c = _lightSwitchChanged; _lightSwitchChanged = false; return c; }
+    bool takeLightSwitchChange() {
+        bool c = _lightSwitchChanged;
+        _lightSwitchChanged = false;
+        return c;
+    }
 
     bool hasTouch() const { return _freeinkInput.hasTouch(); }
     bool hasHomeKey() const;

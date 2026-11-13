@@ -7,18 +7,26 @@
 #include <cstring>
 
 static int g_failed = 0, g_checks = 0;
-#define CHECK(cond) do { g_checks++; if (!(cond)) { g_failed++; \
-    printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); } } while (0)
+#define CHECK(cond)                                                  \
+    do {                                                             \
+        g_checks++;                                                  \
+        if (!(cond)) {                                               \
+            g_failed++;                                              \
+            printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
+        }                                                            \
+    } while (0)
 
 static void testCivilRoundTrip() {
-    struct Case { int y, m, d, hh, mm, ss, wd; };
+    struct Case {
+        int y, m, d, hh, mm, ss, wd;
+    };
     const Case cases[] = {
-        {1970, 1, 1, 0, 0, 0, 4},       // Thu
-        {2000, 2, 29, 12, 34, 56, 2},   // leap century Tue
-        {2024, 2, 29, 23, 59, 59, 4},   // leap day Thu
-        {2025, 12, 31, 23, 59, 59, 3},  // NYE Wed
-        {2026, 11, 11, 10, 5, 42, 3},   // Wed
-        {2100, 2, 28, 18, 0, 0, 0},     // non-leap century Sun
+            {1970, 1, 1, 0, 0, 0, 4},       // Thu
+            {2000, 2, 29, 12, 34, 56, 2},   // leap century Tue
+            {2024, 2, 29, 23, 59, 59, 4},   // leap day Thu
+            {2025, 12, 31, 23, 59, 59, 3},  // NYE Wed
+            {2026, 11, 11, 10, 5, 42, 3},   // Wed
+            {2100, 2, 28, 18, 0, 0, 0},     // non-leap century Sun
     };
     for (const auto& c : cases) {
         const int64_t utc = TimeUtils::utcFromCivil(c.y, c.m, c.d, c.hh, c.mm, c.ss);

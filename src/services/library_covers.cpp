@@ -57,7 +57,7 @@ bool LibraryManager::isValidCoverFile(const String& path) {
     f.close();
 
     bool isJpeg = (magic[0] == 0xFF && magic[1] == 0xD8);
-    bool isBmp  = (magic[0] == 'B' && magic[1] == 'M');
+    bool isBmp = (magic[0] == 'B' && magic[1] == 'M');
     if ((!isJpeg && !isBmp) || (isJpeg && isProgressiveJpeg(path))) {
         // Not something the cover renderer can draw (PNG, WebP, an error page,
         // a progressive JPEG): drop it so a usable cover is fetched / extracted.
@@ -80,7 +80,10 @@ bool LibraryManager::isProgressiveJpeg(const String& path) {
         uint8_t h[4];
         if (!f.seek(pos) || f.read(h, 4) != 4 || h[0] != 0xFF) break;
         const uint8_t m = h[1];
-        if (m == 0xFF) { pos++; continue; }                       // fill byte
+        if (m == 0xFF) {
+            pos++;
+            continue;
+        }                       // fill byte
         if (m >= 0xC0 && m <= 0xCF && m != 0xC4 && m != 0xC8 && m != 0xCC) {   // SOFn
             progressive = (m == 0xC2 || m == 0xC6 || m == 0xCA || m == 0xCE);
             break;
@@ -107,7 +110,8 @@ bool LibraryInternal::isEpubPath(const String& filePath) {
     return lower.endsWith(".epub");
 }
 
-String LibraryManager::resolveCoverPath(const String& filePath, const String& title, const String& explicitCoverPath, bool allowExtract) {
+String LibraryManager::resolveCoverPath(const String& filePath, const String& title, const String& explicitCoverPath,
+                                        bool allowExtract) {
     if (isValidCoverFile(explicitCoverPath)) {
         return explicitCoverPath;
     }
@@ -121,10 +125,8 @@ String LibraryManager::resolveCoverPath(const String& filePath, const String& ti
             int dot = base.lastIndexOf('.');
             if (dot > 0) base = base.substring(0, dot);
 
-            const char* candidates[] = {
-                "cover.jpg", "Cover.jpg", "cover.jpeg", "Cover.jpeg",
-                "cover.bmp", "Cover.bmp", "folder.jpg", "folder.jpeg"
-            };
+            const char* candidates[] = {"cover.jpg", "Cover.jpg", "cover.jpeg", "Cover.jpeg",
+                                        "cover.bmp", "Cover.bmp", "folder.jpg", "folder.jpeg"};
             for (const char* c : candidates) {
                 String p = dir + c;
                 if (isValidCoverFile(p)) return p;
@@ -181,7 +183,11 @@ String LibraryManager::resolveCoverPath(const String& filePath, const String& ti
         for (size_t i = 0; i < cPath.length(); i++) cHash = (cHash ^ (uint8_t)cPath[i]) * 16777619u;
         if (!cHash) cHash = 1;
         bool knownBad = false;
-        for (uint32_t h : s_unusableEpubCovers) if (h == cHash) { knownBad = true; break; }
+        for (uint32_t h : s_unusableEpubCovers)
+            if (h == cHash) {
+                knownBad = true;
+                break;
+            }
         // A converted book (FB2/MOBI/AZW3) has its EPUB in its cache directory once it was opened.
         String epub = filePath, indexDir;
         const bool conv = convert::needsConversion(filePath);
@@ -200,7 +206,8 @@ String LibraryManager::resolveCoverPath(const String& filePath, const String& ti
             if (extracted && isValidCoverFile(cPath)) return cPath;
             if ((isEpubPath(filePath) || conv) && !noMemory) {   // short of memory now: tried again later
                 s_unusableEpubCovers[s_unusableNext] = cHash;
-                s_unusableNext = (s_unusableNext + 1) % (int)(sizeof(s_unusableEpubCovers) / sizeof(s_unusableEpubCovers[0]));
+                s_unusableNext =
+                        (s_unusableNext + 1) % (int)(sizeof(s_unusableEpubCovers) / sizeof(s_unusableEpubCovers[0]));
                 FsFile nc = Storage.open(noCoverMarker.c_str(), O_WRONLY | O_CREAT | O_TRUNC);
                 if (nc) {
                     nc.write((const uint8_t*)"2", 1);
@@ -247,4 +254,3 @@ String LibraryManager::recentCover(const String& filePath, const String& title, 
     }
     return found;
 }
-

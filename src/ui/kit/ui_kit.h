@@ -106,8 +106,8 @@ fi::TextStyle style(fi::FontId font, Color color = Color::Black, TextAlign align
 int16_t lineHeight(fi::FontId font);
 int16_t textWidth(fi::FontId font, const char* text);
 // Draws text into rect (wrapping up to maxLines, ellipsis on overflow, vertically centered).
-void text(Rect rect, const char* str, fi::FontId font, Color color = Color::Black,
-          TextAlign align = TextAlign::Left, uint8_t maxLines = 1);
+void text(Rect rect, const char* str, fi::FontId font, Color color = Color::Black, TextAlign align = TextAlign::Left,
+          uint8_t maxLines = 1);
 // Height of `str` wrapped into `width` (at most maxLines lines).
 int16_t wrappedHeight(const char* str, fi::FontId font, int16_t width, uint8_t maxLines);
 

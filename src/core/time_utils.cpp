@@ -38,13 +38,7 @@ CivilDateTime civilFromUtc(int64_t utc) {
     int wd = (int)((days + 4) % 7);
     if (wd < 0) wd += 7;
     return CivilDateTime{
-        (int)(y + (m <= 2)),
-        (int)m,
-        (int)d,
-        (int)(rem / 3600),
-        (int)((rem % 3600) / 60),
-        (int)(rem % 60),
-        wd,
+            (int)(y + (m <= 2)), (int)m, (int)d, (int)(rem / 3600), (int)((rem % 3600) / 60), (int)(rem % 60), wd,
     };
 }
 
@@ -104,13 +98,11 @@ static bool readInt(const char*& p, int digits, int& out) {
 }
 
 static bool validDate(int y, int mo, int d, int h, int mi, int s) {
-    return y >= 1970 && y < 2106 && mo >= 1 && mo <= 12 && d >= 1 && d <= 31 &&
-           h >= 0 && h <= 23 && mi >= 0 && mi <= 59 && s >= 0 && s <= 60;
+    return y >= 1970 && y < 2106 && mo >= 1 && mo <= 12 && d >= 1 && d <= 31 && h >= 0 && h <= 23 && mi >= 0 &&
+           mi <= 59 && s >= 0 && s <= 60;
 }
 
-static uint32_t clampEpoch(int64_t t) {
-    return (t > 0 && t <= 0xFFFFFFFFLL) ? (uint32_t)t : 0;
-}
+static uint32_t clampEpoch(int64_t t) { return (t > 0 && t <= 0xFFFFFFFFLL) ? (uint32_t)t : 0; }
 
 uint32_t parseIso8601(const char* s) {
     if (!s) return 0;
@@ -162,7 +154,10 @@ uint32_t parseHttpDate(const char* s) {
     while (*p == ' ') p++;
     int mo = 0;
     for (int i = 0; i < 12; i++) {
-        if (strncmp(p, kMonths[i], 3) == 0) { mo = i + 1; break; }
+        if (strncmp(p, kMonths[i], 3) == 0) {
+            mo = i + 1;
+            break;
+        }
     }
     if (mo == 0) return 0;
     p += 3;

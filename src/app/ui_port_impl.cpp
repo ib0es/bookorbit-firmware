@@ -10,14 +10,12 @@
 namespace UiPortImpl {
 namespace {
 const char* orEmpty(const char* s) { return s ? s : ""; }
-}
+}  // namespace
 
 void install() {
     UiPort& p = Ui::port();
-    p.status = [](const char* title, const char* l1, const char* l2, const char* l3, const char* l4,
-                  const char* footer, bool fullRefresh) {
-        drawStatusModal(title, l1, l2, l3, l4, footer, fullRefresh);
-    };
+    p.status = [](const char* title, const char* l1, const char* l2, const char* l3, const char* l4, const char* footer,
+                  bool fullRefresh) { drawStatusModal(title, l1, l2, l3, l4, footer, fullRefresh); };
     p.message = [](const char* title, const char* l1, const char* l2, const char* l3, const char* l4,
                    uint32_t autoCloseMs, bool fullRedraw, const char* footer) {
         Modal.showMessage(orEmpty(title), orEmpty(l1), orEmpty(l2), orEmpty(l3), orEmpty(l4), autoCloseMs, fullRedraw,

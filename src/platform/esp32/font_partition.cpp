@@ -9,7 +9,7 @@ namespace FontPartition {
 namespace {
 const esp_partition_t* partition() {
     static const esp_partition_t* p =
-        esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, nullptr);
+            esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, nullptr);
     return p;
 }
 esp_partition_mmap_handle_t s_map = 0;

@@ -61,7 +61,6 @@ void LibraryManager::initLastBook() {
     }
 }
 
-
 bool LibraryManager::saveLastBook() {
     touch();
     _unsavedMoves = 0;
@@ -75,7 +74,10 @@ bool LibraryManager::saveLastBook() {
 BookProgressRecord& LibraryManager::currentRecord() {
     int bookId = 0;
     for (const auto& b : masterBooks) {
-        if (b.filePath.equalsIgnoreCase(lastBook.filePath)) { bookId = b.bookId; break; }
+        if (b.filePath.equalsIgnoreCase(lastBook.filePath)) {
+            bookId = b.bookId;
+            break;
+        }
     }
     return ProgressStore::instance().getOrCreate(lastBook.fileId, bookId, lastBook.filePath, lastBook.title);
 }
@@ -117,7 +119,8 @@ bool LibraryManager::persistIfDue() {
     const uint32_t t0 = millis();
     const int pages = _unsavedMoves;
     saveLastBook();
-    Serial.printf("[Library] Position saved while idle (%d page turns) in %lu ms\n", pages, (unsigned long)(millis() - t0));
+    Serial.printf("[Library] Position saved while idle (%d page turns) in %lu ms\n", pages,
+                  (unsigned long)(millis() - t0));
     return true;
 }
 
@@ -170,7 +173,4 @@ void LibraryManager::applyRecordToLibrary(const BookProgressRecord& rec) {
     }
 }
 
-bool LibraryManager::loadLastBook() {
-    return LastBookStore::load(lastBook);
-}
-
+bool LibraryManager::loadLastBook() { return LastBookStore::load(lastBook); }

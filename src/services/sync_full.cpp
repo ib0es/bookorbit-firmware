@@ -25,9 +25,7 @@ using namespace SyncInternal;
 // ============================================================================
 namespace {
 
-void returnFromSync(AppContext& ctx, AppState prevState) {
-    SyncService::showState(ctx, prevState);
-}
+void returnFromSync(AppContext& ctx, AppState prevState) { SyncService::showState(ctx, prevState); }
 
 void showConfigError(AppContext& ctx, AppState prevState, const char* what, const char* line1, const char* line2) {
     Serial.printf("[Sync] Not configured: %s\n", what);
@@ -51,7 +49,8 @@ BookProgressRecord* recordForCatalogFormat(const BookMetadata& b, const BookForm
 
 // File ids synced already in this sync (each format of a book is synced on its own).
 bool alreadySynced(const std::vector<int>& synced, int fileId) {
-    for (int id : synced) if (fileId > 0 && id == fileId) return true;
+    for (int id : synced)
+        if (fileId > 0 && id == fileId) return true;
     return false;
 }
 
@@ -79,9 +78,15 @@ void mergeSavedCatalog(std::vector<BookMetadata>& catalog) {
     for (const auto& old : saved) {
         bool present = false;
         for (const auto& b : catalog) {
-            if ((old.fileId > 0 && b.fileId == old.fileId) || (old.id.length() > 0 && b.id == old.id)) { present = true; break; }
+            if ((old.fileId > 0 && b.fileId == old.fileId) || (old.id.length() > 0 && b.id == old.id)) {
+                present = true;
+                break;
+            }
         }
-        if (!present) { catalog.push_back(old); added++; }
+        if (!present) {
+            catalog.push_back(old);
+            added++;
+        }
     }
     Serial.printf("[Sync] Catalog was truncated: kept %u books from the saved catalog.\n", (unsigned)added);
 }
@@ -93,16 +98,19 @@ void downloadCovers(AppContext& ctx, const std::vector<BookMetadata>& catalog) {
         if (SyncService::isCancelled() || SyncService::checkSyncCancel()) break;
         if (b.coverUrl.length() == 0) continue;
 
-        const String coverPath = "/covers/" + LibraryManager::catalogStem(b.title, LibraryManager::catalogBookId(b)) + ".jpg";
+        const String coverPath =
+                "/covers/" + LibraryManager::catalogStem(b.title, LibraryManager::catalogBookId(b)) + ".jpg";
         const String destPath = LibraryManager::catalogBookPath(b);
-        const bool wanted = lib.lastBook.filePath.equalsIgnoreCase(destPath) ||
-                            Storage.exists(destPath.c_str()) || downloaded < 4;
-        if (wanted && !LibraryManager::isValidCoverFile(coverPath) && !LibraryManager::coverKnownUnusable(coverPath, b.coverUrl)) {
+        const bool wanted =
+                lib.lastBook.filePath.equalsIgnoreCase(destPath) || Storage.exists(destPath.c_str()) || downloaded < 4;
+        if (wanted && !LibraryManager::isValidCoverFile(coverPath) &&
+            !LibraryManager::coverKnownUnusable(coverPath, b.coverUrl)) {
             Serial.printf("[Sync] Downloading cover thumbnail: %s -> %s\n", b.title.c_str(), coverPath.c_str());
             if (BookOrbit.downloadCover(ctx.config.serverHost, b.coverUrl, coverPath, ctx.config.bookOrbitUser,
                                         ctx.config.bookOrbitPass, ctx.config.authToken, SyncService::checkSyncCancel)) {
                 downloaded++;
-                if (!LibraryManager::isValidCoverFile(coverPath)) LibraryManager::markCoverUnusable(coverPath, b.coverUrl);
+                if (!LibraryManager::isValidCoverFile(coverPath))
+                    LibraryManager::markCoverUnusable(coverPath, b.coverUrl);
             }
         }
     }
@@ -114,7 +122,9 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
     KeepToken keepToken(ctx);
     SyncBatch batch;
     s_batchState = &batch;
-    struct ClearBatch { ~ClearBatch() { s_batchState = nullptr; } } clearBatch;
+    struct ClearBatch {
+        ~ClearBatch() { s_batchState = nullptr; }
+    } clearBatch;
     WifiSession::prepare();
     AppState prevState = ctx.currentState;
     s_syncCancelled = false;
@@ -122,7 +132,8 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
 
     // Debounce / wait for release of any buttons pressed when entering sync
     uint32_t waitStart = millis();
-    while ((Buttons.isPressed(BTN_CONFIRM) || Buttons.isPressed(BTN_RIGHT) || Buttons.isPressed(BTN_BACK)) && (millis() - waitStart < 250)) {
+    while ((Buttons.isPressed(BTN_CONFIRM) || Buttons.isPressed(BTN_RIGHT) || Buttons.isPressed(BTN_BACK)) &&
+           (millis() - waitStart < 250)) {
         Buttons.update();
         delay(10);
     }
@@ -140,7 +151,8 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
         return;
     }
 
-    Ui::status(tr(MsgId::SYNC_MODAL_TITLE), tr(MsgId::SYNC_CONNECTING_WIFI_PREFIX), ctx.config.wifiSsid.c_str(), nullptr, nullptr, tr(MsgId::COMMON_CANCEL));
+    Ui::status(tr(MsgId::SYNC_MODAL_TITLE), tr(MsgId::SYNC_CONNECTING_WIFI_PREFIX), ctx.config.wifiSsid.c_str(),
+               nullptr, nullptr, tr(MsgId::COMMON_CANCEL));
     if (!BookOrbit.connectWiFi(ctx.config.wifiSsid.c_str(), ctx.config.wifiPass.c_str(), 10000, checkSyncCancel)) {
         if (s_syncCancelled || checkSyncCancel()) {
             abortSync(ctx, prevState);
@@ -148,7 +160,7 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
         }
         Serial.println("[Sync] Wi-Fi connection failed.");
         Ui::status(tr(MsgId::WIFI_ERR_TITLE), tr(MsgId::SYNC_ERR_WIFI_CONNECT_L1),
-                        wifiFailureLine(BookOrbit.lastWifiFailure(), tr(MsgId::SYNC_ERR_WIFI_CONNECT_L2)));
+                   wifiFailureLine(BookOrbit.lastWifiFailure(), tr(MsgId::SYNC_ERR_WIFI_CONNECT_L2)));
         PowerService::waitOrKey(1800);
         lib.scanLocalBooks();
         returnFromSync(ctx, prevState);
@@ -160,7 +172,8 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
     }
 
     MemStats::log("sync: Wi-Fi up");
-    Ui::status(tr(MsgId::SYNC_MODAL_TITLE), tr(MsgId::SYNC_WIFI_CONNECTED), tr(MsgId::SYNC_FETCHING_CATALOG_PROGRESS), ctx.config.serverHost.c_str(), nullptr, tr(MsgId::COMMON_CANCEL));
+    Ui::status(tr(MsgId::SYNC_MODAL_TITLE), tr(MsgId::SYNC_WIFI_CONNECTED), tr(MsgId::SYNC_FETCHING_CATALOG_PROGRESS),
+               ctx.config.serverHost.c_str(), nullptr, tr(MsgId::COMMON_CANCEL));
     ensureToken(ctx);
     if (s_syncCancelled || checkSyncCancel()) {
         abortSync(ctx, prevState);
@@ -182,11 +195,13 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
 
     // 2. OPDS catalog (re-login once if the token went stale).
     std::vector<BookMetadata> catalog;
-    bool catOk = BookOrbit.fetchCatalog(ctx.config.serverHost, ctx.config.bookOrbitUser, ctx.config.bookOrbitPass, ctx.config.authToken, catalog);
+    bool catOk = BookOrbit.fetchCatalog(ctx.config.serverHost, ctx.config.bookOrbitUser, ctx.config.bookOrbitPass,
+                                        ctx.config.authToken, catalog);
     if (!catOk && ctx.config.bookOrbitUser.length() > 0 && ctx.config.bookOrbitPass.length() > 0) {
         ctx.config.authToken = "";
         ensureToken(ctx);
-        catOk = BookOrbit.fetchCatalog(ctx.config.serverHost, ctx.config.bookOrbitUser, ctx.config.bookOrbitPass, ctx.config.authToken, catalog);
+        catOk = BookOrbit.fetchCatalog(ctx.config.serverHost, ctx.config.bookOrbitUser, ctx.config.bookOrbitPass,
+                                       ctx.config.authToken, catalog);
     }
 
     if (catOk) {
@@ -202,11 +217,13 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
         if (catalog.empty() && !ci.cleanEmpty()) {
             // Something went wrong on the device side (stream error, unrecognised
             // entries): keep the saved catalog and show why.
-            Serial.printf("[Sync] Empty catalog looks wrong: http=%d err=%d bytes=%u skipped=%u heap=%u/%u truncated=%d\n",
-                          ci.httpCode, ci.streamError, (unsigned)ci.bytes, (unsigned)ci.skipped,
-                          (unsigned)ci.heapStart, (unsigned)ci.heapMin, (int)ci.truncated);
+            Serial.printf(
+                    "[Sync] Empty catalog looks wrong: http=%d err=%d bytes=%u skipped=%u heap=%u/%u truncated=%d\n",
+                    ci.httpCode, ci.streamError, (unsigned)ci.bytes, (unsigned)ci.skipped, (unsigned)ci.heapStart,
+                    (unsigned)ci.heapMin, (int)ci.truncated);
             char l1[64], l2[64];
-            snprintf(l1, sizeof(l1), tr(MsgId::SYNC_CATALOG_PARSE_FMT1), ci.httpCode, (unsigned)ci.bytes, (unsigned)ci.skipped);
+            snprintf(l1, sizeof(l1), tr(MsgId::SYNC_CATALOG_PARSE_FMT1), ci.httpCode, (unsigned)ci.bytes,
+                     (unsigned)ci.skipped);
             snprintf(l2, sizeof(l2), tr(MsgId::SYNC_CATALOG_PARSE_FMT2), (unsigned)(ci.heapStart / 1024),
                      (unsigned)(ci.heapMin / 1024), ci.streamError);
             Ui::status(tr(MsgId::SYNC_CATALOG_PARSE_ERR_TITLE), l1, l2, tr(MsgId::SYNC_CATALOG_KEPT));
@@ -265,7 +282,8 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
         }
     } else {
         Serial.println("[Sync] Book Orbit server not reachable or catalog fetch failed!");
-        Ui::status(tr(MsgId::SYNC_SERVER_UNREACHABLE_TITLE), tr(MsgId::SYNC_SERVER_UNREACHABLE_L1), tr(MsgId::SYNC_SERVER_UNREACHABLE_L2));
+        Ui::status(tr(MsgId::SYNC_SERVER_UNREACHABLE_TITLE), tr(MsgId::SYNC_SERVER_UNREACHABLE_L1),
+                   tr(MsgId::SYNC_SERVER_UNREACHABLE_L2));
         PowerService::waitOrKey(1800);
     }
 

@@ -63,7 +63,6 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
     return false;
 }
 
-
 // ArduinoJson may be built without std::string support: go through a buffer.
 static std::string toStdString(const JsonDocument& doc) {
     std::string out(measureJson(doc), '\0');
@@ -81,14 +80,29 @@ using FakeNet::Response;
 // Extra formats of a book, besides its EPUB (fileId): each its own file, like
 // Book Orbit's OPDS (opds_alice.xml). Listed after the EPUB, FB2 last: the
 // firmware once downloaded the last link and saved it as ".epub".
-struct Format { int fileId; const char* mime; const char* title; };
-struct Book { int id; int fileId; const char* title; const char* author; Format extra[3]; };
+struct Format {
+    int fileId;
+    const char* mime;
+    const char* title;
+};
+struct Book {
+    int id;
+    int fileId;
+    const char* title;
+    const char* author;
+    Format extra[3];
+};
 // Newest first, like the real server's catalog.
 const Book kBooks[] = {
-    {3, 103, "Moby Dick", "Herman Melville", {}},
-    {2, 102, "The Time Machine", "H. G. Wells", {}},
-    {1, 101, "Alice in Wonderland", "Lewis Carroll",
-     {{131, "text/plain", "TXT"}, {121, "application/vnd.amazon.ebook", "AZW3"}, {111, "application/x-fictionbook+xml", "FB2"}}},
+        {3, 103, "Moby Dick", "Herman Melville", {}},
+        {2, 102, "The Time Machine", "H. G. Wells", {}},
+        {1,
+         101,
+         "Alice in Wonderland",
+         "Lewis Carroll",
+         {{131, "text/plain", "TXT"},
+          {121, "application/vnd.amazon.ebook", "AZW3"},
+          {111, "application/x-fictionbook+xml", "FB2"}}},
 };
 const char* kTxtBody = "Alice was beginning to get very tired of sitting by her sister on the bank.\n";
 const char* kFb2Body = "<?xml version=\"1.0\"?><FictionBook><body><p>Alice</p></body></FictionBook>\n";
@@ -99,18 +113,23 @@ std::string sdPath(const char* p) { return SDCardManager::getInstance().resolveP
 
 std::string readFile(const std::string& path) {
     std::ifstream f(path, std::ios::binary);
-    std::stringstream ss; ss << f.rdbuf();
+    std::stringstream ss;
+    ss << f.rdbuf();
     return ss.str();
 }
 
 std::string iso(time_t t) {
-    char b[40]; struct tm tm; gmtime_r(&t, &tm);
+    char b[40];
+    struct tm tm;
+    gmtime_r(&t, &tm);
     strftime(b, sizeof(b), "%Y-%m-%dT%H:%M:%S.123Z", &tm);
     return b;
 }
 
 std::string httpDate(time_t t) {
-    char b[40]; struct tm tm; gmtime_r(&t, &tm);
+    char b[40];
+    struct tm tm;
+    gmtime_r(&t, &tm);
     strftime(b, sizeof(b), "%a, %d %b %Y %H:%M:%S GMT", &tm);
     return b;
 }
@@ -128,7 +147,11 @@ std::string isoValue(JsonVariantConst v) {
 
 void loadState(JsonDocument& st) {
     std::string s = readFile(sdPath("/server.json"));
-    if (s.empty() || deserializeJson(st, s.data(), s.size())) { st.clear(); st["progress"].to<JsonArray>(); return; }
+    if (s.empty() || deserializeJson(st, s.data(), s.size())) {
+        st.clear();
+        st["progress"].to<JsonArray>();
+        return;
+    }
     if (!st["percent"].isNull()) {   // legacy shorthand
         JsonDocument n;
         JsonObject r = n["progress"].to<JsonArray>().add<JsonObject>();
@@ -139,7 +162,8 @@ void loadState(JsonDocument& st) {
         r["updatedAt"] = isoValue(st["updatedAt"]);
         for (JsonPair kv : st.as<JsonObject>()) {   // keep the event keys
             const char* k = kv.key().c_str();
-            if (strcmp(k, "percent") && strcmp(k, "page") && strcmp(k, "xpath") && strcmp(k, "updatedAt")) n[k] = kv.value();
+            if (strcmp(k, "percent") && strcmp(k, "page") && strcmp(k, "xpath") && strcmp(k, "updatedAt"))
+                n[k] = kv.value();
         }
         st = n;
     }
@@ -152,17 +176,23 @@ void saveState(const JsonDocument& st) {
     std::ofstream(sdPath("/server.json"), std::ios::binary) << out;
 }
 
-const Book* bookById(int id) { for (const auto& b : kBooks) if (b.id == id) return &b; return nullptr; }
+const Book* bookById(int id) {
+    for (const auto& b : kBooks)
+        if (b.id == id) return &b;
+    return nullptr;
+}
 const Book* bookByFile(int f) {
     for (const auto& b : kBooks) {
         if (b.fileId == f) return &b;
-        for (const auto& x : b.extra) if (x.fileId && x.fileId == f) return &b;
+        for (const auto& x : b.extra)
+            if (x.fileId && x.fileId == f) return &b;
     }
     return nullptr;
 }
 bool fileOfBook(const Book& b, int f) {
     if (b.fileId == f) return true;
-    for (const auto& x : b.extra) if (x.fileId && x.fileId == f) return true;
+    for (const auto& x : b.extra)
+        if (x.fileId && x.fileId == f) return true;
     return false;
 }
 
@@ -179,25 +209,32 @@ std::string query(const std::string& p, const char* key) {
     return p.substr(q + strlen(key) + 1, e == std::string::npos ? std::string::npos : e - q - strlen(key) - 1);
 }
 
-
 std::string opdsFeed(int page) {
     const int size = 2, n = sizeof(kBooks) / sizeof(kBooks[0]);
-    std::string x = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<feed xmlns=\"http://www.w3.org/2005/Atom\">\n"
-                    "  <title>Catalog</title>\n  <id>urn:bookorbit:catalog</id>\n";
-    if ((page) * size < n) x += "  <link rel=\"next\" href=\"/api/v1/opds/catalog?page=" + std::to_string(page + 1) + "&amp;size=2\"/>\n";
+    std::string x =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<feed xmlns=\"http://www.w3.org/2005/Atom\">\n"
+            "  <title>Catalog</title>\n  <id>urn:bookorbit:catalog</id>\n";
+    if ((page)*size < n)
+        x += "  <link rel=\"next\" href=\"/api/v1/opds/catalog?page=" + std::to_string(page + 1) + "&amp;size=2\"/>\n";
     for (int i = (page - 1) * size; i < n && i < page * size; i++) {
         const Book& b = kBooks[i];
         const std::string id = std::to_string(b.id), f = std::to_string(b.fileId);
-        x += "<entry>\n  <title>" + std::string(b.title) + "</title>\n  <id>urn:bookorbit:book:" + id + "</id>\n"
-             "  <author><name>" + b.author + "</name></author>\n"
+        x += "<entry>\n  <title>" + std::string(b.title) + "</title>\n  <id>urn:bookorbit:book:" + id +
+             "</id>\n"
+             "  <author><name>" +
+             b.author +
+             "</name></author>\n"
              "  <content type=\"text\">Описание &amp; аннотация</content>\n"
-             "  <link rel=\"http://opds-spec.org/image/thumbnail\" href=\"/api/v1/opds/" + id + "/thumbnail\" type=\"image/jpeg\"/>\n"
-             "  <link rel=\"http://opds-spec.org/acquisition\" href=\"/api/v1/opds/" + id + "/download?fileId=" + f +
-             "&amp;selection=abc\" type=\"application/epub+zip\" title=\"EPUB\"/>\n";
+             "  <link rel=\"http://opds-spec.org/image/thumbnail\" href=\"/api/v1/opds/" +
+             id +
+             "/thumbnail\" type=\"image/jpeg\"/>\n"
+             "  <link rel=\"http://opds-spec.org/acquisition\" href=\"/api/v1/opds/" +
+             id + "/download?fileId=" + f + "&amp;selection=abc\" type=\"application/epub+zip\" title=\"EPUB\"/>\n";
         for (const auto& fm : b.extra) {
             if (!fm.fileId) continue;
-            x += "  <link rel=\"http://opds-spec.org/acquisition\" href=\"/api/v1/opds/" + id + "/download?fileId=" +
-                 std::to_string(fm.fileId) + "\" type=\"" + fm.mime + "\" title=\"" + fm.title + "\"/>\n";
+            x += "  <link rel=\"http://opds-spec.org/acquisition\" href=\"/api/v1/opds/" + id +
+                 "/download?fileId=" + std::to_string(fm.fileId) + "\" type=\"" + fm.mime + "\" title=\"" + fm.title +
+                 "\"/>\n";
         }
         x += "</entry>\n";
     }
@@ -207,11 +244,21 @@ std::string opdsFeed(int page) {
 Response route(const Request& rq, JsonDocument& st, bool& dirty) {
     Response r;
     const std::string p = path(rq.url);
-    auto hdr = [&](const char* k) { auto it = rq.headers.find(k); return it == rq.headers.end() ? std::string() : it->second; };
+    auto hdr = [&](const char* k) {
+        auto it = rq.headers.find(k);
+        return it == rq.headers.end() ? std::string() : it->second;
+    };
     const std::string auth = hdr("authorization");
 
-    if (p == "/api/v1/health") { r.body = "{\"ok\":true}"; return r; }
-    if (st["fail"] | false) { r.code = 500; r.body = "{\"error\":\"down\"}"; return r; }
+    if (p == "/api/v1/health") {
+        r.body = "{\"ok\":true}";
+        return r;
+    }
+    if (st["fail"] | false) {
+        r.code = 500;
+        r.body = "{\"error\":\"down\"}";
+        return r;
+    }
 
     if (p == "/api/v1/auth/login" && rq.method == "POST") {
         r.body = "{\"accessToken\":\"tok-" + std::to_string(++g_tokenSerial) + "\",\"user\":{}}";
@@ -219,21 +266,32 @@ Response route(const Request& rq, JsonDocument& st, bool& dirty) {
     }
     const bool bearer = auth.rfind("Bearer tok-", 0) == 0;
     // "expireToken": true -> next Bearer request, "PUT" -> next Bearer PUT.
-    const bool expire = st["expireToken"].is<const char*>() ? rq.method == (st["expireToken"] | "") : (st["expireToken"] | false);
+    const bool expire =
+            st["expireToken"].is<const char*>() ? rq.method == (st["expireToken"] | "") : (st["expireToken"] | false);
     if (bearer && expire) {
-        st.remove("expireToken"); dirty = true;
-        r.code = 401; r.body = "{\"error\":\"expired\"}"; return r;
+        st.remove("expireToken");
+        dirty = true;
+        r.code = 401;
+        r.body = "{\"error\":\"expired\"}";
+        return r;
     }
 
     if (p.rfind("/api/v1/opds/libraries", 0) == 0) {
-        if (auth.rfind("Basic ", 0) != 0 && !bearer) { r.code = 401; return r; }
+        if (auth.rfind("Basic ", 0) != 0 && !bearer) {
+            r.code = 401;
+            return r;
+        }
         r.code = 404;
         return r;
     }
 
     if (p.rfind("/api/v1/opds/catalog", 0) == 0) {
-        if (auth.rfind("Basic ", 0) != 0 && !bearer) { r.code = 401; return r; }
-        int page = atoi(query(p, "page").c_str()); if (page < 1) page = 1;
+        if (auth.rfind("Basic ", 0) != 0 && !bearer) {
+            r.code = 401;
+            return r;
+        }
+        int page = atoi(query(p, "page").c_str());
+        if (page < 1) page = 1;
         r.body = opdsFeed(page);
         if (st["brokenCatalog"] | false) {   // entries the parser cannot use
             size_t q;
@@ -241,10 +299,14 @@ Response route(const Request& rq, JsonDocument& st, bool& dirty) {
                 r.body.replace(q, 38, "rel=\"alternate\"");
             while ((q = r.body.find("application/epub+zip")) != std::string::npos) r.body.replace(q, 20, "text/html");
             std::string out;
-            for (size_t i = 0; i < r.body.size(); ) {   // also drop the hrefs with "download"
+            for (size_t i = 0; i < r.body.size();) {   // also drop the hrefs with "download"
                 size_t d = r.body.find("/download", i);
-                if (d == std::string::npos) { out += r.body.substr(i); break; }
-                out += r.body.substr(i, d - i) + "/x"; i = d + 9;
+                if (d == std::string::npos) {
+                    out += r.body.substr(i);
+                    break;
+                }
+                out += r.body.substr(i, d - i) + "/x";
+                i = d + 9;
             }
             r.body = out;
         }
@@ -255,14 +317,18 @@ Response route(const Request& rq, JsonDocument& st, bool& dirty) {
             r.body = std::string("\x89PNG\r\n\x1a\n", 8) + std::string(600, '\0');
             return r;
         }
-        r.body = readFile(sdPath("/covers/Pride and Prejudice.jpg")); return r;
+        r.body = readFile(sdPath("/covers/Pride and Prejudice.jpg"));
+        return r;
     }
     if (p.find("/download") != std::string::npos) {
         std::string f = query(p, "fileId");
         if (f.empty()) f = p.substr(p.rfind('/') + 1);   // /api/v1/download/102
         const int fid = atoi(f.c_str());
         const Book* b = bookByFile(fid);
-        if (!b) { r.code = 404; return r; }
+        if (!b) {
+            r.code = 404;
+            return r;
+        }
         r.body = readFile(sdPath("/books/Pride and Prejudice.epub"));
         for (const auto& x : b->extra) {
             if (x.fileId == fid) r.body = strcmp(x.title, "TXT") == 0 ? kTxtBody : kFb2Body;
@@ -270,13 +336,20 @@ Response route(const Request& rq, JsonDocument& st, bool& dirty) {
         return r;
     }
 
-    if (!bearer) { r.code = 401; r.body = "{\"error\":\"no token\"}"; return r; }
+    if (!bearer) {
+        r.code = 401;
+        r.body = "{\"error\":\"no token\"}";
+        return r;
+    }
 
     int bookId = 0;
     if (sscanf(p.c_str(), "/api/v1/books/%d/progress", &bookId) == 1 && p.find("/progress") != std::string::npos &&
         rq.method == "GET") {
         const Book* b = bookById(bookId);
-        if (!b) { r.code = 404; return r; }
+        if (!b) {
+            r.code = 404;
+            return r;
+        }
         JsonDocument out;   // a bare array with web-reader fields, like the real server
         JsonArray items = out.to<JsonArray>();
         for (JsonObject rec : st["progress"].as<JsonArray>()) {   // every file (format) of the book
@@ -287,9 +360,15 @@ Response route(const Request& rq, JsonDocument& st, bool& dirty) {
             it["percentage"] = rec["percentage"];
             if ((rec["pageNumber"] | 0) > 0) it["pageNumber"] = rec["pageNumber"];
             const char* k = rec["koreaderProgress"] | "";
-            if (*k) it["koreaderProgress"] = k; else it["koreaderProgress"] = nullptr;
+            if (*k)
+                it["koreaderProgress"] = k;
+            else
+                it["koreaderProgress"] = nullptr;
             const char* c = rec["cfi"] | "";
-            if (*c) it["cfi"] = c; else it["cfi"] = nullptr;
+            if (*c)
+                it["cfi"] = c;
+            else
+                it["cfi"] = nullptr;
             it["updatedAt"] = rec["updatedAt"];
         }
         r.body = toStdString(out);
@@ -297,7 +376,10 @@ Response route(const Request& rq, JsonDocument& st, bool& dirty) {
     }
     int markId = 0;
     if (sscanf(p.c_str(), "/api/v1/books/%d/bookmarks/%d", &bookId, &markId) == 2 && rq.method == "DELETE") {
-        if (st["failDelete"] | false) { r.code = 500; return r; }
+        if (st["failDelete"] | false) {
+            r.code = 500;
+            return r;
+        }
         JsonArray marks = st["bookmarks"].as<JsonArray>();
         for (size_t i = 0; i < marks.size(); i++) {
             if ((marks[i]["id"] | 0) == markId && (marks[i]["bookId"] | 0) == bookId) {
@@ -311,7 +393,10 @@ Response route(const Request& rq, JsonDocument& st, bool& dirty) {
         return r;
     }
     if (sscanf(p.c_str(), "/api/v1/books/%d/bookmarks", &bookId) == 1 && p.find("/bookmarks/") == std::string::npos) {
-        if (!bookById(bookId)) { r.code = 404; return r; }
+        if (!bookById(bookId)) {
+            r.code = 404;
+            return r;
+        }
         if (st["bookmarks"].isNull()) st["bookmarks"].to<JsonArray>();
         JsonArray marks = st["bookmarks"].as<JsonArray>();
         if (rq.method == "GET") {
@@ -325,7 +410,10 @@ Response route(const Request& rq, JsonDocument& st, bool& dirty) {
                 it["bookId"] = bookId;
                 // Like the server: a CFI made in another file is converted; here it cannot be.
                 const int f = m["fileId"] | 0;
-                if (reader > 0 && f > 0 && f != reader) it["cfi"] = nullptr; else it["cfi"] = m["cfi"];
+                if (reader > 0 && f > 0 && f != reader)
+                    it["cfi"] = nullptr;
+                else
+                    it["cfi"] = m["cfi"];
                 it["title"] = m["title"];
                 it["positionSeconds"] = nullptr;
                 it["note"] = nullptr;
@@ -335,16 +423,26 @@ Response route(const Request& rq, JsonDocument& st, bool& dirty) {
         }
         if (rq.method == "POST") {
             JsonDocument in;
-            if (deserializeJson(in, rq.body.data(), rq.body.size())) { r.code = 400; return r; }
+            if (deserializeJson(in, rq.body.data(), rq.body.size())) {
+                r.code = 400;
+                return r;
+            }
             for (JsonPair kv : in.as<JsonObject>()) {   // the DTO rejects unknown fields
                 const char* k = kv.key().c_str();
-                if (strcmp(k, "bookFileId") && strcmp(k, "cfi") && strcmp(k, "title")) { r.code = 400; return r; }
+                if (strcmp(k, "bookFileId") && strcmp(k, "cfi") && strcmp(k, "title")) {
+                    r.code = 400;
+                    return r;
+                }
             }
             const char* cfi = in["cfi"] | "";
             const char* title = in["title"] | "";
-            if (!*cfi || !*title) { r.code = 400; return r; }
+            if (!*cfi || !*title) {
+                r.code = 400;
+                return r;
+            }
             JsonObject m;
-            for (JsonObject e : marks) if ((e["bookId"] | 0) == bookId && strcmp(e["cfi"] | "", cfi) == 0) m = e;
+            for (JsonObject e : marks)
+                if ((e["bookId"] | 0) == bookId && strcmp(e["cfi"] | "", cfi) == 0) m = e;
             if (m.isNull()) {   // the server keeps one bookmark per place
                 int next = 1;
                 for (JsonObject e : marks) next = std::max(next, (e["id"] | 0) + 1);
@@ -367,19 +465,31 @@ Response route(const Request& rq, JsonDocument& st, bool& dirty) {
         }
     }
     if (p == "/api/v1/reading-progress" && rq.method == "PUT" && (st["failPut"] | false)) {
-        r.code = 500; r.body = "{\"error\":\"boom\"}"; return r;
+        r.code = 500;
+        r.body = "{\"error\":\"boom\"}";
+        return r;
     }
     if (p == "/api/v1/reading-progress" && rq.method == "PUT") {
         JsonDocument in;
-        if (deserializeJson(in, rq.body.data(), rq.body.size())) { r.code = 400; return r; }
+        if (deserializeJson(in, rq.body.data(), rq.body.size())) {
+            r.code = 400;
+            return r;
+        }
         JsonDocument out;
         JsonArray results = out["results"].to<JsonArray>();
         for (JsonObject w : in["writes"].as<JsonArray>()) {
             const int fileId = w["fileId"] | 0;
-            if (!bookByFile(fileId)) { r.code = 404; return r; }
+            if (!bookByFile(fileId)) {
+                r.code = 404;
+                return r;
+            }
             JsonObject rec;
-            for (JsonObject e : st["progress"].as<JsonArray>()) if ((e["fileId"] | 0) == fileId) rec = e;
-            if (rec.isNull()) { rec = st["progress"].as<JsonArray>().add<JsonObject>(); rec["fileId"] = fileId; }
+            for (JsonObject e : st["progress"].as<JsonArray>())
+                if ((e["fileId"] | 0) == fileId) rec = e;
+            if (rec.isNull()) {
+                rec = st["progress"].as<JsonArray>().add<JsonObject>();
+                rec["fileId"] = fileId;
+            }
             // Like Book Orbit: a write replaces the whole position (fields left out are cleared),
             // and unknown fields are rejected.
             for (JsonPair kv : w) {

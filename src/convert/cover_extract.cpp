@@ -13,9 +13,7 @@ namespace convert {
 
 namespace {
 
-uint16_t be16(const uint8_t* p) {
-    return (uint16_t)((p[0] << 8) | p[1]);
-}
+uint16_t be16(const uint8_t* p) { return (uint16_t)((p[0] << 8) | p[1]); }
 
 uint32_t be32(const uint8_t* p) {
     return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | p[3];
@@ -30,9 +28,7 @@ int8_t b64Val(uint8_t c) {
     return -1;
 }
 
-bool isWs(char c) {
-    return c == ' ' || c == '\t' || c == '\r' || c == '\n';
-}
+bool isWs(char c) { return c == ' ' || c == '\t' || c == '\r' || c == '\n'; }
 
 bool tagStartsWith(const std::string& tag, const char* name) {
     const size_t len = strlen(name);
@@ -82,9 +78,7 @@ public:
     }
     bool rewind() override { return _f.seek(0); }
     bool seek(uint64_t pos) override { return _f.seek((uint32_t)pos); }
-    int32_t read(void* dst, uint32_t len) override {
-        return _f.read((uint8_t*)dst, len);
-    }
+    int32_t read(void* dst, uint32_t len) override { return _f.read((uint8_t*)dst, len); }
     uint64_t size() const override { return const_cast<FsFile&>(_f).size(); }
 
 private:
@@ -178,8 +172,8 @@ bool parseMobiRecord0Meta(const uint8_t* r, uint32_t n, MobiMeta& meta) {
     return true;
 }
 
-bool readRecordRange(InFile& in, uint16_t numRecords, uint64_t fileSize, uint32_t recIdx,
-                     uint32_t& outOff, uint32_t& outEnd) {
+bool readRecordRange(InFile& in, uint16_t numRecords, uint64_t fileSize, uint32_t recIdx, uint32_t& outOff,
+                     uint32_t& outEnd) {
     if (recIdx >= numRecords) return false;
     uint8_t entry[8];
     if (!in.seek(78 + (uint64_t)recIdx * 8) || in.read(entry, 8) != 8) return false;
@@ -400,8 +394,8 @@ bool extractMobiCover(InFile& in, OutFile& out) {
 
 bool extractDirectCover(const String& srcPath, const String& dstPath) {
     const BookFormats::Kind kind = BookFormats::fromPath(srcPath.c_str());
-    if (kind != BookFormats::Fb2 && kind != BookFormats::Mobi &&
-        kind != BookFormats::Azw3 && kind != BookFormats::Azw) {
+    if (kind != BookFormats::Fb2 && kind != BookFormats::Mobi && kind != BookFormats::Azw3 &&
+        kind != BookFormats::Azw) {
         return false;
     }
     StorageIn in;

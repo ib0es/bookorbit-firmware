@@ -15,9 +15,7 @@ namespace {
 constexpr const char* kDir = "/bookmarks";
 }
 
-String BookmarkList::fileFor() const {
-    return String(kDir) + "/" + BookReader::cacheKeyFor(_path) + ".json";
-}
+String BookmarkList::fileFor() const { return String(kDir) + "/" + BookReader::cacheKeyFor(_path) + ".json"; }
 
 void BookmarkList::load(const String& bookPath) {
     _items.clear();
@@ -44,7 +42,8 @@ void BookmarkList::load(const String& bookPath) {
         b.serverId = o["sid"] | 0;
         _items.push_back(b);
     }
-    for (int id : doc["deleted"].as<JsonArray>()) if (id > 0) _deleted.push_back(id);
+    for (int id : doc["deleted"].as<JsonArray>())
+        if (id > 0) _deleted.push_back(id);
     sort();
 }
 
@@ -107,7 +106,8 @@ void BookmarkList::forgetDeleted(int serverId) {
 bool BookmarkList::mergeRemote(const std::vector<RemoteBookmark>& remote) {
     bool changed = false;
     auto onServer = [&](int id) {
-        for (const auto& r : remote) if (r.id == id) return true;
+        for (const auto& r : remote)
+            if (r.id == id) return true;
         return false;
     };
     // Deleted on the server (or on another device).
@@ -124,7 +124,10 @@ bool BookmarkList::mergeRemote(const std::vector<RemoteBookmark>& remote) {
         if (std::find(_deleted.begin(), _deleted.end(), r.id) != _deleted.end()) continue;   // deleted here
         bool known = false;
         for (auto& b : _items) {
-            if (b.serverId == r.id) { known = true; break; }
+            if (b.serverId == r.id) {
+                known = true;
+                break;
+            }
         }
         if (known) continue;
         for (auto& b : _items) {   // made here, the server has one there already

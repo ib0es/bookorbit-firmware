@@ -5,7 +5,12 @@
 
 // Tap targets of the reader's menus (hit actions), for the touch router.
 enum ReaderMenuAction : int {
-    ActionChapter = 1, ActionMenuItem, ActionFontSize, ActionTypeface, ActionAppearance, ActionBookmark,
+    ActionChapter = 1,
+    ActionMenuItem,
+    ActionFontSize,
+    ActionTypeface,
+    ActionAppearance,
+    ActionBookmark,
     ActionStatusBar,
     ActionValueLess,        // "-" of a value row (appearance): touch boards (C5)
     ActionValueMore,        // "+"

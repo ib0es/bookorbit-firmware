@@ -91,10 +91,14 @@ bool BookReader::setStatusBar(const StatusBar& bar) {
 
 FrameRotation BookReader::frameRotation() const {
     switch (_orient) {
-        case 1: return FrameRotation::None;
-        case 2: return FrameRotation::PortraitInverted;
-        case 3: return FrameRotation::UpsideDown;
-        default: return FrameRotation::Portrait;
+        case 1:
+            return FrameRotation::None;
+        case 2:
+            return FrameRotation::PortraitInverted;
+        case 3:
+            return FrameRotation::UpsideDown;
+        default:
+            return FrameRotation::Portrait;
     }
 }
 
@@ -147,7 +151,8 @@ void BookReader::drawStatusBar() {
             rw = (int16_t)(rw + tw);
         }
         const String l = _bar.top == 0 ? _title : _bar.top == 1 ? getCurrentChapterTitle() : String();
-        if (l.length()) text(Rect{left, topBand.y, (int16_t)(topBand.width - rw - 12), topBand.height}, l.c_str(), FontSmall);
+        if (l.length())
+            text(Rect{left, topBand.y, (int16_t)(topBand.width - rw - 12), topBand.height}, l.c_str(), FontSmall);
         hline(left, right, 30);
         // A bookmarked page: a ribbon hanging from the top rule, left of the numbers.
         int bSpine;
@@ -155,7 +160,8 @@ void BookReader::drawStatusBar() {
         if (_bookmarkProbe && pageRange(bSpine, bFrom, bTo) && _bookmarkProbe(bSpine, bFrom, bTo)) {
             const int16_t bx = (int16_t)(right - rw - 22);
             fill(Rect{bx, 0, 12, 22}, Color::Black);
-            for (int16_t i = 0; i < 6; i++) hline((int16_t)(bx + i), (int16_t)(bx + 12 - i), (int16_t)(22 - 6 + i), Color::White);
+            for (int16_t i = 0; i < 6; i++)
+                hline((int16_t)(bx + i), (int16_t)(bx + 12 - i), (int16_t)(22 - 6 + i), Color::White);
         }
     } else {
         // No top line: a bookmark still shows, in the corner.
@@ -164,7 +170,8 @@ void BookReader::drawStatusBar() {
         if (_bookmarkProbe && pageRange(bSpine, bFrom, bTo) && _bookmarkProbe(bSpine, bFrom, bTo)) {
             const int16_t bx = (int16_t)(right - 12);
             fill(Rect{bx, 0, 10, 14}, Color::Black);
-            for (int16_t i = 0; i < 5; i++) hline((int16_t)(bx + i), (int16_t)(bx + 10 - i), (int16_t)(14 - 5 + i), Color::White);
+            for (int16_t i = 0; i < 5; i++)
+                hline((int16_t)(bx + i), (int16_t)(bx + 10 - i), (int16_t)(14 - 5 + i), Color::White);
         }
     }
     const int32_t permille = (int32_t)(getProgress() * 1000.0f);
@@ -191,10 +198,10 @@ struct TurnedUi {
     explicit TurnedUi(freeink::book::FrameRotation r) : was(uikit::target().orientation()) {
         using freeink::ui::Orientation;
         using freeink::book::FrameRotation;
-        uikit::setOrientation(r == FrameRotation::None ? Orientation::LandscapeCounterClockwise
+        uikit::setOrientation(r == FrameRotation::None               ? Orientation::LandscapeCounterClockwise
                               : r == FrameRotation::PortraitInverted ? Orientation::PortraitInverted
-                              : r == FrameRotation::UpsideDown ? Orientation::LandscapeClockwise
-                                                               : Orientation::Portrait);
+                              : r == FrameRotation::UpsideDown       ? Orientation::LandscapeClockwise
+                                                                     : Orientation::Portrait);
     }
     ~TurnedUi() { uikit::setOrientation(was); }
 };
@@ -208,7 +215,8 @@ static void drawPageProblem(const char* why) {
     const char* title = tr(MsgId::READER_PAGE_ERR_TITLE);
     text(takeTop(area, (int16_t)(wrappedHeight(title, FontTitle, area.width, 2) + 12)), title, FontTitle, Color::Black,
          uikit::TextAlign::Center, 2);
-    text(takeTop(area, wrappedHeight(why, FontBody, area.width, 3)), why, FontBody, Color::Black, uikit::TextAlign::Center, 3);
+    text(takeTop(area, wrappedHeight(why, FontBody, area.width, 3)), why, FontBody, Color::Black,
+         uikit::TextAlign::Center, 3);
 }
 
 void BookReader::redrawForStatusBar() {
@@ -226,7 +234,7 @@ void BookReader::renderCurrentPage() {
         Display.clear(EPD_WHITE);
         drawStatusBar();
         drawPageProblem(tr(_noMemory || MemStats::now().largestBlock < kLayoutBytes ? MsgId::READER_PAGE_ERR_MEMORY
-                                                                                     : MsgId::READER_PAGE_ERR_BROKEN));
+                                                                                    : MsgId::READER_PAGE_ERR_BROKEN));
         Display.update(REFRESH_PARTIAL);
         return;
     }
@@ -243,10 +251,13 @@ void BookReader::renderCurrentPage() {
     // when the page does not fit (dense pages need ~15 KB).
     for (size_t cap = kRenderBytes; cap <= Platform::kMemory.pageRecordMax; cap *= 2) {
         if (_bg && (g_liveTransient + cap > kTransientBudget || MemStats::now().largestBlock < cap + 4096)) {
-            Serial.printf("[Reader] Page record of %u B does not fit beside the layout job (held %u B, largest block %u B)\n",
-                          (unsigned)cap, (unsigned)g_liveTransient, (unsigned)MemStats::now().largestBlock);
-            if (building()) finishBackground();   // the page on screen comes from it: finished, not dropped
-            else stopBackground();
+            Serial.printf(
+                    "[Reader] Page record of %u B does not fit beside the layout job (held %u B, largest block %u B)\n",
+                    (unsigned)cap, (unsigned)g_liveTransient, (unsigned)MemStats::now().largestBlock);
+            if (building())
+                finishBackground();   // the page on screen comes from it: finished, not dropped
+            else
+                stopBackground();
         }
         Buffer mem(cap);
         if (!mem.p) {
@@ -263,11 +274,12 @@ void BookReader::renderCurrentPage() {
         if (st != BookStatus::Ok) {
             _renderFailures++;
             Serial.printf("[Reader] Page %d of chapter %d unreadable: %s\n", _page + 1, _spine, bookStatusName(st));
-            drawPageProblem(tr(st == BookStatus::OutOfMemory ? MsgId::READER_PAGE_ERR_MEMORY : MsgId::READER_PAGE_ERR_BROKEN));
+            drawPageProblem(
+                    tr(st == BookStatus::OutOfMemory ? MsgId::READER_PAGE_ERR_MEMORY : MsgId::READER_PAGE_ERR_BROKEN));
             break;
         }
-        FrameTarget frame{Display.getBuffer(), (int16_t)EPD_WIDTH, (int16_t)EPD_HEIGHT, (int16_t)(EPD_WIDTH / 8),
-                          FrameFormat::Mono1Sharp, frameRotation()};
+        FrameTarget frame{Display.getBuffer(),      (int16_t)EPD_WIDTH,      (int16_t)EPD_HEIGHT,
+                          (int16_t)(EPD_WIDTH / 8), FrameFormat::Mono1Sharp, frameRotation()};
         uint32_t firstMissing = 0;
         tRead = millis();
         const uint32_t missing = PageRenderer::renderText(page, _fonts, frame, &firstMissing);
@@ -284,8 +296,9 @@ void BookReader::renderCurrentPage() {
         }
         tText = millis();
         imageCount = page.imageCount;
-        if (missing) Serial.printf("[Reader] %u characters not in the font (first U+%04X)\n", (unsigned)missing,
-                                   (unsigned)firstMissing);
+        if (missing)
+            Serial.printf("[Reader] %u characters not in the font (first U+%04X)\n", (unsigned)missing,
+                          (unsigned)firstMissing);
         if (page.imageCount > 0) {
             auto drawImages = [&](size_t size) {
                 Buffer img(size);
@@ -334,14 +347,13 @@ void BookReader::renderCurrentPage() {
     const uint32_t tEnd = millis();
     // Where the time goes: finding the page (layout, cache), its record, the text, the images.
     const TtfFamily::Stats fs = _ttf.takeStats();
-    Serial.printf("[Reader] Page drawn in %lu ms (find %lu, status bar %lu, record %lu, text %lu, %u images %lu); "
-                  "glyphs %u rasterized (%u us each), %u cached, %u cache flushes, %u short of memory, font caches %u B\n",
-                  (unsigned long)(tEnd - t0), (unsigned long)(tFound - t0), (unsigned long)(tBar - tFound),
-                  (unsigned long)(tRead ? tRead - tBar : 0),
-                  (unsigned long)(tText ? tText - tRead : 0), (unsigned)imageCount,
-                  (unsigned long)(tText ? tEnd - tText : 0), (unsigned)fs.rasterized,
-                  (unsigned)(fs.rasterized ? fs.rasterUs / fs.rasterized : 0), (unsigned)fs.glyphHits,
-                  (unsigned)fs.flushes, (unsigned)fs.noMemory, (unsigned)_ttf.cacheBytes());
+    Serial.printf(
+            "[Reader] Page drawn in %lu ms (find %lu, status bar %lu, record %lu, text %lu, %u images %lu); "
+            "glyphs %u rasterized (%u us each), %u cached, %u cache flushes, %u short of memory, font caches %u B\n",
+            (unsigned long)(tEnd - t0), (unsigned long)(tFound - t0), (unsigned long)(tBar - tFound),
+            (unsigned long)(tRead ? tRead - tBar : 0), (unsigned long)(tText ? tText - tRead : 0), (unsigned)imageCount,
+            (unsigned long)(tText ? tEnd - tText : 0), (unsigned)fs.rasterized,
+            (unsigned)(fs.rasterized ? fs.rasterUs / fs.rasterized : 0), (unsigned)fs.glyphHits, (unsigned)fs.flushes,
+            (unsigned)fs.noMemory, (unsigned)_ttf.cacheBytes());
     Display.update(full ? REFRESH_FULL : REFRESH_PARTIAL);
 }
-

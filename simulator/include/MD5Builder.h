@@ -35,9 +35,7 @@ public:
         }
     }
 
-    void add(const String& str) {
-        add(str.c_str());
-    }
+    void add(const String& str) { add(str.c_str()); }
 
     void calculate() {
         if (!_calculated) {

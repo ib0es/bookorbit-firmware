@@ -12,8 +12,8 @@
 #include "ui/font.h"
 #include "reader/book_reader.h"
 
-bool InputManager::s_simState[InputManager::BTN_COUNT] = { false };
-bool InputManager::s_oneShotClicks[InputManager::BTN_COUNT] = { false };
+bool InputManager::s_simState[InputManager::BTN_COUNT] = {false};
+bool InputManager::s_oneShotClicks[InputManager::BTN_COUNT] = {false};
 freeink::DisplayUpdateCallback freeink::FreeInkDisplay::s_callback = nullptr;
 void simPumpEvents() {}
 void simInputPolled() {}
@@ -33,22 +33,39 @@ static void onUpdate(const uint8_t* fb, int) {
 }
 
 int main(int argc, char** argv) {
-    if (argc < 4) { printf("usage: engine_shots <sd root> <out dir> <book> [page|n ...]\n"); return 2; }
+    if (argc < 4) {
+        printf("usage: engine_shots <sd root> <out dir> <book> [page|n ...]\n");
+        return 2;
+    }
     SDCardManager::getInstance().setRoot(argv[1]);
     g_out = argv[2];
     freeink::FreeInkDisplay::s_callback = onUpdate;
-    Display.begin(); Font.begin(Display); Storage.begin();
+    Display.begin();
+    Font.begin(Display);
+    Storage.begin();
     static BookReader reader;
-    if (!reader.openBook(argv[3])) { printf("open failed\n"); return 1; }
+    if (!reader.openBook(argv[3])) {
+        printf("open failed\n");
+        return 1;
+    }
     printf("title '%s', %d pages (estimate), %d TOC entries\n", reader.getTitle().c_str(), reader.getTotalPages(),
            reader.getChapterCount());
     for (int a = 4; a < argc; a++) {
         g_name = std::to_string(a - 3);
-        if (strcmp(argv[a], "n") == 0) reader.nextPage();
-        else if (strcmp(argv[a], "p") == 0) reader.prevPage();
-        else if (argv[a][0] == '%') { reader.setPageByProgress(atof(argv[a] + 1) / 100.0f); reader.renderCurrentPage(); }
-        else if (argv[a][0] == 'c') { reader.goToChapter(atoi(argv[a] + 1)); reader.renderCurrentPage(); }
-        else { reader.setPage(atoi(argv[a])); reader.renderCurrentPage(); }
+        if (strcmp(argv[a], "n") == 0)
+            reader.nextPage();
+        else if (strcmp(argv[a], "p") == 0)
+            reader.prevPage();
+        else if (argv[a][0] == '%') {
+            reader.setPageByProgress(atof(argv[a] + 1) / 100.0f);
+            reader.renderCurrentPage();
+        } else if (argv[a][0] == 'c') {
+            reader.goToChapter(atoi(argv[a] + 1));
+            reader.renderCurrentPage();
+        } else {
+            reader.setPage(atoi(argv[a]));
+            reader.renderCurrentPage();
+        }
         printf("shot %s: page %d/%d, %.1f%%, chapter '%s', cfi %s\n", g_name.c_str(), reader.getCurrentPage(),
                reader.getTotalPages(), reader.getProgress() * 100.0f, reader.getCurrentChapterTitle().c_str(),
                reader.getCfi().c_str());

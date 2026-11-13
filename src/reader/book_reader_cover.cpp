@@ -18,6 +18,7 @@ public:
     explicit OneImage(const ZipEntry& e) : _e(e) {}
     const ZipEntry* find(const char*) const override { return &_e; }
     const ZipEntry* findByHash(uint32_t) const override { return &_e; }
+
 private:
     ZipEntry _e;
 };
@@ -47,7 +48,12 @@ struct GrayBmp {
 
 bool writeGrayBmpHeader(FsFile& out, uint16_t w, uint16_t h, size_t stride) {
     const uint32_t imageSize = (uint32_t)(stride * h), offset = 54 + 1024, fileSize = offset + imageSize;
-    auto le32 = [](uint8_t* p, uint32_t v) { p[0] = v; p[1] = v >> 8; p[2] = v >> 16; p[3] = v >> 24; };
+    auto le32 = [](uint8_t* p, uint32_t v) {
+        p[0] = v;
+        p[1] = v >> 8;
+        p[2] = v >> 16;
+        p[3] = v >> 24;
+    };
     uint8_t hdr[54] = {'B', 'M'};
     le32(hdr + 2, fileSize);
     le32(hdr + 10, offset);
@@ -61,7 +67,8 @@ bool writeGrayBmpHeader(FsFile& out, uint16_t w, uint16_t h, size_t stride) {
     if (out.write(hdr, 54) != 54) return false;
     uint8_t pal[64];
     for (int i = 0; i < 256; i += 16) {
-        for (int k = 0; k < 16; k++) pal[k * 4] = pal[k * 4 + 1] = pal[k * 4 + 2] = (uint8_t)(i + k), pal[k * 4 + 3] = 0;
+        for (int k = 0; k < 16; k++)
+            pal[k * 4] = pal[k * 4 + 1] = pal[k * 4 + 2] = (uint8_t)(i + k), pal[k * 4 + 3] = 0;
         if (out.write(pal, 64) != 64) return false;
     }
     return true;
@@ -97,19 +104,31 @@ bool imageFileToGrayBmp(const String& imgPath, const ImageInfo& info, const Stri
     f.close();
 
     uint32_t w = info.width, h = info.height;
-    if (w > kCoverMaxW) { h = h * kCoverMaxW / w; w = kCoverMaxW; }
-    if (h > kCoverMaxH) { w = w * kCoverMaxH / h; h = kCoverMaxH; }
+    if (w > kCoverMaxW) {
+        h = h * kCoverMaxW / w;
+        w = kCoverMaxW;
+    }
+    if (h > kCoverMaxH) {
+        w = w * kCoverMaxH / h;
+        h = kCoverMaxH;
+    }
     if (w == 0) w = 1;
     if (h == 0) h = 1;
 
     Buffer scratch(kImageBytes);
-    if (!scratch.p) { oom = true; return false; }
+    if (!scratch.p) {
+        oom = true;
+        return false;
+    }
     GrayBmp bmp;
     bmp.width = (uint16_t)w;
     bmp.height = (uint16_t)h;
     bmp.stride = ((w + 3) / 4) * 4;
     bmp.row = (uint8_t*)malloc(bmp.stride);
-    if (!bmp.row) { oom = true; return false; }
+    if (!bmp.row) {
+        oom = true;
+        return false;
+    }
     const String tmp = bmpPath + ".bmp.tmp";
     bmp.out = Storage.open(tmp.c_str(), O_RDWR | O_CREAT | O_TRUNC);
     bool ok = bmp.out && writeGrayBmpHeader(bmp.out, bmp.width, bmp.height, bmp.stride);
@@ -154,7 +173,8 @@ bool endsWithNoCase(const char* s, const char* sfx) {
 bool findEntry(SdBookSource& src, const char* path, ZipEntry& out) {
     uint16_t count = 0;
     uint32_t dirOffset = 0, dirSize = 0;
-    if (ZipCatalog::locateCentralDirectory(src, &dirOffset, &dirSize, &count) != BookStatus::Ok || count == 0) return false;
+    if (ZipCatalog::locateCentralDirectory(src, &dirOffset, &dirSize, &count) != BookStatus::Ok || count == 0)
+        return false;
     const size_t want = (size_t)dirSize + (size_t)count * (sizeof(ZipEntry) + 8) + 256;
     if (want > 32 * 1024) return false;
     Buffer mem(want);
@@ -250,7 +270,8 @@ bool coverByProperty(SdBookSource& src, ZipEntry& out) {
 bool coverByName(SdBookSource& src, ZipEntry& out) {
     uint16_t count = 0;
     uint32_t dirOffset = 0, dirSize = 0;
-    if (ZipCatalog::locateCentralDirectory(src, &dirOffset, &dirSize, &count) != BookStatus::Ok || count == 0) return false;
+    if (ZipCatalog::locateCentralDirectory(src, &dirOffset, &dirSize, &count) != BookStatus::Ok || count == 0)
+        return false;
     const size_t want = (size_t)dirSize + (size_t)count * (sizeof(ZipEntry) + 8) + 256;
     if (want > 32 * 1024) return false;   // a huge book: no guessing
     Buffer mem(want);
@@ -261,7 +282,8 @@ bool coverByName(SdBookSource& src, ZipEntry& out) {
     for (size_t i = 0; i < zip.entryCount(); i++) {
         const ZipEntry* e = zip.entry(i);
         if (!e || !e->name || !containsNoCase(e->name, "cover")) continue;
-        if (!endsWithNoCase(e->name, ".jpg") && !endsWithNoCase(e->name, ".jpeg") && !endsWithNoCase(e->name, ".png")) continue;
+        if (!endsWithNoCase(e->name, ".jpg") && !endsWithNoCase(e->name, ".jpeg") && !endsWithNoCase(e->name, ".png"))
+            continue;
         out = *e;
         out.name = nullptr;   // lives in the arena
         return true;
@@ -297,7 +319,10 @@ bool BookReader::extractCover(const String& epubPath, const String& outPath, boo
         free(mem);
         mem = (uint8_t*)malloc(resident + 64);
         Buffer scratch(4096);
-        if (!mem || !scratch.p) { oom = true; break; }
+        if (!mem || !scratch.p) {
+            oom = true;
+            break;
+        }
         Arena bookArena(mem, resident + 64), s(scratch.p, 4096);
         catalog = BookCatalog();
         st = catalog.open(src, cache, bookArena, s);
@@ -356,7 +381,11 @@ bool BookReader::extractCover(const String& epubPath, const String& outPath, boo
     }
     Storage.remove(tmp.c_str());
     Serial.printf("[Reader] Cover of %s: %s%s\n", epubPath.c_str(),
-                  ok ? outPath.c_str() : oom ? "no memory" : st != BookStatus::Ok ? "unreadable book" : "none", how);
+                  ok                     ? outPath.c_str()
+                  : oom                  ? "no memory"
+                  : st != BookStatus::Ok ? "unreadable book"
+                                         : "none",
+                  how);
     if (noMemory) *noMemory = oom && !ok;
     return ok;
 }

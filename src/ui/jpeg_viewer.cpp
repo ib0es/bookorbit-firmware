@@ -75,7 +75,10 @@ CoverSlot* takeSlot() {
         CoverSlot& c = s_slots[i];
         if (!c.bits) c.bits = i == 0 ? s_firstSlotBits : (uint8_t*)malloc(CACHE_BYTES);
         if (!c.bits) continue;
-        if (!c.valid) { pick = &c; break; }
+        if (!c.valid) {
+            pick = &c;
+            break;
+        }
         if (c.lastUse < pick->lastUse) pick = &c;
     }
     pick->valid = false;
@@ -91,7 +94,7 @@ void commitSlot(CoverSlot* c, const char* filePath, int maxW, int maxH, CoverFit
     c->valid = true;
     c->lastUse = ++s_useClock;
 }
-}
+}  // namespace
 
 void JpegViewer::clearCache() {
     for (CoverSlot& c : s_slots) {
@@ -118,16 +121,10 @@ static UINT tjpgdInput(JDEC* jd, BYTE* buff, UINT ndata) {
 }
 
 // 8x8 Bayer Dithering Matrix (64 levels of gray) for smooth fallback ordered dithering
-static const uint8_t bayer8x8[8][8] = {
-    {   2, 130,  34, 162,  10, 138,  42, 170 },
-    { 194,  66, 226,  98, 202,  74, 234, 106 },
-    {  50, 178,  18, 146,  58, 186,  26, 154 },
-    { 242, 114, 210,  82, 250, 122, 218,  90 },
-    {  14, 142,  46, 174,   6, 134,  38, 166 },
-    { 206,  78, 238, 110, 198,  70, 230, 102 },
-    {  62, 190,  30, 158,  54, 182,  22, 150 },
-    { 254, 126, 222,  94, 246, 118, 214,  86 }
-};
+static const uint8_t bayer8x8[8][8] = {{2, 130, 34, 162, 10, 138, 42, 170},  {194, 66, 226, 98, 202, 74, 234, 106},
+                                       {50, 178, 18, 146, 58, 186, 26, 154}, {242, 114, 210, 82, 250, 122, 218, 90},
+                                       {14, 142, 46, 174, 6, 134, 38, 166},  {206, 78, 238, 110, 198, 70, 230, 102},
+                                       {62, 190, 30, 158, 54, 182, 22, 150}, {254, 126, 222, 94, 246, 118, 214, 86}};
 
 static void finalizeDstRow(JpegContext* ctx) {
     if (!ctx || ctx->curDstY < 0 || ctx->curDstY >= ctx->finalH) return;
@@ -152,7 +149,7 @@ static void finalizeDstRow(JpegContext* ctx) {
         int err = v - (color == EPD_WHITE ? 255 : 0);
 
         ctx->errCur[dx + 2] += err * 7 / 16;
-        ctx->errNext[dx]     += err * 3 / 16;
+        ctx->errNext[dx] += err * 3 / 16;
         ctx->errNext[dx + 1] += err * 5 / 16;
         ctx->errNext[dx + 2] += err * 1 / 16;
 
@@ -411,7 +408,7 @@ bool JpegViewer::drawBmp(const char* filePath, int x, int y, int maxW, int maxH,
     int w = imgW;
 
     // Palette for 1-bit BMP
-    uint8_t pal[2] = { 255, 0 }; // Default: 0 = white, 1 = black
+    uint8_t pal[2] = {255, 0}; // Default: 0 = white, 1 = black
     if (bpp == 1 && offset >= 62) {
         uint8_t palData[8];
         f.seek(54);
@@ -422,10 +419,14 @@ bool JpegViewer::drawBmp(const char* filePath, int x, int y, int maxW, int maxH,
     }
 
     int rowStride = 0;
-    if (bpp == 1) rowStride = ((w + 31) / 32) * 4;
-    else if (bpp == 8) rowStride = ((w + 3) / 4) * 4;
-    else if (bpp == 24) rowStride = ((w * 3 + 3) / 4) * 4;
-    else if (bpp == 32) rowStride = w * 4;
+    if (bpp == 1)
+        rowStride = ((w + 31) / 32) * 4;
+    else if (bpp == 8)
+        rowStride = ((w + 3) / 4) * 4;
+    else if (bpp == 24)
+        rowStride = ((w * 3 + 3) / 4) * 4;
+    else if (bpp == 32)
+        rowStride = w * 4;
 
     uint8_t* lineBuf = (uint8_t*)malloc(rowStride);
     if (!lineBuf) {
@@ -488,9 +489,8 @@ bool JpegViewer::drawBmp(const char* filePath, int x, int y, int maxW, int maxH,
         // Scaled path: arbitrary BMP resized with area averaging + Floyd-Steinberg error diffusion
         Display.fillRect(x, y, maxW, maxH, EPD_WHITE);
 
-        float s = (fit == COVER_FIT_CROP)
-            ? ((float)maxW / w > (float)maxH / h ? (float)maxW / w : (float)maxH / h)
-            : ((float)maxW / w < (float)maxH / h ? (float)maxW / w : (float)maxH / h);
+        float s = (fit == COVER_FIT_CROP) ? ((float)maxW / w > (float)maxH / h ? (float)maxW / w : (float)maxH / h)
+                                          : ((float)maxW / w < (float)maxH / h ? (float)maxW / w : (float)maxH / h);
         int finalW = (int)round(w * s);
         int finalH = (int)round(h * s);
         if (finalW < 1) finalW = 1;
@@ -553,7 +553,7 @@ bool JpegViewer::drawBmp(const char* filePath, int x, int y, int maxW, int maxH,
                     c = (v > 127) ? EPD_WHITE : EPD_BLACK;
                     int err = v - (c == EPD_WHITE ? 255 : 0);
                     errCur[dx + 2] += err * 7 / 16;
-                    errNext[dx]     += err * 3 / 16;
+                    errNext[dx] += err * 3 / 16;
                     errNext[dx + 1] += err * 5 / 16;
                     errNext[dx + 2] += err * 1 / 16;
                 } else {
@@ -728,7 +728,8 @@ bool JpegViewer::drawJpeg(const char* filePath, int x, int y, int maxW, int maxH
     JDEC jd;
     JRESULT res = jd_prepare(&jd, tjpgdInput, pool, poolSize, &ctx);
     if (res != JDR_OK) {
-        Serial.printf("[JPEG] jd_prepare error: %d for file %s (size %u bytes)\n", res, filePath, (unsigned int)f.size());
+        Serial.printf("[JPEG] jd_prepare error: %d for file %s (size %u bytes)\n", res, filePath,
+                      (unsigned int)f.size());
         if (!isThumbnail && cacheBuf) free(cacheBuf);
         free(pool);
         f.close();
@@ -736,9 +737,10 @@ bool JpegViewer::drawJpeg(const char* filePath, int x, int y, int maxW, int maxH
     }
 
     // Calculate final scaled dimensions preserving aspect ratio
-    float s = (fit == COVER_FIT_CROP)
-        ? ((float)maxW / jd.width > (float)maxH / jd.height ? (float)maxW / jd.width : (float)maxH / jd.height)
-        : ((float)maxW / jd.width < (float)maxH / jd.height ? (float)maxW / jd.width : (float)maxH / jd.height);
+    float s = (fit == COVER_FIT_CROP) ? ((float)maxW / jd.width > (float)maxH / jd.height ? (float)maxW / jd.width
+                                                                                          : (float)maxH / jd.height)
+                                      : ((float)maxW / jd.width < (float)maxH / jd.height ? (float)maxW / jd.width
+                                                                                          : (float)maxH / jd.height);
     int finalW = (int)round(jd.width * s);
     int finalH = (int)round(jd.height * s);
     if (finalW < 1) finalW = 1;
@@ -792,13 +794,34 @@ bool JpegViewer::drawJpeg(const char* filePath, int x, int y, int maxW, int maxH
             ctx.colMap[sx] = (uint16_t)dx;
         }
     } else {
-        if (ctx.band) { free(ctx.band); ctx.band = nullptr; }
-        if (ctx.colMap) { free(ctx.colMap); ctx.colMap = nullptr; }
-        if (ctx.accSum) { free(ctx.accSum); ctx.accSum = nullptr; }
-        if (ctx.accCnt) { free(ctx.accCnt); ctx.accCnt = nullptr; }
-        if (ctx.lastGray) { free(ctx.lastGray); ctx.lastGray = nullptr; }
-        if (ctx.errCur) { free(ctx.errCur); ctx.errCur = nullptr; }
-        if (ctx.errNext) { free(ctx.errNext); ctx.errNext = nullptr; }
+        if (ctx.band) {
+            free(ctx.band);
+            ctx.band = nullptr;
+        }
+        if (ctx.colMap) {
+            free(ctx.colMap);
+            ctx.colMap = nullptr;
+        }
+        if (ctx.accSum) {
+            free(ctx.accSum);
+            ctx.accSum = nullptr;
+        }
+        if (ctx.accCnt) {
+            free(ctx.accCnt);
+            ctx.accCnt = nullptr;
+        }
+        if (ctx.lastGray) {
+            free(ctx.lastGray);
+            ctx.lastGray = nullptr;
+        }
+        if (ctx.errCur) {
+            free(ctx.errCur);
+            ctx.errCur = nullptr;
+        }
+        if (ctx.errNext) {
+            free(ctx.errNext);
+            ctx.errNext = nullptr;
+        }
     }
 
     res = jd_decomp(&jd, tjpgdOutput, scale);

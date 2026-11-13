@@ -24,7 +24,8 @@ bool UsbMscHelper::start() {
 
     Serial.println("[USB-MSC] Detaching filesystem and starting USB Mass Storage...");
     Serial.flush();
-#if defined(ESP_PLATFORM) && defined(ARDUINO_USB_MODE) && ARDUINO_USB_MODE && defined(ARDUINO_USB_CDC_ON_BOOT) && ARDUINO_USB_CDC_ON_BOOT
+#if defined(ESP_PLATFORM) && defined(ARDUINO_USB_MODE) && ARDUINO_USB_MODE && defined(ARDUINO_USB_CDC_ON_BOOT) && \
+        ARDUINO_USB_CDC_ON_BOOT
     // In HWCDC USB mode, Serial/JTAG holds the internal USB PHY; release it
     // before USB.begin() switches the PHY to TinyUSB OTG for MSC.
     Serial.end();
@@ -60,13 +61,9 @@ freeink::UsbMassStorageState UsbMscHelper::state() const {
     return _active ? _msc.state() : freeink::UsbMassStorageState::Idle;
 }
 
-bool UsbMscHelper::hostConnected() const {
-    return _active && _msc.hostConnected();
-}
+bool UsbMscHelper::hostConnected() const { return _active && _msc.hostConnected(); }
 
-bool UsbMscHelper::hostSuspended() const {
-    return _active && _msc.hostSuspended();
-}
+bool UsbMscHelper::hostSuspended() const { return _active && _msc.hostSuspended(); }
 
 bool UsbMscHelper::pollStateChanged() {
     if (!_active) return false;

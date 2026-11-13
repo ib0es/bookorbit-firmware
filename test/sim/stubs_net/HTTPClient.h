@@ -22,21 +22,27 @@ struct Response {
     std::map<std::string, std::string> headers;   // e.g. "Date"
 };
 Response handle(const Request& req);
-}
+}  // namespace FakeNet
 
 class WiFiClient : public Stream {
 public:
-    void reset(const std::string& data) { _data = data; _pos = 0; }
+    void reset(const std::string& data) {
+        _data = data;
+        _pos = 0;
+    }
     int available() override { return (int)(_data.size() - _pos); }
     int read() override { return _pos < _data.size() ? (uint8_t)_data[_pos++] : -1; }
     int read(uint8_t* buf, size_t n) {
         size_t k = (std::min)(n, _data.size() - _pos);
-        memcpy(buf, _data.data() + _pos, k); _pos += k; return (int)k;
+        memcpy(buf, _data.data() + _pos, k);
+        _pos += k;
+        return (int)k;
     }
     int peek() override { return _pos < _data.size() ? (uint8_t)_data[_pos] : -1; }
     size_t write(uint8_t) override { return 1; }
     void setNoDelay(bool) {}
     void setTimeout(unsigned long) {}
+
 private:
     std::string _data;
     size_t _pos = 0;
@@ -44,7 +50,12 @@ private:
 
 class HTTPClient {
 public:
-    bool begin(const String& url) { _req = FakeNet::Request(); _req.url = url.c_str(); _done = false; return true; }
+    bool begin(const String& url) {
+        _req = FakeNet::Request();
+        _req.url = url.c_str();
+        _done = false;
+        return true;
+    }
     void end() {}
     void setTimeout(uint32_t) {}
     void setFollowRedirects(followRedirects_t) {}
@@ -55,10 +66,11 @@ public:
     }
     void collectHeaders(const char* keys[], size_t count) { _collect.assign(keys, keys + count); }
     String header(const char* name) {
-        for (const auto& k : _collect) if (k == name) {
-            auto it = _resp.headers.find(name);
-            return it == _resp.headers.end() ? String("") : String(it->second.c_str());
-        }
+        for (const auto& k : _collect)
+            if (k == name) {
+                auto it = _resp.headers.find(name);
+                return it == _resp.headers.end() ? String("") : String(it->second.c_str());
+            }
         return String("");
     }
     int GET() { return send("GET", ""); }
@@ -79,11 +91,16 @@ public:
         return (int)b.size();
     }
     static String errorToString(int code) { return String("error ") + String(code); }
+
 private:
     int send(const char* method, const std::string& body) {
         _req.method = method;
         _req.body = body;
-        if (WiFi.status() != WL_CONNECTED) { _resp = FakeNet::Response(); _resp.code = HTTPC_ERROR_CONNECTION_REFUSED; return _resp.code; }
+        if (WiFi.status() != WL_CONNECTED) {
+            _resp = FakeNet::Response();
+            _resp.code = HTTPC_ERROR_CONNECTION_REFUSED;
+            return _resp.code;
+        }
         _resp = FakeNet::handle(_req);
         _stream.reset(_resp.body);
         return _resp.code;

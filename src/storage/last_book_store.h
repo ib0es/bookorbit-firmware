@@ -7,4 +7,4 @@ namespace LastBookStore {
 bool save(const LastBookInfo& info);
 // false when there is none (or it names no file).
 bool load(LastBookInfo& outInfo);
-}
+}  // namespace LastBookStore

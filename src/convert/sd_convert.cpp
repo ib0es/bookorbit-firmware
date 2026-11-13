@@ -146,9 +146,9 @@ String stampOf(const String& path) {
     char s[48];
     String lower = path;
     lower.toLowerCase();
-    const int version = lower.endsWith(".fb2") ? kFb2ConverterVersion
+    const int version = lower.endsWith(".fb2")                              ? kFb2ConverterVersion
                         : lower.endsWith(".azw3") || lower.endsWith(".azw") ? kKf8ConverterVersion
-                                                                             : kConverterVersion;
+                                                                            : kConverterVersion;
     snprintf(s, sizeof(s), "v%d %llu", version, (unsigned long long)size);
     return s;
 }
@@ -168,7 +168,8 @@ String readSmall(const String& path) {
 bool needsConversion(const String& path) {
     String l = path;
     l.toLowerCase();
-    return l.endsWith(".fb2") || l.endsWith(".txt") || l.endsWith(".mobi") || l.endsWith(".azw") || l.endsWith(".azw3") || l.endsWith(".prc");
+    return l.endsWith(".fb2") || l.endsWith(".txt") || l.endsWith(".mobi") || l.endsWith(".azw") ||
+           l.endsWith(".azw3") || l.endsWith(".prc");
 }
 
 bool ensureConverted(const String& path, const String& cacheDir, String& epubPath, ProgressFn progress, void* user,
@@ -216,10 +217,11 @@ bool ensureConverted(const String& path, const String& cacheDir, String& epubPat
         Storage.remove(tmpEpub.c_str());
         if (noMemory) *noMemory = r == ConvertResult::NoMemory;
         if (why) {
-            *why = r == ConvertResult::NoMemory      ? ConvertProblem::NoMemory
-                   : r == ConvertResult::Unsupported ? (stats.error.find("DRM") != std::string::npos ? ConvertProblem::Drm
-                                                                                                  : ConvertProblem::Unsupported)
-                                                     : ConvertProblem::Broken;
+            *why = r == ConvertResult::NoMemory ? ConvertProblem::NoMemory
+                   : r == ConvertResult::Unsupported
+                           ? (stats.error.find("DRM") != std::string::npos ? ConvertProblem::Drm
+                                                                           : ConvertProblem::Unsupported)
+                           : ConvertProblem::Broken;
         }
         return false;
     }
@@ -236,12 +238,13 @@ bool ensureConverted(const String& path, const String& cacheDir, String& epubPat
         s.write((const uint8_t*)stamp.c_str(), stamp.length());
         s.close();
     }
-    Serial.printf("[Convert] %s -> EPUB in %lu ms (card reads %lu ms, writes %lu ms, progress window %lu ms): "
-                  "%u chapters, %u images, %u contents entries, %u ids%s%s\n", path.c_str(),
-                  (unsigned long)(millis() - t0), (unsigned long)(in.us / 1000), (unsigned long)(out.us / 1000),
-                  (unsigned long)(timed.us / 1000), (unsigned)stats.chapters, (unsigned)stats.images,
-                  (unsigned)stats.tocEntries, (unsigned)stats.ids, lower.endsWith(".txt") ? "; " : "",
-                  lower.endsWith(".txt") ? stats.error.c_str() : "");
+    Serial
+            .printf("[Convert] %s -> EPUB in %lu ms (card reads %lu ms, writes %lu ms, progress window %lu ms): "
+                    "%u chapters, %u images, %u contents entries, %u ids%s%s\n",
+                    path.c_str(), (unsigned long)(millis() - t0), (unsigned long)(in.us / 1000),
+                    (unsigned long)(out.us / 1000), (unsigned long)(timed.us / 1000), (unsigned)stats.chapters,
+                    (unsigned)stats.images, (unsigned)stats.tocEntries, (unsigned)stats.ids,
+                    lower.endsWith(".txt") ? "; " : "", lower.endsWith(".txt") ? stats.error.c_str() : "");
     return true;
 }
 

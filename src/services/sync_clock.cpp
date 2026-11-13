@@ -7,7 +7,7 @@
 namespace {
 // Anything before 2023-01-01 means "never set" (ESP32 boots at 1970).
 constexpr time_t kMinValidUtc = 1672531200;
-}
+}  // namespace
 
 namespace SyncClock {
 

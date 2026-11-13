@@ -84,12 +84,12 @@ static std::string buildMobi(const std::string& html, const std::vector<std::str
 
 // 1x1 PNG
 static std::string png1() {
-    static const unsigned char d[] = {0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49,
-                                      0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x00,
-                                      0x00, 0x00, 0x00, 0x3A, 0x7E, 0x9B, 0x55, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44,
-                                      0x41, 0x54, 0x78, 0x9C, 0x63, 0x60, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0x48,
-                                      0xAF, 0xA4, 0x71, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42,
-                                      0x60, 0x82};
+    static const unsigned char d[] = {0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
+                                      0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+                                      0x08, 0x00, 0x00, 0x00, 0x00, 0x3A, 0x7E, 0x9B, 0x55, 0x00, 0x00, 0x00,
+                                      0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x60, 0x00, 0x00, 0x00,
+                                      0x02, 0x00, 0x01, 0x48, 0xAF, 0xA4, 0x71, 0x00, 0x00, 0x00, 0x00, 0x49,
+                                      0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82};
     return std::string((const char*)d, sizeof(d));
 }
 
@@ -106,8 +106,9 @@ static bool convertMobi(const std::string& mobi, std::string& epub, convert::Con
 }
 
 static std::string fixtureHtml(uint32_t* chapterTwo, uint32_t* partB) {
-    std::string h = "<html><head><title>x</title><style>p{a:b}</style><guide><reference type=\"toc\" title=\"Contents\" "
-                    "filepos=TOCPOS /></guide></head><body>";
+    std::string h =
+            "<html><head><title>x</title><style>p{a:b}</style><guide><reference type=\"toc\" title=\"Contents\" "
+            "filepos=TOCPOS /></guide></head><body>";
     h += "<p height=\"1em\" width=\"0pt\" align=\"center\"><font size=\"7\"><b>The Title</b></font></p>";
     h += "<!-- a <comment> -->";
     h += "<p width=\"2em\">First <i>chapter</i> text &amp; more &nbsp;here, 5 & 6.<p>Unclosed before this one";
@@ -183,8 +184,10 @@ static void testFixture() {
     const int c2 = chapterWith(o, "Chapter Two</b>");
     CHECK(c2 > 0);
     CHECK(chapterWith(o, "Part B marker") > c2);
-    CHECK(contains(o.chapters, "<p style=\"text-align:center;margin-top:1em;font-size:2em;\"><span><b>The Title</b></span></p>"));
-    CHECK(contains(o.chapters, "<p style=\"text-indent:2em;\">First <i>chapter</i> text &amp; more &nbsp;here, 5 &amp; 6.</p>"));
+    CHECK(contains(o.chapters,
+                   "<p style=\"text-align:center;margin-top:1em;font-size:2em;\"><span><b>The Title</b></span></p>"));
+    CHECK(contains(o.chapters,
+                   "<p style=\"text-indent:2em;\">First <i>chapter</i> text &amp; more &nbsp;here, 5 &amp; 6.</p>"));
     CHECK(contains(o.chapters, "<p>Unclosed before this one</p>"));
     CHECK(contains(o.chapters, "<img src=\"images/i0000\" alt=\"\" width=\"10\" height=\"12\"/>"));
     char want[80];
@@ -195,13 +198,15 @@ static void testFixture() {
     CHECK(contains(o.chapters, "href=\"http://example.com/?a=1&amp;b=2\""));
     CHECK(contains(o.chapters, "<blockquote>Quote<br/>line two<br/>three</blockquote>"));
     CHECK(contains(o.chapters, "<div class=\"center\">centered</div>"));
-    CHECK(contains(o.chapters, "<table><tr><td colspan=\"2\">cell</td>\n<td>next</td>\n</tr>\n<tr><td>row2</td>\n</tr>\n</table>"));
+    CHECK(contains(o.chapters,
+                   "<table><tr><td colspan=\"2\">cell</td>\n<td>next</td>\n</tr>\n<tr><td>row2</td>\n</tr>\n</table>"));
     CHECK(contains(o.chapters, "<ul><li>one</li>\n<li>two</li>\n</ul>"));
     CHECK(!contains(o.chapters, "comment"));
     // A <font> after text stays a span; the first one of a block sizes the block.
     CHECK(contains(o.chapters, "<p>Second chapter <span style=\"font-size:2em;\">big</span> text.</p>"));
-    CHECK(contains(o.chapters, "<p style=\"text-align:center;font-size:1.5em;\"><span>Head</span><br/><span>line two</span> "
-                               "<span style=\"font-size:1.33em;\">bigger</span></p>"));
+    CHECK(contains(o.chapters,
+                   "<p style=\"text-align:center;font-size:1.5em;\"><span>Head</span><br/><span>line two</span> "
+                   "<span style=\"font-size:1.33em;\">bigger</span></p>"));
     CHECK(!contains(o.chapters, "p{a:b}"));
     CHECK(o.toc.size() == 3);
     if (o.toc.size() == 3) {
@@ -221,12 +226,16 @@ static void testCp1252AndRefusals() {
     Opened o = openEpub(epub);
     CHECK(o.ok && contains(o.chapters, "caf\xC3\xA9 \xE2\x80\x9Cquoted\xE2\x80\x9D \xE2\x82\xAC"));
     convert::ConvertResult r;
-    CHECK(!convertMobi(buildMobi("<p>x</p>", {}, 65001, 1, 2), epub, st, &r) && r == convert::ConvertResult::Unsupported);
+    CHECK(!convertMobi(buildMobi("<p>x</p>", {}, 65001, 1, 2), epub, st, &r) &&
+          r == convert::ConvertResult::Unsupported);
     CHECK(st.error.find("DRM") != std::string::npos);
-    CHECK(!convertMobi(buildMobi("<p>x</p>", {}, 65001, 17480), epub, st, &r) && r == convert::ConvertResult::Unsupported);
+    CHECK(!convertMobi(buildMobi("<p>x</p>", {}, 65001, 17480), epub, st, &r) &&
+          r == convert::ConvertResult::Unsupported);
     // KF8 without its part tables: unreadable
-    CHECK(!convertMobi(buildMobi("<p>x</p>", {}, 65001, 2, 0, 8), epub, st, &r) && r == convert::ConvertResult::ParseError);
-    CHECK(!convertMobi("not a palm database at all, just text that is long enough to have a header......", epub, st, &r) &&
+    CHECK(!convertMobi(buildMobi("<p>x</p>", {}, 65001, 2, 0, 8), epub, st, &r) &&
+          r == convert::ConvertResult::ParseError);
+    CHECK(!convertMobi("not a palm database at all, just text that is long enough to have a header......", epub, st,
+                       &r) &&
           r == convert::ConvertResult::NotThisFormat);
     // <br> straight inside a p starts the next p (without the space above); a
     // long p goes on in another at a space.
@@ -235,9 +244,12 @@ static void testCp1252AndRefusals() {
     brs += "</p></body></html>";
     CHECK(convertMobi(buildMobi(brs, {}, 65001), epub, st));
     o = openEpub(epub);
-    CHECK(o.ok && contains(o.chapters, "<p style=\"text-indent:2em;margin-top:1em;\">one</p>\n<p style=\"text-indent:2em;\">two</p>\n"
-                                       "<p style=\"text-indent:2em;\"><b>x<br/>y</b></p>"));
-    CHECK(contains(o.chapters, "</p>\n<p style=\"margin-top:0;text-indent:0;\">word") && contains(o.chapters, "word399 </p>"));
+    CHECK(o.ok &&
+          contains(o.chapters,
+                   "<p style=\"text-indent:2em;margin-top:1em;\">one</p>\n<p style=\"text-indent:2em;\">two</p>\n"
+                   "<p style=\"text-indent:2em;\"><b>x<br/>y</b></p>"));
+    CHECK(contains(o.chapters, "</p>\n<p style=\"margin-top:0;text-indent:0;\">word") &&
+          contains(o.chapters, "word399 </p>"));
     // A book with no page breaks and no contents: split by size, one entry per file.
     std::string big = "<html><body>";
     for (int i = 0; i < 3000; i++) big += "<p>Paragraph " + std::to_string(i) + " of one long run.</p>";
@@ -269,7 +281,10 @@ static void testRealBooks(const char* dir) {
         if (getenv("MOBI_KEEP")) {
             const std::string out = std::string(getenv("MOBI_KEEP")) + "/" + f.substr(f.rfind('/') + 1) + ".epub";
             FILE* w = fopen(out.c_str(), "wb");
-            if (w) { fwrite(epub.data(), 1, epub.size(), w); fclose(w); }
+            if (w) {
+                fwrite(epub.data(), 1, epub.size(), w);
+                fclose(w);
+            }
         }
     }
 }

@@ -8,13 +8,20 @@ Action of(const ButtonEvent& e) {
     if (e.action == ACTION_LONG_PRESS) return e.id == BTN_BACK ? Action::Menu : Action::None;
     if (e.action != ACTION_CLICK) return Action::None;
     switch (e.id) {
-        case BTN_UP:      return Action::Up;
-        case BTN_DOWN:    return Action::Down;
-        case BTN_CONFIRM: return Action::Select;
-        case BTN_BACK:    return Action::Back;
-        case BTN_LEFT:    return Action::Prev;
-        case BTN_RIGHT:   return Action::Next;
-        default:          return Action::None;
+        case BTN_UP:
+            return Action::Up;
+        case BTN_DOWN:
+            return Action::Down;
+        case BTN_CONFIRM:
+            return Action::Select;
+        case BTN_BACK:
+            return Action::Back;
+        case BTN_LEFT:
+            return Action::Prev;
+        case BTN_RIGHT:
+            return Action::Next;
+        default:
+            return Action::None;
     }
 }
 

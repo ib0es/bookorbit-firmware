@@ -20,7 +20,9 @@ struct Header {
     uint32_t magic;
     uint32_t version;
     char name[64];
-    struct { uint32_t offset, length; } faces[4];
+    struct {
+        uint32_t offset, length;
+    } faces[4];
     uint32_t checksum;   // of the fields above
 };
 
@@ -40,7 +42,9 @@ bool valid(const Header& h, uint32_t cap) {
 }
 
 uint16_t be16(const uint8_t* p) { return (uint16_t)((p[0] << 8) | p[1]); }
-uint32_t be32(const uint8_t* p) { return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | p[3]; }
+uint32_t be32(const uint8_t* p) {
+    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | p[3];
+}
 
 // Style of a font file from its 'head' table (macStyle: bit 0 bold, bit 1
 // italic); -1 when it is not a TrueType/OpenType font.
@@ -75,9 +79,11 @@ String familyOf(const String& stem, int* nameStyle) {
     String suffix = stem.substring(dash + 1);
     suffix.toLowerCase();
     suffix.replace(" ", "");
-    struct { const char* s; int style; } k[] = {
-        {"regular", 0}, {"book", 0}, {"roman", 0}, {"normal", 0}, {"bold", 1}, {"italic", 2}, {"oblique", 2},
-        {"bolditalic", 3}, {"boldoblique", 3}, {"bi", 3}, {"it", 2}};
+    struct {
+        const char* s;
+        int style;
+    } k[] = {{"regular", 0}, {"book", 0},       {"roman", 0},       {"normal", 0}, {"bold", 1}, {"italic", 2},
+             {"oblique", 2}, {"bolditalic", 3}, {"boldoblique", 3}, {"bi", 3},     {"it", 2}};
     for (const auto& e : k)
         if (suffix == e.s) {
             *nameStyle = e.style;

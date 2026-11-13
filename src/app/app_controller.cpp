@@ -44,7 +44,6 @@
 #include "../core/power_policy.h"
 #include "../platform/system.h"
 
-
 void AppController::setup() {
     // 0. Disable any surviving deep-sleep pin holds from previous sleep cycle
     gpio_deep_sleep_hold_dis();
@@ -124,8 +123,8 @@ void AppController::setup() {
                 if (wipeLang.length() > 0) {
                     I18n::setLanguage(I18n::languageFromCode(wipeLang));
                 }
-                drawStatusModal(tr(MsgId::SD_WIPE_TITLE), tr(MsgId::SD_WIPE_RUNNING),
-                                nullptr, nullptr, nullptr, nullptr, true);
+                drawStatusModal(tr(MsgId::SD_WIPE_TITLE), tr(MsgId::SD_WIPE_RUNNING), nullptr, nullptr, nullptr,
+                                nullptr, true);
                 if (!Storage.isAvailable()) {
                     Serial.println("[BOOT] SD wipe skipped: MicroSD not available.");
                     sdWipeOutcome = SdWipeOutcome::NoCard;
@@ -151,7 +150,8 @@ void AppController::setup() {
     Frontlight.begin();
     if (Buttons.hasLightSwitch()) Frontlight.setEnabled(Buttons.lightSwitchOn());
     applyConfig();
-    Reader.setBookmarkProbe([](int spine, uint32_t from, uint32_t to) { return Bookmarks.findIn(spine, from, to) >= 0; });
+    Reader.setBookmarkProbe(
+            [](int spine, uint32_t from, uint32_t to) { return Bookmarks.findIn(spine, from, to) >= 0; });
     MemStats::mark("config, frontlight, reader");
 
     // 4. Per-book progress, scan local books on SD, 5. load last read book state
@@ -221,14 +221,9 @@ void AppController::setup() {
     Buttons.clearEvents();
     _ctx.lastActivityTime = millis();
     Serial.printf("[BOOT] device=%s ctrl=%s touch=%d homeKey=%d usbMsc=%d intWake=%d rtc=%d imu=%d\n",
-                  uikit::deviceDisplayName(),
-                  Display.getControllerName(),
-                  Buttons.hasTouch() ? 1 : 0,
-                  Buttons.hasHomeKey() ? 1 : 0,
-                  UsbMsc.present() ? 1 : 0,
-                  Buttons.touchWakeIrqPin(),
-                  BoardRtc.present() ? 1 : 0,
-                  BoardImu.present() ? 1 : 0);
+                  uikit::deviceDisplayName(), Display.getControllerName(), Buttons.hasTouch() ? 1 : 0,
+                  Buttons.hasHomeKey() ? 1 : 0, UsbMsc.present() ? 1 : 0, Buttons.touchWakeIrqPin(),
+                  BoardRtc.present() ? 1 : 0, BoardImu.present() ? 1 : 0);
 }
 
 void AppController::applyConfig() {
@@ -321,8 +316,7 @@ void AppController::loop() {
             float ax = 0.0f, ay = 0.0f, az = 0.0f;
             if (BoardImu.readAccel(ax, ay, az)) {
                 // The board's sensor mount (device profile) plus the user's calibration.
-                const ImuCalibration cal{(Platform::kDevice.imuMountRot + _ctx.config.imuRot) & 3,
-                                         _ctx.config.imuFlipX,
+                const ImuCalibration cal{(Platform::kDevice.imuMountRot + _ctx.config.imuRot) & 3, _ctx.config.imuFlipX,
                                          Platform::kDevice.imuMountFlipY != _ctx.config.imuFlipY};
                 const int nextOrient = _autoRotate.update(ax, ay, az, _ctx.config.uiOrientation, nowMs, cal);
                 if (nextOrient >= 0 && nextOrient != _ctx.config.uiOrientation) {
@@ -362,7 +356,8 @@ void AppController::loop() {
         // device a restart into Settings), and the usual sleep follows.
         const uint32_t nowMs = millis();
         if (UsbMsc.hostConnected() || _usbNoHostSince == 0) _usbNoHostSince = nowMs;
-        if (PowerPolicy::shouldLeaveUsbMsc(UsbMsc.hostConnected(), nowMs - _usbNoHostSince, Platform::sleepTimeoutMs())) {
+        if (PowerPolicy::shouldLeaveUsbMsc(UsbMsc.hostConnected(), nowMs - _usbNoHostSince,
+                                           Platform::sleepTimeoutMs())) {
             Serial.println("[USB-MSC] No computer for the idle timeout: leaving USB mass storage.");
             _usbNoHostSince = 0;
             UsbMscSession::exit(_ctx);
@@ -388,8 +383,9 @@ void AppController::loop() {
     // The reader's own menus keep it (paused): the chapter on screen may still be
     // coming from it, and dropping it would mean laying the chapter out again.
     const AppState st = _ctx.currentState;
-    const bool readerScreens = st == STATE_READING || st == STATE_TOC || st == STATE_READER_MENU || st == STATE_FONT_MENU ||
-                               st == STATE_TYPEFACE_MENU || st == STATE_APPEARANCE_MENU || st == STATE_BOOKMARKS;
+    const bool readerScreens = st == STATE_READING || st == STATE_TOC || st == STATE_READER_MENU ||
+                               st == STATE_FONT_MENU || st == STATE_TYPEFACE_MENU || st == STATE_APPEARANCE_MENU ||
+                               st == STATE_BOOKMARKS;
     if (!readerScreens || SyncService::backgroundActive()) {
         if (Reader.backgroundActive()) Reader.stopBackground();
     } else if (st == STATE_READING && !Modal.isActive() && millis() - _ctx.lastActivityTime > kPrelayoutIdleMs &&

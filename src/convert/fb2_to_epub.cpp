@@ -17,12 +17,18 @@ namespace convert {
 
 const char* resultName(ConvertResult r) {
     switch (r) {
-        case ConvertResult::Ok: return "ok";
-        case ConvertResult::NotThisFormat: return "not this format";
-        case ConvertResult::ParseError: return "parse error";
-        case ConvertResult::IoError: return "card read/write error";
-        case ConvertResult::NoMemory: return "no memory";
-        case ConvertResult::Unsupported: return "not supported";
+        case ConvertResult::Ok:
+            return "ok";
+        case ConvertResult::NotThisFormat:
+            return "not this format";
+        case ConvertResult::ParseError:
+            return "parse error";
+        case ConvertResult::IoError:
+            return "card read/write error";
+        case ConvertResult::NoMemory:
+            return "no memory";
+        case ConvertResult::Unsupported:
+            return "not supported";
     }
     return "?";
 }
@@ -65,7 +71,10 @@ void appendCollapsed(std::string& out, const char* s, int len, size_t cap) {
 // "CHAPTER I.", "Глава 3", "Part Two": a heading that only numbers what follows.
 bool isChapterNumber(const std::string& t) {
     if (t.size() > 24) return false;
-    static const char* const words[] = {"chapter", "part", "book", "\xD0\xB3\xD0\xBB\xD0\xB0\xD0\xB2\xD0\xB0",
+    static const char* const words[] = {"chapter",
+                                        "part",
+                                        "book",
+                                        "\xD0\xB3\xD0\xBB\xD0\xB0\xD0\xB2\xD0\xB0",
                                         "\xD0\x93\xD0\x9B\xD0\x90\xD0\x92\xD0\x90",
                                         "\xD0\x93\xD0\xBB\xD0\xB0\xD0\xB2\xD0\xB0",
                                         "\xD1\x87\xD0\xB0\xD1\x81\xD1\x82\xD1\x8C",
@@ -91,27 +100,33 @@ std::string xmlEscape(const std::string& s) {
     std::string o;
     o.reserve(s.size() + 8);
     for (char c : s) {
-        if (c == '&') o += "&amp;";
-        else if (c == '<') o += "&lt;";
-        else if (c == '>') o += "&gt;";
-        else if (c == '"') o += "&quot;";
-        else o += c;
+        if (c == '&')
+            o += "&amp;";
+        else if (c == '<')
+            o += "&lt;";
+        else if (c == '>')
+            o += "&gt;";
+        else if (c == '"')
+            o += "&quot;";
+        else
+            o += c;
     }
     return o;
 }
 
 // windows-1251, 0x80..0xFF (Russian FB2 files often come in it).
-const uint16_t kCp1251[128] = {
-    0x0402, 0x0403, 0x201A, 0x0453, 0x201E, 0x2026, 0x2020, 0x2021, 0x20AC, 0x2030, 0x0409, 0x2039, 0x040A, 0x040C,
-    0x040B, 0x040F, 0x0452, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014, 0xFFFD, 0x2122, 0x0459, 0x203A,
-    0x045A, 0x045C, 0x045B, 0x045F, 0x00A0, 0x040E, 0x045E, 0x0408, 0x00A4, 0x0490, 0x00A6, 0x00A7, 0x0401, 0x00A9,
-    0x0404, 0x00AB, 0x00AC, 0x00AD, 0x00AE, 0x0407, 0x00B0, 0x00B1, 0x0406, 0x0456, 0x0491, 0x00B5, 0x00B6, 0x00B7,
-    0x0451, 0x2116, 0x0454, 0x00BB, 0x0458, 0x0405, 0x0455, 0x0457, 0x0410, 0x0411, 0x0412, 0x0413, 0x0414, 0x0415,
-    0x0416, 0x0417, 0x0418, 0x0419, 0x041A, 0x041B, 0x041C, 0x041D, 0x041E, 0x041F, 0x0420, 0x0421, 0x0422, 0x0423,
-    0x0424, 0x0425, 0x0426, 0x0427, 0x0428, 0x0429, 0x042A, 0x042B, 0x042C, 0x042D, 0x042E, 0x042F, 0x0430, 0x0431,
-    0x0432, 0x0433, 0x0434, 0x0435, 0x0436, 0x0437, 0x0438, 0x0439, 0x043A, 0x043B, 0x043C, 0x043D, 0x043E, 0x043F,
-    0x0440, 0x0441, 0x0442, 0x0443, 0x0444, 0x0445, 0x0446, 0x0447, 0x0448, 0x0449, 0x044A, 0x044B, 0x044C, 0x044D,
-    0x044E, 0x044F};
+const uint16_t kCp1251[128] = {0x0402, 0x0403, 0x201A, 0x0453, 0x201E, 0x2026, 0x2020, 0x2021, 0x20AC, 0x2030, 0x0409,
+                               0x2039, 0x040A, 0x040C, 0x040B, 0x040F, 0x0452, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022,
+                               0x2013, 0x2014, 0xFFFD, 0x2122, 0x0459, 0x203A, 0x045A, 0x045C, 0x045B, 0x045F, 0x00A0,
+                               0x040E, 0x045E, 0x0408, 0x00A4, 0x0490, 0x00A6, 0x00A7, 0x0401, 0x00A9, 0x0404, 0x00AB,
+                               0x00AC, 0x00AD, 0x00AE, 0x0407, 0x00B0, 0x00B1, 0x0406, 0x0456, 0x0491, 0x00B5, 0x00B6,
+                               0x00B7, 0x0451, 0x2116, 0x0454, 0x00BB, 0x0458, 0x0405, 0x0455, 0x0457, 0x0410, 0x0411,
+                               0x0412, 0x0413, 0x0414, 0x0415, 0x0416, 0x0417, 0x0418, 0x0419, 0x041A, 0x041B, 0x041C,
+                               0x041D, 0x041E, 0x041F, 0x0420, 0x0421, 0x0422, 0x0423, 0x0424, 0x0425, 0x0426, 0x0427,
+                               0x0428, 0x0429, 0x042A, 0x042B, 0x042C, 0x042D, 0x042E, 0x042F, 0x0430, 0x0431, 0x0432,
+                               0x0433, 0x0434, 0x0435, 0x0436, 0x0437, 0x0438, 0x0439, 0x043A, 0x043B, 0x043C, 0x043D,
+                               0x043E, 0x043F, 0x0440, 0x0441, 0x0442, 0x0443, 0x0444, 0x0445, 0x0446, 0x0447, 0x0448,
+                               0x0449, 0x044A, 0x044B, 0x044C, 0x044D, 0x044E, 0x044F};
 
 int XMLCALL unknownEncoding(void*, const XML_Char* name, XML_Encoding* info) {
     std::string n = name;
@@ -126,23 +141,92 @@ int XMLCALL unknownEncoding(void*, const XML_Char* name, XML_Encoding* info) {
 }
 
 enum E : uint8_t {
-    E_OTHER, E_DESCRIPTION, E_TITLE_INFO, E_BOOK_TITLE, E_AUTHOR, E_FIRST, E_MIDDLE, E_LAST, E_NICK, E_LANG,
-    E_SEQUENCE, E_COVERPAGE, E_ANNOTATION, E_BODY, E_SECTION, E_TITLE, E_EPIGRAPH, E_CITE, E_POEM, E_STANZA, E_V,
-    E_P, E_SUBTITLE, E_TEXT_AUTHOR, E_DATE, E_EMPTY_LINE, E_IMAGE, E_A, E_EMPHASIS, E_STRONG, E_STRIKE, E_SUB,
-    E_SUP, E_CODE, E_STYLE, E_TABLE, E_TR, E_TD, E_TH, E_BINARY
+    E_OTHER,
+    E_DESCRIPTION,
+    E_TITLE_INFO,
+    E_BOOK_TITLE,
+    E_AUTHOR,
+    E_FIRST,
+    E_MIDDLE,
+    E_LAST,
+    E_NICK,
+    E_LANG,
+    E_SEQUENCE,
+    E_COVERPAGE,
+    E_ANNOTATION,
+    E_BODY,
+    E_SECTION,
+    E_TITLE,
+    E_EPIGRAPH,
+    E_CITE,
+    E_POEM,
+    E_STANZA,
+    E_V,
+    E_P,
+    E_SUBTITLE,
+    E_TEXT_AUTHOR,
+    E_DATE,
+    E_EMPTY_LINE,
+    E_IMAGE,
+    E_A,
+    E_EMPHASIS,
+    E_STRONG,
+    E_STRIKE,
+    E_SUB,
+    E_SUP,
+    E_CODE,
+    E_STYLE,
+    E_TABLE,
+    E_TR,
+    E_TD,
+    E_TH,
+    E_BINARY
 };
 
 E elemOf(const char* name) {
-    static const struct { const char* n; E e; } k[] = {
-        {"description", E_DESCRIPTION}, {"title-info", E_TITLE_INFO}, {"book-title", E_BOOK_TITLE},
-        {"author", E_AUTHOR}, {"first-name", E_FIRST}, {"middle-name", E_MIDDLE}, {"last-name", E_LAST},
-        {"nickname", E_NICK}, {"lang", E_LANG}, {"sequence", E_SEQUENCE}, {"coverpage", E_COVERPAGE},
-        {"annotation", E_ANNOTATION}, {"body", E_BODY}, {"section", E_SECTION}, {"title", E_TITLE},
-        {"epigraph", E_EPIGRAPH}, {"cite", E_CITE}, {"poem", E_POEM}, {"stanza", E_STANZA}, {"v", E_V},
-        {"p", E_P}, {"subtitle", E_SUBTITLE}, {"text-author", E_TEXT_AUTHOR}, {"date", E_DATE},
-        {"empty-line", E_EMPTY_LINE}, {"image", E_IMAGE}, {"a", E_A}, {"emphasis", E_EMPHASIS},
-        {"strong", E_STRONG}, {"strikethrough", E_STRIKE}, {"sub", E_SUB}, {"sup", E_SUP}, {"code", E_CODE},
-        {"style", E_STYLE}, {"table", E_TABLE}, {"tr", E_TR}, {"td", E_TD}, {"th", E_TH}, {"binary", E_BINARY},
+    static const struct {
+        const char* n;
+        E e;
+    } k[] = {
+            {"description", E_DESCRIPTION},
+            {"title-info", E_TITLE_INFO},
+            {"book-title", E_BOOK_TITLE},
+            {"author", E_AUTHOR},
+            {"first-name", E_FIRST},
+            {"middle-name", E_MIDDLE},
+            {"last-name", E_LAST},
+            {"nickname", E_NICK},
+            {"lang", E_LANG},
+            {"sequence", E_SEQUENCE},
+            {"coverpage", E_COVERPAGE},
+            {"annotation", E_ANNOTATION},
+            {"body", E_BODY},
+            {"section", E_SECTION},
+            {"title", E_TITLE},
+            {"epigraph", E_EPIGRAPH},
+            {"cite", E_CITE},
+            {"poem", E_POEM},
+            {"stanza", E_STANZA},
+            {"v", E_V},
+            {"p", E_P},
+            {"subtitle", E_SUBTITLE},
+            {"text-author", E_TEXT_AUTHOR},
+            {"date", E_DATE},
+            {"empty-line", E_EMPTY_LINE},
+            {"image", E_IMAGE},
+            {"a", E_A},
+            {"emphasis", E_EMPHASIS},
+            {"strong", E_STRONG},
+            {"strikethrough", E_STRIKE},
+            {"sub", E_SUB},
+            {"sup", E_SUP},
+            {"code", E_CODE},
+            {"style", E_STYLE},
+            {"table", E_TABLE},
+            {"tr", E_TR},
+            {"td", E_TD},
+            {"th", E_TH},
+            {"binary", E_BINARY},
     };
     const char* l = localName(name);
     for (const auto& x : k)
@@ -178,23 +262,23 @@ void b64Init() {
 }
 
 const char* const kCss =
-    "body{margin:0}\n"
-    "p{margin:0;text-indent:1.5em;text-align:justify}\n"
-    "div.title{margin:1em 0 0.7em 0;text-align:center;text-indent:0}\n"
-    "h1,h2,h3,h4,h5,h6{text-align:center;text-indent:0;margin:0;font-weight:bold}\n"
-    "h1{font-size:1.5em}h2{font-size:1.3em}h3{font-size:1.15em}h4,h5,h6{font-size:1em}\n"
-    "p.subtitle{text-align:center;text-indent:0;font-weight:bold;margin:0.7em 0 0.3em 0}\n"
-    "p.empty{text-indent:0}\n"
-    "p.cont{text-indent:0}\n"
-    "blockquote{margin:0.5em 0 0.5em 2em}\n"
-    "blockquote.epigraph p{font-style:italic;text-indent:0}\n"
-    "blockquote.poem{font-style:normal}\n"
-    "p.text-author{text-align:right;text-indent:0;font-style:italic}\n"
-    "p.date{text-align:right;text-indent:0}\n"
-    "p.stanza{text-indent:0;text-align:left;margin:0 0 0.7em 0}\n"
-    "div.stitle{font-weight:bold}\n"
-    "div.image{text-align:center;text-indent:0;margin:0.5em 0}\n"
-    "td,th{padding:0.2em}\n";
+        "body{margin:0}\n"
+        "p{margin:0;text-indent:1.5em;text-align:justify}\n"
+        "div.title{margin:1em 0 0.7em 0;text-align:center;text-indent:0}\n"
+        "h1,h2,h3,h4,h5,h6{text-align:center;text-indent:0;margin:0;font-weight:bold}\n"
+        "h1{font-size:1.5em}h2{font-size:1.3em}h3{font-size:1.15em}h4,h5,h6{font-size:1em}\n"
+        "p.subtitle{text-align:center;text-indent:0;font-weight:bold;margin:0.7em 0 0.3em 0}\n"
+        "p.empty{text-indent:0}\n"
+        "p.cont{text-indent:0}\n"
+        "blockquote{margin:0.5em 0 0.5em 2em}\n"
+        "blockquote.epigraph p{font-style:italic;text-indent:0}\n"
+        "blockquote.poem{font-style:normal}\n"
+        "p.text-author{text-align:right;text-indent:0;font-style:italic}\n"
+        "p.date{text-align:right;text-indent:0}\n"
+        "p.stanza{text-indent:0;text-align:left;margin:0 0 0.7em 0}\n"
+        "div.stitle{font-weight:bold}\n"
+        "div.image{text-align:center;text-indent:0;margin:0.5em 0}\n"
+        "td,th{padding:0.2em}\n";
 
 // The book is laid out as the web reader (foliate-js, fb2.js) lays it out, so
 // that a CFI means the same place in both: every FB2 element foliate keeps
@@ -206,8 +290,23 @@ enum K : uint8_t {
     K_NONE,      // not book content (the FictionBook, a first body)
     K_DROP,      // dropped with everything in it
     K_ROOT,      // a body after the first: one foliate section
-    K_SECTION, K_HEADER, K_HLINE, K_P, K_SUBTITLE, K_QUOTE, K_ASIDE, K_EMPTY, K_IMG, K_TABLE, K_TR, K_TD, K_TH,
-    K_INLINE, K_A, K_STANZA, K_STRONGLINE,
+    K_SECTION,
+    K_HEADER,
+    K_HLINE,
+    K_P,
+    K_SUBTITLE,
+    K_QUOTE,
+    K_ASIDE,
+    K_EMPTY,
+    K_IMG,
+    K_TABLE,
+    K_TR,
+    K_TD,
+    K_TH,
+    K_INLINE,
+    K_A,
+    K_STANZA,
+    K_STRONGLINE,
     K_V,         // a stanza line: not an element, its text goes after the stanza's children
     K_VINNER     // inside a stanza line
 };
@@ -228,19 +327,32 @@ Rule ruleFor(X x, E e) {
             break;
         case X_SECTION:
             switch (e) {
-                case E_TITLE: return {K_HEADER, X_TITLE};
-                case E_EPIGRAPH: return {K_QUOTE, X_SECTION};
-                case E_IMAGE: return {K_IMG, X_NONE};
-                case E_ANNOTATION: return {K_ASIDE, X_NONE};
-                case E_SECTION: return {K_SECTION, X_SECTION};
-                case E_P: return {K_P, X_STYLE};
-                case E_POEM: return {K_QUOTE, X_POEM};
-                case E_SUBTITLE: return {K_SUBTITLE, X_STYLE};
-                case E_CITE: return {K_QUOTE, X_SECTION};
-                case E_EMPTY_LINE: return {K_EMPTY, X_NONE};
-                case E_TABLE: return {K_TABLE, X_TABLE};
-                case E_TEXT_AUTHOR: return {K_P, X_STYLE};
-                default: break;
+                case E_TITLE:
+                    return {K_HEADER, X_TITLE};
+                case E_EPIGRAPH:
+                    return {K_QUOTE, X_SECTION};
+                case E_IMAGE:
+                    return {K_IMG, X_NONE};
+                case E_ANNOTATION:
+                    return {K_ASIDE, X_NONE};
+                case E_SECTION:
+                    return {K_SECTION, X_SECTION};
+                case E_P:
+                    return {K_P, X_STYLE};
+                case E_POEM:
+                    return {K_QUOTE, X_POEM};
+                case E_SUBTITLE:
+                    return {K_SUBTITLE, X_STYLE};
+                case E_CITE:
+                    return {K_QUOTE, X_SECTION};
+                case E_EMPTY_LINE:
+                    return {K_EMPTY, X_NONE};
+                case E_TABLE:
+                    return {K_TABLE, X_TABLE};
+                case E_TEXT_AUTHOR:
+                    return {K_P, X_STYLE};
+                default:
+                    break;
             }
             break;
         case X_TITLE:
@@ -264,11 +376,20 @@ Rule ruleFor(X x, E e) {
             break;
         case X_STYLE:
             switch (e) {
-                case E_STRONG: case E_EMPHASIS: case E_STYLE: case E_STRIKE: case E_SUB: case E_SUP: case E_CODE:
+                case E_STRONG:
+                case E_EMPHASIS:
+                case E_STYLE:
+                case E_STRIKE:
+                case E_SUB:
+                case E_SUP:
+                case E_CODE:
                     return {K_INLINE, X_STYLE};
-                case E_A: return {K_A, X_STYLE};
-                case E_IMAGE: return {K_IMG, X_NONE};
-                default: break;
+                case E_A:
+                    return {K_A, X_STYLE};
+                case E_IMAGE:
+                    return {K_IMG, X_NONE};
+                default:
+                    break;
             }
             break;
         case X_TABLE:
@@ -418,10 +539,11 @@ private:
     std::string _titleText;
     std::string _firstParaText;
     std::string _heldLabel;
-    std::vector<std::string> _fileLabels;   // first words of each file (pass 2): contents of last resort   // "CHAPTER I." waiting for the line that names it
+    std::vector<std::string>
+            _fileLabels;  // first words of each file (pass 2): contents of last resort   // "CHAPTER I." waiting for the line that names it
     bool _collectFirstPara = false;
-    uint32_t _pBytes = 0;   // text of the open p (pass 1: all of it; pass 2: since the last cut)
-    bool _spacerEmptyLines = false;   // empty-line used as paragraph spacing (calibre output)
+    uint32_t _pBytes = 0;  // text of the open p (pass 1: all of it; pass 2: since the last cut)
+    bool _spacerEmptyLines = false;  // empty-line used as paragraph spacing (calibre output)
     uint32_t _pCount = 0, _emptyCount = 0;
     uint32_t _genId = 0;
 
@@ -438,20 +560,20 @@ private:
     // tables from pass 1
     std::vector<uint32_t> _idHash;
     std::vector<uint16_t> _idFile;
-    std::vector<uint32_t> _imgHash;   // images in order of first reference (pass 2)
+    std::vector<uint32_t> _imgHash;  // images in order of first reference (pass 2)
     std::vector<uint8_t> _imgType;
     bool _idsOverflow = false;
 
     std::vector<bool> _imgWritten;
     // binary decode (pass 2)
     bool _inBinary = false;
-    bool _utf16 = false;          // binaries go through expat (no raw scan)
-    bool _stopped = false;        // the parse stopped at the first <binary>
+    bool _utf16 = false;  // binaries go through expat (no raw scan)
+    bool _stopped = false;  // the parse stopped at the first <binary>
     uint64_t _binaryOffset = 0;
     uint32_t _b64 = 0;
     int _b64n = 0;
     uint8_t _bin[4096];
-    uint8_t _raw[8192];   // raw image reads (sector multiples)
+    uint8_t _raw[8192];  // raw image reads (sector multiples)
     uint32_t _binLen = 0;
     int _imageCount = 0;
 
@@ -504,7 +626,7 @@ ConvertResult Fb2Converter::run() {
     r = parsePass();
     if (r != ConvertResult::Ok) return r;
     closeChapter();
-    if (_maxFile == 0) {   // no text at all: one empty chapter keeps the EPUB valid
+    if (_maxFile == 0) {  // no text at all: one empty chapter keeps the EPUB valid
         _file = 1;
         _fileHasContent = true;
         ensureChapter();
@@ -595,7 +717,7 @@ ConvertResult Fb2Converter::parsePass() {
             const char* b = static_cast<const char*>(buf);
             const uint8_t* u = static_cast<const uint8_t*>(buf);
             _utf16 = n >= 2 && ((u[0] == 0xFF && u[1] == 0xFE) || (u[0] == 0xFE && u[1] == 0xFF) || !u[0] || !u[1]);
-            bool fb = _utf16;   // (its name is in 16-bit characters there: expat decides)
+            bool fb = _utf16;  // (its name is in 16-bit characters there: expat decides)
             for (int32_t i = 0; i + 11 <= n && !fb; i++) fb = memcmp(b + i, "FictionBook", 11) == 0;
             if (!fb) {
                 r = ConvertResult::NotThisFormat;
@@ -651,7 +773,7 @@ void Fb2Converter::descStart(E e, const char** atts) {
     if (e == E_IMAGE && _depth >= 2 && _stack[_depth - 2] == E_COVERPAGE) {
         if (const char* h = attr(atts, "href")) {
             if (_coverHref.empty()) _coverHref = h;
-            if (_coverHref == h) imageRef(h);   // the cover first: number 0
+            if (_coverHref == h) imageRef(h);  // the cover first: number 0
         }
     }
 }
@@ -665,12 +787,24 @@ void Fb2Converter::descEnd(E e) {
     std::string t = _descText;
     trim(t);
     switch (e) {
-        case E_BOOK_TITLE: if (_bookTitle.empty()) _bookTitle = t; break;
-        case E_FIRST: _authorFirst = t; break;
-        case E_MIDDLE: _authorMiddle = t; break;
-        case E_LAST: _authorLast = t; break;
-        case E_NICK: _authorNick = t; break;
-        case E_LANG: if (_lang.empty()) _lang = t; break;
+        case E_BOOK_TITLE:
+            if (_bookTitle.empty()) _bookTitle = t;
+            break;
+        case E_FIRST:
+            _authorFirst = t;
+            break;
+        case E_MIDDLE:
+            _authorMiddle = t;
+            break;
+        case E_LAST:
+            _authorLast = t;
+            break;
+        case E_NICK:
+            _authorNick = t;
+            break;
+        case E_LANG:
+            if (_lang.empty()) _lang = t;
+            break;
         case E_AUTHOR: {
             std::string a = _authorFirst;
             if (!_authorMiddle.empty()) a += (a.empty() ? "" : " ") + _authorMiddle;
@@ -683,7 +817,8 @@ void Fb2Converter::descEnd(E e) {
             if (_annotation.empty()) _annotation = t;
             _inAnnotation = false;
             break;
-        default: break;
+        default:
+            break;
     }
     if (_inAnnotation) {
         if (e == E_P && !_descText.empty() && _descText.back() != ' ') _descText += ' ';
@@ -717,9 +852,12 @@ void Fb2Converter::emitText(const char* s, int len) {
     int from = 0;
     for (int i = 0; i < len; i++) {
         const char* rep = nullptr;
-        if (s[i] == '&') rep = "&amp;";
-        else if (s[i] == '<') rep = "&lt;";
-        else if (s[i] == '>') rep = "&gt;";
+        if (s[i] == '&')
+            rep = "&amp;";
+        else if (s[i] == '<')
+            rep = "&lt;";
+        else if (s[i] == '>')
+            rep = "&gt;";
         if (rep) {
             emit(s + from, (uint32_t)(i - from));
             emit(rep);
@@ -742,10 +880,10 @@ void Fb2Converter::ensureChapter() {
     _zip.open(name);
     _chapterOpen = true;
     std::string head =
-        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html>\n"
-        "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"" + xmlEscape(_lang.empty() ? "en" : _lang) +
-        "\"><head><title>" + xmlEscape(_bookTitle) +
-        "</title><link rel=\"stylesheet\" type=\"text/css\" href=\"style.css\"/></head><body>\n";
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html>\n"
+            "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"" +
+            xmlEscape(_lang.empty() ? "en" : _lang) + "\"><head><title>" + xmlEscape(_bookTitle) +
+            "</title><link rel=\"stylesheet\" type=\"text/css\" href=\"style.css\"/></head><body>\n";
     emit(head.data(), (uint32_t)head.size());
 }
 
@@ -782,7 +920,7 @@ bool Fb2Converter::chainOnly() const {
 // first child of the one above: the map says where they and the next child
 // stand among foliate's ("F <file> <section> <o1> ... <on>").
 void Fb2Converter::splitFile() {
-    const int top = _depth - 2;   // the innermost open element (the new one is at _depth - 1)
+    const int top = _depth - 2;  // the innermost open element (the new one is at _depth - 1)
     for (int i = top; i >= _rootDepth; i--) emitClose(i);
     closeChapter();
     _file++;
@@ -810,15 +948,17 @@ void Fb2Converter::ourPath(int d, std::string& out) const {
 
 // No line breaks of our own between tags: a text node is foliate's text as it
 // is, and a CFI counts its characters (spaces too).
-void Fb2Converter::reopen(int d) {
-    emit(_kind[d] == K_ROOT ? "<section class=\"notes\">" : "<section>");
-}
+void Fb2Converter::reopen(int d) { emit(_kind[d] == K_ROOT ? "<section class=\"notes\">" : "<section>"); }
 
 void Fb2Converter::emitClose(int d) {
     switch (_kind[d]) {
         case K_ROOT:
-        case K_SECTION: emit("</section>"); break;
-        case K_HEADER: emit("</div>"); break;
+        case K_SECTION:
+            emit("</section>");
+            break;
+        case K_HEADER:
+            emit("</div>");
+            break;
         case K_HLINE: {
             char tag[8];
             snprintf(tag, sizeof(tag), "</h%u>", (unsigned)_hLevel[d - 1]);
@@ -830,20 +970,40 @@ void Fb2Converter::emitClose(int d) {
             emit("</p>");
             if (_wrapped[d]) emit("</div>");
             break;
-        case K_QUOTE: emit("</blockquote>"); break;
-        case K_ASIDE: emit("</aside>"); break;
-        case K_TABLE: emit("</table>"); break;
-        case K_TR: emit("</tr>"); break;
-        case K_TD: emit("</td>"); break;
-        case K_TH: emit("</th>"); break;
+        case K_QUOTE:
+            emit("</blockquote>");
+            break;
+        case K_ASIDE:
+            emit("</aside>");
+            break;
+        case K_TABLE:
+            emit("</table>");
+            break;
+        case K_TR:
+            emit("</tr>");
+            break;
+        case K_TD:
+            emit("</td>");
+            break;
+        case K_TH:
+            emit("</th>");
+            break;
         case K_INLINE: {
-            static const char* const close[] = {"</em>", "</strong>", "</del>", "</sub>", "</sup>", "</code>", "</span>"};
+            static const char* const close[] = {"</em>",  "</strong>", "</del>", "</sub>",
+                                                "</sup>", "</code>",   "</span>"};
             const E e = _stack[d];
-            emit(close[e == E_EMPHASIS ? 0 : e == E_STRONG ? 1 : e == E_STRIKE ? 2 : e == E_SUB ? 3 : e == E_SUP ? 4
-                         : e == E_CODE ? 5 : 6]);
+            emit(close[e == E_EMPHASIS ? 0
+                       : e == E_STRONG ? 1
+                       : e == E_STRIKE ? 2
+                       : e == E_SUB    ? 3
+                       : e == E_SUP    ? 4
+                       : e == E_CODE   ? 5
+                                       : 6]);
             break;
         }
-        case K_A: emit("</a>"); break;
+        case K_A:
+            emit("</a>");
+            break;
         case K_STANZA:
             for (const std::string& v : _stanzaV) {
                 emitText(v.data(), (int)v.size());
@@ -852,8 +1012,11 @@ void Fb2Converter::emitClose(int d) {
             _stanzaV.clear();
             emit("</p>");
             break;
-        case K_STRONGLINE: emit("</strong>"); break;
-        default: break;   // K_EMPTY and K_IMG are written whole when opened
+        case K_STRONGLINE:
+            emit("</strong>");
+            break;
+        default:
+            break;  // K_EMPTY and K_IMG are written whole when opened
     }
 }
 
@@ -883,7 +1046,7 @@ void Fb2Converter::emitOpen(int d, const char** atts, const char* ownId) {
                 _sectionDepth++;
                 if (_sectionDepth == 1) _topSectionsSeen++;
                 for (int t = 1; t < _sectionDepth && t <= 3; t++)
-                    if (!_toc[t].labelled) tocFinishOpen(t);   // parents without a title so far
+                    if (!_toc[t].labelled) tocFinishOpen(t);  // parents without a title so far
                 if (_sectionDepth <= 3) {
                     if (anchor.empty()) anchor = "fb2s" + std::to_string(++_genId);
                     TocOpen& t = _toc[_sectionDepth];
@@ -901,9 +1064,12 @@ void Fb2Converter::emitOpen(int d, const char** atts, const char* ownId) {
         case K_HEADER: {
             const bool stanza = _kind[parent] == K_STANZA;
             int level;
-            if (parent == _bodyDepth && _body == 1) level = 1;                     // the book's title
-            else if (_body > 1) level = _kind[parent] == K_ROOT ? 2 : 4;          // notes
-            else level = std::min(_sectionDepth + 1, 6);
+            if (parent == _bodyDepth && _body == 1)
+                level = 1;  // the book's title
+            else if (_body > 1)
+                level = _kind[parent] == K_ROOT ? 2 : 4;  // notes
+            else
+                level = std::min(_sectionDepth + 1, 6);
             _hLevel[d] = (uint8_t)level;
             if (!stanza && _kind[parent] == K_SECTION && _body == 1) {
                 _titleDepth = d;
@@ -924,8 +1090,11 @@ void Fb2Converter::emitOpen(int d, const char** atts, const char* ownId) {
         }
         case K_P:
         case K_SUBTITLE: {
-            const char* cls = k == K_SUBTITLE ? "subtitle" : e == E_TEXT_AUTHOR ? "text-author" : e == E_DATE ? "date"
-                            : e == E_SUBTITLE ? "subtitle" : nullptr;
+            const char* cls = k == K_SUBTITLE      ? "subtitle"
+                              : e == E_TEXT_AUTHOR ? "text-author"
+                              : e == E_DATE        ? "date"
+                              : e == E_SUBTITLE    ? "subtitle"
+                                                   : nullptr;
             _wrapped[d] = false;
             if (k == K_P) {
                 _pOrdinal++;
@@ -950,7 +1119,9 @@ void Fb2Converter::emitOpen(int d, const char** atts, const char* ownId) {
             withId("blockquote", e == E_EPIGRAPH ? "epigraph" : e == E_CITE ? "cite" : "poem", ownId);
             emit("");
             break;
-        case K_ASIDE: withId("aside", nullptr, ownId); break;
+        case K_ASIDE:
+            withId("aside", nullptr, ownId);
+            break;
         case K_EMPTY: {
             const X x = _ctx[parent];
             if (x == X_STITLE) {
@@ -975,13 +1146,18 @@ void Fb2Converter::emitOpen(int d, const char** atts, const char* ownId) {
                 emit(src);
                 emit("\" alt=\"\"/>");
             } else if (inlineImg) {
-                emit("<span></span>");   // still an element, as foliate's img without a picture
+                emit("<span></span>");  // still an element, as foliate's img without a picture
             }
             if (!inlineImg) emit("</div>");
             break;
         }
-        case K_TABLE: withId("table", nullptr, ownId); emit(""); break;
-        case K_TR: withId("tr", nullptr, ownId); break;
+        case K_TABLE:
+            withId("table", nullptr, ownId);
+            emit("");
+            break;
+        case K_TR:
+            withId("tr", nullptr, ownId);
+            break;
         case K_TD:
         case K_TH: {
             emit(k == K_TD ? "<td" : "<th");
@@ -1004,8 +1180,14 @@ void Fb2Converter::emitOpen(int d, const char** atts, const char* ownId) {
         }
         case K_INLINE: {
             static const char* const tag[] = {"em", "strong", "del", "sub", "sup", "code", "span"};
-            withId(tag[e == E_EMPHASIS ? 0 : e == E_STRONG ? 1 : e == E_STRIKE ? 2 : e == E_SUB ? 3 : e == E_SUP ? 4
-                       : e == E_CODE ? 5 : 6], nullptr, ownId);
+            withId(tag[e == E_EMPHASIS ? 0
+                       : e == E_STRONG ? 1
+                       : e == E_STRIKE ? 2
+                       : e == E_SUB    ? 3
+                       : e == E_SUP    ? 4
+                       : e == E_CODE   ? 5
+                                       : 6],
+                   nullptr, ownId);
             break;
         }
         case K_A: {
@@ -1030,8 +1212,11 @@ void Fb2Converter::emitOpen(int d, const char** atts, const char* ownId) {
             _stanzaV.clear();
             withId("p", "stanza", ownId);
             break;
-        case K_STRONGLINE: withId("strong", nullptr, ownId); break;
-        default: break;
+        case K_STRONGLINE:
+            withId("strong", nullptr, ownId);
+            break;
+        default:
+            break;
     }
 }
 
@@ -1067,7 +1252,7 @@ void Fb2Converter::binaryStart(const char* id, const char* contentType) {
     int idx = -1;
     for (size_t i = 0; i < _imgHash.size(); i++)
         if (_imgHash[i] == h) idx = (int)i;
-    if (idx < 0 || _imgWritten[idx]) return;   // never shown, or a duplicate id
+    if (idx < 0 || _imgWritten[idx]) return;  // never shown, or a duplicate id
     _imgWritten[idx] = true;
     _imgType[idx] = imageType(contentType);
     char nm[32];
@@ -1084,7 +1269,7 @@ void Fb2Converter::binaryData(const char* s, int len) {
     if (!_inBinary) return;
     for (int i = 0; i < len; i++) {
         const int v = g_b64[(uint8_t)s[i]];
-        if (v < 0) continue;   // whitespace, '=' padding
+        if (v < 0) continue;  // whitespace, '=' padding
         _b64 = (_b64 << 6) | (uint32_t)v;
         if (++_b64n == 4) {
             _bin[_binLen++] = (uint8_t)(_b64 >> 16);
@@ -1092,7 +1277,7 @@ void Fb2Converter::binaryData(const char* s, int len) {
             _bin[_binLen++] = (uint8_t)_b64;
             _b64n = 0;
             _b64 = 0;
-            if (_binLen + 5 > sizeof(_bin)) {   // room for the padded tail too
+            if (_binLen + 5 > sizeof(_bin)) {  // room for the padded tail too
                 _zip.write(_bin, _binLen);
                 _binLen = 0;
             }
@@ -1153,8 +1338,8 @@ ConvertResult Fb2Converter::rawBinaries(uint64_t offset) {
                     continue;
                 }
                 st = TEXT;
-                if (tag.compare(0, 6, "binary") != 0 || (tag.size() > 6 && tag[6] != ' ' && tag[6] != '\t' &&
-                                                          tag[6] != '\n' && tag[6] != '\r'))
+                if (tag.compare(0, 6, "binary") != 0 ||
+                    (tag.size() > 6 && tag[6] != ' ' && tag[6] != '\t' && tag[6] != '\n' && tag[6] != '\r'))
                     continue;
                 auto value = [&](const char* name) -> std::string {
                     for (size_t at = 0; (at = tag.find(name, at)) != std::string::npos; at++) {
@@ -1279,7 +1464,7 @@ void Fb2Converter::start(const char* name, const char** atts) {
         }
         return;
     }
-    if (_bodyDepth < 0) return;   // outside description, bodies and binaries: nothing to show
+    if (_bodyDepth < 0) return;  // outside description, bodies and binaries: nothing to show
 
     const int parent = d - 1;
     const K pk = _kind[parent];
@@ -1287,7 +1472,7 @@ void Fb2Converter::start(const char* name, const char** atts) {
         _kind[d] = K_DROP;
         return;
     }
-    if (pk == K_V || pk == K_VINNER) {   // a stanza line's inline markup: its text only
+    if (pk == K_V || pk == K_VINNER) {  // a stanza line's inline markup: its text only
         _kind[d] = K_VINNER;
         return;
     }
@@ -1332,7 +1517,7 @@ void Fb2Converter::start(const char* name, const char** atts) {
         _folIdx[d] = _folCount[parent]++;
         _ourIdx[d] = _ourCount[parent]++;
         if (r.k != K_SECTION) _nonChain++;
-        if (pk == K_P) _slotUnits = 0;   // a child element of the paragraph: a new text slot after it
+        if (pk == K_P) _slotUnits = 0;  // a child element of the paragraph: a new text slot after it
     }
     if (r.k == K_P && _pass == 1) {
         _pOrdinal++;
@@ -1432,8 +1617,10 @@ void Fb2Converter::end(const char*) {
             if (_titleDepth == d) {
                 _titleDepth = -1;
                 trim(_titleText);
-                if (_body > 1) tocLabel(1, _titleText);
-                else if (_sectionDepth >= 1) tocLabel(_sectionDepth, _titleText);
+                if (_body > 1)
+                    tocLabel(1, _titleText);
+                else if (_sectionDepth >= 1)
+                    tocLabel(_sectionDepth, _titleText);
             }
             return;
         case K_P:
@@ -1452,8 +1639,10 @@ void Fb2Converter::end(const char*) {
                     } else {
                         _collectFirstPara = false;
                         std::string label = _heldLabel;
-                        if (label.empty()) label = t.size() <= 80 ? t : std::string();
-                        else if (t.size() <= 60) label += " " + t;
+                        if (label.empty())
+                            label = t.size() <= 80 ? t : std::string();
+                        else if (t.size() <= 60)
+                            label += " " + t;
                         _heldLabel.clear();
                         if (!label.empty() && _topSections > 1) tocLabel(1, label);
                     }
@@ -1490,7 +1679,7 @@ void Fb2Converter::text(const char* s, int len) {
         _vText.append(s, (size_t)len);
         return;
     }
-    if (!isElement(k)) return;   // dropped, or between the first body's sections
+    if (!isElement(k)) return;  // dropped, or between the first body's sections
     if (k == K_EMPTY || k == K_IMG) return;
     if (_titleDepth >= 0) appendCollapsed(_titleText, s, len, 400);
     if (_pDepth >= 0) {
@@ -1510,12 +1699,13 @@ void Fb2Converter::text(const char* s, int len) {
         // space. The map says where each piece starts in foliate's p: after how
         // many of its child elements, how far into the text there.
         while (_pBytes > kParLimit && len > 0) {
-            const uint32_t before = _pBytes - (uint32_t)len;   // this p's text before this chunk, since the last cut
+            const uint32_t before = _pBytes - (uint32_t)len;  // this p's text before this chunk, since the last cut
             const int room = before < kParLimit ? (int)(kParLimit - before) : 0;
             int cut = room < len ? room : len;
-            int sentence = cut;   // the end of a sentence in the last ~800 bytes reads best, else a space
+            int sentence = cut;  // the end of a sentence in the last ~800 bytes reads best, else a space
             while (sentence > 1 && cut - sentence < 800 &&
-                   !(s[sentence - 1] == ' ' && (s[sentence - 2] == '.' || s[sentence - 2] == '!' || s[sentence - 2] == '?')))
+                   !(s[sentence - 1] == ' ' &&
+                     (s[sentence - 2] == '.' || s[sentence - 2] == '!' || s[sentence - 2] == '?')))
                 sentence--;
             if (sentence > 1 && cut - sentence < 800) cut = sentence;
             while (cut > 0 && s[cut - 1] != ' ') cut--;
@@ -1543,10 +1733,10 @@ void Fb2Converter::text(const char* s, int len) {
 bool Fb2Converter::writeNcx() {
     const std::string uid = "fb2-" + std::to_string(hashId(_bookTitle.c_str()));
     std::string s =
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-        "<ncx xmlns=\"http://www.daisy.org/z3986/2005/ncx/\" version=\"2005-1\"><head>"
-        "<meta name=\"dtb:uid\" content=\"" + uid + "\"/></head><docTitle><text>" + xmlEscape(_bookTitle) +
-        "</text></docTitle><navMap>\n";
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            "<ncx xmlns=\"http://www.daisy.org/z3986/2005/ncx/\" version=\"2005-1\"><head>"
+            "<meta name=\"dtb:uid\" content=\"" +
+            uid + "\"/></head><docTitle><text>" + xmlEscape(_bookTitle) + "</text></docTitle><navMap>\n";
     if (!_zip.open("OEBPS/toc.ncx")) return false;
     _zip.write(s.data(), (uint32_t)s.size());
     uint32_t order = 0;
@@ -1565,14 +1755,15 @@ bool Fb2Converter::writeNcx() {
         // can go from part to part.
         for (uint16_t f = 1; f <= _maxFile; f++) {
             std::string raw = f <= _fileLabels.size() ? _fileLabels[f - 1] : std::string(), l;
-            for (size_t at; (at = raw.find("\xC2\xA0")) != std::string::npos;) raw.replace(at, 2, " ");   // no-break spaces
+            for (size_t at; (at = raw.find("\xC2\xA0")) != std::string::npos;)
+                raw.replace(at, 2, " ");  // no-break spaces
             appendCollapsed(l, raw.data(), (int)raw.size(), raw.size());
             trim(l);
-            if (l.size() > 56) {   // bytes: ~28 Cyrillic letters
+            if (l.size() > 56) {  // bytes: ~28 Cyrillic letters
                 size_t cut = l.rfind(' ', 56);
                 if (cut == std::string::npos || cut < 24) {
                     cut = 56;
-                    while (cut > 0 && ((uint8_t)l[cut] & 0xC0) == 0x80) cut--;   // not inside a UTF-8 character
+                    while (cut > 0 && ((uint8_t)l[cut] & 0xC0) == 0x80) cut--;  // not inside a UTF-8 character
                 }
                 l.resize(cut);
                 l += "\xE2\x80\xA6";
@@ -1608,7 +1799,7 @@ bool Fb2Converter::writeNcx() {
             open--;
         }
     }
-    if (order == 0) {   // no contents in the book: the whole book as one entry
+    if (order == 0) {  // no contents in the book: the whole book as one entry
         navPoint(_bookTitle.empty() ? std::string("1") : _bookTitle, 1, std::string());
         _zip.write("</navPoint>\n", 12);
     }
@@ -1666,8 +1857,7 @@ bool Fb2Converter::writeOpf() {
 
 }  // namespace
 
-ConvertResult fb2ToEpub(InFile& in, OutFile& out, TempFile& tmp, ProgressFn progress, void* user,
-                        ConvertStats* stats) {
+ConvertResult fb2ToEpub(InFile& in, OutFile& out, TempFile& tmp, ProgressFn progress, void* user, ConvertStats* stats) {
     ConvertStats local;
     ConvertStats& s = stats ? *stats : local;
     Fb2Converter* c = new (std::nothrow) Fb2Converter(in, out, tmp, progress, user, s);

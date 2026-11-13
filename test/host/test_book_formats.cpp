@@ -6,8 +6,14 @@
 #include <vector>
 
 static int g_failed = 0, g_checks = 0;
-#define CHECK(cond) do { g_checks++; if (!(cond)) { g_failed++; \
-    printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); } } while (0)
+#define CHECK(cond)                                                  \
+    do {                                                             \
+        g_checks++;                                                  \
+        if (!(cond)) {                                               \
+            g_failed++;                                              \
+            printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
+        }                                                            \
+    } while (0)
 
 using namespace BookFormats;
 
@@ -59,9 +65,11 @@ static void testUrls() {
     CHECK(compactUrl("/api/v1/opds/4/download?fileId=7&selection=x", "4", 7) ==
           "/api/v1/opds/4/download?fileId=7&selection=x");
     CHECK(compactUrl("/api/v1/opds/4/download?fileId=7", "4", 8) == "/api/v1/opds/4/download?fileId=7");
-    CHECK(compactUrl("/api/v1/opds/ab/download?fileId=7", "ab", 7) == "/api/v1/opds/ab/download?fileId=7");   // not numeric
+    CHECK(compactUrl("/api/v1/opds/ab/download?fileId=7", "ab", 7) ==
+          "/api/v1/opds/ab/download?fileId=7");   // not numeric
     CHECK(compactUrl("/x", "", 7) == "/x");
-    Ref r; r.fileId = 5;
+    Ref r;
+    r.fileId = 5;
     CHECK(urlFor(r, "4") == "/api/v1/opds/4/download?fileId=5");
     CHECK(urlFor(r, "").empty());
     r.url = "/other";
@@ -73,12 +81,18 @@ static void testUrls() {
 static void testPreferred() {
     std::vector<Ref> refs;
     CHECK(preferred(refs) == -1);
-    Ref fb2; fb2.kind = Fb2;
-    Ref mobi; mobi.kind = Mobi;
-    Ref epub; epub.kind = Epub;
-    Ref txt; txt.kind = Txt;
-    Ref azw3; azw3.kind = Azw3;
-    Ref unknown; unknown.kind = Unknown;
+    Ref fb2;
+    fb2.kind = Fb2;
+    Ref mobi;
+    mobi.kind = Mobi;
+    Ref epub;
+    epub.kind = Epub;
+    Ref txt;
+    txt.kind = Txt;
+    Ref azw3;
+    azw3.kind = Azw3;
+    Ref unknown;
+    unknown.kind = Unknown;
     refs = {unknown, unknown};
     CHECK(preferred(refs) == 0);          // nothing readable: the first
     refs = {unknown, txt, azw3};

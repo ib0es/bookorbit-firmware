@@ -16,17 +16,24 @@ namespace convert {
 namespace {
 
 uint16_t be16(const uint8_t* p) { return (uint16_t)((p[0] << 8) | p[1]); }
-uint32_t be32(const uint8_t* p) { return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | p[3]; }
+uint32_t be32(const uint8_t* p) {
+    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | p[3];
+}
 
 std::string xmlEscape(const std::string& s) {
     std::string o;
     o.reserve(s.size() + 8);
     for (char c : s) {
-        if (c == '&') o += "&amp;";
-        else if (c == '<') o += "&lt;";
-        else if (c == '>') o += "&gt;";
-        else if (c == '"') o += "&quot;";
-        else o += c;
+        if (c == '&')
+            o += "&amp;";
+        else if (c == '<')
+            o += "&lt;";
+        else if (c == '>')
+            o += "&gt;";
+        else if (c == '"')
+            o += "&quot;";
+        else
+            o += c;
     }
     return o;
 }
@@ -159,13 +166,26 @@ bool parseRecord0(const uint8_t* r, uint32_t n, MobiHeader& h) {
             const uint32_t vl = len - 8;
             std::string s((const char*)v, vl);
             switch (type) {
-                case 100: if (h.authors.size() < 8) h.authors.push_back(s); break;
-                case 503: h.title = s; break;
-                case 524: h.lang = s; break;
-                case 103: if (h.description.empty()) h.description = s; break;
-                case 121: if (vl >= 4) h.kf8Boundary = be32(v); break;
-                case 201: if (vl >= 4) h.coverOffset = be32(v); break;
-                default: break;
+                case 100:
+                    if (h.authors.size() < 8) h.authors.push_back(s);
+                    break;
+                case 503:
+                    h.title = s;
+                    break;
+                case 524:
+                    h.lang = s;
+                    break;
+                case 103:
+                    if (h.description.empty()) h.description = s;
+                    break;
+                case 121:
+                    if (vl >= 4) h.kf8Boundary = be32(v);
+                    break;
+                case 201:
+                    if (vl >= 4) h.coverOffset = be32(v);
+                    break;
+                default:
+                    break;
             }
             p += len;
         }
@@ -266,7 +286,9 @@ bool readIndex(PalmDb& db, uint32_t idx, IndexTable& t, uint32_t maxEntries = 20
     if (tagx == 0 || tagx + 12 > h.size()) tagx = be32(&h[4]);
     if (tagx + 12 > h.size() || memcmp(&h[tagx], "TAGX", 4) != 0) return false;
     const uint32_t first = be32(&h[tagx + 4]), cbc = be32(&h[tagx + 8]);
-    struct TagX { uint8_t tag, values, mask, eof; };
+    struct TagX {
+        uint8_t tag, values, mask, eof;
+    };
     std::vector<TagX> tags;
     for (uint32_t i = tagx + 12; i + 4 <= tagx + first && i + 4 <= h.size(); i += 4)
         tags.push_back({h[i], h[i + 1], h[i + 2], h[i + 3]});
@@ -291,7 +313,11 @@ bool readIndex(PalmDb& db, uint32_t idx, IndexTable& t, uint32_t maxEntries = 20
             std::vector<uint8_t> cb(d.begin() + p, d.begin() + std::min<uint32_t>(p + cbc, ep));
             p += cbc;
             size_t cbi = 0;
-            struct PTag { uint8_t tag; uint32_t count, bytes; uint8_t values; };
+            struct PTag {
+                uint8_t tag;
+                uint32_t count, bytes;
+                uint8_t values;
+            };
             std::vector<PTag> pt;
             for (const TagX& x : tags) {
                 if (x.eof) {
@@ -302,8 +328,10 @@ bool readIndex(PalmDb& db, uint32_t idx, IndexTable& t, uint32_t maxEntries = 20
                 uint32_t v = cb[cbi] & x.mask;
                 if (!v) continue;
                 if (v == x.mask) {
-                    if (__builtin_popcount(x.mask) > 1) pt.push_back({x.tag, 0, decint(d.data(), ep, p), x.values});
-                    else pt.push_back({x.tag, 1, 0, x.values});
+                    if (__builtin_popcount(x.mask) > 1)
+                        pt.push_back({x.tag, 0, decint(d.data(), ep, p), x.values});
+                    else
+                        pt.push_back({x.tag, 1, 0, x.values});
                 } else {
                     uint8_t m = x.mask;
                     while (!(m & 1)) {
@@ -333,9 +361,12 @@ uint32_t base32(const char* s, size_t n) {
     uint32_t v = 0;
     for (size_t i = 0; i < n; i++) {
         const char c = (char)toupper((unsigned char)s[i]);
-        if (c >= '0' && c <= '9') v = v * 32 + (uint32_t)(c - '0');
-        else if (c >= 'A' && c <= 'V') v = v * 32 + (uint32_t)(c - 'A' + 10);
-        else break;
+        if (c >= '0' && c <= '9')
+            v = v * 32 + (uint32_t)(c - '0');
+        else if (c >= 'A' && c <= 'V')
+            v = v * 32 + (uint32_t)(c - 'A' + 10);
+        else
+            break;
     }
     return v;
 }
@@ -364,7 +395,8 @@ void parseTag(const std::string& raw, Tag& t) {
         t.end = true;
         i++;
     }
-    while (i < n && !isspace((unsigned char)raw[i]) && raw[i] != '/' && raw[i] != '>') t.name += (char)tolower(raw[i++]);
+    while (i < n && !isspace((unsigned char)raw[i]) && raw[i] != '/' && raw[i] != '>')
+        t.name += (char)tolower(raw[i++]);
     while (i < n) {
         while (i < n && (isspace((unsigned char)raw[i]) || raw[i] == '/')) {
             if (raw[i] == '/' && i + 1 >= n) t.selfClose = true;
@@ -372,7 +404,8 @@ void parseTag(const std::string& raw, Tag& t) {
         }
         if (i >= n) break;
         std::string an, av;
-        while (i < n && !isspace((unsigned char)raw[i]) && raw[i] != '=' && raw[i] != '/') an += (char)tolower(raw[i++]);
+        while (i < n && !isspace((unsigned char)raw[i]) && raw[i] != '=' && raw[i] != '/')
+            an += (char)tolower(raw[i++]);
         while (i < n && isspace((unsigned char)raw[i])) i++;
         if (i < n && raw[i] == '=') {
             i++;
@@ -402,24 +435,28 @@ struct ElemInfo {
     Kind kind;
 };
 const ElemInfo kElems[] = {
-    {"p", "p", K_BLOCK}, {"div", "div", K_BLOCK}, {"h1", "h1", K_BLOCK}, {"h2", "h2", K_BLOCK},
-    {"h3", "h3", K_BLOCK}, {"h4", "h4", K_BLOCK}, {"h5", "h5", K_BLOCK}, {"h6", "h6", K_BLOCK},
-    {"blockquote", "blockquote", K_BLOCK}, {"center", "div", K_BLOCK}, {"pre", "pre", K_BLOCK},
-    {"table", "table", K_BLOCK}, {"tbody", "tbody", K_BLOCK}, {"thead", "thead", K_BLOCK},
-    {"tfoot", "tfoot", K_BLOCK}, {"tr", "tr", K_BLOCK}, {"td", "td", K_BLOCK}, {"th", "th", K_BLOCK},
-    {"ul", "ul", K_BLOCK}, {"ol", "ol", K_BLOCK}, {"li", "li", K_BLOCK}, {"dl", "dl", K_BLOCK},
-    {"dt", "dt", K_BLOCK}, {"dd", "dd", K_BLOCK},
-    {"a", "a", K_INLINE}, {"b", "b", K_INLINE}, {"i", "i", K_INLINE}, {"u", "u", K_INLINE},
-    {"em", "em", K_INLINE}, {"strong", "strong", K_INLINE}, {"span", "span", K_INLINE}, {"font", "span", K_INLINE},
-    {"sub", "sub", K_INLINE}, {"sup", "sup", K_INLINE}, {"small", "small", K_INLINE}, {"big", "big", K_INLINE},
-    {"code", "code", K_INLINE}, {"tt", "code", K_INLINE}, {"s", "del", K_INLINE}, {"strike", "del", K_INLINE},
-    {"del", "del", K_INLINE}, {"ins", "ins", K_INLINE}, {"cite", "cite", K_INLINE}, {"q", "q", K_INLINE},
-    {"var", "var", K_INLINE}, {"kbd", "kbd", K_INLINE}, {"abbr", "abbr", K_INLINE},
-    {"br", "br", K_VOID}, {"hr", "hr", K_VOID}, {"img", "img", K_VOID}, {"image", "img", K_VOID},
-    {"section", "div", K_BLOCK}, {"article", "div", K_BLOCK}, {"aside", "div", K_BLOCK}, {"nav", "div", K_BLOCK},
-    {"header", "div", K_BLOCK}, {"footer", "div", K_BLOCK}, {"main", "div", K_BLOCK}, {"figure", "div", K_BLOCK},
-    {"figcaption", "div", K_BLOCK},
-    {"head", "", K_SKIP}, {"script", "", K_SKIP}, {"style", "", K_SKIP}, {"title", "", K_SKIP},
+        {"p", "p", K_BLOCK},         {"div", "div", K_BLOCK},      {"h1", "h1", K_BLOCK},
+        {"h2", "h2", K_BLOCK},       {"h3", "h3", K_BLOCK},        {"h4", "h4", K_BLOCK},
+        {"h5", "h5", K_BLOCK},       {"h6", "h6", K_BLOCK},        {"blockquote", "blockquote", K_BLOCK},
+        {"center", "div", K_BLOCK},  {"pre", "pre", K_BLOCK},      {"table", "table", K_BLOCK},
+        {"tbody", "tbody", K_BLOCK}, {"thead", "thead", K_BLOCK},  {"tfoot", "tfoot", K_BLOCK},
+        {"tr", "tr", K_BLOCK},       {"td", "td", K_BLOCK},        {"th", "th", K_BLOCK},
+        {"ul", "ul", K_BLOCK},       {"ol", "ol", K_BLOCK},        {"li", "li", K_BLOCK},
+        {"dl", "dl", K_BLOCK},       {"dt", "dt", K_BLOCK},        {"dd", "dd", K_BLOCK},
+        {"a", "a", K_INLINE},        {"b", "b", K_INLINE},         {"i", "i", K_INLINE},
+        {"u", "u", K_INLINE},        {"em", "em", K_INLINE},       {"strong", "strong", K_INLINE},
+        {"span", "span", K_INLINE},  {"font", "span", K_INLINE},   {"sub", "sub", K_INLINE},
+        {"sup", "sup", K_INLINE},    {"small", "small", K_INLINE}, {"big", "big", K_INLINE},
+        {"code", "code", K_INLINE},  {"tt", "code", K_INLINE},     {"s", "del", K_INLINE},
+        {"strike", "del", K_INLINE}, {"del", "del", K_INLINE},     {"ins", "ins", K_INLINE},
+        {"cite", "cite", K_INLINE},  {"q", "q", K_INLINE},         {"var", "var", K_INLINE},
+        {"kbd", "kbd", K_INLINE},    {"abbr", "abbr", K_INLINE},   {"br", "br", K_VOID},
+        {"hr", "hr", K_VOID},        {"img", "img", K_VOID},       {"image", "img", K_VOID},
+        {"section", "div", K_BLOCK}, {"article", "div", K_BLOCK},  {"aside", "div", K_BLOCK},
+        {"nav", "div", K_BLOCK},     {"header", "div", K_BLOCK},   {"footer", "div", K_BLOCK},
+        {"main", "div", K_BLOCK},    {"figure", "div", K_BLOCK},   {"figcaption", "div", K_BLOCK},
+        {"head", "", K_SKIP},        {"script", "", K_SKIP},       {"style", "", K_SKIP},
+        {"title", "", K_SKIP},
 };
 
 const ElemInfo* elemInfo(const std::string& n) {
@@ -466,11 +503,11 @@ constexpr uint32_t kHardSplit = 64 * 1024;   // a file never grows past this (so
 constexpr int kMaxStack = 48;
 
 const char* const kCss =
-    "body{margin:0}\n"
-    "p{margin:0;text-align:justify}\n"
-    "h1,h2,h3,h4,h5,h6{text-align:center;margin:1em 0 0.5em 0}\n"
-    "div.center{text-align:center}\n"
-    "blockquote{margin:0.5em 0 0.5em 2em}\n";
+        "body{margin:0}\n"
+        "p{margin:0;text-align:justify}\n"
+        "h1,h2,h3,h4,h5,h6{text-align:center;margin:1em 0 0.5em 0}\n"
+        "div.center{text-align:center}\n"
+        "blockquote{margin:0.5em 0 0.5em 2em}\n";
 
 // ------------------------------------------------------------------ converter
 
@@ -567,8 +604,12 @@ private:
     // KF8 (AZW3): the book is "parts" (one XHTML file each), each a skeleton
     // with fragments put into it, in the text after the skeleton.
     bool _kf8 = false;
-    struct Skel { uint32_t pos, len, frags; };
-    struct Frag { uint32_t insert, len; };
+    struct Skel {
+        uint32_t pos, len, frags;
+    };
+    struct Frag {
+        uint32_t insert, len;
+    };
     std::vector<Skel> _skels;
     std::vector<Frag> _frags;
     uint32_t _textEnd = 0;                       // end of the XHTML flow (FDST)
@@ -630,7 +671,8 @@ private:
 
 ConvertResult MobiConverter::run() {
     if (!_db.open(_in)) return ConvertResult::NotThisFormat;
-    if (memcmp(_db.type, "BOOKMOBI", 8) != 0 && memcmp(_db.type, "TEXtREAd", 8) != 0) return ConvertResult::NotThisFormat;
+    if (memcmp(_db.type, "BOOKMOBI", 8) != 0 && memcmp(_db.type, "TEXtREAd", 8) != 0)
+        return ConvertResult::NotThisFormat;
     const int32_t n0 = _db.read(0, _rec, sizeof(_rec));
     if (n0 < 16 || !parseRecord0(_rec, (uint32_t)n0, _h)) return ConvertResult::ParseError;
     if (_h.encryption != 0) {
@@ -766,7 +808,8 @@ ConvertResult MobiConverter::pass(int which) {
             }
             if (!feedText(skelAt, sk.pos + sk.len - skelAt, asmPos)) return ConvertResult::IoError;
             if (_progress) {
-                const int pm = (which == 1 ? 0 : 300) + (int)((which == 1 ? 300 : 500) * (uint64_t)(k + 1) / _skels.size());
+                const int pm =
+                        (which == 1 ? 0 : 300) + (int)((which == 1 ? 300 : 500) * (uint64_t)(k + 1) / _skels.size());
                 if (pm / 10 != _lastPermille / 10) {
                     _lastPermille = pm;
                     _progress(_user, pm);
@@ -868,8 +911,10 @@ std::string MobiConverter::toUtf8(const std::string& s) const {
     if (_h.encoding == 65001) return s;
     std::string o;
     for (unsigned char c : s) {
-        if (c < 0x80) o += (char)c;
-        else putUtf8(o, c < 0xA0 ? kCp1252[c - 0x80] : c);
+        if (c < 0x80)
+            o += (char)c;
+        else
+            putUtf8(o, c < 0xA0 ? kCp1252[c - 0x80] : c);
     }
     return o;
 }
@@ -901,8 +946,10 @@ void MobiConverter::emitText(const char* s, uint32_t n) {
         if (c == '&') {
             uint32_t k = i + 1;
             while (k < n && k - i < 12 && (isalnum((unsigned char)s[k]) || s[k] == '#')) k++;
-            if (k < n && s[k] == ';' && k > i + 1) o += '&';
-            else o += "&amp;";
+            if (k < n && s[k] == ';' && k > i + 1)
+                o += '&';
+            else
+                o += "&amp;";
         } else if (c == '<') {
             o += "&lt;";
         } else if (c == '>') {
@@ -923,10 +970,10 @@ void MobiConverter::ensureChapter() {
     _zip.open(name);
     _chapterOpen = true;
     const std::string head =
-        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html>\n"
-        "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"" + xmlEscape(_h.lang.empty() ? "en" : _h.lang) +
-        "\"><head><title>" + xmlEscape(_h.title) +
-        "</title><link rel=\"stylesheet\" type=\"text/css\" href=\"style.css\"/>";
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html>\n"
+            "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"" +
+            xmlEscape(_h.lang.empty() ? "en" : _h.lang) + "\"><head><title>" + xmlEscape(_h.title) +
+            "</title><link rel=\"stylesheet\" type=\"text/css\" href=\"style.css\"/>";
     emit(head.data(), (uint32_t)head.size());
     for (int f : _cssFlows) {
         char l[96];
@@ -1078,8 +1125,10 @@ std::string MobiConverter::openTag(const Tag& t, const ElemInfo& e, const std::s
             const uint32_t target = (uint32_t)strtoul(fp, nullptr, 10);
             const uint16_t f = fileOf(target);
             char b[48];
-            if (f == _file) snprintf(b, sizeof(b), "#fp%u", (unsigned)target);
-            else snprintf(b, sizeof(b), "c%04u.xhtml#fp%u", (unsigned)f, (unsigned)target);
+            if (f == _file)
+                snprintf(b, sizeof(b), "#fp%u", (unsigned)target);
+            else
+                snprintf(b, sizeof(b), "c%04u.xhtml#fp%u", (unsigned)f, (unsigned)target);
             href = b;
         } else if (const char* h = t.get("href")) {
             href = strncmp(h, "kindle:", 7) == 0 ? kindleLink(h) : toUtf8(h);
@@ -1134,8 +1183,10 @@ std::string MobiConverter::kindleLink(const char* v) {
     if (target == UINT32_MAX) return std::string();
     const uint16_t f = fileOf(target);
     char b[48];
-    if (f == _file) snprintf(b, sizeof(b), "#fp%u", (unsigned)target);
-    else snprintf(b, sizeof(b), "c%04u.xhtml#fp%u", (unsigned)f, (unsigned)target);
+    if (f == _file)
+        snprintf(b, sizeof(b), "#fp%u", (unsigned)target);
+    else
+        snprintf(b, sizeof(b), "c%04u.xhtml#fp%u", (unsigned)f, (unsigned)target);
     return b;
 }
 
@@ -1201,7 +1252,7 @@ void MobiConverter::onTag(const std::string& raw, uint32_t offset) {
                 const uint32_t target = (uint32_t)_tocLink;
                 const uint16_t ll = (uint16_t)std::min<size_t>(l.size(), 600);
                 uint8_t h[6] = {(uint8_t)(target >> 24), (uint8_t)(target >> 16), (uint8_t)(target >> 8),
-                                (uint8_t)target, (uint8_t)(ll >> 8), (uint8_t)ll};
+                                (uint8_t)target,         (uint8_t)(ll >> 8),      (uint8_t)ll};
                 _tmp.write(h, 6);
                 _tmp.write(l.data(), ll);
                 _tocCount++;
@@ -1248,8 +1299,10 @@ void MobiConverter::onTag(const std::string& raw, uint32_t offset) {
         // A block closes the inline elements and paragraph it was left inside.
         while (_depth > 0 && e->kind == K_BLOCK) {
             const ElemInfo* top = elemInfo(_stack[_depth - 1]);
-            if ((top && top->kind == K_INLINE) || isAutoCloser(t.name, _stack[_depth - 1])) closeTo(_depth - 1);
-            else break;
+            if ((top && top->kind == K_INLINE) || isAutoCloser(t.name, _stack[_depth - 1]))
+                closeTo(_depth - 1);
+            else
+                break;
         }
         // Past the size limit, between blocks, a new file (wrapping divs go on in it).
         if (_pass == 1 && offset - _fileStart > kHardSplit && canSplitHere()) boundary(offset);
@@ -1327,7 +1380,10 @@ void MobiConverter::flushPending(float em) {
     if (em > 0) {
         float base = 1.0f;
         for (int k = d - 1; k >= 0; k--)
-            if (_em[k] > 0) { base = _em[k]; break; }
+            if (_em[k] > 0) {
+                base = _em[k];
+                break;
+            }
         if (em / base > 1.01f || em / base < 0.99f) extra = emStyle(em / base);
         if (d >= 0) _em[d] = em;
     }
@@ -1376,7 +1432,8 @@ void MobiConverter::onText(const char* s, uint32_t n, uint32_t offset) {
         // the end of a sentence in the last ~800 bytes reads best, else a space
         uint32_t sentence = cut;
         while (sentence > 1 && cut - sentence < 800 &&
-               !(s[sentence - 1] == ' ' && (s[sentence - 2] == '.' || s[sentence - 2] == '!' || s[sentence - 2] == '?')))
+               !(s[sentence - 1] == ' ' &&
+                 (s[sentence - 2] == '.' || s[sentence - 2] == '!' || s[sentence - 2] == '?')))
             sentence--;
         if (sentence > 1 && cut - sentence < 800) cut = sentence;
         while (cut > 0 && s[cut - 1] != ' ') cut--;
@@ -1394,7 +1451,6 @@ void MobiConverter::onText(const char* s, uint32_t n, uint32_t offset) {
     _pBytes += n;
     emitText(s, n);
 }
-
 
 // The innermost open element is a block holding text (no inline element open
 // inside it, no font size moved onto it): it can end and go on in a new one.
@@ -1414,8 +1470,10 @@ void MobiConverter::continueBlock() {
     const size_t idAt = o.find(" id=\"");
     if (idAt != std::string::npos) o.erase(idAt, o.find('"', idAt + 5) + 1 - idAt);
     const size_t st = o.find(" style=\"");
-    if (st != std::string::npos) o.insert(st + 8, "margin-top:0;text-indent:0;");
-    else o.insert(o.size() - 1, " style=\"margin-top:0;text-indent:0;\"");
+    if (st != std::string::npos)
+        o.insert(st + 8, "margin-top:0;text-indent:0;");
+    else
+        o.insert(o.size() - 1, " style=\"margin-top:0;text-indent:0;\"");
     emit("</");
     emit(e->out);
     emit(">\n");
@@ -1451,9 +1509,9 @@ uint32_t utf16Units(const char* s, uint32_t n) {
 
 // What the engine starts a paragraph at (as EngineTextCounter / ChapterLayout).
 bool isEngineBlock(const std::string& n) {
-    static const char* const k[] = {"p", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "li", "div", "section",
-                                    "article", "figure", "aside", "figcaption", "ul", "ol", "table", "tr", "td",
-                                    "th", "dt", "dd"};
+    static const char* const k[] = {"p",  "h1",    "h2",      "h3",      "h4",     "h5",    "h6",         "blockquote",
+                                    "li", "div",   "section", "article", "figure", "aside", "figcaption", "ul",
+                                    "ol", "table", "tr",      "td",      "th",     "dt",    "dd"};
     for (const char* b : k)
         if (n == b) return true;
     return false;
@@ -1461,8 +1519,7 @@ bool isEngineBlock(const std::string& n) {
 }  // namespace
 
 void MobiConverter::kfNewFileLine(const std::string& offsets) {
-    if (_pass == 2)
-        _kfPendingF = "F " + std::to_string(_file) + " " + std::to_string(_kfSection) + offsets + "\n";
+    if (_pass == 2) _kfPendingF = "F " + std::to_string(_file) + " " + std::to_string(_kfSection) + offsets + "\n";
 }
 
 // Part k starts: a new file (once the last one has anything).
@@ -1594,7 +1651,8 @@ void MobiConverter::kfTag(const std::string& raw, uint32_t offset) {
         if (!t.end) {
             _inBody = true;
             _kfBodyTag = "<" + raw + ">";
-            if (_kfBodyTag.size() > 2 && _kfBodyTag[_kfBodyTag.size() - 2] == '/') _kfBodyTag.erase(_kfBodyTag.size() - 2, 1);
+            if (_kfBodyTag.size() > 2 && _kfBodyTag[_kfBodyTag.size() - 2] == '/')
+                _kfBodyTag.erase(_kfBodyTag.size() - 2, 1);
         } else {
             while (!_kfStack.empty()) {
                 if (_pass == 2) emit(("</" + _kfStack.back().name + ">").c_str());
@@ -1717,7 +1775,8 @@ void MobiConverter::kfText(const char* s, uint32_t n) {
         uint32_t cut = room < n ? room : n;
         uint32_t sentence = cut;
         while (sentence > 1 && cut - sentence < 800 &&
-               !(s[sentence - 1] == ' ' && (s[sentence - 2] == '.' || s[sentence - 2] == '!' || s[sentence - 2] == '?')))
+               !(s[sentence - 1] == ' ' &&
+                 (s[sentence - 2] == '.' || s[sentence - 2] == '!' || s[sentence - 2] == '?')))
             sentence--;
         if (sentence > 1 && cut - sentence < 800) cut = sentence;
         while (cut > 0 && s[cut - 1] != ' ') cut--;
@@ -1803,8 +1862,10 @@ bool MobiConverter::loadKf8() {
         const uint32_t count = be32(&r[8]);
         for (uint32_t i = 0; i < count && 12 + 8 * i + 8 <= r.size(); i++) {
             const uint32_t a = be32(&r[12 + 8 * i]), b = std::min(be32(&r[16 + 8 * i]), _h.textLength);
-            if (i == 0) _textEnd = b;
-            else _flows.emplace_back(a, b);
+            if (i == 0)
+                _textEnd = b;
+            else
+                _flows.emplace_back(a, b);
         }
     }
     IndexTable skel, frag;
@@ -1830,7 +1891,7 @@ bool MobiConverter::loadKf8() {
             KfToc t;
             const uint32_t fid = e.get(6, 0), off = e.get(6, 1);
             t.target = fid != 0xFFFFFFFF && fid < _frags.size() ? _frags[fid].insert + (off == 0xFFFFFFFF ? 0 : off)
-                                                                 : e.get(1, 0);
+                                                                : e.get(1, 0);
             if (t.target == 0xFFFFFFFF) continue;
             t.depth = (uint8_t)std::min<uint32_t>(e.get(4, 0, 0), 8);
             const uint32_t lo = e.get(3, 0);
@@ -1882,10 +1943,11 @@ bool MobiConverter::writeImages() {
 
 bool MobiConverter::writeNcx() {
     const std::string uid = "mobi-" + std::to_string(_h.textLength) + "-" + std::to_string(_db.count());
-    std::string s = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-                    "<ncx xmlns=\"http://www.daisy.org/z3986/2005/ncx/\" version=\"2005-1\"><head>"
-                    "<meta name=\"dtb:uid\" content=\"" + uid + "\"/></head><docTitle><text>" + xmlEscape(_h.title) +
-                    "</text></docTitle><navMap>\n";
+    std::string s =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            "<ncx xmlns=\"http://www.daisy.org/z3986/2005/ncx/\" version=\"2005-1\"><head>"
+            "<meta name=\"dtb:uid\" content=\"" +
+            uid + "\"/></head><docTitle><text>" + xmlEscape(_h.title) + "</text></docTitle><navMap>\n";
     if (!_zip.open("OEBPS/toc.ncx")) return false;
     _zip.write(s.data(), (uint32_t)s.size());
     uint32_t order = 0;

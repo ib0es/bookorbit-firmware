@@ -2,7 +2,6 @@
 
 BookReader Reader;
 
-
 size_t BookReader::peakTransientBytes(bool reset) {
     const size_t peak = g_peakTransient;
     if (reset) g_peakTransient = g_liveTransient;
@@ -20,9 +19,7 @@ String BookReader::cacheKeyFor(const String& bookPath) {
     return key + "#" + name;
 }
 
-String BookReader::cacheDirFor(const String& bookPath) {
-    return "/cache/" + cacheKeyFor(bookPath) + ".fib";
-}
+String BookReader::cacheDirFor(const String& bookPath) { return "/cache/" + cacheKeyFor(bookPath) + ".fib"; }
 
 BookReader::BookReader() : _fontSize(FontEngine::kDefaultSize) {
     setupFonts("");
@@ -35,11 +32,13 @@ BookReader::~BookReader() { closeBook(); }
 void BookReader::setupFonts(const String& family) {
     // stb's working buffers while a glyph is rasterized (a few KB): a background
     // layout gives the room if the heap has none.
-    _ttf.setNoMemoryHandler([](void* self) {
-        BookReader* r = static_cast<BookReader*>(self);
-        Serial.println("[Reader] No memory to rasterize a glyph: making room");
-        r->makeRoom();
-    }, this);
+    _ttf.setNoMemoryHandler(
+            [](void* self) {
+                BookReader* r = static_cast<BookReader*>(self);
+                Serial.println("[Reader] No memory to rasterize a glyph: making room");
+                r->makeRoom();
+            },
+            this);
     _fonts = freeink::book::FontChain();
     _ttf.clearFaces();
     _family = "";
@@ -50,8 +49,10 @@ void BookReader::setupFonts(const String& family) {
             const uint8_t* data = FontStore::face(style, &len);
             if (data && _ttf.addFace((uint8_t)style, data, len)) _fonts.add(_ttf.face((uint8_t)style), (uint8_t)style);
         }
-        if (_ttf.face(0)) _family = family;
-        else Serial.printf("[Fonts] %s: unreadable, the built-in family instead\n", family.c_str());
+        if (_ttf.face(0))
+            _family = family;
+        else
+            Serial.printf("[Fonts] %s: unreadable, the built-in family instead\n", family.c_str());
     }
     if (!_ttf.face(0)) {
         _ttf.clearFaces();
@@ -156,7 +157,8 @@ bool BookReader::openBook(const String& filePath) {
     uint64_t bytes = 0;
     for (const auto& s : _spines) bytes += s.bytes;
     Serial.printf("[Reader] Opened %s: %u spine items (%u KB), %u TOC entries in %lu ms\n", filePath.c_str(),
-                  (unsigned)_spines.size(), (unsigned)(bytes / 1024), (unsigned)_toc.size(), (unsigned long)(millis() - t0));
+                  (unsigned)_spines.size(), (unsigned)(bytes / 1024), (unsigned)_toc.size(),
+                  (unsigned long)(millis() - t0));
     return true;
 }
 
@@ -185,7 +187,10 @@ bool BookReader::openContainer() {
         free(_bookMem);
         _bookMem = (uint8_t*)malloc(resident + 64);
         Buffer scratch(4096);
-        if (!_bookMem || !scratch.p) { _noMemory = true; return false; }
+        if (!_bookMem || !scratch.p) {
+            _noMemory = true;
+            return false;
+        }
         _bookArena.init(_bookMem, resident + 64);
         Arena s(scratch.p, 4096);
         _catalog = BookCatalog();
@@ -278,7 +283,10 @@ void BookReader::closeBook() {
 // ------------------------------------------------------------- spine table
 
 void BookReader::loadSpineTable() {
-    for (auto& s : _spines) { s.pages = -1; s.chars = 0; }
+    for (auto& s : _spines) {
+        s.pages = -1;
+        s.chars = 0;
+    }
     char name[32];
     snprintf(name, sizeof(name), "pages-%08x.bin", (unsigned)_gen);
     const uint32_t n = (uint32_t)_spines.size();
@@ -316,7 +324,10 @@ float BookReader::pagesPerByte() const {
     const float prior = (px * px) / (16.0f * 16.0f) / kDefaultBytesPerPage;
     uint64_t pages = 0, bytes = 0;
     for (const auto& s : _spines) {
-        if (s.pages >= 0) { pages += (uint64_t)s.pages; bytes += s.bytes; }
+        if (s.pages >= 0) {
+            pages += (uint64_t)s.pages;
+            bytes += s.bytes;
+        }
     }
     return ((float)pages + prior * kPriorBytes) / ((float)bytes + kPriorBytes);
 }
@@ -348,7 +359,10 @@ uint32_t BookReader::charsOf(int spine) const {
     constexpr float kPriorBytes = 64.0f * 1024.0f;   // as in pagesPerByte()
     uint64_t chars = 0, bytes = 0;
     for (const auto& o : _spines) {
-        if (o.pages >= 0) { chars += o.chars; bytes += o.bytes; }
+        if (o.pages >= 0) {
+            chars += o.chars;
+            bytes += o.bytes;
+        }
     }
     const float perByte = ((float)chars + kCharsPerByte * kPriorBytes) / ((float)bytes + kPriorBytes);
     return (uint32_t)((float)s.bytes * perByte);
@@ -360,4 +374,3 @@ int BookReader::globalPage(int spine, int page) const {
     for (int s = 0; s < spine && s < (int)_spines.size(); s++) n += pagesOf(s, ppb);
     return n + page;
 }
-

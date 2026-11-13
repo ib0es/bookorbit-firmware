@@ -32,7 +32,8 @@ bool SyncService::syncBookProgress(AppContext& ctx, BookProgressRecord& rec, Ser
     // instead could fetch another book's position.
     const int fetchId = rec.bookId;
     if (fetchId <= 0) {
-        Serial.printf("[Sync] '%s': book id unknown yet (file %d), skipping progress sync.\n", rec.title.c_str(), rec.fileId);
+        Serial.printf("[Sync] '%s': book id unknown yet (file %d), skipping progress sync.\n", rec.title.c_str(),
+                      rec.fileId);
         return false;
     }
 
@@ -81,8 +82,8 @@ bool SyncService::syncBookProgress(AppContext& ctx, BookProgressRecord& rec, Ser
                 rec.state.local.xpath.clear();
             }
             if (isOpenInReader(rec)) {
-                Reader.goToPosition(rec.state.local.cfi.c_str(), rec.state.local.xpath.c_str(),
-                                    rec.state.local.percent, rec.state.local.page);
+                Reader.goToPosition(rec.state.local.cfi.c_str(), rec.state.local.xpath.c_str(), rec.state.local.percent,
+                                    rec.state.local.page);
                 rec.state.local.page = Reader.getCurrentPage();
             }
             break;
@@ -98,8 +99,8 @@ bool SyncService::syncBookProgress(AppContext& ctx, BookProgressRecord& rec, Ser
             uint32_t serverTs = 0;
             ok = BookOrbit.updateBookProgress(ctx.config.serverHost, ctx.config.bookOrbitUser, ctx.config.bookOrbitPass,
                                               ctx.config.authToken, rec.fileId, rec.state.local.percent,
-                                              rec.state.local.page,
-                                              cfiApplies(rec) ? rec.state.local.cfi.c_str() : "", &serverTs);
+                                              rec.state.local.page, cfiApplies(rec) ? rec.state.local.cfi.c_str() : "",
+                                              &serverTs);
             if (ok) ProgressSync::applyPush(rec.state, serverTs ? serverTs : SyncClock::nowUtc());
             break;
         }
@@ -153,18 +154,20 @@ SyncService::BookSyncResult SyncService::syncBookItem(AppContext& ctx, BookItem&
     const bool isCurrent = lib.lastBook.filePath.equalsIgnoreCase(book.filePath);
     if (isCurrent && Reader.isOpened()) lib.flushReaderPosition();
 
-    Ui::status(tr(MsgId::BOOK_SYNC_TITLE), utf8Prefix(book.title, 64).c_str(), tr(MsgId::BOOK_SYNC_CONNECTING),
-                    nullptr, nullptr, tr(MsgId::BOOK_SYNC_CANCEL));
+    Ui::status(tr(MsgId::BOOK_SYNC_TITLE), utf8Prefix(book.title, 64).c_str(), tr(MsgId::BOOK_SYNC_CONNECTING), nullptr,
+               nullptr, tr(MsgId::BOOK_SYNC_CANCEL));
     s_syncCancelled = false;
     Buttons.clearEvents();
 
     bool ok = false;
     const bool wasConnected = BookOrbit.isConnected();
-    if (wasConnected || BookOrbit.connectWiFi(ctx.config.wifiSsid.c_str(), ctx.config.wifiPass.c_str(), 8000, checkSyncCancel)) {
+    if (wasConnected ||
+        BookOrbit.connectWiFi(ctx.config.wifiSsid.c_str(), ctx.config.wifiPass.c_str(), 8000, checkSyncCancel)) {
         if (!s_syncCancelled && !checkSyncCancel()) {
             ensureToken(ctx);
             BookProgressRecord& rec = isCurrent ? lib.currentRecord()
-                : ProgressStore::instance().getOrCreate(book.fileId, book.bookId, book.filePath, book.title);
+                                                : ProgressStore::instance().getOrCreate(book.fileId, book.bookId,
+                                                                                        book.filePath, book.title);
             ok = syncBookProgress(ctx, rec);
             if (ProgressSync::hasProgress(rec.state.local.percent)) {
                 book.progress = rec.state.local.percent;
@@ -192,7 +195,8 @@ void SyncService::showBookSyncResult(BookSyncResult r, const BookItem& book) {
             Ui::message(tr(MsgId::BOOK_SYNC_FAILED), tr(MsgId::BOOK_SYNC_FAILED_L1), tr(MsgId::BOOK_SYNC_FAILED_L2));
             break;
         case BookSyncResult::NotConfigured:
-            Ui::message(tr(MsgId::BOOK_SYNC_FAILED), tr(MsgId::BOOK_SYNC_NO_SETUP_L1), tr(MsgId::BOOK_SYNC_NO_SETUP_L2));
+            Ui::message(tr(MsgId::BOOK_SYNC_FAILED), tr(MsgId::BOOK_SYNC_NO_SETUP_L1),
+                        tr(MsgId::BOOK_SYNC_NO_SETUP_L2));
             break;
         case BookSyncResult::Cancelled:
             break;
@@ -209,7 +213,8 @@ void SyncService::syncOnBootProgress(AppContext& ctx) {
     WifiSession::prepare();
 
     Serial.println("[Boot] syncOnBoot enabled: synchronizing progress with server...");
-    Ui::status(tr(MsgId::SYNC_BOOT_TITLE), tr(MsgId::SYNC_BOOT_CHECKING), utf8Prefix(lib.lastBook.title, 64).c_str(), nullptr, nullptr, tr(MsgId::COMMON_CANCEL));
+    Ui::status(tr(MsgId::SYNC_BOOT_TITLE), tr(MsgId::SYNC_BOOT_CHECKING), utf8Prefix(lib.lastBook.title, 64).c_str(),
+               nullptr, nullptr, tr(MsgId::COMMON_CANCEL));
 
     s_syncCancelled = false;
     uint32_t waitStart = millis();

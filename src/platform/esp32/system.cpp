@@ -16,7 +16,7 @@ namespace Platform {
 time_t systemTime() { return time(nullptr); }
 
 void setSystemTime(time_t utc) {
-    struct timeval tv = { utc, 0 };
+    struct timeval tv = {utc, 0};
     settimeofday(&tv, nullptr);
 }
 
@@ -46,14 +46,21 @@ void feedWatchdog() {
 }
 
 namespace {
-struct WakeKey { int8_t pin; int activeLevel; };
+struct WakeKey {
+    int8_t pin;
+    int activeLevel;
+};
 // Every key of the board, at its pressed level.
 void wakeKeys(WakeKey (&out)[7]) {
     const auto& bi = BoardConfig::ACTIVE.input;
     const WakeKey keys[7] = {
-        { bi.up, 0 }, { bi.down, 0 }, { bi.left, 0 },
-        { bi.right, 0 }, { bi.confirm, 0 }, { bi.back, 0 },
-        { bi.power, bi.powerActiveHigh ? 1 : 0 },
+            {bi.up, 0},
+            {bi.down, 0},
+            {bi.left, 0},
+            {bi.right, 0},
+            {bi.confirm, 0},
+            {bi.back, 0},
+            {bi.power, bi.powerActiveHigh ? 1 : 0},
     };
     for (int i = 0; i < 7; i++) out[i] = keys[i];
 }
@@ -81,7 +88,8 @@ void lightSleep(uint32_t waitMs, int8_t irqPin, bool irqActiveLow) {
     gpio_wakeup_enable(static_cast<gpio_num_t>(irqPin), irqActiveLow ? GPIO_INTR_LOW_LEVEL : GPIO_INTR_HIGH_LEVEL);
     for (const auto& wb : keys) {
         if (wb.pin >= 0 && wb.pin != irqPin) {
-            gpio_wakeup_enable(static_cast<gpio_num_t>(wb.pin), wb.activeLevel ? GPIO_INTR_HIGH_LEVEL : GPIO_INTR_LOW_LEVEL);
+            gpio_wakeup_enable(static_cast<gpio_num_t>(wb.pin),
+                               wb.activeLevel ? GPIO_INTR_HIGH_LEVEL : GPIO_INTR_LOW_LEVEL);
         }
     }
     esp_sleep_enable_gpio_wakeup();

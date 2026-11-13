@@ -8,9 +8,13 @@
 
 inline const char* wifiFailureLine(WifiFailure f, const char* fallback) {
     switch (f) {
-        case WifiFailure::NoNetwork:   return tr(MsgId::WIFI_FAIL_NO_NETWORK);
-        case WifiFailure::BadPassword: return tr(MsgId::WIFI_FAIL_BAD_PASSWORD);
-        case WifiFailure::NoAnswer:    return tr(MsgId::WIFI_FAIL_NO_ANSWER);
-        default:                       return fallback;
+        case WifiFailure::NoNetwork:
+            return tr(MsgId::WIFI_FAIL_NO_NETWORK);
+        case WifiFailure::BadPassword:
+            return tr(MsgId::WIFI_FAIL_BAD_PASSWORD);
+        case WifiFailure::NoAnswer:
+            return tr(MsgId::WIFI_FAIL_NO_ANSWER);
+        default:
+            return fallback;
     }
 }

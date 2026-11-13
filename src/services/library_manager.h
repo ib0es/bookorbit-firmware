@@ -6,7 +6,6 @@
 #include "../storage/book_records.h"
 #include "../storage/progress_store.h"
 
-
 // One format (file) of a book: "/books/<name>.epub", "/books/<name>.fb2"... next
 // to each other, each with its own server file id and reading position.
 struct BookFormatSlot {
@@ -46,7 +45,9 @@ struct BookItem {
     String downloadUrlOf(const BookFormatSlot& f) const;
     bool inCatalog() const;      // some format is on the server
     bool anyOnCard() const;      // some format is on the card
-    uint8_t activeKind() const { return activeFormat >= 0 && activeFormat < (int)formats.size() ? formats[activeFormat].kind : 0; }
+    uint8_t activeKind() const {
+        return activeFormat >= 0 && activeFormat < (int)formats.size() ? formats[activeFormat].kind : 0;
+    }
 };
 
 enum LibraryFilter {
@@ -122,7 +123,9 @@ public:
     // positions are refreshed from progress.json.
     void scanLocalBooks(bool forceMasterScan = false);
     // The first scan, if none was made yet (a wake-up straight into a book skips it).
-    void ensureScanned() { if (!_scanned) scanLocalBooks(); }
+    void ensureScanned() {
+        if (!_scanned) scanLocalBooks();
+    }
     // Rebuilds the list (and counts) after the master list changed in place.
     void rebuildFilteredIndices();
     // Picks up books copied to / removed from the card since the master scan.
@@ -179,7 +182,8 @@ public:
     static bool coverKnownUnusable(const String& coverPath, const String& coverUrl);
     static void markCoverUnusable(const String& coverPath, const String& coverUrl);
     static bool isProgressiveJpeg(const String& path);
-    static String resolveCoverPath(const String& filePath, const String& title, const String& explicitCoverPath = "", bool allowExtract = false);
+    static String resolveCoverPath(const String& filePath, const String& title, const String& explicitCoverPath = "",
+                                   bool allowExtract = false);
     static void deleteBookArtifacts(const BookItem& book, bool removeCover = true);
     // Removes /cache and /covers files that belong to no book: neither a book
     // file anywhere on the SD card nor a catalog entry (covers only). Leftovers

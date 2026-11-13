@@ -17,8 +17,8 @@
 #include "ui/font.h"
 #include "reader/reader.h"
 
-bool InputManager::s_simState[InputManager::BTN_COUNT] = { false };
-bool InputManager::s_oneShotClicks[InputManager::BTN_COUNT] = { false };
+bool InputManager::s_simState[InputManager::BTN_COUNT] = {false};
+bool InputManager::s_oneShotClicks[InputManager::BTN_COUNT] = {false};
 freeink::DisplayUpdateCallback freeink::FreeInkDisplay::s_callback = nullptr;
 void simPumpEvents() {}
 void simInputPolled() {}
@@ -30,7 +30,10 @@ static int backgroundLayout(const char* path) {
     int fail = 0;
     Storage.removeDir(BookReader::cacheDirFor(path).c_str());
     BookReader::peakTransientBytes(true);
-    if (!Reader.openBook(path)) { printf("  bg: open failed\n"); return 1; }
+    if (!Reader.openBook(path)) {
+        printf("  bg: open failed\n");
+        return 1;
+    }
     Reader.setPage(1);
     Reader.renderCurrentPage();
     const int from = Reader.position().spine;
@@ -40,12 +43,19 @@ static int backgroundLayout(const char* path) {
         const uint32_t t0 = millis();
         if (!Reader.tickBackground()) break;
         longest = std::max(longest, (uint32_t)(millis() - t0));
-        if (++slices > 100000) { printf("  bg: never ends\n"); fail++; break; }
+        if (++slices > 100000) {
+            printf("  bg: never ends\n");
+            fail++;
+            break;
+        }
     }
     std::vector<int> bgPages;
     for (int s = from + 1; s <= from + BookReader::kLookahead && s < Reader.spineCount(); s++) {
         bgPages.push_back(Reader.chapterPages(s));
-        if (Reader.chapterPages(s) < 0) { printf("  bg: chapter %d not laid out\n", s); fail++; }
+        if (Reader.chapterPages(s) < 0) {
+            printf("  bg: chapter %d not laid out\n", s);
+            fail++;
+        }
     }
     const size_t peak = BookReader::peakTransientBytes();
     // Next to the job (64 KB) the page being drawn must still fit.
@@ -84,7 +94,10 @@ static int backgroundLayout(const char* path) {
     printf("  background: %d slices, longest %u ms, chapters %d..%d, transient peak %u KB, job %s at the turn%s\n",
            slices, (unsigned)longest, from + 1, from + (int)bgPages.size(), (unsigned)(peak / 1024),
            running ? "running" : "idle", fail ? " FAILED" : "");
-    if (peak > 80 * 1024) { printf("  bg: transient peak over 80 KB\n"); fail++; }
+    if (peak > 80 * 1024) {
+        printf("  bg: transient peak over 80 KB\n");
+        fail++;
+    }
     return fail;
 }
 
@@ -96,7 +109,10 @@ static int incrementalLayout(const char* path) {
     int fail = 0;
     Storage.removeDir(BookReader::cacheDirFor(path).c_str());
     BookReader::peakTransientBytes(true);
-    if (!Reader.openBook(path)) { printf("  incremental: open failed\n"); return 1; }
+    if (!Reader.openBook(path)) {
+        printf("  incremental: open failed\n");
+        return 1;
+    }
     Reader.setPage(1);
     Reader.renderCurrentPage();
     bool built = false;   // some chapter was shown while it was laid out
@@ -113,12 +129,14 @@ static int incrementalLayout(const char* path) {
             stops++;
             // where the reader is, known without laying the chapter out again (a sync, sleep)
             if (Reader.getCurrentPage() != pageBefore || Reader.backgroundActive()) {
-                if (stopFail++ < 3) printf("  incremental: after a stop, page %d (was %d), %s\n", Reader.getCurrentPage(),
-                                           pageBefore, Reader.backgroundActive() ? "laid out again" : "not laid out");
+                if (stopFail++ < 3)
+                    printf("  incremental: after a stop, page %d (was %d), %s\n", Reader.getCurrentPage(), pageBefore,
+                           Reader.backgroundActive() ? "laid out again" : "not laid out");
             }
             if (Reader.position().spine != here.spine || Reader.position().chars != here.chars) {
-                if (stopFail++ < 3) printf("  incremental: after a stop at %d:%u, %d:%u\n", here.spine, (unsigned)here.chars,
-                                           Reader.position().spine, (unsigned)Reader.position().chars);
+                if (stopFail++ < 3)
+                    printf("  incremental: after a stop at %d:%u, %d:%u\n", here.spine, (unsigned)here.chars,
+                           Reader.position().spine, (unsigned)Reader.position().chars);
             }
         }
         if (seen.size() > 100000) break;
@@ -130,13 +148,17 @@ static int incrementalLayout(const char* path) {
     Reader.layoutRemaining();
     const int n = Reader.getTotalPages();
     int differ = 0;
-    if ((int)seen.size() != n) { printf("  incremental: %d pages turned, %d in the book\n", (int)seen.size(), n); fail++; }
+    if ((int)seen.size() != n) {
+        printf("  incremental: %d pages turned, %d in the book\n", (int)seen.size(), n);
+        fail++;
+    }
     for (int p = 1; p <= n && p <= (int)seen.size(); p++) {
         Reader.setPage(p);
         const BookReader::Position at = Reader.position();
         if (at.spine != seen[p - 1].first || at.chars != seen[p - 1].second) {
-            if (differ++ < 3) printf("  incremental: page %d at %d:%u, laid out in full %d:%u\n", p, seen[p - 1].first,
-                                     (unsigned)seen[p - 1].second, at.spine, (unsigned)at.chars);
+            if (differ++ < 3)
+                printf("  incremental: page %d at %d:%u, laid out in full %d:%u\n", p, seen[p - 1].first,
+                       (unsigned)seen[p - 1].second, at.spine, (unsigned)at.chars);
         }
     }
     Reader.closeBook();
@@ -161,25 +183,36 @@ static int coverCheck(const char* path) {
         f.close();
     }
     Storage.remove(out);
-    const bool good = ok && size > 1000 && ((magic[0] == 0xFF && magic[1] == 0xD8) || (magic[0] == 'B' && magic[1] == 'M'));
+    const bool good =
+            ok && size > 1000 && ((magic[0] == 0xFF && magic[1] == 0xD8) || (magic[0] == 'B' && magic[1] == 'M'));
     printf("  cover: %s (%u bytes)\n", good ? "ok" : "FAILED", (unsigned)size);
     return good ? 0 : 1;
 }
 
 int main(int argc, char** argv) {
     SDCardManager::getInstance().setRoot(argv[1]);
-    Display.begin(); Font.begin(Display); Storage.begin();
+    Display.begin();
+    Font.begin(Display);
+    Storage.begin();
     int totalFail = 0;
     for (int a = 2; a < argc; a++) {
-        if (String(argv[a]).endsWith(".epub")) totalFail += backgroundLayout(argv[a]) + incrementalLayout(argv[a]) + coverCheck(argv[a]);
+        if (String(argv[a]).endsWith(".epub"))
+            totalFail += backgroundLayout(argv[a]) + incrementalLayout(argv[a]) + coverCheck(argv[a]);
         BookReader::peakTransientBytes(true);
-        if (!Reader.openBook(argv[a])) { printf("open failed %s\n", argv[a]); totalFail++; continue; }
+        if (!Reader.openBook(argv[a])) {
+            printf("open failed %s\n", argv[a]);
+            totalFail++;
+            continue;
+        }
         Reader.layoutRemaining();   // exact page numbers
         const int n = Reader.getTotalPages();
         int failP = 0, failX = 0, failC = 0, checked = 0, shared = 0;
         // Every page must draw (its record fits the render buffer, the chapter is readable).
         const int drawFailsBefore = Reader.renderFailures();
-        for (int p = 1; p <= n; p++) { Reader.setPage(p); Reader.renderCurrentPage(); }
+        for (int p = 1; p <= n; p++) {
+            Reader.setPage(p);
+            Reader.renderCurrentPage();
+        }
         const int failD = Reader.renderFailures() - drawFailsBefore;
         const bool epub = String(argv[a]).endsWith(".epub");
         for (int p = 1; p <= n; p++) {
@@ -187,8 +220,12 @@ int main(int argc, char** argv) {
             const BookReader::Position here = Reader.position();
             // Pages that start at the same character (image pages) cannot be told apart by position.
             Reader.setPage(p + 1);
-            const bool ambiguous = p < n && Reader.position().spine == here.spine && Reader.position().chars == here.chars;
-            if (ambiguous) { shared++; continue; }
+            const bool ambiguous =
+                    p < n && Reader.position().spine == here.spine && Reader.position().chars == here.chars;
+            if (ambiguous) {
+                shared++;
+                continue;
+            }
             Reader.setPage(p - 1);
             const float prevPct = p > 1 ? Reader.getProgress() : -1.0f;
             Reader.setPage(p);
@@ -202,7 +239,9 @@ int main(int argc, char** argv) {
             }
             Reader.setPage(1);
             Reader.setPageByXPath(x, pct);
-            if (Reader.getXPath() != x) { if (failX++ < 3) printf("  xpath p%d -> %s (%s)\n", p, Reader.getXPath().c_str(), x.c_str()); }
+            if (Reader.getXPath() != x) {
+                if (failX++ < 3) printf("  xpath p%d -> %s (%s)\n", p, Reader.getXPath().c_str(), x.c_str());
+            }
             if (epub) {
                 Reader.setPage(p);
                 const String c = Reader.getCfi();
@@ -222,7 +261,8 @@ int main(int argc, char** argv) {
             Reader.setPage(page - 1);
             const String before = Reader.getXPath();
             const bool chapterStart = here == "/body/DocFragment[17]" && before == "/body/DocFragment[16]";
-            printf("  web CFI 'Chapter 10' -> page %d (%s)%s\n", page, here.c_str(), ok && chapterStart ? "" : "  WRONG");
+            printf("  web CFI 'Chapter 10' -> page %d (%s)%s\n", page, here.c_str(),
+                   ok && chapterStart ? "" : "  WRONG");
             if (!ok || !chapterStart) failC++;
         }
         // Transient buffers live at once: under the X4's biggest free block after boot

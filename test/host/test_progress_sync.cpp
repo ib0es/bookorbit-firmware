@@ -8,10 +8,29 @@
 using namespace ProgressSync;
 
 static int g_failed = 0, g_checks = 0;
-#define CHECK(cond) do { g_checks++; if (!(cond)) { g_failed++; printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); } } while (0)
+#define CHECK(cond)                                                  \
+    do {                                                             \
+        g_checks++;                                                  \
+        if (!(cond)) {                                               \
+            g_failed++;                                              \
+            printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
+        }                                                            \
+    } while (0)
 
-static Position P(float pct, int page = 0, const char* xp = "") { Position p; p.percent = pct; p.page = page; p.xpath = xp; return p; }
-static Remote R(float pct, uint32_t upd, const char* xp = "") { Remote r; r.exists = true; r.pos = P(pct, 0, xp); r.updatedAt = upd; return r; }
+static Position P(float pct, int page = 0, const char* xp = "") {
+    Position p;
+    p.percent = pct;
+    p.page = page;
+    p.xpath = xp;
+    return p;
+}
+static Remote R(float pct, uint32_t upd, const char* xp = "") {
+    Remote r;
+    r.exists = true;
+    r.pos = P(pct, 0, xp);
+    r.updatedAt = upd;
+    return r;
+}
 static Remote NoRemote() { return Remote(); }
 
 // A book that was synced at `basePct` and not touched since.
@@ -103,12 +122,15 @@ static void testTransitions() {
     // The user's scenario end to end: pull, server edited, pull again.
     BookState u;
     Remote first = R(0.30f, 1000);
-    CHECK(decide(u, first).action == Action::Pull); applyPull(u, first);
+    CHECK(decide(u, first).action == Action::Pull);
+    applyPull(u, first);
     Remote edited = R(0.60f, 2000);
-    CHECK(decide(u, edited).action == Action::Pull); applyPull(u, edited);
+    CHECK(decide(u, edited).action == Action::Pull);
+    applyPull(u, edited);
     CHECK(samePlace(u.local, P(0.60f)));
     Remote back = R(0.20f, 3000);
-    CHECK(decide(u, back).action == Action::Pull); applyPull(u, back);
+    CHECK(decide(u, back).action == Action::Pull);
+    applyPull(u, back);
     CHECK(samePlace(u.local, P(0.20f)));
 
     BookState c;

@@ -2,7 +2,8 @@
 
 #include <Arduino.h>
 
-void drawStatusModal(const char* title, const char* line1, const char* line2 = nullptr, const char* line3 = nullptr, const char* line4 = nullptr, const char* footerHint = nullptr, bool fullRefresh = false);
+void drawStatusModal(const char* title, const char* line1, const char* line2 = nullptr, const char* line3 = nullptr,
+                     const char* line4 = nullptr, const char* footerHint = nullptr, bool fullRefresh = false);
 
 // Hit actions of the dialog buttons (touch boards).
 enum ModalButtonAction : int { MODAL_HIT_OK = 1, MODAL_HIT_CANCEL = 2 };

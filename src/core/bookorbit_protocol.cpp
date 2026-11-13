@@ -3,7 +3,6 @@
 #include <ArduinoJson.h>
 #include "time_utils.h"
 
-
 // ArduinoJson may be built without std::string support: go through a buffer.
 static std::string toStdString(const JsonDocument& doc) {
     std::string out(measureJson(doc), '\0');
@@ -43,7 +42,10 @@ bool parseLoginToken(const std::string& json, std::string& token) {
     for (JsonVariantConst v : {doc["accessToken"].as<JsonVariantConst>(), doc["token"].as<JsonVariantConst>(),
                                doc["access_token"].as<JsonVariantConst>(), doc["data"]["token"].as<JsonVariantConst>(),
                                doc["data"]["accessToken"].as<JsonVariantConst>()}) {
-        if (v.is<const char*>() && str(v).size() > 0) { token = str(v); return true; }
+        if (v.is<const char*>() && str(v).size() > 0) {
+            token = str(v);
+            return true;
+        }
     }
     return false;
 }
@@ -63,10 +65,14 @@ bool parseBookProgress(const std::string& json, Progress& out, int fileId) {
         Progress p;
         p.exists = true;
         p.percent = clamp01(obj["percentage"].as<float>() / 100.0f);   // server: 0..100
-        if (!obj["pageNumber"].isNull()) p.page = obj["pageNumber"].as<int>();
-        else if (!obj["text"]["page"].isNull()) p.page = obj["text"]["page"].as<int>();
-        if (obj["cfi"].is<const char*>()) p.cfi = str(obj["cfi"]);
-        else if (obj["text"]["cfi"].is<const char*>()) p.cfi = str(obj["text"]["cfi"]);
+        if (!obj["pageNumber"].isNull())
+            p.page = obj["pageNumber"].as<int>();
+        else if (!obj["text"]["page"].isNull())
+            p.page = obj["text"]["page"].as<int>();
+        if (obj["cfi"].is<const char*>())
+            p.cfi = str(obj["cfi"]);
+        else if (obj["text"]["cfi"].is<const char*>())
+            p.cfi = str(obj["text"]["cfi"]);
         p.updatedAt = TimeUtils::parseIso8601(obj["updatedAt"].as<const char*>());
 
         // The most recent record wins; without timestamps the first one is kept.
@@ -86,8 +92,10 @@ std::string buildProgressWrite(int fileId, float percent, int page, const std::s
     JsonObject item = doc["writes"].to<JsonArray>().add<JsonObject>();
     item["fileId"] = fileId;
     item["percentage"] = pct100;
-    if (!cfi.empty()) item["text"]["cfi"] = cfi.c_str();
-    else if (page > 0) item["text"]["page"] = page;
+    if (!cfi.empty())
+        item["text"]["cfi"] = cfi.c_str();
+    else if (page > 0)
+        item["text"]["page"] = page;
     return toStdString(doc);
 }
 

@@ -25,9 +25,10 @@ std::string localName(const std::string& tag, bool& closing, bool& selfClosing) 
 }  // namespace
 
 bool EngineTextCounter::isBlock(const std::string& n) {
-    static const char* const kBlocks[] = {"p",       "h1",      "h2",     "h3",    "h4",         "h5", "h6", "blockquote",
-                                          "li",      "div",     "section", "article", "figure", "aside", "figcaption",
-                                          "ul",      "ol",      "table",  "tr",    "td",         "th", "dt", "dd"};
+    static const char* const kBlocks[] = {"p",      "h1",         "h2",         "h3",  "h4",      "h5",
+                                          "h6",     "blockquote", "li",         "div", "section", "article",
+                                          "figure", "aside",      "figcaption", "ul",  "ol",      "table",
+                                          "tr",     "td",         "th",         "dt",  "dd"};
     for (const char* b : kBlocks) {
         if (n == b) return true;
     }
@@ -59,8 +60,10 @@ void EngineTextCounter::onTag() {
     bool closing = false, selfClosing = false;
     const std::string name = localName(_tag, closing, selfClosing);
     if (isSuppressed(name)) {
-        if (closing) { if (_suppress > 0) _suppress--; }
-        else if (!selfClosing) _suppress++;
+        if (closing) {
+            if (_suppress > 0) _suppress--;
+        } else if (!selfClosing)
+            _suppress++;
         return;
     }
     if (name == "body") {
@@ -106,13 +109,23 @@ void EngineTextCounter::feed(const char* data, size_t len) {
                 break;
             case State::Tag: {
                 _tag += c;
-                if (_tag == "!--") { _state = State::Comment; _special.clear(); break; }
-                if (_tag == "![CDATA[") { _state = State::CData; _special.clear(); break; }
+                if (_tag == "!--") {
+                    _state = State::Comment;
+                    _special.clear();
+                    break;
+                }
+                if (_tag == "![CDATA[") {
+                    _state = State::CData;
+                    _special.clear();
+                    break;
+                }
                 if (c == '>') {
                     char quote = 0;
                     for (char t : _tag) {
-                        if (quote) { if (t == quote) quote = 0; }
-                        else if (t == '"' || t == '\'') quote = t;
+                        if (quote) {
+                            if (t == quote) quote = 0;
+                        } else if (t == '"' || t == '\'')
+                            quote = t;
                     }
                     if (!quote) {
                         onTag();

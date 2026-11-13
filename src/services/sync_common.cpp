@@ -21,7 +21,6 @@
 // Helpers shared by the parts of SyncService (sync_internal.h).
 namespace SyncInternal {
 
-
 // The client logs in again by itself when the token has expired (HTTP 401) and
 // updates ctx.config.authToken in memory: this saves it when a sync step ends,
 // so the next session does not start with a refused request and a login.
@@ -32,7 +31,6 @@ uint32_t tokenHash(const String& s) {
     for (size_t i = 0; i < s.length(); i++) h = (h ^ (uint8_t)s[i]) * 16777619u;
     return h;
 }
-
 
 // Logs in if there is no token yet; persists a fresh token.
 void ensureToken(AppContext& ctx) {
@@ -83,7 +81,10 @@ void resolveServerIds(BookProgressRecord& rec) {
         const BookFormatEntry* fmt = nullptr;
         for (const auto& f : c.formats) {
             if ((rec.fileId > 0 && f.fileId == rec.fileId) ||
-                LibraryManager::catalogFormatPath(c, f).equalsIgnoreCase(rec.filePath)) { fmt = &f; break; }
+                LibraryManager::catalogFormatPath(c, f).equalsIgnoreCase(rec.filePath)) {
+                fmt = &f;
+                break;
+            }
         }
         if (fmt) {   // never by the title alone: two books of one title are two books
             if (rec.fileId <= 0) rec.fileId = fmt->fileId;
@@ -124,7 +125,8 @@ void syncBookmarks(AppContext& ctx, const BookProgressRecord& rec) {
 
     const std::vector<int> deleted = list.deletedOnDevice();
     for (int id : deleted) {
-        if (!BookOrbit.deleteBookmark(cfg.serverHost, cfg.bookOrbitUser, cfg.bookOrbitPass, cfg.authToken, rec.bookId, id))
+        if (!BookOrbit.deleteBookmark(cfg.serverHost, cfg.bookOrbitUser, cfg.bookOrbitPass, cfg.authToken, rec.bookId,
+                                      id))
             continue;   // tried again next time
         list.forgetDeleted(id);
         changed = true;

@@ -123,9 +123,21 @@ BookProgressRecord& ProgressStore::getOrCreate(int fileId, int bookId, const Str
         r = &_records.back();
         _modified = true;
     }
-    if (fileId > 0 && r->fileId != fileId) { r->fileId = fileId; _modified = true; }
-    if (bookId > 0 && r->bookId != bookId) { r->bookId = bookId; _modified = true; }
-    if (filePath.length() > 0 && r->filePath != filePath) { r->filePath = filePath; _modified = true; }
-    if (title.length() > 0 && r->title != title) { r->title = title; _modified = true; }
+    if (fileId > 0 && r->fileId != fileId) {
+        r->fileId = fileId;
+        _modified = true;
+    }
+    if (bookId > 0 && r->bookId != bookId) {
+        r->bookId = bookId;
+        _modified = true;
+    }
+    if (filePath.length() > 0 && r->filePath != filePath) {
+        r->filePath = filePath;
+        _modified = true;
+    }
+    if (title.length() > 0 && r->title != title) {
+        r->title = title;
+        _modified = true;
+    }
     return *r;
 }

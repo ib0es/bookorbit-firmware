@@ -25,8 +25,10 @@ void openLibrary(AppContext& ctx, LibraryFilter filter, bool rescan) {
     lib.currentFolder = (filter == FILTER_OFFLINE) ? LibraryManager::kOfflineDir : "/books";
     lib.currentFilter = filter;
     lib.selectedBookIndex = 0;
-    if (rescan) lib.scanLocalBooks();
-    else lib.rebuildFilteredIndices();
+    if (rescan)
+        lib.scanLocalBooks();
+    else
+        lib.rebuildFilteredIndices();
     drawLibraryScreen(ctx);
 }
 
@@ -67,13 +69,15 @@ void openRecentBook(AppContext& ctx) {
         }
     }
 
-    ReaderScreen::openBook(ctx, cur.filePath, cur.title, cur.author, cur.coverPath, cur.progress,
-                           cur.page, cur.xpath, cur.docId, cur.fileId);
+    ReaderScreen::openBook(ctx, cur.filePath, cur.title, cur.author, cur.coverPath, cur.progress, cur.page, cur.xpath,
+                           cur.docId, cur.fileId);
 }
 
 void activateItem(AppContext& ctx, int index) {
     switch (index) {
-        case HOME_RECENT_BOOK: openRecentBook(ctx); break;
+        case HOME_RECENT_BOOK:
+            openRecentBook(ctx);
+            break;
         case HOME_CATALOG:
             // Books copied to / removed from the card since the last scan (USB, web
             // portal, a download): walked only when that may have happened (P3).
@@ -115,8 +119,10 @@ void handleEvent(AppContext& ctx, const ButtonEvent& event) {
             drawHomeScreen(ctx, false);
             break;
         case Action::Next:
-            if (sel == HOME_RECENT_BOOK) cycleRecentBook(ctx, +1);
-            else activateItem(ctx, sel);
+            if (sel == HOME_RECENT_BOOK)
+                cycleRecentBook(ctx, +1);
+            else
+                activateItem(ctx, sel);
             break;
         case Action::Select:
             activateItem(ctx, sel);
