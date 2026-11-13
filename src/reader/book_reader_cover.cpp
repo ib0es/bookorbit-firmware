@@ -1,5 +1,7 @@
 #include "book_reader_internal.h"
 #include <epub/ImageProbe.h>
+#include <epub/PackageParsers.h>
+#include <epub/XmlSax.h>
 
 namespace {
 
@@ -147,6 +149,101 @@ bool endsWithNoCase(const char* s, const char* sfx) {
     return a >= b && strcasecmp(s + a - b, sfx) == 0;
 }
 
+// One entry of the book's ZIP directory, looked up by path. The directory is
+// read into an arena given back before returning (the name is dropped with it).
+bool findEntry(SdBookSource& src, const char* path, ZipEntry& out) {
+    uint16_t count = 0;
+    uint32_t dirOffset = 0, dirSize = 0;
+    if (ZipCatalog::locateCentralDirectory(src, &dirOffset, &dirSize, &count) != BookStatus::Ok || count == 0) return false;
+    const size_t want = (size_t)dirSize + (size_t)count * (sizeof(ZipEntry) + 8) + 256;
+    if (want > 32 * 1024) return false;
+    Buffer mem(want);
+    if (!mem.p) return false;
+    Arena a(mem.p, mem.n);
+    ZipCatalog zip;
+    if (zip.open(src, a) != BookStatus::Ok) return false;
+    const ZipEntry* e = zip.find(path);
+    if (!e) return false;
+    out = *e;
+    out.name = nullptr;
+    return true;
+}
+
+const char* localName(const char* name) {
+    const char* c = strrchr(name, ':');
+    return c ? c + 1 : name;
+}
+
+const char* attr(const char** atts, const char* want) {
+    for (int i = 0; atts && atts[i]; i += 2)
+        if (strcmp(localName(atts[i]), want) == 0) return atts[i + 1];
+    return nullptr;
+}
+
+bool hasToken(const char* list, const char* token) {
+    const size_t n = strlen(token);
+    for (const char* s = list; s && *s;) {
+        while (*s == ' ' || *s == '\t' || *s == '\n' || *s == '\r') s++;
+        const char* e = s;
+        while (*e && *e != ' ' && *e != '\t' && *e != '\n' && *e != '\r') e++;
+        if ((size_t)(e - s) == n && strncmp(s, token, n) == 0) return true;
+        s = e;
+    }
+    return false;
+}
+
+// container.xml: the package document's path.
+struct RootfileHandler : XmlHandler {
+    char path[256] = {};
+    void onStartElement(const char* name, const char** atts) override {
+        if (strcmp(localName(name), "rootfile") != 0 || path[0]) return;
+        const char* p = attr(atts, "full-path");
+        if (p && strlen(p) < sizeof(path)) strcpy(path, p);
+        stopParse = path[0] != 0;
+    }
+};
+
+// The package: the first manifest item marked properties="cover" (a name some
+// books use instead of EPUB 3's "cover-image", which the book's index knows).
+struct CoverPropertyHandler : XmlHandler {
+    char href[256] = {};
+    void onStartElement(const char* name, const char** atts) override {
+        if (strcmp(localName(name), "item") != 0 || href[0]) return;
+        const char* props = attr(atts, "properties");
+        const char* h = attr(atts, "href");
+        const char* type = attr(atts, "media-type");
+        if (!h || !props || !hasToken(props, "cover")) return;
+        if (type && strncmp(type, "image/", 6) != 0) return;
+        if (strlen(h) < sizeof(href)) strcpy(href, h);
+        stopParse = href[0] != 0;
+    }
+};
+
+bool parseXml(SdBookSource& src, const ZipEntry& e, XmlHandler& h) {
+    Buffer mem(kInflateBytes + 8 * 1024);
+    if (!mem.p) return false;
+    Arena a(mem.p, mem.n);
+    return XmlSax::parseEntry(src, e, a, h) == BookStatus::Ok;
+}
+
+// The cover of a book that marks it properties="cover": container.xml, then the
+// package, then the image; one buffer at a time.
+bool coverByProperty(SdBookSource& src, ZipEntry& out) {
+    ZipEntry e;
+    if (!findEntry(src, "META-INF/container.xml", e)) return false;
+    RootfileHandler root;
+    if (!parseXml(src, e, root) || !root.path[0]) return false;
+    if (!findEntry(src, root.path, e)) return false;
+    CoverPropertyHandler cover;
+    if (!parseXml(src, e, cover) || !cover.href[0]) return false;
+    char dir[256];
+    if (!dirName(root.path, dir, sizeof(dir))) return false;
+    uint8_t pathMem[1024];
+    Arena pa(pathMem, sizeof(pathMem));
+    const char* path = resolveHref(pa, dir, cover.href, nullptr);
+    return path && findEntry(src, path, out);
+}
+
 // A book that declares no cover (no cover-image property, no EPUB 2 meta): an
 // image whose path says "cover" (cover.jpg, Images/Cover.png ...). Only the ZIP
 // directory is read, into an arena given back before the image is copied.
@@ -214,7 +311,7 @@ bool BookReader::extractCover(const String& epubPath, const String& outPath, boo
     catalog = BookCatalog();
     free(mem);
     mem = nullptr;
-    if (st == BookStatus::Ok && !hasCover) hasCover = coverByName(src, entry);
+    if (st == BookStatus::Ok && !hasCover) hasCover = coverByProperty(src, entry) || coverByName(src, entry);
     const String tmp = outPath + ".tmp";
     if (hasCover) {
         // A stored image (the usual case) is copied; a deflated one needs an inflate stream.
