@@ -1,6 +1,7 @@
 #include "bookorbit_client.h"
 #include <ArduinoJson.h>
 #include "../platform/hal/storage.h"
+#include "../platform/hal/network_tuning.h"
 #include "../core/opds_stream_parser.h"
 #include "../core/bookorbit_protocol.h"
 #include "../services/sync_clock.h"
@@ -76,6 +77,8 @@ const char* failureName(WifiFailure f) {
 }  // namespace
 
 bool BookOrbitClient::connectWiFi(const char* ssid, const char* pass, uint32_t timeoutMs, bool (*checkCancel)()) {
+    Serial.printf("[NetPerf] TCP receive window: %u bytes\n", Platform::tcpReceiveWindow());
+    const uint32_t connectStarted = millis();
     _lastWifiFailure = WifiFailure::None;
     if (!ssid || strlen(ssid) == 0) return false;
     if (_foregroundHook) _foregroundHook();
@@ -137,7 +140,8 @@ bool BookOrbitClient::connectWiFi(const char* ssid, const char* pass, uint32_t t
     WiFi.setSleep(false);
     esp_wifi_set_ps(WIFI_PS_NONE);
 
-    Serial.printf("\n[WiFi] Connected! IP: %s | RSSI: %d dBm\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
+    Serial.printf("\n[WiFi] Connected! IP: %s | RSSI: %d dBm | total %lu ms\n", WiFi.localIP().toString().c_str(),
+                  WiFi.RSSI(), (unsigned long)(millis() - connectStarted));
     return true;
 }
 
@@ -292,7 +296,9 @@ public:
             const int pct = (int)((uint64_t)_bytes * 100 / (uint64_t)_total);
             if (pct != _lastPct) {
                 _lastPct = pct;
+                const uint32_t started = millis();
                 _onProgress(pct);
+                _progressMs += millis() - started;
             }
         }
         return len;
@@ -300,6 +306,8 @@ public:
     bool finish() { return !_failed && flush_(); }
     size_t bytes() const { return _bytes; }
     bool cancelled() const { return _cancelled; }
+    uint32_t sdWriteMs() const { return _sdWriteMs; }
+    uint32_t progressMs() const { return _progressMs; }
     int available() override { return 0; }
     int read() override { return -1; }
     int peek() override { return -1; }
@@ -308,7 +316,9 @@ public:
 private:
     bool flush_() {
         if (_used == 0) return true;
+        const uint32_t started = millis();
         const size_t w = _file.write(_buf, _used);
+        _sdWriteMs += millis() - started;
         if (w != _used) {
             Serial.printf("[BookOrbit] SD card write failed: wrote %u of %u bytes!\n", (unsigned)w, (unsigned)_used);
             _failed = true;
@@ -324,6 +334,7 @@ private:
     void (*_onProgress)(int);
     bool (*_checkCancel)();
     uint32_t _lastCancelPoll = 0;
+    uint32_t _sdWriteMs = 0, _progressMs = 0;
     bool _failed = false, _cancelled = false;
 };
 
@@ -348,7 +359,10 @@ bool BookOrbitClient::fetchLibraries(const String& serverHost, const String& use
         http.addHeader("Authorization", "Bearer " + token);
     }
 
+    const uint32_t requestStarted = millis();
     int code = http.GET();
+    Serial.printf("[NetPerf] libraries response headers: %lu ms, HTTP %d\n", (unsigned long)(millis() - requestStarted),
+                  code);
     Serial.printf("[BookOrbit] fetchLibraries: GET %s -> HTTP %d\n", url.c_str(), code);
     if (code != 200) {
         Serial.printf("[BookOrbit] fetchLibraries failed (HTTP %d)\n", code);
@@ -432,6 +446,7 @@ bool BookOrbitClient::fetchCatalogFromUrl(const String& serverHost, const String
 
         uint32_t tPage = millis();
         int code = http.GET();
+        const uint32_t headersMs = millis() - tPage;
         if (code != 200 || lastCatalog.httpCode == 0) lastCatalog.httpCode = code;   // keep the first failure
         if (code != 200) {
             Serial.printf("[BookOrbit] OPDS catalog fetch (%s) failed with HTTP %d (took %lu ms)\n", pageUrl.c_str(),
@@ -477,8 +492,12 @@ bool BookOrbitClient::fetchCatalogFromUrl(const String& serverHost, const String
                 },
                 8 * 1024);   // entries are ~1-3 KB; the heap can be ~15 KB here
         OpdsParserSink sink(parser);
+        const uint32_t bodyStarted = millis();
         int written = http.writeToStream(&sink);
+        const uint32_t bodyMs = millis() - bodyStarted;
         http.end();
+        Serial.printf("[NetPerf] OPDS page %d: headers %lu ms, body+parse %lu ms\n", pageNo, (unsigned long)headersMs,
+                      (unsigned long)bodyMs);
         lastCatalog.bytes += sink.bytes();
         lastCatalog.skipped += parser.entriesSkipped();
         if (written < 0) lastCatalog.streamError = written;
@@ -599,6 +618,9 @@ bool BookOrbitClient::downloadFile(const String& serverHost, const String& fileU
         code = http.GET();
     }
 
+    const uint32_t headersMs = millis() - tStart;
+    Serial.printf("[NetPerf] download response headers (including auth retry): %lu ms, HTTP %d\n",
+                  (unsigned long)headersMs, code);
     if (code < 200 || code >= 300) {
         Serial.printf("[BookOrbit] Download failed with HTTP %d\n", code);
         http.end();
@@ -608,6 +630,7 @@ bool BookOrbitClient::downloadFile(const String& serverHost, const String& fileU
     int totalBytes = http.getSize();
     Serial.printf("[BookOrbit] Target size (%d bytes) -> %s\n", totalBytes, destSdPath.c_str());
 
+    const uint32_t sdSetupStarted = millis();
     Storage.ensureDirectories();
 
     // Written beside the target and swapped in only when complete: a reset or a
@@ -643,16 +666,28 @@ bool BookOrbitClient::downloadFile(const String& serverHost, const String& fileU
         http.end();
         return false;
     }
+    const uint32_t sdSetupMs = millis() - sdSetupStarted;
     FileDownloadSink sink(file, buffer, bufSize, totalBytes, onProgress, checkCancel);
+    const uint32_t bodyStarted = millis();
     const int result = http.writeToStream(&sink);
     const bool flushed = sink.finish();
+    const uint32_t bodyMs = millis() - bodyStarted;
+    const uint32_t closeStarted = millis();
     file.flush();
     file.close();
+    const uint32_t closeMs = millis() - closeStarted;
     free(buffer);
     http.end();
 
+    const uint32_t elapsed = millis() - tStart;
+    // Body time includes SD writes and progress callbacks; these components
+    // overlap it. The service renders UI concurrently with the download task.
+    Serial
+            .printf("[NetPerf] download: buffer %u bytes, SD setup %lu ms, body %lu ms "
+                    "(SD writes %lu ms, progress callback %lu ms), SD close %lu ms, RSSI %d dBm\n",
+                    (unsigned)bufSize, (unsigned long)sdSetupMs, (unsigned long)bodyMs, (unsigned long)sink.sdWriteMs(),
+                    (unsigned long)sink.progressMs(), (unsigned long)closeMs, WiFi.RSSI());
     const size_t downloaded = sink.bytes();
-    uint32_t elapsed = millis() - tStart;
     float speedKBps = (elapsed > 0) ? ((float)downloaded / (float)elapsed * 1000.0f / 1024.0f) : 0.0f;
     Serial.printf("[BookOrbit] Download finished: %u bytes in %lu ms (%.1f KB/s), result %d%s.\n", (unsigned)downloaded,
                   elapsed, speedKBps, result, sink.cancelled() ? " (cancelled)" : "");

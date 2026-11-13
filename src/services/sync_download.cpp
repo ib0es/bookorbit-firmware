@@ -1,6 +1,7 @@
 #include "sync_service.h"
 #include "sync_internal.h"
 #include "../platform/hal/mem_stats.h"
+#include "../platform/hal/background_task.h"
 #include "../net/bookorbit_client.h"
 #include "../core/book_formats.h"
 #include "../platform/hal/buttons.h"
@@ -20,12 +21,40 @@
 
 using namespace SyncInternal;
 
+namespace {
+struct DownloadJob {
+    const AppConfig& config;
+    const String& url;
+    const String& path;
+    std::atomic<int> percent{0};
+    std::atomic<bool> cancel{false};
+    bool ok = false;  // published by BackgroundTask completion
+};
+
+// Only one modal download runs at a time. The pointer is installed before the
+// worker starts and cleared after join(); callbacks never touch UI or input.
+DownloadJob* s_downloadJob = nullptr;
+
+void publishDownloadPercent(int percent) { s_downloadJob->percent.store(percent, std::memory_order_relaxed); }
+
+bool downloadCancelRequested() { return s_downloadJob->cancel.load(std::memory_order_relaxed); }
+
+void runDownload(void* context) {
+    auto& job = *static_cast<DownloadJob*>(context);
+    job.ok = BookOrbit.downloadBook(job.config.serverHost, job.url, job.path, job.config.bookOrbitUser,
+                                    job.config.bookOrbitPass, job.config.authToken, publishDownloadPercent,
+                                    downloadCancelRequested);
+}
+}  // namespace
+
 // ============================================================================
 // Download
 // ============================================================================
 bool SyncService::downloadBook(AppContext& ctx, BookItem& book, AppState returnState) {
     KeepToken keepToken(ctx);
+    const uint32_t prepareStarted = millis();
     WifiSession::prepare();
+    Serial.printf("[NetPerf] download reader preparation: %lu ms\n", (unsigned long)(millis() - prepareStarted));
     const String url = book.downloadUrl();
     if (url.length() == 0) {
         Ui::status(tr(MsgId::COMMON_ERROR), tr(MsgId::SYNC_ERR_FILE_NOT_FOUND), "");
@@ -55,17 +84,47 @@ bool SyncService::downloadBook(AppContext& ctx, BookItem& book, AppState returnS
     Ui::status(tr(MsgId::SYNC_DOWNLOAD_BOOK_TITLE), utf8Prefix(book.title, 64).c_str(),
                tr(MsgId::SYNC_DOWNLOADING_FROM_SERVER), ctx.config.serverHost.c_str(), nullptr,
                tr(MsgId::COMMON_CANCEL));
+    const uint32_t authStarted = millis();
     ensureToken(ctx);
+    Serial.printf("[NetPerf] download authentication: %lu ms\n", (unsigned long)(millis() - authStarted));
     if (cancelled()) return false;
 
     s_lastProgressTime = millis();
     s_lastProgressPercent = 0;
     s_downloadingBookTitle = utf8Prefix(book.title, 64);
 
-    bool ok = BookOrbit.downloadBook(ctx.config.serverHost, url, book.filePath, ctx.config.bookOrbitUser,
-                                     ctx.config.bookOrbitPass, ctx.config.authToken, reportDownloadProgress,
-                                     checkSyncCancel);
+    DownloadJob job{ctx.config, url, book.filePath};
+    Platform::BackgroundTask downloadTask;
+    s_downloadJob = &job;
+    bool ok;
+    if (downloadTask.start(runDownload, &job)) {
+        uint32_t progressUiMs = 0;
+        while (!downloadTask.finished()) {
+            if (checkSyncCancel()) job.cancel.store(true, std::memory_order_relaxed);
+            if (!s_syncCancelled) {
+                const uint32_t uiStarted = millis();
+                reportDownloadProgress(job.percent.load(std::memory_order_relaxed));
+                progressUiMs += millis() - uiStarted;
+            }
+            // Match the old download sink's 100 ms cancel polling cadence:
+            // touch/I2C scans at 100 Hz would compete with the network worker.
+            delay(100);
+        }
+        // Do not touch files, start postprocessing or switch Wi-Fi off while
+        // the worker still owns the HTTP client and the .part file.
+        downloadTask.join();
+        Serial.printf("[NetPerf] download progress UI: %lu ms (concurrent with transfer)\n",
+                      (unsigned long)progressUiMs);
+        ok = job.ok;
+    } else {
+        Serial.println("[Sync] Download task unavailable; downloading without progress redraws.");
+        ok = BookOrbit.downloadBook(ctx.config.serverHost, url, book.filePath, ctx.config.bookOrbitUser,
+                                    ctx.config.bookOrbitPass, ctx.config.authToken, nullptr, checkSyncCancel);
+    }
+    s_downloadJob = nullptr;
+    if (cancelled()) return false;
 
+    const uint32_t postStarted = millis();
     if (ok) {
         book.isDownloaded = true;
         if (book.activeFormat >= 0 && book.activeFormat < (int)book.formats.size())
@@ -97,6 +156,8 @@ bool SyncService::downloadBook(AppContext& ctx, BookItem& book, AppState returnS
         book.xpath = rec.state.local.xpath.c_str();
     }
 
+    Serial.printf("[NetPerf] download postprocessing (cover+progress+bookmarks): %lu ms\n",
+                  (unsigned long)(millis() - postStarted));
     BookOrbit.disconnectWiFi();
     if (cancelled()) return false;
     if (!ok) {
