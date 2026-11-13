@@ -230,6 +230,22 @@ make -f test/sim/Makefile DEVICE=x3 test           # the same on the X3 layout
 make -f test/sim/Makefile DEVICE=picco picco-test  # Picco walkthrough: touch + UP / DOWN / POWER only
 ```
 
+### Lint and Format
+| Part | Linter | Formatter | Config |
+|---|---|---|---|
+| C/C++ (`src`, `test`, `simulator/src`) | cppcheck | clang-format | `.clang-format`, `.clang-format-ignore`, `tools/lint/cppcheck-suppressions.txt` |
+| Python (`tools`, `test`) | ruff, mypy | ruff format | `ruff.toml`, `pyproject.toml` |
+| Web Flasher | ESLint | Prettier | `web-flasher/eslint.config.js`, `web-flasher/.prettierrc.json` |
+
+```bash
+pip install -r tools/lint/requirements.txt   # clang-format, cppcheck, ruff, mypy
+(cd web-flasher && npm ci)                   # eslint, prettier
+tools/lint.sh            # everything (or: tools/lint.sh cpp|py|web); CI runs the same
+tools/format.sh          # fix in place
+tools/format.sh src/x.cpp  # format whole C/C++ files
+```
+C/C++ is formatted only on the lines changed since the merge base with `origin/main` (`LINT_BASE` overrides), so existing code is reformatted gradually as it is touched. cppcheck findings that predate the linter are listed as a baseline at the end of the suppressions file.
+
 ---
 
 ## Disclaimer

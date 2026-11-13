@@ -16,6 +16,9 @@ test/host/run
 *.map
 __pycache__/
 *.pyc
+.venv/
+.mypy_cache/
+.ruff_cache/
 
 # Web Flasher build artifacts
 web-flasher/dist/

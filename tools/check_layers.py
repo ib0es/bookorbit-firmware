@@ -16,6 +16,7 @@
 
 Comments are ignored. Run from anywhere: python3 tools/check_layers.py
 """
+
 import os
 import re
 import sys
@@ -34,19 +35,27 @@ ALLOWED_INCLUDES = {
 }
 
 LOWER_LAYERS = {"reader", "convert", "net", "storage", "services"}
-SHARED_UPPER = {"app/app_state.h", "ui/i18n.h", "ui/i18n_generated.h", "ui/text_utils.h",
-                "ui/wifi_messages.h", "ui/font.h"}
+SHARED_UPPER = {
+    "app/app_state.h",
+    "ui/i18n.h",
+    "ui/i18n_generated.h",
+    "ui/text_utils.h",
+    "ui/wifi_messages.h",
+    "ui/font.h",
+}
 # (file, included) pairs still to be moved; see the fix plan (A8).
 KNOWN_EXCEPTIONS = {
-    ("src/reader/book_reader_render.cpp", "ui/kit/ui_kit.h"),    # the page-problem notice, turning the UI target
-    ("src/reader/book_reader_preview.cpp", "ui/kit/ui_kit.h"),   # the Appearance preview turns the UI target
+    ("src/reader/book_reader_render.cpp", "ui/kit/ui_kit.h"),  # the page-problem notice, turning the UI target
+    ("src/reader/book_reader_preview.cpp", "ui/kit/ui_kit.h"),  # the Appearance preview turns the UI target
 }
 
 
 def strip_comments(text):
     """Comments out, line structure kept (so line numbers still match)."""
+
     def blank(m):
         return re.sub(r"[^\n]", " ", m.group(0))
+
     pattern = re.compile(r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\\n])*"', re.S)
     return pattern.sub(lambda m: m.group(0) if m.group(0).startswith('"') else blank(m), text)
 
@@ -72,13 +81,15 @@ def main():
                 for n, line in enumerate(code.split("\n"), 1):
                     m = FLAG.search(line)
                     if m:
-                        problems.append(f"{rel}:{n}: {m.group(1)} outside src/platform (use Platform::kDevice / kMemory)")
+                        problems.append(
+                            f"{rel}:{n}: {m.group(1)} outside src/platform (use Platform::kDevice / kMemory)"
+                        )
 
             if layer in LOWER_LAYERS:
                 for m in INCLUDE.finditer(code):
                     target = os.path.normpath(os.path.join(d, m.group(1)))
                     if not os.path.exists(target):
-                        target = os.path.normpath(os.path.join(SRC, m.group(1)))   # an include through -Isrc
+                        target = os.path.normpath(os.path.join(SRC, m.group(1)))  # an include through -Isrc
                     if not target.startswith(os.path.normpath(SRC) + os.sep):
                         continue
                     to = top_dir(target)
@@ -93,7 +104,7 @@ def main():
             for m in INCLUDE.finditer(code):
                 target = os.path.normpath(os.path.join(d, m.group(1)))
                 if not target.startswith(os.path.normpath(SRC) + os.sep):
-                    continue   # include/, the SDK, system headers
+                    continue  # include/, the SDK, system headers
                 to = top_dir(target)
                 if to and to not in allowed:
                     n = code.count("\n", 0, m.start()) + 1

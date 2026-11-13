@@ -125,6 +125,38 @@ jobs:
       - name: Device and platform checks only in src/platform; core and platform include downward only
         run: python3 tools/check_layers.py
 
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: 'web-flasher/package-lock.json'
+
+      - name: Install lint tools
+        run: |
+          pip install -r tools/lint/requirements.txt
+          (cd web-flasher && npm ci)
+
+      - name: Lint (C++ format on changed lines, cppcheck, ruff, eslint, prettier)
+        env:
+          # PR: lines changed against the target branch; push: against the previous head.
+          LINT_BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || 'HEAD~1' }}
+        run: tools/lint.sh
+
   host-tests:
     name: Host Unit Tests
     runs-on: ubuntu-latest
@@ -216,7 +248,7 @@ jobs:
   ci-pass:
     name: All Platform Builds & Tests
     if: always()
-    needs: [discover, firmware, web-flasher, layers, host-tests, sim-tests]
+    needs: [discover, firmware, web-flasher, layers, lint, host-tests, sim-tests]
     runs-on: ubuntu-latest
     steps:
       - name: Verify all required checks passed
@@ -228,10 +260,11 @@ jobs:
             ["layers"]="${{ needs.layers.result }}"
             ["host-tests"]="${{ needs.host-tests.result }}"
             ["sim-tests"]="${{ needs.sim-tests.result }}"
+            ["lint"]="${{ needs.lint.result }}"
           )
 
           failed=0
-          for job in discover firmware web-flasher layers host-tests sim-tests; do
+          for job in discover firmware web-flasher layers lint host-tests sim-tests; do
             res="${results[$job]}"
             echo "${job}: ${res}"
             if [ "$res" != "success" ]; then

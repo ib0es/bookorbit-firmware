@@ -1,0 +1,26 @@
+# cppcheck suppressions for tools/lint.sh (format: id[:file[:line]]).
+# A one-off false positive: `// cppcheck-suppress <id>` on the line above it, with the reason.
+missingIncludeSystem
+missingInclude
+unmatchedSuppression
+checkersReport
+
+# Third-party and generated code.
+*:src/ui/vendor/*
+*:src/reader/engine/stb_truetype_small.h
+*:src/reader/fonts/builtin_font_data.h
+*:src/ui/book_fonts.h
+*:src/ui/kit/ui_fonts.h
+*:src/ui/i18n_generated.h
+
+# Work buffers and per-depth state arrays left uninitialised on purpose: they are
+# written before they are read, and zeroing kilobytes per object costs time and
+# stack/heap on the ESP32-C3 (no PSRAM).
+uninitMemberVar:src/convert/fb2_to_epub.cpp
+uninitMemberVar:src/convert/mobi_to_epub.cpp
+uninitMemberVar:src/convert/txt_to_epub.cpp
+uninitMemberVar:src/reader/book_reader.cpp
+uninitMemberVar:src/reader/engine/bitmap_book_font.h
+uninitMemberVarNoCtor:src/reader/engine/bitmap_book_font.h
+uninitMemberVar:src/storage/json_file.cpp
+uninitMemberVar:src/storage/json_writer.h

@@ -1,0 +1,16 @@
+# Python lint + format for tools/ and test/ (ruff check . / ruff format ., or tools/lint.sh / tools/format.sh)
+line-length = 120
+target-version = "py311"
+extend-exclude = ["freeink-sdk", "web-flasher", "simulator", ".pio", "picco_stock"]
+
+[lint]
+# pycodestyle errors, pyflakes, bugbear, import order, pyupgrade (safe subset)
+select = ["E4", "E7", "E9", "F", "W", "B", "I", "UP"]
+ignore = [
+    "E741",   # `l` / `I` as names: common in the format parsers here
+    "B905",   # zip(strict=) adds noise in short scripts
+    "UP031",  # %-formatting is fine
+]
+
+[format]
+quote-style = "preserve"

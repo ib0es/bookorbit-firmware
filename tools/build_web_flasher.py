@@ -14,7 +14,6 @@ Usage:
 """
 
 import argparse
-import os
 import shutil
 import subprocess
 import sys
@@ -68,7 +67,9 @@ def find_boot_app0() -> Path:
         return local_tool
 
     home = Path.home()
-    pio_pkg = home / ".platformio" / "packages" / "framework-arduinoespressif32" / "tools" / "partitions" / "boot_app0.bin"
+    pio_pkg = (
+        home / ".platformio" / "packages" / "framework-arduinoespressif32" / "tools" / "partitions" / "boot_app0.bin"
+    )
     if pio_pkg.is_file():
         # Copy locally for reproducibility
         try:
@@ -93,9 +94,9 @@ def run_cmd(cmd, cwd=None):
 
 
 def build_env(env: str):
-    print(f"\n==================================================")
+    print("\n==================================================")
     print(f"Building PlatformIO environment: {env}")
-    print(f"==================================================")
+    print("==================================================")
     run_cmd(["pio", "run", "-e", env])
 
 
@@ -121,16 +122,26 @@ def merge_firmware(env: str, chip: str, boot_app0_path: Path):
     # 0xe000: boot_app0 (otadata)
     # 0x10000: app (firmware.bin)
     merge_cmd = [
-        sys.executable, "-m", "esptool",
-        "--chip", chip,
+        sys.executable,
+        "-m",
+        "esptool",
+        "--chip",
+        chip,
         "merge_bin",
-        "-o", str(firmware_out),
-        "--flash_mode", "dio",
-        "--flash_size", "16MB",
-        "0x0", str(bootloader),
-        "0x8000", str(partitions),
-        "0xe000", str(boot_app0_path),
-        "0x10000", str(firmware),
+        "-o",
+        str(firmware_out),
+        "--flash_mode",
+        "dio",
+        "--flash_size",
+        "16MB",
+        "0x0",
+        str(bootloader),
+        "0x8000",
+        str(partitions),
+        "0xe000",
+        str(boot_app0_path),
+        "0x10000",
+        str(firmware),
     ]
     run_cmd(merge_cmd)
 
@@ -151,16 +162,8 @@ def generate_manifests(targets):
             "version": "latest",
             "new_install_prompt_erase": True,
             "builds": [
-                {
-                    "chipFamily": chip_family,
-                    "parts": [
-                        {
-                            "path": f"../builds/{env}/bookorbit-{env}.bin",
-                            "offset": 0
-                        }
-                    ]
-                }
-            ]
+                {"chipFamily": chip_family, "parts": [{"path": f"../builds/{env}/bookorbit-{env}.bin", "offset": 0}]}
+            ],
         }
         manifest_file = MANIFESTS_DIR / f"{env}.json"
         with open(manifest_file, "w", encoding="utf-8") as f:
@@ -173,37 +176,28 @@ def generate_manifests(targets):
         "version": "latest",
         "new_install_prompt_erase": True,
         "builds": [
-            {
-                "chipFamily": "ESP32-C3",
-                "parts": [
-                    {
-                        "path": "builds/x4/bookorbit-x4.bin",
-                        "offset": 0
-                    }
-                ]
-            },
-            {
-                "chipFamily": "ESP32-S3",
-                "parts": [
-                    {
-                        "path": "builds/x4c/bookorbit-x4c.bin",
-                        "offset": 0
-                    }
-                ]
-            }
-        ]
+            {"chipFamily": "ESP32-C3", "parts": [{"path": "builds/x4/bookorbit-x4.bin", "offset": 0}]},
+            {"chipFamily": "ESP32-S3", "parts": [{"path": "builds/x4c/bookorbit-x4c.bin", "offset": 0}]},
+        ],
     }
     with open(DOCS_DIR / "manifest.json", "w", encoding="utf-8") as f:
         json.dump(universal_manifest, f, indent=2)
-    print(f"✓ Generated universal manifest: docs/manifest.json")
+    print("✓ Generated universal manifest: docs/manifest.json")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Book Orbit Web Flasher Packager")
-    parser.add_argument("--targets", nargs="+", choices=list(TARGETS.keys()), default=list(TARGETS.keys()),
-                        help="Target environments to process")
+    parser.add_argument(
+        "--targets",
+        nargs="+",
+        choices=list(TARGETS.keys()),
+        default=list(TARGETS.keys()),
+        help="Target environments to process",
+    )
     parser.add_argument("--skip-build", action="store_true", help="Skip compilation, only merge existing artifacts")
-    parser.add_argument("--manifests-only", action="store_true", help="Only generate manifest JSON files without compiling or merging")
+    parser.add_argument(
+        "--manifests-only", action="store_true", help="Only generate manifest JSON files without compiling or merging"
+    )
     args = parser.parse_args()
 
     if args.manifests_only:

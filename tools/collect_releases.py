@@ -49,7 +49,7 @@ def main() -> int:
         print(f"Could not list releases, writing an empty list: {exc.stderr}", file=sys.stderr)
         releases = []
 
-    out = []
+    out: list[dict] = []
     for rel in releases:
         if rel.get("draft") or len(out) >= args.max:
             continue
@@ -71,20 +71,22 @@ def main() -> int:
             cmd += ["--pattern", a["name"]]
         gh(*cmd)
 
-        out.append({
-            "tag_name": tag,
-            "name": rel.get("name") or tag,
-            "published_at": rel.get("published_at"),
-            "prerelease": bool(rel.get("prerelease")),
-            "assets": [
-                {
-                    "name": a["name"],
-                    "browser_download_url": f"builds/releases/{tag}/{a['name']}",
-                    "size": a.get("size", 0),
-                }
-                for a in assets
-            ],
-        })
+        out.append(
+            {
+                "tag_name": tag,
+                "name": rel.get("name") or tag,
+                "published_at": rel.get("published_at"),
+                "prerelease": bool(rel.get("prerelease")),
+                "assets": [
+                    {
+                        "name": a["name"],
+                        "browser_download_url": f"builds/releases/{tag}/{a['name']}",
+                        "size": a.get("size", 0),
+                    }
+                    for a in assets
+                ],
+            }
+        )
         print(f"✓ {tag}: {len(assets)} file(s)")
 
     DOCS_DIR.mkdir(parents=True, exist_ok=True)

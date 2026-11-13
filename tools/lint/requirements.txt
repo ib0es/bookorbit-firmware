@@ -1,0 +1,5 @@
+# Lint / format tools: pip install -r tools/lint/requirements.txt
+clang-format==23.1.*
+cppcheck==1.5.*
+ruff==0.17.*
+mypy==1.*

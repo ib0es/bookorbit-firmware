@@ -15,6 +15,7 @@ Usage (from firmware/):
     python3 tools/gen_ui_fonts.py [--fonts-dir /usr/share/fonts/truetype]
 Needs Pillow. Re-run after changing SIZES or the symbol list.
 """
+
 import argparse
 import os
 import sys
@@ -31,8 +32,22 @@ SIZES = [
 SYMBOL_TTF = "dejavu/DejaVuSans.ttf"
 FIRST, LAST = 0x20, 0x45F
 WANTED = set(range(0x20, 0x7F)) | set(range(0xA0, 0x100)) | set(range(0x400, 0x460))
-SYMBOLS = [0x2013, 0x2014, 0x2022, 0x2116, 0x2190, 0x2192, 0x232B, 0x25B2, 0x25B6, 0x25BA,
-           0x25BC, 0x25C0, 0x25C4, 0x2713]
+SYMBOLS = [
+    0x2013,
+    0x2014,
+    0x2022,
+    0x2116,
+    0x2190,
+    0x2192,
+    0x232B,
+    0x25B2,
+    0x25B6,
+    0x25BA,
+    0x25BC,
+    0x25C0,
+    0x25C4,
+    0x2713,
+]
 
 
 def raster(font, ch, ascent):
@@ -121,14 +136,16 @@ def main():
         P(f"// slot {slot}: {ttf} {size}px, line {yadv}px, ascent {ascent}px, {len(bitmap)} bitmap bytes")
         P(f"inline constexpr uint8_t k{name}Bitmap[] = {{")
         for i in range(0, len(bitmap), 24):
-            P("    " + ",".join(f"0x{b:02X}" for b in bitmap[i:i + 24]) + ",")
+            P("    " + ",".join(f"0x{b:02X}" for b in bitmap[i : i + 24]) + ",")
         P("};")
         P(f"inline constexpr freeink::ui::FontGlyph k{name}Glyphs[] = {{")
         for i in range(0, len(glyphs), 8):
-            P("    " + " ".join("{%d,%d,%d,%d,%d,%d}," % g for g in glyphs[i:i + 8]))
+            P("    " + " ".join("{%d,%d,%d,%d,%d,%d}," % g for g in glyphs[i : i + 8]))
         P("};")
-        P(f"inline constexpr freeink::ui::BitmapFont k{name}Font{{k{name}Bitmap, k{name}Glyphs, 0x{FIRST:X}, 0x{LAST:X}, "
-          f"{yadv}, {ascent}, {maxw}, {maxh}, 1}};")
+        P(
+            f"inline constexpr freeink::ui::BitmapFont k{name}Font{{k{name}Bitmap, k{name}Glyphs, 0x{FIRST:X}, 0x{LAST:X}, "
+            f"{yadv}, {ascent}, {maxw}, {maxh}, 1}};"
+        )
         P("")
 
         # Symbols at the same pixel size.
@@ -146,17 +163,17 @@ def main():
         total += len(sbits) + len(sglyphs) * 9
         P(f"inline constexpr uint8_t k{name}SymBitmap[] = {{")
         for i in range(0, len(sbits), 24):
-            P("    " + ",".join(f"0x{b:02X}" for b in sbits[i:i + 24]) + ",")
+            P("    " + ",".join(f"0x{b:02X}" for b in sbits[i : i + 24]) + ",")
         P("};")
         P(f"inline constexpr SymbolGlyph k{name}SymGlyphs[] = {{")
-        for (cp, off, w, h, xadv, xo, yo) in sglyphs:
+        for cp, off, w, h, xadv, xo, yo in sglyphs:
             P(f"    {{0x{cp:04X}, {{{off},{w},{h},{xadv},{xo},{yo}}}}},")
         P("};")
         sym_sets.append((yadv, name, len(sglyphs)))
         P("")
 
     P("inline constexpr SymbolSet kSymbolSets[] = {")
-    for (yadv, name, n) in sym_sets:
+    for yadv, name, n in sym_sets:
         P(f"    {{{yadv}, k{name}SymBitmap, k{name}SymGlyphs, {n}}},")
     P("};")
     P("")
