@@ -11,6 +11,7 @@
 #include "app/app_state.h"
 #include "../core/book_formats.h"
 #include "../core/time_utils.h"
+#include "../core/template_stream.h"
 #include "../core/ui_port.h"
 #include "../platform/device.h"
 #include "../platform/system.h"
@@ -95,6 +96,7 @@ button.btn-sec { background: #4b5563; margin-top: 10px; }
 <div id='toast' class='toast'></div>
 <div class='tabs'>
 <button type='button' class='tab active' onclick='showTab("books",this)'>%TAB_BOOKS%</button>
+<button type='button' class='tab' onclick='showTab("fonts",this)'>%FONTS_TITLE%</button>
 <button type='button' class='tab' onclick='showTab("settings",this)'>%TAB_SETTINGS%</button>
 </div>
 <div id='tab-books' class='panel active'>
@@ -111,6 +113,21 @@ button.btn-sec { background: #4b5563; margin-top: 10px; }
 <div id='queue'></div>
 <h2>%BOOKS_LIST_TITLE% (<span id='book-cnt'>0</span>)</h2>
 <div id='blist' class='blist'></div>
+</div>
+<div id='tab-fonts' class='panel'>
+<h2>%FONTS_TITLE%</h2>
+<p class='desc'>%FONTS_DESC%</p>
+<div class='drop'><input type='file' id='font-input' multiple accept='.zip,.ttf,.otf'></div>
+<label class='chk'><input type='checkbox' id='font-overwrite'>%OVERWRITE_LBL%</label>
+<button type='button' id='font-up' class='btn' onclick='uploadFonts()' disabled>%BTN_UPLOAD%</button>
+<progress id='font-progress' value='0' max='100' style='display:none'></progress>
+<div id='font-result' class='desc' role='status'></div>
+<div id='font-list' class='blist'></div>
+<h2>%FONT_FLASH_TITLE%</h2>
+<p class='desc'>%FONT_FLASH_HINT%</p>
+<p id='font-flash-capacity' class='desc'></p>
+<select id='font-flash-family' onchange='updateFontAction()'></select>
+<button type='button' id='font-flash-install' class='btn' onclick='runFontAction()' disabled>%FONT_FLASH_INSTALL%</button>
 </div>
 <div id='tab-settings' class='panel'>
 <form id='cfg-form' method='POST' action='/save'>
@@ -132,6 +149,7 @@ function showTab(id,btn){
   document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
   document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('active');});
   $('tab-'+id).classList.add('active');btn.classList.add('active');
+  if(id==='fonts')loadFonts();
 }
 var booksLoading=false;
 function loadBooks(){
@@ -177,7 +195,7 @@ function renderQueue(states){
   });
 }
 function startUpload(){
-  if(uploading||!upQueue.length)return;
+  if(uploading||fontUploading||!upQueue.length)return;
   uploading=true;$('btn-up').disabled=true;$('file-input').disabled=true;$('prog-wrap').style.display='block';
   var ow=$('overwrite').checked?'1':'0';
   var files=upQueue.slice(),total=0,ends=[],sizes=[];
@@ -222,6 +240,193 @@ function startUpload(){
   };
   xhr.onerror=xhr.ontimeout=function(){files.forEach(function(f,i){badge(i,'err','b-err');});finish();};
   xhr.send(fd);
+}
+var flashChoices=Object.create(null);
+function updateFontAction(){
+  var choice=flashChoices[fontFamilyKey($('font-flash-family').value)],button=$('font-flash-install');
+  button.textContent=choice&&choice.builtin?'%JS_FLASH_BUILTIN%':(choice&&choice.installed?'%JS_FLASH_DELETE%':'%JS_FLASH_INSTALL%');
+  button.style.background=choice&&choice.installed?'#b91c1c':'#000';
+  button.disabled=fontUploading||!choice||choice.builtin||(!choice.installed&&!choice.fits);
+}
+function runFontAction(){
+  var choice=flashChoices[fontFamilyKey($('font-flash-family').value)];
+  if(!choice||choice.builtin||fontUploading||uploading)return;
+  return choice.installed?deletePortalFont():installPortalFont();
+}
+function loadFonts(){
+  return fetch('/api/fonts').then(function(r){if(!r.ok)throw Error(T.err);return r.json();}).then(function(d){
+    var list=$('font-list');list.textContent='';
+    var select=$('cfg-form').elements.namedItem('font_family'),current=select.value;
+    while(select.options.length>1)select.remove(1);
+    var flashSelect=$('font-flash-family'),previous=flashSelect.value;flashSelect.options.length=0;
+    flashSelect.add(new Option('—',''));
+    var installed=d.installedFamilies||[];flashChoices=Object.create(null);
+    $('font-flash-capacity').textContent='Flash: '+fmtSz(d.used||0)+' / '+fmtSz(d.capacity||0)+' · %JS_FLASH_FREE%: '+fmtSz(d.free||0);
+    var names=[];
+    (d.families||[]).forEach(function(f){
+      names.push(f.name);flashChoices[fontFamilyKey(f.name)]=f;
+      var row=document.createElement('div');row.className='qitem';row.textContent=f.name+' ('+fmtSz(f.bytes)+')';list.appendChild(row);
+    });
+    installed.forEach(function(f){
+      flashChoices[fontFamilyKey(f.name)]={name:f.name,bytes:f.bytes,installed:true,fits:true};
+      if(names.indexOf(f.name)<0)names.push(f.name);
+    });
+    var builtinName=d.builtin||'Noto Serif';
+    flashChoices[fontFamilyKey(builtinName)]={name:builtinName,bytes:0,builtin:true,installed:false,fits:false};
+    Object.keys(flashChoices).forEach(function(key){
+      var f=flashChoices[key];
+      var option=new Option(f.builtin?f.name+' — %JS_FLASH_BUILTIN%':f.name+' ('+fmtSz(f.bytes)+')'+(f.installed?' — %JS_FONT_ALREADY%':(f.fits?'':' — %JS_FONT_TOO_BIG%')),f.name);
+      option.disabled=!!f.builtin||(!f.installed&&!f.fits);flashSelect.add(option);
+    });
+    var previousChoice=flashChoices[fontFamilyKey(previous)];flashSelect.value=previousChoice?previousChoice.name:'';
+    updateFontAction();
+    names.forEach(function(name){select.add(new Option(name,name));});
+    if(current&&names.indexOf(current)<0)select.add(new Option(current,current));
+    select.value=current;
+    if(!(d.families||[]).length)list.textContent='%JS_FONTS_EMPTY%';
+  }).catch(function(){toast(T.err,false);});
+}
+// ZIP is expanded in the browser: the reader receives ordinary font uploads.
+function fontZipError(){return Error('%JS_ZIP_ERROR%');}
+function fontCrc32(bytes){
+  var crc=0xffffffff;
+  for(var i=0;i<bytes.length;i++){
+    crc^=bytes[i];
+    for(var bit=0;bit<8;bit++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);
+  }
+  return (crc^0xffffffff)>>>0;
+}
+async function unzipFonts(file){
+  if(file.size>32*1024*1024)throw fontZipError();
+  var data=new Uint8Array(await file.arrayBuffer()),view=new DataView(data.buffer);
+  var end=-1;
+  for(var at=data.length-22;at>=Math.max(0,data.length-65557);at--){
+    if(view.getUint32(at,true)===0x06054b50&&at+22+view.getUint16(at+20,true)===data.length){end=at;break;}
+  }
+  if(end<0||view.getUint16(end+4,true)!==0||view.getUint16(end+6,true)!==0)throw fontZipError();
+  var count=view.getUint16(end+10,true),pos=view.getUint32(end+16,true),dirSize=view.getUint32(end+12,true);
+  if(count===65535||count>1024||count!==view.getUint16(end+8,true)||pos+dirSize>end)throw fontZipError();
+  var dirEnd=pos+dirSize,fonts=[],total=0,names=new Set();
+  for(var index=0;index<count;index++){
+    if(pos+46>dirEnd||view.getUint32(pos,true)!==0x02014b50)throw fontZipError();
+    var flags=view.getUint16(pos+8,true),method=view.getUint16(pos+10,true),crc=view.getUint32(pos+16,true);
+    var compressed=view.getUint32(pos+20,true),size=view.getUint32(pos+24,true);
+    var nameLen=view.getUint16(pos+28,true),extra=view.getUint16(pos+30,true),comment=view.getUint16(pos+32,true);
+    var local=view.getUint32(pos+42,true);
+    if(pos+46+nameLen+extra+comment>dirEnd||view.getUint16(pos+34,true)!==0)throw fontZipError();
+    var name=new TextDecoder().decode(data.subarray(pos+46,pos+46+nameLen));
+    pos+=46+nameLen+extra+comment;
+    if(!/\.(ttf|otf)$/i.test(name))continue;
+    var parts=name.split('/'),base=parts[parts.length-1],key=base.toLowerCase();
+    if(parts.some(function(p){return !p||p==='.'||p==='..';})||/[\\\x00-\x1f:*?"<>|]/.test(name)||base[0]==='.'||names.has(key))throw fontZipError();
+    if((flags&1)||(method!==0&&method!==8)||!size||size>16*1024*1024||fonts.length>=128)throw fontZipError();
+    total+=size;if(total>64*1024*1024)throw fontZipError();
+    if(local+30>data.length||view.getUint32(local,true)!==0x04034b50||view.getUint16(local+8,true)!==method)throw fontZipError();
+    var start=local+30+view.getUint16(local+26,true)+view.getUint16(local+28,true);
+    if(start+compressed>dirEnd||start+compressed>data.length)throw fontZipError();
+    var payload=data.subarray(start,start+compressed),chunks=[],length=0;
+    if(method===0){if(compressed!==size)throw fontZipError();chunks=[payload];length=payload.length;}
+    else{
+      var decoder;
+      try{decoder=new DecompressionStream('deflate-raw');}catch(e){throw Error('%JS_ZIP_BROWSER%');}
+      var reader=new Blob([payload]).stream().pipeThrough(decoder).getReader();
+      try{
+        while(true){var part=await reader.read();if(part.done)break;
+          length+=part.value.length;if(length>size)throw fontZipError();chunks.push(part.value);
+        }
+      }finally{await reader.cancel().catch(function(){});}
+    }
+    if(length!==size)throw fontZipError();
+    var font=new File(chunks,base,{type:'application/octet-stream'});
+    if(fontCrc32(new Uint8Array(await font.arrayBuffer()))!==crc)throw fontZipError();
+    fonts.push(font);names.add(key);
+  }
+  if(!fonts.length)throw Error('%JS_ZIP_EMPTY%');
+  return fonts;
+}
+async function expandFontFiles(files){
+  var result=[],names=new Set(),total=0;
+  for(var i=0;i<files.length;i++){
+    var list=/\.zip$/i.test(files[i].name)?await unzipFonts(files[i]):[files[i]];
+    for(var j=0;j<list.length;j++){
+      var f=list[j],name=f.name.toLowerCase();
+      if(!/\.(ttf|otf)$/i.test(name)||names.has(name)||f.size>16*1024*1024||result.length>=128)throw fontZipError();
+      total+=f.size;if(total>64*1024*1024)throw fontZipError();
+      names.add(name);result.push(f);
+    }
+  }
+  return result;
+}
+
+function fontFamilyKey(name){return name.toLowerCase().replace(/[ _-]/g,'');}
+function fontFamilyFromFile(name){return name.replace(/\.(ttf|otf)$/i,'').replace(/[- ](regular|book|roman|normal|bolditalic|boldoblique|bold|italic|oblique|bi|it)$/i,'');}
+async function deletePortalFont(){
+  if(fontUploading||uploading)return;
+  fontUploading=true;$('font-flash-install').disabled=true;$('btn-save').disabled=true;$('btn-close').disabled=true;
+  try{
+    var name=$('font-flash-family').value;
+    var response=await fetch('/api/fonts/flash/delete',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(name)}),result=await response.json();
+    if(!response.ok||!result.ok)throw Error(result.error||T.err);
+    var familySelect=$('cfg-form').elements.namedItem('font_family');if(familySelect.value===name)familySelect.value='';toast('%JS_FONT_DELETED%',true);
+  }catch(e){toast(e.message,false);}
+  finally{fontUploading=false;$('btn-save').disabled=false;$('btn-close').disabled=false;loadFonts();}
+}
+async function installPortalFont(){
+  if(fontUploading||uploading)return;
+  var name=$('font-flash-family').value;if(!name)return;
+  fontUploading=true;$('font-flash-install').disabled=true;$('font-up').disabled=true;
+  $('btn-save').disabled=true;$('btn-close').disabled=true;
+  try{
+    var response=await fetch('/api/fonts/install',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(name)});
+    var result=await response.json();if(!response.ok||!result.ok)throw Error(result.error||T.err);
+    $('cfg-form').elements.namedItem('font_family').value=name;
+    toast('%JS_FONT_FLASH_DONE%',true);
+  }catch(e){toast(e.message,false);}
+  finally{
+    fontUploading=false;$('font-up').disabled=!$('font-input').files.length;
+    $('btn-save').disabled=false;$('btn-close').disabled=false;loadFonts();
+  }
+}
+var fontUploading=false;
+$('font-input').addEventListener('change',function(){$('font-up').disabled=fontUploading||!this.files.length;});
+async function uploadFonts(){
+  if(fontUploading||uploading)return;
+  var files=Array.prototype.slice.call($('font-input').files||[]);if(!files.length)return;
+  fontUploading=true;$('font-up').disabled=true;$('font-input').disabled=true;$('btn-up').disabled=true;
+  $('btn-save').disabled=true;$('btn-close').disabled=true;$('font-progress').style.display='block';
+  $('font-result').textContent='';
+  try{
+    $('font-result').textContent='%JS_ZIP_PREPARING%';
+    files=await expandFontFiles(files);
+    var stateResponse=await fetch('/api/fonts');if(!stateResponse.ok)throw Error(T.err);
+    var state=await stateResponse.json();
+    files=files.filter(function(f){return fontFamilyKey(fontFamilyFromFile(f.name))!==fontFamilyKey(state.builtin||'Noto Serif');});
+    if(files.some(function(f){return (state.installedFamilies||[]).some(function(installed){return fontFamilyKey(fontFamilyFromFile(f.name))===fontFamilyKey(installed.name);});}))throw Error('%JS_FONT_DELETE_FIRST%');
+    if(!files.length)throw Error('%JS_FONT_BUILTIN_ONLY%');
+    $('font-result').textContent='';
+    for(var i=0;i<files.length;i++){
+      var file=files[i];
+      await new Promise(function(resolve,reject){
+        var fd=new FormData();fd.append('file',file,file.name);
+        var xhr=new XMLHttpRequest();
+        xhr.open('POST','/api/upload?kind=font&overwrite='+($('font-overwrite').checked?'1':'0')+'&sizes='+file.size,true);
+        xhr.upload.onprogress=function(e){if(e.lengthComputable)$('font-progress').value=(i+e.loaded/e.total)*100/files.length;};
+        xhr.onload=function(){
+          try{var d=JSON.parse(xhr.responseText),r=(d.files||[])[0];
+            if(xhr.status!==200||!r||!r.ok)throw Error(r&&r.error||T.err);
+            $('font-result').textContent+=(file.name+': OK\n');resolve();
+          }catch(e){reject(e);}
+        };
+        xhr.onerror=xhr.ontimeout=xhr.onabort=function(){reject(Error(T.err));};xhr.send(fd);
+      });
+    }
+    $('font-progress').value=100;toast('%JS_FONTS_DONE%',true);
+  }catch(e){toast((file?file.name+': ':'')+e.message,false);}
+  finally{
+    fontUploading=false;$('font-input').disabled=false;$('font-up').disabled=!$('font-input').files.length;
+    $('btn-up').disabled=!upQueue.length;$('btn-save').disabled=false;$('btn-close').disabled=false;
+    loadFonts();
+  }
 }
 $('cfg-form').addEventListener('submit',function(ev){
   ev.preventDefault();
@@ -350,7 +555,7 @@ String jsonEscape(const String& s) {
     return out;
 }
 
-bool sanitizeUploadFilename(const String& raw, String& outName) {
+bool sanitizeUploadFilename(const String& raw, String& outName, bool font = false) {
     int slash = raw.lastIndexOf('/');
     int bslash = raw.lastIndexOf('\\');
     int start = (slash > bslash ? slash : bslash) + 1;
@@ -374,7 +579,9 @@ bool sanitizeUploadFilename(const String& raw, String& outName) {
     if (clean.length() == 0 || clean == "." || clean == ".." || clean.startsWith(".")) return false;
 
     const BookFormats::Kind kind = BookFormats::fromPath(clean.c_str());
-    if (kind == BookFormats::Unknown) return false;
+    String lower = clean;
+    lower.toLowerCase();
+    if (font ? !(lower.endsWith(".ttf") || lower.endsWith(".otf")) : kind == BookFormats::Unknown) return false;
 
     const int dot = clean.lastIndexOf('.');
     const String ext = (dot > 0) ? clean.substring(dot) : String();
@@ -386,15 +593,117 @@ bool sanitizeUploadFilename(const String& raw, String& outName) {
     return true;
 }
 
-void beginSection(String& out, const char* title, bool open) {
+struct PortalSink {
+    WebServer& server;
+    void operator()(const char* bytes, size_t length) const {
+        server.sendContent(bytes, length);
+        Platform::feedWatchdog();
+        PowerService::noteActivity();
+        delay(0);
+    }
+};
+class PortalWriter {
+public:
+    explicit PortalWriter(WebServer& server) : buffer_(PortalSink{server}) {}
+    void append(const char* text, size_t length) { buffer_.append(text, length); }
+    void flush() { buffer_.flush(); }
+    PortalWriter& operator+=(const char* text) {
+        append(text, strlen(text));
+        return *this;
+    }
+    PortalWriter& operator+=(const String& text) {
+        append(text.c_str(), text.length());
+        return *this;
+    }
+    PortalWriter& operator+=(char byte) {
+        append(&byte, 1);
+        return *this;
+    }
+
+private:
+    TemplateStream::Buffer<PortalSink> buffer_;
+};
+struct PortalToken {
+    const char* token;
+    MsgId message;
+    bool javascript;
+};
+const PortalToken kHeadTokens[] = {
+        {"%HTML_TITLE%", MsgId::WEB_HTML_TITLE, false},
+        {"%HTML_HEADING%", MsgId::WEB_HTML_HEADING, false},
+        {"%HTML_SUBHEAD%", MsgId::WEB_HTML_SUBHEAD, false},
+        {"%FONT_FLASH_DELETE%", MsgId::WEB_HTML_FONT_FLASH_DELETE, false},
+        {"%FONT_FLASH_TITLE%", MsgId::WEB_HTML_FONT_FLASH_TITLE, false},
+        {"%FONT_FLASH_HINT%", MsgId::WEB_HTML_FONT_FLASH_HINT, false},
+        {"%FONT_FLASH_INSTALL%", MsgId::WEB_HTML_FONT_FLASH_INSTALL, false},
+        {"%FONTS_TITLE%", MsgId::WEB_HTML_FONTS_TITLE, false},
+        {"%FONTS_DESC%", MsgId::WEB_HTML_FONTS_DESC, false},
+        {"%TAB_BOOKS%", MsgId::WEB_HTML_TAB_BOOKS, false},
+        {"%TAB_SETTINGS%", MsgId::WEB_HTML_TAB_SETTINGS, false},
+        {"%SD_FREE_LBL%", MsgId::WEB_HTML_SD_FREE, false},
+        {"%UPLOAD_TITLE%", MsgId::WEB_HTML_UPLOAD_TITLE, false},
+        {"%UPLOAD_DESC%", MsgId::WEB_HTML_UPLOAD_DESC, false},
+        {"%PICK_FILES%", MsgId::WEB_HTML_PICK_FILES, false},
+        {"%OVERWRITE_LBL%", MsgId::WEB_HTML_OVERWRITE, false},
+        {"%BTN_UPLOAD%", MsgId::WEB_HTML_BTN_UPLOAD, false},
+        {"%BOOKS_LIST_TITLE%", MsgId::WEB_HTML_BOOKS_LIST_TITLE, false},
+};
+const PortalToken kTailTokens[] = {
+        {"%BTN_SAVE%", MsgId::WEB_HTML_BTN_SAVE, false},
+        {"%BTN_CLOSE%", MsgId::WEB_HTML_BTN_CLOSE_PORTAL, false},
+        {"%HTML_FOOTER%", MsgId::WEB_HTML_FOOTER, false},
+        {"%JS_NO_BOOKS%", MsgId::WEB_HTML_NO_BOOKS, true},
+        {"%JS_DELETE%", MsgId::WEB_HTML_BTN_DELETE, true},
+        {"%JS_SAVED%", MsgId::WEB_HTML_STATUS_SAVED, true},
+        {"%JS_ERR%", MsgId::WEB_HTML_STATUS_ERROR, true},
+        {"%JS_CLOSED%", MsgId::WEB_HTML_PORTAL_CLOSED, true},
+        {"%JS_FLASH_BUILTIN%", MsgId::TYPEFACE_BUILTIN, true},
+        {"%JS_FLASH_DELETE%", MsgId::WEB_HTML_FONT_FLASH_DELETE, true},
+        {"%JS_FLASH_INSTALL%", MsgId::WEB_HTML_FONT_FLASH_INSTALL, true},
+        {"%JS_FLASH_FREE%", MsgId::WEB_HTML_FLASH_FREE, true},
+        {"%JS_FONT_DELETE_FIRST%", MsgId::WEB_HTML_FONT_DELETE_FIRST, true},
+        {"%JS_FONT_BUILTIN_ONLY%", MsgId::WEB_HTML_FONT_BUILTIN_ONLY, true},
+        {"%JS_FONT_DELETED%", MsgId::WEB_HTML_FONT_DELETED, true},
+        {"%JS_FONT_ALREADY%", MsgId::WEB_HTML_FONT_ALREADY, true},
+        {"%JS_FONT_TOO_BIG%", MsgId::WEB_HTML_FONT_TOO_BIG, true},
+        {"%JS_FONT_FLASH_DONE%", MsgId::WEB_HTML_FONT_FLASH_DONE, true},
+        {"%JS_ZIP_ERROR%", MsgId::WEB_HTML_ZIP_ERROR, true},
+        {"%JS_ZIP_BROWSER%", MsgId::WEB_HTML_ZIP_BROWSER, true},
+        {"%JS_ZIP_EMPTY%", MsgId::WEB_HTML_ZIP_EMPTY, true},
+        {"%JS_ZIP_PREPARING%", MsgId::WEB_HTML_ZIP_PREPARING, true},
+        {"%JS_FONTS_EMPTY%", MsgId::WEB_HTML_FONTS_EMPTY, true},
+        {"%JS_FONTS_DONE%", MsgId::WEB_HTML_FONTS_DONE, true},
+        {"%JS_FREE%", MsgId::WEB_HTML_SD_FREE, true},
+};
+template <size_t N>
+void sendPortalTemplate(PortalWriter& out, const char* text, size_t length, const PortalToken (&tokens)[N]) {
+    TemplateStream::visit(text, length, [&](const char* part, size_t size, bool token) {
+        if (token) {
+            if (size == sizeof("%DEVICE%") - 1 && memcmp(part, "%DEVICE%", size) == 0) {
+                out += htmlEscape(Platform::kDevice.name);
+                return;
+            }
+            for (const auto& entry : tokens) {
+                if (strlen(entry.token) == size && memcmp(part, entry.token, size) == 0) {
+                    out += entry.javascript ? jsEscape(tr(entry.message)) : htmlEscape(tr(entry.message));
+                    return;
+                }
+            }
+        }
+        out.append(part, size);
+    });
+    out.flush();
+}
+
+void beginSection(PortalWriter& out, const char* title, bool open) {
     out += open ? "<details open><summary>" : "<details><summary>";
     out += htmlEscape(title);
     out += "</summary><div class='sec-body'>\n";
 }
 
-void endSection(String& out) { out += "</div></details>\n"; }
+void endSection(PortalWriter& out) { out += "</div></details>\n"; }
 
-void addInput(String& out, const char* type, const char* name, const char* label, const String& value,
+void addInput(PortalWriter& out, const char* type, const char* name, const char* label, const String& value,
               const char* placeholder) {
     out += "<div class='fg'><label class='lbl'>";
     out += htmlEscape(label);
@@ -409,7 +718,7 @@ void addInput(String& out, const char* type, const char* name, const char* label
     out += "'></div>\n";
 }
 
-void addCheckbox(String& out, const char* name, const char* label, bool checked) {
+void addCheckbox(PortalWriter& out, const char* name, const char* label, bool checked) {
     out += "<label class='chk'><input type='checkbox' name='";
     out += name;
     out += "' value='1'";
@@ -419,7 +728,7 @@ void addCheckbox(String& out, const char* name, const char* label, bool checked)
     out += "</label>\n";
 }
 
-void beginSelect(String& out, const char* name, const char* label) {
+void beginSelect(PortalWriter& out, const char* name, const char* label) {
     out += "<div class='fg'><label class='lbl'>";
     out += htmlEscape(label);
     out += "</label><select name='";
@@ -427,7 +736,7 @@ void beginSelect(String& out, const char* name, const char* label) {
     out += "'>\n";
 }
 
-void addOption(String& out, const String& value, const String& text, bool selected) {
+void addOption(PortalWriter& out, const String& value, const String& text, bool selected) {
     out += "<option value='";
     out += htmlEscape(value);
     out += "'";
@@ -437,11 +746,11 @@ void addOption(String& out, const String& value, const String& text, bool select
     out += "</option>\n";
 }
 
-void endSelect(String& out) { out += "</select></div>\n"; }
+void endSelect(PortalWriter& out) { out += "</select></div>\n"; }
 
 // Appends a select whose discrete integer presets always include `current` (if from custom config.json).
 template <typename FormatFn>
-void addIntSelect(String& out, const char* name, const char* label, const int* presets, int count, int current,
+void addIntSelect(PortalWriter& out, const char* name, const char* label, const int* presets, int count, int current,
                   FormatFn formatLabel) {
     std::vector<int> values(presets, presets + count);
     if (std::find(values.begin(), values.end(), current) == values.end()) values.push_back(current);
@@ -482,23 +791,11 @@ String buildMarginText(int px) {
 }
 
 void streamPortalPage(WebServer& server, const AppConfig& cfg, const std::vector<FontStore::Family>& fonts) {
-    String head = FPSTR(HTML_HEAD);
-    head.replace("%HTML_TITLE%", htmlEscape(tr(MsgId::WEB_HTML_TITLE)));
-    head.replace("%HTML_HEADING%", htmlEscape(tr(MsgId::WEB_HTML_HEADING)));
-    head.replace("%HTML_SUBHEAD%", htmlEscape(tr(MsgId::WEB_HTML_SUBHEAD)));
-    head.replace("%DEVICE%", htmlEscape(Platform::kDevice.name));
-    head.replace("%TAB_BOOKS%", htmlEscape(tr(MsgId::WEB_HTML_TAB_BOOKS)));
-    head.replace("%TAB_SETTINGS%", htmlEscape(tr(MsgId::WEB_HTML_TAB_SETTINGS)));
-    head.replace("%SD_FREE_LBL%", htmlEscape(tr(MsgId::WEB_HTML_SD_FREE)));
-    head.replace("%UPLOAD_TITLE%", htmlEscape(tr(MsgId::WEB_HTML_UPLOAD_TITLE)));
-    head.replace("%UPLOAD_DESC%", htmlEscape(tr(MsgId::WEB_HTML_UPLOAD_DESC)));
-    head.replace("%PICK_FILES%", htmlEscape(tr(MsgId::WEB_HTML_PICK_FILES)));
-    head.replace("%OVERWRITE_LBL%", htmlEscape(tr(MsgId::WEB_HTML_OVERWRITE)));
-    head.replace("%BTN_UPLOAD%", htmlEscape(tr(MsgId::WEB_HTML_BTN_UPLOAD)));
-    head.replace("%BOOKS_LIST_TITLE%", htmlEscape(tr(MsgId::WEB_HTML_BOOKS_LIST_TITLE)));
-
-    String out;
-    out.reserve(6144);
+    MemStats::log("portal page begin");
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.send(200, "text/html; charset=utf-8", "");
+    PortalWriter out(server);
+    sendPortalTemplate(out, HTML_HEAD, sizeof(HTML_HEAD) - 1, kHeadTokens);
 
     const String passHint = tr(MsgId::WEB_HTML_PASS_KEEP);
 
@@ -634,15 +931,15 @@ void streamPortalPage(WebServer& server, const AppConfig& cfg, const std::vector
     beginSelect(out, "font_family", tr(MsgId::APPEAR_TYPEFACE));
     const String builtinLabel = String(BookReader::builtinFontName()) + " (" + tr(MsgId::TYPEFACE_BUILTIN) + ")";
     addOption(out, "", builtinLabel, cfg.readerFont.length() == 0);
-    bool seenCurrentFont = (cfg.readerFont.length() == 0);
-    const String installed = FontStore::installedName();
+    const auto installed = FontStore::installedFamilies();
     for (const auto& f : fonts) {
         const bool sel = (cfg.readerFont == f.name);
-        if (sel) seenCurrentFont = true;
         addOption(out, f.name, f.name, sel);
     }
-    if (!seenCurrentFont && installed == cfg.readerFont) {
-        addOption(out, installed, installed, true);
+    for (const auto& f : installed) {
+        if (std::none_of(fonts.begin(), fonts.end(),
+                         [&](const FontStore::Family& card) { return card.name == f.name; }))
+            addOption(out, f.name, f.name, f.name == cfg.readerFont);
     }
     endSelect(out);
 
@@ -685,27 +982,13 @@ void streamPortalPage(WebServer& server, const AppConfig& cfg, const std::vector
     endSelect(out);
     endSection(out);
 
-    String tail = FPSTR(HTML_TAIL);
-    tail.replace("%BTN_SAVE%", htmlEscape(tr(MsgId::WEB_HTML_BTN_SAVE)));
-    tail.replace("%BTN_CLOSE%", htmlEscape(tr(MsgId::WEB_HTML_BTN_CLOSE_PORTAL)));
-    tail.replace("%HTML_FOOTER%", htmlEscape(tr(MsgId::WEB_HTML_FOOTER)));
-    tail.replace("%DEVICE%", htmlEscape(Platform::kDevice.name));
-    tail.replace("%JS_NO_BOOKS%", jsEscape(tr(MsgId::WEB_HTML_NO_BOOKS)));
-    tail.replace("%JS_DELETE%", jsEscape(tr(MsgId::WEB_HTML_BTN_DELETE)));
-    tail.replace("%JS_SAVED%", jsEscape(tr(MsgId::WEB_HTML_STATUS_SAVED)));
-    tail.replace("%JS_ERR%", jsEscape(tr(MsgId::WEB_HTML_STATUS_ERROR)));
-    tail.replace("%JS_CLOSED%", jsEscape(tr(MsgId::WEB_HTML_PORTAL_CLOSED)));
-    tail.replace("%JS_FREE%", jsEscape(tr(MsgId::WEB_HTML_SD_FREE)));
-
-    const size_t totalLen = head.length() + out.length() + tail.length();
-    server.setContentLength(totalLen);
-    server.send(200, "text/html; charset=utf-8", "");
-    server.sendContent(head);
-    server.sendContent(out);
-    server.sendContent(tail);
+    out.flush();
+    sendPortalTemplate(out, HTML_TAIL, sizeof(HTML_TAIL) - 1, kTailTokens);
+    server.sendContent("");
+    MemStats::log("portal page sent");
 }
 
-void applySubmittedConfig(WebServer& server, AppConfig& cfg) {
+void applySubmittedConfig(WebServer& server, AppConfig& cfg, bool refreshFont = false) {
     // Track credentials so authToken is only invalidated when server/user/pass actually changed.
     const String oldHost = cfg.serverHost;
     const String oldUser = cfg.bookOrbitUser;
@@ -789,7 +1072,7 @@ void applySubmittedConfig(WebServer& server, AppConfig& cfg) {
 
     if (server.hasArg("font_family")) {
         const String want = server.arg("font_family");
-        if (want.length() == 0 || want == FontStore::installedName()) {
+        if (want.length() == 0 || (!refreshFont && FontStore::contains(want))) {
             cfg.readerFont = want;
         } else {
             const auto fonts = FontStore::scanCard();
@@ -991,6 +1274,7 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
     DNSServer dnsServer;
     bool dnsStarted = false;
 
+    WifiSession::prepare();
     if (apMode) {
         WiFi.disconnect(true);
         WiFi.mode(WIFI_AP);
@@ -1021,7 +1305,6 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
     } else {
         if (cfg.wifiSsid.length() == 0) return false;
         screenSsid = cfg.wifiSsid.c_str();
-        WifiSession::prepare();
         Ui::status(tr(MsgId::WEB_STA_TITLE), tr(MsgId::WEB_WIFI_CONNECTING), screenSsid, nullptr, nullptr,
                    tr(MsgId::COMMON_CANCEL));
         if (!BookOrbit.connectWiFi(cfg.wifiSsid.c_str(), cfg.wifiPass.c_str(), 12000)) {
@@ -1036,10 +1319,11 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
     }
 
     Storage.ensureDirectories();
-    const auto fonts = FontStore::scanCard();
+    auto fonts = FontStore::scanCard();
     WebServer server(80);
     PortalUploadState up;
     bool saved = false;
+    bool fontsChanged = false;
     bool closeRequested = false;
     bool booksChanged = false;   // the Offline list is scanned again when the portal closes
 
@@ -1084,6 +1368,99 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
         sendBooksListJson(server);
     });
 
+    server.on("/api/fonts", HTTP_GET, [&]() {
+        PowerService::noteActivity();
+        sendNoCache();
+        fonts = Storage.isAvailable() ? FontStore::scanCard() : std::vector<FontStore::Family>();
+        String json =
+                "{\"builtin\":\"" + jsonEscape(BookReader::builtinFontName()) +
+                "\",\"capacity\":" + String(FontStore::capacity()) + ",\"free\":" + String(FontStore::freeBytes()) +
+                ",\"largestFree\":" + String(FontStore::largestFreeBytes()) +
+                ",\"used\":" + String(FontStore::capacity() - FontStore::freeBytes()) + ",\"installedFamilies\":[";
+        const auto installed = FontStore::installedFamilies();
+        for (size_t i = 0; i < installed.size(); i++) {
+            if (i) json += ',';
+            json += "{\"name\":\"" + jsonEscape(installed[i].name) + "\",\"bytes\":" + String(installed[i].bytes) + "}";
+        }
+        json += "],\"families\":[";
+        for (size_t i = 0; i < fonts.size(); i++) {
+            if (i) json += ',';
+            json += "{\"installed\":" + String(FontStore::contains(fonts[i].name) ? "true" : "false") + ",\"name\":\"" +
+                    jsonEscape(fonts[i].name) + "\",\"bytes\":" + String(fonts[i].bytes) +
+                    ",\"fits\":" + (FontStore::canInstall(fonts[i]) ? "true" : "false") + "}";
+        }
+        json += "]}";
+        server.send(200, "application/json; charset=utf-8", json);
+    });
+
+    server.on("/api/fonts/flash/delete", HTTP_POST, [&]() {
+        PowerService::noteActivity();
+        sendNoCache();
+        const String name = server.arg("name");
+        if (FontStore::sameFamilyName(name, BookReader::builtinFontName())) {
+            server.send(409, "application/json", "{\"ok\":false,\"error\":\"Built-in font cannot be modified\"}");
+            return;
+        }
+        if (!FontStore::contains(name)) {
+            server.send(404, "application/json", "{\"ok\":false}");
+            return;
+        }
+        Reader.setFontFamily("");
+        if (!FontStore::removeInstalled(name)) {
+            server.send(500, "application/json", "{\"ok\":false,\"error\":\"Cannot remove Flash font\"}");
+            return;
+        }
+        saved = true; // Reapply the active family after releasing its mapping, even when another family was removed.
+        if (FontStore::sameFamilyName(cfg.readerFont, name)) {
+            cfg.readerFont = "";
+            cfg.save();
+            saved = true;
+        }
+        server.send(200, "application/json", "{\"ok\":true}");
+    });
+
+    server.on("/api/fonts/install", HTTP_POST, [&]() {
+        PowerService::noteActivity();
+        sendNoCache();
+        const String name = server.arg("name");
+        if (FontStore::sameFamilyName(name, BookReader::builtinFontName())) {
+            server.send(409, "application/json", "{\"ok\":false,\"error\":\"Built-in font cannot be modified\"}");
+            return;
+        }
+        const auto available = FontStore::scanCard();
+        const auto found = std::find_if(available.begin(), available.end(),
+                                        [&](const FontStore::Family& f) { return f.name == name; });
+        if (found == available.end()) {
+            server.send(404, "application/json", "{\"ok\":false,\"error\":\"Font not found on MicroSD\"}");
+            return;
+        }
+        if (!FontStore::canInstall(*found)) {
+            server.send(413, "application/json; charset=utf-8",
+                        "{\"ok\":false,\"error\":\"" + jsonEscape(tr(MsgId::WEB_HTML_FONT_TOO_BIG)) + "\"}");
+            return;
+        }
+        if (FontStore::matchesInstalled(*found)) {
+            server.send(200, "application/json", "{\"ok\":true,\"alreadyInstalled\":true}");
+            return;
+        }
+        Reader.setFontFamily("");
+        if (!FontStore::install(
+                    *found,
+                    [](void*, int) {
+                        Platform::feedWatchdog();
+                        PowerService::noteActivity();
+                    },
+                    nullptr)) {
+            server.send(500, "application/json", "{\"ok\":false,\"error\":\"Font installation failed\"}");
+            return;
+        }
+        cfg.readerFont = name;
+        cfg.save();
+        saved = true;
+        fontsChanged = false;
+        server.send(200, "application/json", "{\"ok\":true}");
+    });
+
     server.on(
             "/api/upload", HTTP_POST,
             [&]() {
@@ -1099,6 +1476,7 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
             },
             [&]() {
                 HTTPUpload& upload = server.upload();
+                const bool fontUpload = server.arg("kind") == "font";
                 if (upload.status == UPLOAD_FILE_START) {
                     PowerService::noteActivity();
                     if (up.part == 0) {
@@ -1118,9 +1496,17 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
                     up.fileName = upload.filename;
                     if (!Storage.isAvailable()) return up.reject("SD card unavailable");
                     String cleanName;
-                    if (!sanitizeUploadFilename(upload.filename, cleanName)) return up.reject("Unsupported file");
+                    if (!sanitizeUploadFilename(upload.filename, cleanName, fontUpload))
+                        return up.reject("Unsupported file");
                     up.fileName = cleanName;
-                    up.targetPath = String(LibraryManager::kOfflineDir) + "/" + cleanName;
+                    if (fontUpload) {
+                        const String family = FontStore::familyNameForFile(cleanName);
+                        if (FontStore::sameFamilyName(family, BookReader::builtinFontName()))
+                            return up.reject(tr(MsgId::WEB_HTML_FONT_BUILTIN_ONLY));
+                        if (FontStore::contains(family)) return up.reject(tr(MsgId::WEB_HTML_FONT_DELETE_FIRST));
+                    }
+                    up.targetPath =
+                            String(fontUpload ? FontStore::kDir : LibraryManager::kOfflineDir) + "/" + cleanName;
                     up.partPath = up.targetPath + ".part";
 
                     const String owArg = server.arg("overwrite");
@@ -1130,7 +1516,7 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
                     if (declared > 0 && s_portalFreeKnown && declared + 64 * 1024 > s_portalFreeBytes)
                         return up.reject("Not enough space on the SD card");
 
-                    Storage.mkdir(LibraryManager::kOfflineDir);
+                    Storage.mkdir(fontUpload ? FontStore::kDir : LibraryManager::kOfflineDir);
                     Storage.remove(up.partPath.c_str());   // a .part of an earlier, broken upload
                     up.targetFile = Storage.open(up.partPath.c_str(), O_WRITE | O_CREAT | O_TRUNC);
                     if (!up.targetFile) {
@@ -1164,11 +1550,25 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
                     if (!up.rejected) {
                         bool ok = up.targetFile && up.flushBuffer();
                         if (ok) {
-                            up.targetFile.truncate(up.written);   // gives back what preAllocate took beyond the file
+                            ok = up.targetFile.truncate(
+                                    up.written);   // gives back what preAllocate took beyond the file
                             up.targetFile.flush();
                         }
                         if (up.targetFile) up.targetFile.close();
-                        if (ok && Storage.exists(up.targetPath.c_str())) {
+                        const uint64_t declared = up.part <= (int)up.sizes.size() ? up.sizes[up.part - 1] : 0;
+                        if (fontUpload && (up.written == 0 || (declared && declared != up.written))) ok = false;
+                        if (ok && fontUpload) {
+                            FsFile check = Storage.open(up.partPath.c_str(), O_RDONLY);
+                            uint8_t signature[12] = {};
+                            const bool headerRead =
+                                    check && check.read(signature, sizeof(signature)) == sizeof(signature);
+                            if (check) check.close();
+                            ok = headerRead &&
+                                 ((signature[0] == 0 && signature[1] == 1 && signature[2] == 0 && signature[3] == 0) ||
+                                  memcmp(signature, "OTTO", 4) == 0 || memcmp(signature, "true", 4) == 0);
+                            if (!ok) up.reject("Invalid TTF/OTF font");
+                        }
+                        if (ok && !fontUpload && Storage.exists(up.targetPath.c_str())) {
                             // Replaced by a new copy: its page cache, cover and position go with the old one.
                             BookItem old;
                             old.filePath = up.targetPath;
@@ -1176,18 +1576,23 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
                         }
                         ok = ok && Storage.replaceFile(up.partPath.c_str(), up.targetPath.c_str());
                         if (ok) {
-                            booksChanged = true;
+                            if (fontUpload)
+                                fontsChanged = true;
+                            else
+                                booksChanged = true;
+                            s_portalFreeKnown = false;
                             const uint32_t ms = millis() - up.startedAt;
                             Serial.printf(
-                                    "[WebConfig] Uploaded offline book: %s (%llu B in %lu ms, %lu KB/s; card writes %lu ms)\n",
-                                    up.targetPath.c_str(), (unsigned long long)up.written, (unsigned long)ms,
+                                    "[WebConfig] Uploaded %s: %s (%llu B in %lu ms, %lu KB/s; card writes %lu ms)\n",
+                                    fontUpload ? "font" : "offline book", up.targetPath.c_str(),
+                                    (unsigned long long)up.written, (unsigned long)ms,
                                     (unsigned long)(ms ? up.written / ms : 0), (unsigned long)(up.writeUs / 1000));
                             if (s_portalFreeBytes >= up.written)
                                 s_portalFreeBytes -= up.written;
                             else
                                 s_portalFreeBytes = 0;
                         } else {
-                            up.reject("SD write failed");
+                            if (!up.rejected) up.reject("SD write failed");
                         }
                     }
                     if (up.rejected) up.dropPart();
@@ -1233,7 +1638,8 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
 
     server.on("/save", HTTP_POST, [&]() {
         PowerService::noteActivity();
-        applySubmittedConfig(server, cfg);
+        applySubmittedConfig(server, cfg, fontsChanged);
+        fontsChanged = false;
         cfg.save();
         saved = true;
         Serial.println("[WebConfig] New settings saved from web portal!");

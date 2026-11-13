@@ -130,8 +130,9 @@ export const FlashActionBox: React.FC<FlashActionBoxProps> = ({
           >
             <option value="">{t('fonts_embedded_none')}</option>
             {fontFamilies.map((fam) => (
-              <option key={fam.id} value={fam.id}>
-                {fam.name} ({Math.round(fam.bytes / 1024)} KB)
+              <option key={fam.id} value={fam.id} disabled={fam.id === 'NotoSerif'}>
+                {fam.name}{' '}
+                {fam.id === 'NotoSerif' ? `— ${t('fonts_flash_builtin')}` : `(${Math.round(fam.bytes / 1024)} KB)`}
               </option>
             ))}
           </select>

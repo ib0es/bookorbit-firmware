@@ -260,12 +260,16 @@ void drawFontMenuScreen(AppContext& ctx, bool fullRefresh) {
 // ------------------------------------------------------------- typefaces
 
 static std::vector<FontStore::Family> s_families;
-static String s_installed;
 
 const std::vector<FontStore::Family>& typefaceFamilies(bool rescan) {
     if (rescan) {
         s_families = FontStore::scanCard();
-        s_installed = FontStore::installedName();
+        for (const auto& installed : FontStore::installedFamilies()) {
+            if (std::none_of(s_families.begin(), s_families.end(), [&](const FontStore::Family& f) {
+                    return FontStore::sameFamilyName(f.name, installed.name);
+                }))
+                s_families.push_back(installed);
+        }
     }
     return s_families;
 }
@@ -294,8 +298,9 @@ void drawTypefaceMenuScreen(AppContext& ctx, bool fullRefresh) {
         char note[96];
         if (builtin)
             snprintf(note, sizeof(note), "%s", tr(MsgId::TYPEFACE_BUILTIN));
-        else if (fams[i - 1].name == s_installed)
-            snprintf(note, sizeof(note), "%s", tr(MsgId::TYPEFACE_INSTALLED));
+        else if (FontStore::contains(fams[i - 1].name))
+            snprintf(note, sizeof(note), "%s",
+                     tr(fams[i - 1].files[0].length() ? MsgId::TYPEFACE_INSTALLED_CARD : MsgId::TYPEFACE_INSTALLED));
         else
             snprintf(note, sizeof(note), tr(MsgId::TYPEFACE_ON_CARD_FMT), (unsigned)(fams[i - 1].bytes / 1024));
         const bool cur = builtin ? Reader.usingBuiltinFont() : !Reader.usingBuiltinFont() && current == name;

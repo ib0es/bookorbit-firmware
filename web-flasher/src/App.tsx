@@ -21,9 +21,21 @@ const isBin = (name: string) => name.toLowerCase().endsWith('.bin');
 
 export const App: React.FC = () => {
   const { lang, t } = useI18n();
-  const { status, phase, logs, progress, detection, connect, disconnect, resetDevice, flash, clearLogs } =
-    useWebSerial();
+  const {
+    status,
+    phase,
+    logs,
+    progress,
+    detection,
+    connect,
+    disconnect,
+    resetDevice,
+    flash,
+    installFlashFont,
+    clearLogs,
+  } = useWebSerial();
 
+  const [activeTab, setActiveTab] = useState<'firmware' | 'fonts'>('firmware');
   const [selectedDevice, setSelectedDevice] = useState<DeviceKey | null>(null);
   const [selectedRelease, setSelectedRelease] = useState<string>('latest');
   const [releases, setReleases] = useState<GitHubRelease[]>([]);
@@ -76,7 +88,7 @@ export const App: React.FC = () => {
     if (!res) return;
 
     // Book Orbit already installed -> update keeping settings; otherwise clean install.
-    setDoErase(!res.isBookOrbitInstalled);
+    setDoErase(res.isBookOrbitInstalled === false);
 
     if (res.exactMatchKey) {
       setSelectedDevice(res.exactMatchKey);
@@ -183,42 +195,68 @@ export const App: React.FC = () => {
             onReset={resetDevice}
           />
 
-          <div className="bg-[#0b112c] border border-[#17234d] rounded-2xl p-6 space-y-6 shadow-xl">
-            <DeviceGrid
-              selectedDevice={selectedDevice}
-              onSelectDevice={setSelectedDevice}
-              detection={detection}
-              disabled={isFlashing}
-            />
-
-            <FlashActionBox
-              status={status}
-              phase={phase}
-              selectedDevice={selectedDevice}
-              selectedRelease={selectedRelease}
-              onSelectRelease={setSelectedRelease}
-              releases={releases}
-              customFileName={customFileName}
-              customFileSizeMb={customFileSizeMb}
-              onFileSelect={handleFileSelect}
-              initialConfig={initialConfig}
-              onInitialConfigChange={setInitialConfig}
-              doErase={doErase}
-              setDoErase={setDoErase}
-              wipeSd={wipeSd}
-              setWipeSd={setWipeSd}
-              selectedFontFamily={selectedFontFamily}
-              onSelectFontFamily={setSelectedFontFamily}
-              fontFamilies={fontFamilies}
-              isBookOrbitInstalled={detection.isBookOrbitInstalled}
-              progress={progress}
-              flashSuccess={flashSuccess}
-              flashError={flashError}
-              onFlash={handleFlash}
-            />
+          <div className="flex gap-2" role="tablist" aria-label={t('tabs_label')}>
+            {(['firmware', 'fonts'] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                id={`tab-${tab}`}
+                aria-selected={activeTab === tab}
+                aria-controls={`panel-${tab}`}
+                onClick={() => setActiveTab(tab)}
+                className={`px-5 py-2.5 rounded-xl text-sm font-semibold cursor-pointer ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-[#0b112c] text-slate-400'}`}
+              >
+                {t(`tab_${tab}`)}
+              </button>
+            ))}
           </div>
 
-          <SdFontsBox />
+          <div role="tabpanel" id="panel-firmware" aria-labelledby="tab-firmware" hidden={activeTab !== 'firmware'}>
+            <div className="bg-[#0b112c] border border-[#17234d] rounded-2xl p-6 space-y-6 shadow-xl">
+              <DeviceGrid
+                selectedDevice={selectedDevice}
+                onSelectDevice={setSelectedDevice}
+                detection={detection}
+                disabled={isFlashing}
+              />
+
+              <FlashActionBox
+                status={status}
+                phase={phase}
+                selectedDevice={selectedDevice}
+                selectedRelease={selectedRelease}
+                onSelectRelease={setSelectedRelease}
+                releases={releases}
+                customFileName={customFileName}
+                customFileSizeMb={customFileSizeMb}
+                onFileSelect={handleFileSelect}
+                initialConfig={initialConfig}
+                onInitialConfigChange={setInitialConfig}
+                doErase={doErase}
+                setDoErase={setDoErase}
+                wipeSd={wipeSd}
+                setWipeSd={setWipeSd}
+                selectedFontFamily={selectedFontFamily}
+                onSelectFontFamily={setSelectedFontFamily}
+                fontFamilies={fontFamilies}
+                isBookOrbitInstalled={detection.isBookOrbitInstalled}
+                progress={progress}
+                flashSuccess={flashSuccess}
+                flashError={flashError}
+                onFlash={handleFlash}
+              />
+            </div>
+          </div>
+          <div role="tabpanel" id="panel-fonts" aria-labelledby="tab-fonts" hidden={activeTab !== 'fonts'}>
+            <SdFontsBox
+              detection={detection}
+              status={status}
+              selectedDevice={selectedDevice}
+              onInstallFlashFont={installFlashFont}
+              onDeleteFlashFont={(name) => installFlashFont(name)}
+            />
+          </div>
 
           <FlashConsole logs={logs} onClear={clearLogs} />
         </div>

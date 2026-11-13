@@ -83,6 +83,9 @@ export const ConnectCard: React.FC<ConnectCardProps> = ({
                   ? t('connected_chip', { CHIP: `${detection.exactMatchName} (${detection.chipFamily})` })
                   : t('connected_chip', { CHIP: detection.chipFamily })}
               </div>
+              {detection.inspectionError && (
+                <p className="mt-2 text-xs text-amber-300">{t('connection_inspection_warning')}</p>
+              )}
               <div className="text-xs text-[#8a9fc2] mt-1 font-mono">
                 ROM: {detection.chipFamily}
                 {detection.mac && ` · MAC: ${detection.mac}`}
