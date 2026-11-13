@@ -182,17 +182,16 @@ def offline_traces_gone(log, sd):
 def offline_progressive_cover(sd):
     """An offline EPUB whose cover is a progressive JPEG (TJpgDec cannot draw it),
     and the empty no-cover marker an older firmware left for it."""
-    import io, zipfile
-    from PIL import Image
+    import zipfile
+    # A fixture, not made here: the CI runner has no image library.
+    prog = open(os.path.join(ROOT, "test/sim/fixtures/cover-progressive.jpg"), "rb").read()
     os.makedirs(os.path.join(sd, "offline"), exist_ok=True)
     src = zipfile.ZipFile(os.path.join(sd, "books/Frankenstein.epub"))
     out = zipfile.ZipFile(os.path.join(sd, "offline/Prog.epub"), "w")
     for n in src.namelist():
         d = src.read(n)
         if n.endswith("_cover.jpg"):
-            b = io.BytesIO()
-            Image.open(io.BytesIO(d)).convert("RGB").save(b, "JPEG", progressive=True)
-            d = b.getvalue()
+            d = prog
         out.writestr(n, d, zipfile.ZIP_STORED if n == "mimetype" else zipfile.ZIP_DEFLATED)
     out.close()
     open(os.path.join(sd, "covers/offline#Prog.jpg.nocover"), "w").close()
@@ -506,6 +505,8 @@ CASES = [
                      and any(os.path.getsize(p) > 0 for p in files(sd, "covers/offline#OffMobi*.jpg"))),
 ]
 
+NEEDS_TEST_BOOKS = (offline_covers,)
+
 def run_case(case):
     name, setup, env, script, check = case
     sd = tempfile.mkdtemp(); shutil.rmtree(sd)
@@ -518,7 +519,11 @@ def run_case(case):
     frames = tempfile.mkdtemp()
     problems = []
     try:
-        if setup: setup(sd)
+        if setup:
+            try:
+                setup(sd)
+            except Exception as e:   # one broken setup fails its case, not the run
+                return name, [f"setup raised {e!r}"], ""
         res = subprocess.run([BIN, frames, sd, script], capture_output=True, text=True, timeout=240,
                              env=dict(os.environ, **env))
         log = res.stdout
@@ -538,6 +543,11 @@ def run_case(case):
 def main():
     only = sys.argv[1] if len(sys.argv) > 1 else ""
     cases = [c for c in CASES if only in c[0]]
+    # test/books is kept locally only (not ours to publish): its cases are skipped without it.
+    if not os.path.isdir(os.path.join(ROOT, "test/books")):
+        for c in [c for c in cases if c[1] in NEEDS_TEST_BOOKS]:
+            print("skip  " + c[0] + "  (no test/books)")
+        cases = [c for c in cases if c[1] not in NEEDS_TEST_BOOKS]
     with ThreadPoolExecutor(max_workers=os.cpu_count() or 4) as pool:
         results = list(pool.map(run_case, cases))
     failed = 0
