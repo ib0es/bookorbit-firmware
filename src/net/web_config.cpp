@@ -115,11 +115,11 @@ button.btn-sec { background: #4b5563; margin-top: 10px; }
 <div id='blist' class='blist'></div>
 </div>
 <div id='tab-fonts' class='panel'>
-<h2>%FONTS_TITLE%</h2>
+<h2>%FONT_SD_TITLE%</h2>
 <p class='desc'>%FONTS_DESC%</p>
 <div class='drop'><input type='file' id='font-input' multiple accept='.zip,.ttf,.otf'></div>
 <label class='chk'><input type='checkbox' id='font-overwrite'>%OVERWRITE_LBL%</label>
-<button type='button' id='font-up' class='btn' onclick='uploadFonts()' disabled>%BTN_UPLOAD%</button>
+<button type='button' id='font-up' class='btn' onclick='uploadFonts()' disabled>%FONT_SD_UPLOAD%</button>
 <progress id='font-progress' value='0' max='100' style='display:none'></progress>
 <div id='font-result' class='desc' role='status'></div>
 <div id='font-list' class='blist'></div>
@@ -265,7 +265,9 @@ function loadFonts(){
     var names=[];
     (d.families||[]).forEach(function(f){
       names.push(f.name);flashChoices[fontFamilyKey(f.name)]=f;
-      var row=document.createElement('div');row.className='qitem';row.textContent=f.name+' ('+fmtSz(f.bytes)+')';list.appendChild(row);
+      var row=document.createElement('div');row.className='qitem';row.textContent=f.name+' ('+fmtSz(f.bytes)+')';
+      var remove=document.createElement('button');remove.type='button';remove.className='btn';remove.textContent='%JS_FONT_SD_DELETE%';
+      remove.disabled=fontUploading||uploading;remove.onclick=function(){deletePortalCardFont(f.name);};row.appendChild(remove);list.appendChild(row);
     });
     installed.forEach(function(f){
       flashChoices[fontFamilyKey(f.name)]={name:f.name,bytes:f.bytes,installed:true,fits:true};
@@ -360,6 +362,22 @@ async function expandFontFiles(files){
 
 function fontFamilyKey(name){return name.toLowerCase().replace(/[ _-]/g,'');}
 function fontFamilyFromFile(name){return name.replace(/\.(ttf|otf)$/i,'').replace(/[- ](regular|book|roman|normal|bolditalic|boldoblique|bold|italic|oblique|bi|it)$/i,'');}
+async function deletePortalCardFont(name){
+  if(fontUploading||uploading)return;
+  fontUploading=true;$('font-up').disabled=true;$('font-flash-install').disabled=true;
+  $('btn-save').disabled=true;$('btn-close').disabled=true;
+  try{
+    var response=await fetch('/api/fonts/card/delete',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(name)}),result=await response.json();
+    if(!response.ok||!result.ok)throw Error(result.error||T.err);
+    var select=$('cfg-form').elements.namedItem('font_family');
+    if(!result.inFlash&&fontFamilyKey(select.value)===fontFamilyKey(name))select.value='';
+    toast('%JS_FONT_SD_DELETED%',true);
+  }catch(e){toast(e.message,false);}
+  finally{
+    fontUploading=false;$('font-up').disabled=!$('font-input').files.length;
+    $('btn-save').disabled=false;$('btn-close').disabled=false;await loadFonts();
+  }
+}
 async function deletePortalFont(){
   if(fontUploading||uploading)return;
   fontUploading=true;$('font-flash-install').disabled=true;$('btn-save').disabled=true;$('btn-close').disabled=true;
@@ -392,6 +410,7 @@ $('font-input').addEventListener('change',function(){$('font-up').disabled=fontU
 async function uploadFonts(){
   if(fontUploading||uploading)return;
   var files=Array.prototype.slice.call($('font-input').files||[]);if(!files.length)return;
+  var overwrite=$('font-overwrite').checked;
   fontUploading=true;$('font-up').disabled=true;$('font-input').disabled=true;$('btn-up').disabled=true;
   $('btn-save').disabled=true;$('btn-close').disabled=true;$('font-progress').style.display='block';
   $('font-result').textContent='';
@@ -409,10 +428,13 @@ async function uploadFonts(){
       await new Promise(function(resolve,reject){
         var fd=new FormData();fd.append('file',file,file.name);
         var xhr=new XMLHttpRequest();
-        xhr.open('POST','/api/upload?kind=font&overwrite='+($('font-overwrite').checked?'1':'0')+'&sizes='+file.size,true);
+        xhr.open('POST','/api/upload?kind=font&overwrite='+(overwrite?'1':'0')+'&sizes='+file.size,true);
         xhr.upload.onprogress=function(e){if(e.lengthComputable)$('font-progress').value=(i+e.loaded/e.total)*100/files.length;};
         xhr.onload=function(){
           try{var d=JSON.parse(xhr.responseText),r=(d.files||[])[0];
+            if(xhr.status===200&&r&&r.exists&&!overwrite){
+              $('font-result').textContent+=file.name+': %JS_FONT_EXISTS%\n';resolve();return;
+            }
             if(xhr.status!==200||!r||!r.ok)throw Error(r&&r.error||T.err);
             $('font-result').textContent+=(file.name+': OK\n');resolve();
           }catch(e){reject(e);}
@@ -638,6 +660,8 @@ const PortalToken kHeadTokens[] = {
         {"%FONT_FLASH_INSTALL%", MsgId::WEB_HTML_FONT_FLASH_INSTALL, false},
         {"%FONTS_TITLE%", MsgId::WEB_HTML_FONTS_TITLE, false},
         {"%FONTS_DESC%", MsgId::WEB_HTML_FONTS_DESC, false},
+        {"%FONT_SD_TITLE%", MsgId::WEB_HTML_FONT_SD_TITLE, false},
+        {"%FONT_SD_UPLOAD%", MsgId::WEB_HTML_FONT_SD_UPLOAD, false},
         {"%TAB_BOOKS%", MsgId::WEB_HTML_TAB_BOOKS, false},
         {"%TAB_SETTINGS%", MsgId::WEB_HTML_TAB_SETTINGS, false},
         {"%SD_FREE_LBL%", MsgId::WEB_HTML_SD_FREE, false},
@@ -673,6 +697,9 @@ const PortalToken kTailTokens[] = {
         {"%JS_ZIP_PREPARING%", MsgId::WEB_HTML_ZIP_PREPARING, true},
         {"%JS_FONTS_EMPTY%", MsgId::WEB_HTML_FONTS_EMPTY, true},
         {"%JS_FONTS_DONE%", MsgId::WEB_HTML_FONTS_DONE, true},
+        {"%JS_FONT_EXISTS%", MsgId::WEB_HTML_FONT_EXISTS, true},
+        {"%JS_FONT_SD_DELETE%", MsgId::WEB_HTML_FONT_SD_DELETE, true},
+        {"%JS_FONT_SD_DELETED%", MsgId::WEB_HTML_FONT_SD_DELETED, true},
         {"%JS_FREE%", MsgId::WEB_HTML_SD_FREE, true},
 };
 template <size_t N>
@@ -1391,6 +1418,53 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
         }
         json += "]}";
         server.send(200, "application/json; charset=utf-8", json);
+    });
+
+    server.on("/api/fonts/card/delete", HTTP_POST, [&]() {
+        PowerService::noteActivity();
+        sendNoCache();
+        const String name = server.arg("name");
+        if (FontStore::sameFamilyName(name, BookReader::builtinFontName())) {
+            server.send(409, "application/json", "{\"ok\":false,\"error\":\"Built-in font cannot be modified\"}");
+            return;
+        }
+        if (!Storage.isAvailable()) {
+            server.send(503, "application/json", "{\"ok\":false,\"error\":\"SD card unavailable\"}");
+            return;
+        }
+        bool removed = false;
+        // Rescan to include duplicate faces in /fonts and its family subdirectories.
+        for (;;) {
+            const auto available = FontStore::scanCard();
+            const auto found = std::find_if(available.begin(), available.end(), [&](const FontStore::Family& f) {
+                return FontStore::sameFamilyName(f.name, name);
+            });
+            if (found == available.end()) break;
+            Reader.setFontFamily("");
+            saved = true;
+            for (const String& path : found->files) {
+                if (!path.length()) continue;
+                if (!Storage.remove(path.c_str())) {
+                    server.send(500, "application/json", "{\"ok\":false,\"error\":\"Cannot remove SD font\"}");
+                    return;
+                }
+                removed = true;
+                fontsChanged = true;
+                PowerService::noteActivity();
+                Platform::feedWatchdog();
+            }
+        }
+        if (!removed) {
+            server.send(404, "application/json", "{\"ok\":false,\"error\":\"Font not found on MicroSD\"}");
+            return;
+        }
+        const bool inFlash = FontStore::contains(name);
+        if (!inFlash && FontStore::sameFamilyName(cfg.readerFont, name)) {
+            cfg.readerFont = "";
+            cfg.save();
+        }
+        s_portalFreeKnown = false; // Recalculate card space after deleting files.
+        server.send(200, "application/json", String("{\"ok\":true,\"inFlash\":") + (inFlash ? "true}" : "false}"));
     });
 
     server.on("/api/fonts/flash/delete", HTTP_POST, [&]() {

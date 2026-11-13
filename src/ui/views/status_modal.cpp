@@ -6,8 +6,8 @@ using namespace uikit;
 
 // Centered dialog: black title band, a main line (body font, up to 2 lines),
 // up to three secondary lines (small font) and an optional footer hint.
-void drawStatusModal(const char* title, const char* line1, const char* line2, const char* line3, const char* line4,
-                     const char* footerHint, bool fullRefresh) {
+static void drawStatusModalImpl(const char* title, const char* line1, const char* line2, const char* line3,
+                                const char* line4, const char* footerHint, bool fullRefresh, const KeyLabels* keys) {
     Pass pass;
     // Key hints ("[BACK] - Cancel", "[OK] Close") mean nothing on a touch-only
     // board; there any tap closes a message or cancels a network step.
@@ -43,13 +43,20 @@ void drawStatusModal(const char* title, const char* line1, const char* line2, co
         text(takeTop(body, lh), s, FontSmall, Color::Black, TextAlign::Left, 2);
         takeTop(body, 8);
     }
+    if (keys) keyHints(pass.frame(), Rect{0, 0, width(), height()}, *keys);
     present(fullRefresh);
+}
+
+void drawStatusModal(const char* title, const char* line1, const char* line2, const char* line3, const char* line4,
+                     const char* footerHint, bool fullRefresh) {
+    drawStatusModalImpl(title, line1, line2, line3, line4, footerHint, fullRefresh, nullptr);
 }
 
 void drawConfirmModal(const char* title, const char* line1, const char* line2, const char* line3,
                       const char* footerHint, const char* okLabel, const char* cancelLabel) {
     if (!touchUi()) {
-        drawStatusModal(title, line1, line2, line3, nullptr, footerHint);
+        const KeyLabels keys{cancelLabel, okLabel, "", ""};
+        drawStatusModalImpl(title, line1, line2, line3, nullptr, footerHint, false, &keys);
         return;
     }
     Pass pass;

@@ -244,6 +244,28 @@ bool canInstall(const Family& family) {
            FontCatalog::findSpace(state.directory, capacity(), FontCatalog::aligned((uint32_t)bytes)) != UINT32_MAX;
 }
 
+bool removeCard(const String& name) {
+    if (!name.length() || sameFamilyName(name, builtinfont::name()) || !Storage.isAvailable()) return false;
+    std::vector<String> dirs = {String(kDir)};
+    for (const String& sub : Storage.listSubdirs(kDir)) {
+        if (!sub.startsWith(".")) dirs.push_back(String(kDir) + "/" + sub);
+    }
+    bool removed = false;
+    for (const String& dir : dirs) {
+        for (const String& file : Storage.listFileNames(dir)) {
+            String lower = file;
+            lower.toLowerCase();
+            if (file.startsWith(".") || !(lower.endsWith(".ttf") || lower.endsWith(".otf")) ||
+                !sameFamilyName(familyNameForFile(file), name))
+                continue;
+            if (!Storage.remove((dir + "/" + file).c_str())) return false;
+            removed = true;
+            Platform::feedWatchdog();
+        }
+    }
+    return removed;
+}
+
 std::vector<Family> scanCard() {
     std::vector<Family> out;
     if (!Storage.exists(kDir)) return out;

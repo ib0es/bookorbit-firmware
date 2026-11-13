@@ -540,8 +540,50 @@ def preview_once(log, sd):
     return laid and "is not enough" not in tail and "(cut kept)" in tail and len(laid) == tail.count(">>> ")
 
 
+def font_management_card(sd):
+    shutil.rmtree(os.path.join(sd, "fonts"), ignore_errors=True)
+    os.makedirs(os.path.join(sd, "fonts"))
+    partition = os.path.join(sd, ".fontpart.bin")
+    if os.path.exists(partition):
+        os.remove(partition)
+    for name in ("Literata", "NotoSans"):
+        shutil.copy(
+            os.path.join(ROOT, "fonts", "sd", name, name + "-Regular.ttf"),
+            os.path.join(sd, "fonts", name + "-Regular.ttf"),
+        )
+
+
+def empty_flash_catalog(sd):
+    data = open(os.path.join(sd, ".fontpart.bin"), "rb").read()
+    directories = [data[0x360000 - 8192 :], data[0x360000 - 4096 :]]
+    valid = [d for d in directories if d[:4] == b"FIB2"]
+    newest = max(valid, key=lambda d: int.from_bytes(d[8:12], "little"))
+    return int.from_bytes(newest[12:16], "little") == 0
+
+
 CASES = [
     # name, setup(sd) or None, environment, script, check(log, sd)
+    (
+        "fonts: delete from SD removes only the selected family",
+        font_management_card,
+        {},
+        OPEN_BOOK + APPEARANCE + "C" + "DDC" + "LC",
+        lambda log, sd: not files(sd, "fonts/Literata*.ttf") and bool(files(sd, "fonts/NotoSans*.ttf")),
+    ),
+    (
+        "fonts: cancelling SD deletion keeps all files",
+        font_management_card,
+        {},
+        OPEN_BOOK + APPEARANCE + "C" + "DDC" + "LB",
+        lambda log, sd: bool(files(sd, "fonts/Literata*.ttf")) and bool(files(sd, "fonts/NotoSans*.ttf")),
+    ),
+    (
+        "fonts: Flash deletion keeps the SD copy and clears the catalog",
+        font_management_card,
+        {},
+        OPEN_BOOK + APPEARANCE + "C" + "DDC" + "C" + "C" + "DC" + "LC",
+        lambda log, sd: bool(files(sd, "fonts/Literata*.ttf")) and empty_flash_catalog(sd),
+    ),
     (
         "reader: page turns are saved while the reader is idle (B2)",
         None,

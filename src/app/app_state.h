@@ -128,6 +128,7 @@ struct AppContext {
     int selectedBookMenuIndex = 0;
     int selectedFontIndex = 0;
     int selectedTypefaceIndex = 0;
+    int typefaceStorage = 0; // 0 = sources, 1 = Flash, 2 = SD
     int selectedAppearanceIndex = 0;
     int selectedStatusBarIndex = 0;
     int selectedReadingSettingIndex = 0;
