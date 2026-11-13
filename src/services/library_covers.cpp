@@ -120,8 +120,8 @@ String LibraryManager::resolveCoverPath(const String& filePath, const String& ti
         const String managed = epubCoverPath(filePath);
         FsFile f = Storage.open(managed.c_str(), O_RDONLY);
         uint8_t header[30] = {};
-        const bool legacy = f && f.read(header, sizeof(header)) == sizeof(header) &&
-                            header[0] == 'B' && header[1] == 'M' &&
+        const bool legacy = f && f.read(header, sizeof(header)) == sizeof(header) && header[0] == 'B' &&
+                            header[1] == 'M' &&
                             !(header[6] == 'B' && header[7] == 'G' && header[8] == 1 && header[28] == 8);
         if (f) f.close();
         if (legacy) {

@@ -55,7 +55,9 @@ bool writeGrayBmpHeader(FsFile& out, uint16_t w, uint16_t h, size_t stride) {
         p[3] = v >> 24;
     };
     uint8_t hdr[54] = {'B', 'M'};
-    hdr[6] = 'B'; hdr[7] = 'G'; hdr[8] = 1; // Versioned grayscale source, never pre-dithered.
+    hdr[6] = 'B';
+    hdr[7] = 'G';
+    hdr[8] = 1; // Versioned grayscale source, never pre-dithered.
     le32(hdr + 2, fileSize);
     le32(hdr + 10, offset);
     le32(hdr + 14, 40);

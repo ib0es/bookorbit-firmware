@@ -49,8 +49,8 @@ int main(int argc, char** argv) {
     for (int size : {0, 1}) {
         Display.clear();
         g_name = size ? "sleep" : "thumbnail";
-        if (!JpegViewer::drawCover("/covers/probe.jpg", 0, 0, size ? 480 : 160,
-                                   size ? 752 : 240, COVER_FIT_SCALE)) return 1;
+        if (!JpegViewer::drawCover("/covers/probe.jpg", 0, 0, size ? 480 : 160, size ? 752 : 240, COVER_FIT_SCALE))
+            return 1;
         Display.update();
     }
     return 0;
