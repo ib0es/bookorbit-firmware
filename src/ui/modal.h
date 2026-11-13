@@ -28,26 +28,25 @@ public:
     void setRedrawHook(RedrawHook hook) { _redraw = std::move(hook); }
 
     // Redraws the screen of the current AppState (through the hook).
-    void redrawScreen(bool fullRefresh) { if (_redraw) _redraw(fullRefresh); }
+    void redrawScreen(bool fullRefresh) {
+        if (_redraw) _redraw(fullRefresh);
+    }
 
     // Message that closes after `autoCloseMs` (0 = only on a key press) or on any key.
     // `fullRedraw` selects a full e-ink refresh for the screen redrawn afterwards.
-    void showMessage(const String& title, const String& line1, const String& line2 = "",
-                     const String& line3 = "", const String& line4 = "",
-                     uint32_t autoCloseMs = MODAL_MESSAGE_MS, bool fullRedraw = false,
+    void showMessage(const String& title, const String& line1, const String& line2 = "", const String& line3 = "",
+                     const String& line4 = "", uint32_t autoCloseMs = MODAL_MESSAGE_MS, bool fullRedraw = false,
                      const String& footer = "", Action onClose = nullptr);
 
     // Message that stays until a key is pressed (e.g. device info).
-    void showInfo(const String& title, const String& line1, const String& line2 = "",
-                  const String& line3 = "", const String& line4 = "",
-                  const String& footer = "");
+    void showInfo(const String& title, const String& line1, const String& line2 = "", const String& line3 = "",
+                  const String& line4 = "", const String& footer = "");
 
     // CONFIRM runs onConfirm, BACK runs onCancel; other keys are ignored.
     // On touch boards the dialog shows [cancel] [okLabel] buttons (okLabel
     // empty = "OK"); a tap elsewhere cancels.
-    void showConfirm(const String& title, const String& line1, const String& line2,
-                     const String& line3, const String& footer,
-                     Action onConfirm, Action onCancel = nullptr, const String& okLabel = "");
+    void showConfirm(const String& title, const String& line1, const String& line2, const String& line3,
+                     const String& footer, Action onConfirm, Action onCancel = nullptr, const String& okLabel = "");
 
     // A panel of controls over the screen (the frontlight): `draw` paints it (it is
     // called now and by redrawPanel()), `handle` gets every event and returns
@@ -55,7 +54,9 @@ public:
     using PanelDraw = std::function<void()>;
     using PanelHandle = std::function<bool(const ButtonEvent&)>;
     void showPanel(PanelDraw draw, PanelHandle handle, Action onClose = nullptr);
-    void redrawPanel() { if (_active && _kind == Kind::Panel && _panelDraw) _panelDraw(); }
+    void redrawPanel() {
+        if (_active && _kind == Kind::Panel && _panelDraw) _panelDraw();
+    }
 
     bool isActive() const { return _active; }
 
@@ -75,8 +76,8 @@ public:
 private:
     enum class Kind { Message, Confirm, Panel };
 
-    void open(Kind kind, const String& title, const String& l1, const String& l2,
-              const String& l3, const String& l4, const String& footer);
+    void open(Kind kind, const String& title, const String& l1, const String& l2, const String& l3, const String& l4,
+              const String& footer);
     void close(Action callback);
 
     bool _active = false;

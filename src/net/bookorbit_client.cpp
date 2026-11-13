@@ -16,14 +16,10 @@ namespace {
 const char* kCollectedHeaders[] = {"Date"};
 
 // Asks HTTPClient to keep the Date header (call before the request).
-void collectDate(HTTPClient& http) {
-    http.collectHeaders(kCollectedHeaders, 1);
-}
+void collectDate(HTTPClient& http) { http.collectHeaders(kCollectedHeaders, 1); }
 
 // Sets the device clock from the response Date header (call after the request).
-void takeServerTime(HTTPClient& http) {
-    SyncClock::setFromHttpDate(http.header("Date"));
-}
+void takeServerTime(HTTPClient& http) { SyncClock::setFromHttpDate(http.header("Date")); }
 }  // namespace
 
 BookOrbitClient::BookOrbitClient() {}
@@ -67,10 +63,14 @@ void onStaDisconnected(arduino_event_id_t, arduino_event_info_t info) {
 }
 const char* failureName(WifiFailure f) {
     switch (f) {
-        case WifiFailure::NoNetwork:   return "network not found";
-        case WifiFailure::BadPassword: return "wrong password";
-        case WifiFailure::NoAnswer:    return "no answer";
-        default:                       return "none";
+        case WifiFailure::NoNetwork:
+            return "network not found";
+        case WifiFailure::BadPassword:
+            return "wrong password";
+        case WifiFailure::NoAnswer:
+            return "no answer";
+        default:
+            return "none";
     }
 }
 }  // namespace
@@ -84,8 +84,8 @@ bool BookOrbitClient::connectWiFi(const char* ssid, const char* pass, uint32_t t
     if (isConnected() && WiFi.SSID().equals(ssid)) {
         WiFi.setSleep(false);
         esp_wifi_set_ps(WIFI_PS_NONE);
-        Serial.printf("[WiFi] Already connected to %s. IP: %s | RSSI: %d dBm\n", 
-                      ssid, WiFi.localIP().toString().c_str(), WiFi.RSSI());
+        Serial.printf("[WiFi] Already connected to %s. IP: %s | RSSI: %d dBm\n", ssid,
+                      WiFi.localIP().toString().c_str(), WiFi.RSSI());
         return true;
     }
 
@@ -121,7 +121,8 @@ bool BookOrbitClient::connectWiFi(const char* ssid, const char* pass, uint32_t t
         const WifiFailure verdict = s_wifiTrack.verdict();
         if (verdict != WifiFailure::None) {
             _lastWifiFailure = verdict;
-            Serial.printf("\n[WiFi] Connection failed after %lu ms: %s\n", (unsigned long)(millis() - start), failureName(verdict));
+            Serial.printf("\n[WiFi] Connection failed after %lu ms: %s\n", (unsigned long)(millis() - start),
+                          failureName(verdict));
             disconnectWiFi();
             return false;
         }
@@ -136,8 +137,7 @@ bool BookOrbitClient::connectWiFi(const char* ssid, const char* pass, uint32_t t
     WiFi.setSleep(false);
     esp_wifi_set_ps(WIFI_PS_NONE);
 
-    Serial.printf("\n[WiFi] Connected! IP: %s | RSSI: %d dBm\n", 
-                  WiFi.localIP().toString().c_str(), WiFi.RSSI());
+    Serial.printf("\n[WiFi] Connected! IP: %s | RSSI: %d dBm\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
     return true;
 }
 
@@ -159,14 +159,11 @@ void BookOrbitClient::disconnectWiFi() {
 }
 
 bool BookOrbitClient::isConnected() {
-    return (WiFi.getMode() == WIFI_STA || WiFi.getMode() == WIFI_AP_STA) &&
-           (WiFi.status() == WL_CONNECTED) &&
+    return (WiFi.getMode() == WIFI_STA || WiFi.getMode() == WIFI_AP_STA) && (WiFi.status() == WL_CONNECTED) &&
            (WiFi.localIP() != IPAddress(0, 0, 0, 0));
 }
 
-int BookOrbitClient::getRssi() {
-    return isConnected() ? WiFi.RSSI() : 0;
-}
+int BookOrbitClient::getRssi() { return isConnected() ? WiFi.RSSI() : 0; }
 
 bool BookOrbitClient::pingServer(const String& serverHost) {
     if (!isConnected()) return false;
@@ -184,7 +181,8 @@ bool BookOrbitClient::pingServer(const String& serverHost) {
     return (code >= 200 && code < 400) || (code == 401);
 }
 
-bool BookOrbitClient::login(const String& serverHost, const String& username, const String& password, String& outToken) {
+bool BookOrbitClient::login(const String& serverHost, const String& username, const String& password,
+                            String& outToken) {
     if (!isConnected()) return false;
     if (username.length() == 0 || password.length() == 0) return false;
 
@@ -262,8 +260,8 @@ private:
 // Buffers the HTTP body and writes it to the SD card in large blocks.
 class FileDownloadSink : public Stream {
 public:
-    FileDownloadSink(FsFile& file, uint8_t* buf, size_t bufSize, int total,
-                     void (*onProgress)(int), bool (*checkCancel)())
+    FileDownloadSink(FsFile& file, uint8_t* buf, size_t bufSize, int total, void (*onProgress)(int),
+                     bool (*checkCancel)())
         : _file(file), _buf(buf), _size(bufSize), _total(total), _onProgress(onProgress), _checkCancel(checkCancel) {}
     size_t write(uint8_t b) override { return write(&b, 1); }
     size_t write(const uint8_t* data, size_t len) override {
@@ -274,7 +272,10 @@ public:
             const uint32_t now = millis();
             if (now - _lastCancelPoll >= 100) {
                 _lastCancelPoll = now;
-                if (_checkCancel()) { _cancelled = _failed = true; return 0; }   // aborts writeToStream
+                if (_checkCancel()) {
+                    _cancelled = _failed = true;
+                    return 0;
+                }   // aborts writeToStream
             }
         }
         size_t done = 0;
@@ -289,7 +290,10 @@ public:
         _bytes += len;
         if (_total > 0 && _onProgress) {
             const int pct = (int)((uint64_t)_bytes * 100 / (uint64_t)_total);
-            if (pct != _lastPct) { _lastPct = pct; _onProgress(pct); }
+            if (pct != _lastPct) {
+                _lastPct = pct;
+                _onProgress(pct);
+            }
         }
         return len;
     }
@@ -325,7 +329,8 @@ private:
 
 }  // namespace
 
-bool BookOrbitClient::fetchLibraries(const String& serverHost, const String& username, const String& password, const String& token, std::vector<ServerLibrary>& outLibraries) {
+bool BookOrbitClient::fetchLibraries(const String& serverHost, const String& username, const String& password,
+                                     const String& token, std::vector<ServerLibrary>& outLibraries) {
     outLibraries.clear();
     if (!isConnected()) return false;
 
@@ -366,7 +371,10 @@ bool BookOrbitClient::fetchLibraries(const String& serverHost, const String& use
     const uint32_t tStart = millis();
     while (http.connected() && (size < 0 || (int)xml.size() < size) && millis() - tStart < 15000) {
         const int avail = stream ? stream->available() : 0;
-        if (avail <= 0) { delay(2); continue; }
+        if (avail <= 0) {
+            delay(2);
+            continue;
+        }
         char buf[256];
         const int n = stream->readBytes(buf, avail < (int)sizeof(buf) ? avail : (int)sizeof(buf));
         if (n <= 0) break;
@@ -394,13 +402,15 @@ bool BookOrbitClient::fetchLibraries(const String& serverHost, const String& use
         }
         lib.bookCount = atoi(n.content.c_str());
         outLibraries.push_back(lib);
-        Serial.printf("[BookOrbit] Discovered library: '%s' (id=%d, count=%d, href=%s)\n",
-                      lib.name.c_str(), lib.id, lib.bookCount, lib.href.c_str());
+        Serial.printf("[BookOrbit] Discovered library: '%s' (id=%d, count=%d, href=%s)\n", lib.name.c_str(), lib.id,
+                      lib.bookCount, lib.href.c_str());
     }
     return !outLibraries.empty();
 }
 
-bool BookOrbitClient::fetchCatalogFromUrl(const String& serverHost, const String& initialUrl, const String& username, const String& password, const String& token, const String& libraryName, std::vector<BookMetadata>& outBooks) {
+bool BookOrbitClient::fetchCatalogFromUrl(const String& serverHost, const String& initialUrl, const String& username,
+                                          const String& password, const String& token, const String& libraryName,
+                                          std::vector<BookMetadata>& outBooks) {
     uint32_t t0 = millis();
     bool limitReached = false;
     String pageUrl = initialUrl;
@@ -424,45 +434,48 @@ bool BookOrbitClient::fetchCatalogFromUrl(const String& serverHost, const String
         int code = http.GET();
         if (code != 200 || lastCatalog.httpCode == 0) lastCatalog.httpCode = code;   // keep the first failure
         if (code != 200) {
-            Serial.printf("[BookOrbit] OPDS catalog fetch (%s) failed with HTTP %d (took %lu ms)\n",
-                          pageUrl.c_str(), code, millis() - tPage);
+            Serial.printf("[BookOrbit] OPDS catalog fetch (%s) failed with HTTP %d (took %lu ms)\n", pageUrl.c_str(),
+                          code, millis() - tPage);
             http.end();
             // This feed is incomplete: the saved catalog fills in what is missing.
             lastCatalog.truncated = true;
             return false;
         }
 
-        OpdsStreamParser parser([&](const OpdsBookEntry& e) {
-            const uint32_t heap = ESP.getFreeHeap();
-            if (heap < lastCatalog.heapMin) lastCatalog.heapMin = heap;
-            // The heap guard never empties the catalog: one entry costs ~1-2 KB.
-            if (outBooks.size() >= Platform::kMemory.catalogMaxBooks || (!outBooks.empty() && heap < OPDS_MIN_FREE_HEAP)) {
-                limitReached = true;
-                lastCatalog.truncated = true;
-                return false;
-            }
-            BookMetadata b;
-            b.id = e.id.c_str();
-            b.fileId = e.fileId;
-            b.title = e.title.c_str();
-            b.author = e.author.c_str();
-            b.series = e.series.c_str();
-            b.seriesIndex = e.seriesIndex;
-            b.formats.reserve(e.formats.size());
-            for (const auto& f : e.formats) {
-                BookFormatEntry fe;
-                fe.fileId = f.fileId;
-                fe.kind = (uint8_t)f.kind;
-                fe.url = f.url.c_str();
-                b.formats.push_back(fe);
-            }
-            b.coverUrl = e.coverUrl.c_str();
-            b.library = libraryName;
-            outBooks.push_back(b);
-            Serial.printf("[OPDS] Found book: %s (id=%s, fileId=%d, %u formats, lib=%s)\n", b.title.c_str(), b.id.c_str(),
-                          b.fileId, (unsigned)b.formats.size(), b.library.c_str());
-            return true;
-        }, 8 * 1024);   // entries are ~1-3 KB; the heap can be ~15 KB here
+        OpdsStreamParser parser(
+                [&](const OpdsBookEntry& e) {
+                    const uint32_t heap = ESP.getFreeHeap();
+                    if (heap < lastCatalog.heapMin) lastCatalog.heapMin = heap;
+                    // The heap guard never empties the catalog: one entry costs ~1-2 KB.
+                    if (outBooks.size() >= Platform::kMemory.catalogMaxBooks ||
+                        (!outBooks.empty() && heap < OPDS_MIN_FREE_HEAP)) {
+                        limitReached = true;
+                        lastCatalog.truncated = true;
+                        return false;
+                    }
+                    BookMetadata b;
+                    b.id = e.id.c_str();
+                    b.fileId = e.fileId;
+                    b.title = e.title.c_str();
+                    b.author = e.author.c_str();
+                    b.series = e.series.c_str();
+                    b.seriesIndex = e.seriesIndex;
+                    b.formats.reserve(e.formats.size());
+                    for (const auto& f : e.formats) {
+                        BookFormatEntry fe;
+                        fe.fileId = f.fileId;
+                        fe.kind = (uint8_t)f.kind;
+                        fe.url = f.url.c_str();
+                        b.formats.push_back(fe);
+                    }
+                    b.coverUrl = e.coverUrl.c_str();
+                    b.library = libraryName;
+                    outBooks.push_back(b);
+                    Serial.printf("[OPDS] Found book: %s (id=%s, fileId=%d, %u formats, lib=%s)\n", b.title.c_str(),
+                                  b.id.c_str(), b.fileId, (unsigned)b.formats.size(), b.library.c_str());
+                    return true;
+                },
+                8 * 1024);   // entries are ~1-3 KB; the heap can be ~15 KB here
         OpdsParserSink sink(parser);
         int written = http.writeToStream(&sink);
         http.end();
@@ -471,8 +484,8 @@ bool BookOrbitClient::fetchCatalogFromUrl(const String& serverHost, const String
         if (written < 0) lastCatalog.streamError = written;
 
         Serial.printf("[BookOrbit] OPDS page %d: %u bytes, %u books, %u skipped entries, %lu ms (free heap %u)\n",
-                      pageNo, (unsigned)sink.bytes(), (unsigned)parser.booksParsed(),
-                      (unsigned)parser.entriesSkipped(), millis() - tPage, (unsigned)ESP.getFreeHeap());
+                      pageNo, (unsigned)sink.bytes(), (unsigned)parser.booksParsed(), (unsigned)parser.entriesSkipped(),
+                      millis() - tPage, (unsigned)ESP.getFreeHeap());
 
         if (written < 0 && !parser.stopped()) {
             Serial.printf("[BookOrbit] OPDS stream error %d on page %d\n", written, pageNo);
@@ -489,14 +502,17 @@ bool BookOrbitClient::fetchCatalogFromUrl(const String& serverHost, const String
 
     if (limitReached) {
         Serial.printf("[BookOrbit] Catalog truncated at %u books (limit %u, free heap %u).\n",
-                      (unsigned)outBooks.size(), (unsigned)Platform::kMemory.catalogMaxBooks, (unsigned)ESP.getFreeHeap());
+                      (unsigned)outBooks.size(), (unsigned)Platform::kMemory.catalogMaxBooks,
+                      (unsigned)ESP.getFreeHeap());
     }
     Serial.printf("[BookOrbit] Parsed %d books from OPDS feed '%s' in %lu ms total (heap start %u, min %u).\n",
-                  (int)outBooks.size(), initialUrl.c_str(), millis() - t0, (unsigned)lastCatalog.heapStart, (unsigned)lastCatalog.heapMin);
+                  (int)outBooks.size(), initialUrl.c_str(), millis() - t0, (unsigned)lastCatalog.heapStart,
+                  (unsigned)lastCatalog.heapMin);
     return true;
 }
 
-bool BookOrbitClient::fetchCatalog(const String& serverHost, const String& username, const String& password, const String& token, std::vector<BookMetadata>& outBooks) {
+bool BookOrbitClient::fetchCatalog(const String& serverHost, const String& username, const String& password,
+                                   const String& token, std::vector<BookMetadata>& outBooks) {
     if (!isConnected()) return false;
 
     outBooks.clear();
@@ -523,7 +539,9 @@ bool BookOrbitClient::fetchCatalog(const String& serverHost, const String& usern
     return fetchCatalogFromUrl(serverHost, initialUrl, username, password, token, "", outBooks);
 }
 
-bool BookOrbitClient::downloadFile(const String& serverHost, const String& fileUrl, const String& destSdPath, const String& username, const String& password, const String& token, void (*onProgress)(int percent), bool (*checkCancel)()) {
+bool BookOrbitClient::downloadFile(const String& serverHost, const String& fileUrl, const String& destSdPath,
+                                   const String& username, const String& password, const String& token,
+                                   void (*onProgress)(int percent), bool (*checkCancel)()) {
     if (!isConnected()) return false;
 
     // Ensure Wi-Fi radio is running at maximum speed without modem sleep
@@ -567,9 +585,10 @@ bool BookOrbitClient::downloadFile(const String& serverHost, const String& fileU
     // If unauthorized or forbidden, retry with alternate authentication scheme
     if ((code == 401 || code == 403) && hasBasic && hasToken) {
         http.end();
-        String altHeader = (authHeader.startsWith("Basic")) ? ("Bearer " + token) : ("Basic " + base64::encode(username + ":" + password));
-        Serial.printf("[BookOrbit] HTTP %d with %s auth, retrying with %s...\n", 
-                      code, authHeader.startsWith("Basic") ? "Basic" : "Bearer", 
+        String altHeader = (authHeader.startsWith("Basic")) ? ("Bearer " + token)
+                                                            : ("Basic " + base64::encode(username + ":" + password));
+        Serial.printf("[BookOrbit] HTTP %d with %s auth, retrying with %s...\n", code,
+                      authHeader.startsWith("Basic") ? "Basic" : "Bearer",
                       altHeader.startsWith("Basic") ? "Basic" : "Bearer");
         http.begin(fullUrl);
         http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
@@ -635,8 +654,8 @@ bool BookOrbitClient::downloadFile(const String& serverHost, const String& fileU
     const size_t downloaded = sink.bytes();
     uint32_t elapsed = millis() - tStart;
     float speedKBps = (elapsed > 0) ? ((float)downloaded / (float)elapsed * 1000.0f / 1024.0f) : 0.0f;
-    Serial.printf("[BookOrbit] Download finished: %u bytes in %lu ms (%.1f KB/s), result %d%s.\n",
-                  (unsigned)downloaded, elapsed, speedKBps, result, sink.cancelled() ? " (cancelled)" : "");
+    Serial.printf("[BookOrbit] Download finished: %u bytes in %lu ms (%.1f KB/s), result %d%s.\n", (unsigned)downloaded,
+                  elapsed, speedKBps, result, sink.cancelled() ? " (cancelled)" : "");
 
     bool success = result >= 0 && flushed && !sink.cancelled() && downloaded > 0 &&
                    (totalBytes <= 0 || downloaded >= (size_t)totalBytes);
@@ -646,24 +665,29 @@ bool BookOrbitClient::downloadFile(const String& serverHost, const String& fileU
     }
     if (!success) {
         Storage.remove(partPath.c_str());
-        Serial.printf("[BookOrbit] Incomplete download removed from SD: %s (%u / %d bytes)\n",
-                      partPath.c_str(), (unsigned)downloaded, totalBytes);
+        Serial.printf("[BookOrbit] Incomplete download removed from SD: %s (%u / %d bytes)\n", partPath.c_str(),
+                      (unsigned)downloaded, totalBytes);
     } else if (onProgress) {
         onProgress(100);
     }
     return success;
 }
 
-bool BookOrbitClient::downloadBook(const String& serverHost, const String& downloadUrl, const String& destSdPath, const String& username, const String& password, const String& token, void (*onProgress)(int percent), bool (*checkCancel)()) {
+bool BookOrbitClient::downloadBook(const String& serverHost, const String& downloadUrl, const String& destSdPath,
+                                   const String& username, const String& password, const String& token,
+                                   void (*onProgress)(int percent), bool (*checkCancel)()) {
     return downloadFile(serverHost, downloadUrl, destSdPath, username, password, token, onProgress, checkCancel);
 }
 
-bool BookOrbitClient::downloadCover(const String& serverHost, const String& coverUrl, const String& destSdPath, const String& username, const String& password, const String& token, bool (*checkCancel)()) {
+bool BookOrbitClient::downloadCover(const String& serverHost, const String& coverUrl, const String& destSdPath,
+                                    const String& username, const String& password, const String& token,
+                                    bool (*checkCancel)()) {
     if (coverUrl.length() == 0) return false;
     return downloadFile(serverHost, coverUrl, destSdPath, username, password, token, nullptr, checkCancel);
 }
 
-bool BookOrbitClient::fetchBookProgress(const String& serverHost, const String& username, const String& password, String& token, int bookId, int fileId, ServerProgress& out) {
+bool BookOrbitClient::fetchBookProgress(const String& serverHost, const String& username, const String& password,
+                                        String& token, int bookId, int fileId, ServerProgress& out) {
     if (!isConnected() || bookId <= 0) return false;
 
     // Login if token is missing
@@ -718,15 +742,19 @@ bool BookOrbitClient::fetchBookProgress(const String& serverHost, const String& 
         out.page = parsed.page;
         out.cfi = parsed.cfi.c_str();
         out.updatedAt = parsed.updatedAt;
-        Serial.printf("[BookOrbit] Book %d file %d progress from server: %.1f%% (page %d, cfi='%s', updated=%lu) raw: %s\n",
-                      bookId, fileId, out.percent * 100.0f, out.page, out.cfi.c_str(), (unsigned long)out.updatedAt, json.c_str());
+        Serial.printf(
+                "[BookOrbit] Book %d file %d progress from server: %.1f%% (page %d, cfi='%s', updated=%lu) raw: %s\n",
+                bookId, fileId, out.percent * 100.0f, out.page, out.cfi.c_str(), (unsigned long)out.updatedAt,
+                json.c_str());
     } else {
         Serial.printf("[BookOrbit] Book %d file %d has no progress on the server.\n", bookId, fileId);
     }
     return true;
 }
 
-bool BookOrbitClient::updateBookProgress(const String& serverHost, const String& username, const String& password, String& token, int fileId, float percent, int page, const String& cfi, uint32_t* outUpdatedAt) {
+bool BookOrbitClient::updateBookProgress(const String& serverHost, const String& username, const String& password,
+                                         String& token, int fileId, float percent, int page, const String& cfi,
+                                         uint32_t* outUpdatedAt) {
     if (!isConnected() || fileId <= 0) return false;
 
     if (token.length() == 0 && username.length() > 0 && password.length() > 0) {
@@ -777,12 +805,12 @@ bool BookOrbitClient::updateBookProgress(const String& serverHost, const String&
     return code >= 200 && code < 300;   // 201 / 204 are a success too: else the record stays dirty for good
 }
 
-
 int BookOrbitClient::authedRequest(const String& serverHost, const String& username, const String& password,
                                    String& token, const char* method, const String& path, const String& body,
                                    String* response) {
     if (!isConnected()) return -1;
-    if (token.length() == 0 && username.length() > 0 && password.length() > 0) login(serverHost, username, password, token);
+    if (token.length() == 0 && username.length() > 0 && password.length() > 0)
+        login(serverHost, username, password, token);
     if (token.length() == 0) return 401;
     const String url = buildUrl(serverHost, path);
     int code = 0;

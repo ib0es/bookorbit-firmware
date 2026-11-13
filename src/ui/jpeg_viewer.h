@@ -7,7 +7,7 @@
 
 enum CoverFitMode {
     COVER_FIT_SCALE = 0, // Fit within bounds, preserve aspect ratio, letterbox
-    COVER_FIT_CROP  = 1  // Fill bounds completely, preserve aspect ratio, crop edges
+    COVER_FIT_CROP = 1  // Fill bounds completely, preserve aspect ratio, crop edges
 };
 
 class JpegViewer {

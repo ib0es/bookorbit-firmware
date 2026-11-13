@@ -40,8 +40,14 @@ static void expect(const Hyphenator& h, const char* word, const char* want) {
 int main() {
     Hyphenator ru, en;
     g_checks += 2;
-    if (!ru.init(k_hyph_ru, k_hyph_ru_size)) { g_failed++; printf("  FAIL ru patterns rejected\n"); }
-    if (!en.init(k_hyph_en_us, k_hyph_en_us_size)) { g_failed++; printf("  FAIL en patterns rejected\n"); }
+    if (!ru.init(k_hyph_ru, k_hyph_ru_size)) {
+        g_failed++;
+        printf("  FAIL ru patterns rejected\n");
+    }
+    if (!en.init(k_hyph_en_us, k_hyph_en_us_size)) {
+        g_failed++;
+        printf("  FAIL en patterns rejected\n");
+    }
 
     expect(ru, "программирование", "про-грам-ми-ро-ва-ние");
     expect(ru, "путешествия", "пу-те-ше-ствия");

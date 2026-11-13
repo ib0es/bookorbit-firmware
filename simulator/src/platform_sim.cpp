@@ -38,7 +38,8 @@ uint32_t sleepTimeoutMs() {
 }
 
 uint32_t batteryCheckIntervalMs() {
-    static const uint32_t kEveryMs = getenv("SIM_BATTERY_CHECK_MS") ? (uint32_t)atoi(getenv("SIM_BATTERY_CHECK_MS")) : 60000;
+    static const uint32_t kEveryMs =
+            getenv("SIM_BATTERY_CHECK_MS") ? (uint32_t)atoi(getenv("SIM_BATTERY_CHECK_MS")) : 60000;
     return kEveryMs;
 }
 

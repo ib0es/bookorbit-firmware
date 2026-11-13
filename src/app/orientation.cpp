@@ -26,19 +26,43 @@ namespace {
 void toPanel(int o, int32_t x, int32_t y, int32_t& px, int32_t& py) {
     const int32_t W = EPD_WIDTH, H = EPD_HEIGHT;
     switch (o & 3) {
-        case 0: px = y; py = H - 1 - x; break;            // portrait: 90 CW
-        case 1: px = x; py = y; break;                    // native
-        case 2: px = W - 1 - y; py = x; break;            // 90 CCW
-        default: px = W - 1 - x; py = H - 1 - y; break;  // 180
+        case 0:
+            px = y;
+            py = H - 1 - x;
+            break;            // portrait: 90 CW
+        case 1:
+            px = x;
+            py = y;
+            break;                    // native
+        case 2:
+            px = W - 1 - y;
+            py = x;
+            break;            // 90 CCW
+        default:
+            px = W - 1 - x;
+            py = H - 1 - y;
+            break;  // 180
     }
 }
 void fromPanel(int o, int32_t px, int32_t py, int32_t& x, int32_t& y) {
     const int32_t W = EPD_WIDTH, H = EPD_HEIGHT;
     switch (o & 3) {
-        case 0: x = H - 1 - py; y = px; break;
-        case 1: x = px; y = py; break;
-        case 2: x = py; y = W - 1 - px; break;
-        default: x = W - 1 - px; y = H - 1 - py; break;
+        case 0:
+            x = H - 1 - py;
+            y = px;
+            break;
+        case 1:
+            x = px;
+            y = py;
+            break;
+        case 2:
+            x = py;
+            y = W - 1 - px;
+            break;
+        default:
+            x = W - 1 - px;
+            y = H - 1 - py;
+            break;
     }
 }
 }  // namespace

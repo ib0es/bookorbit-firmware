@@ -74,10 +74,12 @@ bool probeEngine(const char* where) {
     for (void* p : pieces) free(p);
     free(parse);
     free(layout);
-    Serial.printf("[Mem] engine probe %s: layout 50 KB %s, parse 46 KB %s, book %u/30 KB; left free %u KB, "
-                  "largest block %u KB -> %s\n",
-                  where, layout ? "ok" : "NO", parse ? "ok" : "NO", (unsigned)(book / 1024),
-                  (unsigned)(left.freeBytes / 1024), (unsigned)(left.largestBlock / 1024), ok ? "FITS" : "DOES NOT FIT");
+    Serial
+            .printf("[Mem] engine probe %s: layout 50 KB %s, parse 46 KB %s, book %u/30 KB; left free %u KB, "
+                    "largest block %u KB -> %s\n",
+                    where, layout ? "ok" : "NO", parse ? "ok" : "NO", (unsigned)(book / 1024),
+                    (unsigned)(left.freeBytes / 1024), (unsigned)(left.largestBlock / 1024),
+                    ok ? "FITS" : "DOES NOT FIT");
     return ok;
 }
 
@@ -91,9 +93,20 @@ struct TopSizes {
     uint32_t restBytes = 0;
     void add(uint32_t size) {
         int at = -1;
-        for (int i = 0; i < N; i++) if (size > v[i]) { at = i; break; }
-        if (at < 0) { rest++; restBytes += size; return; }
-        if (v[N - 1]) { rest++; restBytes += v[N - 1]; }
+        for (int i = 0; i < N; i++)
+            if (size > v[i]) {
+                at = i;
+                break;
+            }
+        if (at < 0) {
+            rest++;
+            restBytes += size;
+            return;
+        }
+        if (v[N - 1]) {
+            rest++;
+            restBytes += v[N - 1];
+        }
         for (int i = N - 1; i > at; i--) v[i] = v[i - 1];
         v[at] = size;
     }
@@ -101,11 +114,14 @@ struct TopSizes {
         size_t n = 0;
         for (int i = 0; i < N && v[i] && n < len; i++)
             n += snprintf(out + n, len - n, i ? " %u" : "%u", (unsigned)((v[i] + 512) / 1024));
-        if (n < len) snprintf(out + n, len - n, " KB (+%u smaller, %u KB)", (unsigned)rest, (unsigned)(restBytes / 1024));
+        if (n < len)
+            snprintf(out + n, len - n, " KB (+%u smaller, %u KB)", (unsigned)rest, (unsigned)(restBytes / 1024));
     }
 };
 
-struct HeapMap { TopSizes freeB, usedB; };
+struct HeapMap {
+    TopSizes freeB, usedB;
+};
 
 #if MEM_HEAP_WALK
 bool walker(walker_heap_into_t, walker_block_info_t block, void* user) {
@@ -132,7 +148,8 @@ void logMap(const char* where) {
     multi_heap_info_t info;
     heap_caps_get_info(&info, MALLOC_CAP_8BIT);
     Serial.printf("[Mem] map %s: %u free blocks, %u used blocks, largest free %u KB\n", where,
-                  (unsigned)info.free_blocks, (unsigned)info.allocated_blocks, (unsigned)(info.largest_free_block / 1024));
+                  (unsigned)info.free_blocks, (unsigned)info.allocated_blocks,
+                  (unsigned)(info.largest_free_block / 1024));
 #else
     Serial.printf("[Mem] map %s: (no heap walk in the simulator)\n", where);
 #endif
@@ -140,7 +157,10 @@ void logMap(const char* where) {
 
 namespace {
 
-struct Big { uintptr_t p; uint32_t size; };
+struct Big {
+    uintptr_t p;
+    uint32_t size;
+};
 constexpr int kMaxBig = 48;
 constexpr uint32_t kBigBytes = 2048;
 Big g_prev[kMaxBig];
@@ -150,20 +170,27 @@ char g_marks[2048];
 size_t g_marksLen = 0;
 
 #if MEM_HEAP_WALK
-struct BigWalk { Big b[kMaxBig]; int n; uint32_t lost; };
+struct BigWalk {
+    Big b[kMaxBig];
+    int n;
+    uint32_t lost;
+};
 BigWalk g_walk;   // static: the walker runs with the heap locked, no allocation there
 
 bool bigWalker(walker_heap_into_t, walker_block_info_t block, void*) {
     if (!block.used || block.size < kBigBytes) return true;
-    if (g_walk.n < kMaxBig) g_walk.b[g_walk.n++] = Big{(uintptr_t)block.ptr, (uint32_t)block.size};
-    else g_walk.lost++;
+    if (g_walk.n < kMaxBig)
+        g_walk.b[g_walk.n++] = Big{(uintptr_t)block.ptr, (uint32_t)block.size};
+    else
+        g_walk.lost++;
     return true;
 }
 
 // "stack loopTask" if the block holds a task's stack.
 const char* ownerOf(const Big& b) {
-    static const char* const kTasks[] = {"loopTask", "IDLE", "IDLE0", "esp_timer", "ipc0", "sys_evt", "tiT", "wifi",
-                                         "arduino_events", "Tmr Svc", "fi_input", "async_tcp", "ble-conn"};
+    static const char* const kTasks[] = {"loopTask", "IDLE",      "IDLE0",   "esp_timer",      "ipc0",
+                                         "sys_evt",  "tiT",       "wifi",    "arduino_events", "Tmr Svc",
+                                         "fi_input", "async_tcp", "ble-conn"};
     static char buf[32];
     for (const char* name : kTasks) {
         TaskHandle_t h = xTaskGetHandle(name);
@@ -200,15 +227,20 @@ void mark(const char* step) {
     int listed = 0;
     for (int i = 0; i < g_walk.n; i++) {
         bool known = false;
-        for (int j = 0; j < g_prevN && !known; j++) known = g_prev[j].p == g_walk.b[i].p && g_prev[j].size == g_walk.b[i].size;
+        for (int j = 0; j < g_prevN && !known; j++)
+            known = g_prev[j].p == g_walk.b[i].p && g_prev[j].size == g_walk.b[i].size;
         if (known && g_marked) continue;
         appendMark(" +%.1f%s", g_walk.b[i].size / 1024.0f, ownerOf(g_walk.b[i]));
         listed++;
     }
     for (int j = 0; j < g_prevN && g_marked; j++) {
         bool still = false;
-        for (int i = 0; i < g_walk.n && !still; i++) still = g_prev[j].p == g_walk.b[i].p && g_prev[j].size == g_walk.b[i].size;
-        if (!still) { appendMark(" -%.1f", g_prev[j].size / 1024.0f); listed++; }
+        for (int i = 0; i < g_walk.n && !still; i++)
+            still = g_prev[j].p == g_walk.b[i].p && g_prev[j].size == g_walk.b[i].size;
+        if (!still) {
+            appendMark(" -%.1f", g_prev[j].size / 1024.0f);
+            listed++;
+        }
     }
     if (!listed) appendMark(" no big block changed");
     if (g_walk.lost) appendMark(" (+%u not tracked)", (unsigned)g_walk.lost);

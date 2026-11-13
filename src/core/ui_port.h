@@ -52,12 +52,19 @@ inline void message(const char* title, const char* l1, const char* l2 = "", cons
                     uint32_t autoCloseMs = 1800, bool fullRedraw = false, const char* footer = "") {
     if (port().message) port().message(title, l1, l2, l3, l4, autoCloseMs, fullRedraw, footer);
 }
-inline void redrawScreen(bool fullRefresh) { if (port().redrawScreen) port().redrawScreen(fullRefresh); }
+inline void redrawScreen(bool fullRefresh) {
+    if (port().redrawScreen) port().redrawScreen(fullRefresh);
+}
 inline bool modalActive() { return port().modalActive && port().modalActive(); }
 inline uint32_t modalRemainingMs() { return port().modalRemainingMs ? port().modalRemainingMs() : 0; }
-inline void coverCacheChanged() { if (port().coverCacheChanged) port().coverCacheChanged(); }
-inline void sleepScreen(const SleepScreen& s) { if (port().sleepScreen) port().sleepScreen(s); }
-inline void portalScreen(const char* apSsid, const char* apPass, const char* url, int page = 0, bool fullRefresh = false) {
+inline void coverCacheChanged() {
+    if (port().coverCacheChanged) port().coverCacheChanged();
+}
+inline void sleepScreen(const SleepScreen& s) {
+    if (port().sleepScreen) port().sleepScreen(s);
+}
+inline void portalScreen(const char* apSsid, const char* apPass, const char* url, int page = 0,
+                         bool fullRefresh = false) {
     if (port().portalScreen) port().portalScreen(apSsid, apPass, url, page, fullRefresh);
 }
 inline PortalAction portalEvent(int btnId, int btnAction, int16_t x, int16_t y, int& page) {

@@ -4,8 +4,14 @@
 #include <cstdio>
 
 static int g_failed = 0, g_checks = 0;
-#define CHECK(cond) do { g_checks++; if (!(cond)) { g_failed++; \
-    printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); } } while (0)
+#define CHECK(cond)                                                  \
+    do {                                                             \
+        g_checks++;                                                  \
+        if (!(cond)) {                                               \
+            g_failed++;                                              \
+            printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
+        }                                                            \
+    } while (0)
 
 // Checks the 7x7 finder pattern at top-left (0, 0) of any valid QR matrix.
 static bool hasTopLeftFinder(const qr::QrCode& q) {
@@ -21,10 +27,8 @@ static bool hasTopLeftFinder(const qr::QrCode& q) {
 }
 
 int main() {
-    CHECK(qr::formatWifiPayload("BookOrbit-Config", "12345678") ==
-          "WIFI:T:WPA;S:BookOrbit-Config;P:12345678;;");
-    CHECK(qr::formatWifiPayload("OpenNet", "") ==
-          "WIFI:T:nopass;S:OpenNet;;");
+    CHECK(qr::formatWifiPayload("BookOrbit-Config", "12345678") == "WIFI:T:WPA;S:BookOrbit-Config;P:12345678;;");
+    CHECK(qr::formatWifiPayload("OpenNet", "") == "WIFI:T:nopass;S:OpenNet;;");
     CHECK(qr::formatWifiPayload("My;Net:1,2\\3\"x", "a;b:c\\d") ==
           "WIFI:T:WPA;S:My\\;Net\\:1\\,2\\\\3\\\"x;P:a\\;b\\:c\\\\d;;");
 

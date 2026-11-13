@@ -9,4 +9,4 @@ public:
     static void deepSleep() {}
     static void deepSleepUntilPowerButton() {}
 };
-}
+}  // namespace freeink

@@ -11,9 +11,12 @@ BookReader::Position BookReader::position() const {
     }
     settle();
     p.spine = _spine;
-    if (_want == Want::Char) p.chars = _wantValue;
-    else if (_want == Want::Fraction) p.chars = (uint32_t)(_wantFraction * charsOf(_spine));
-    else if (_want == Want::None && _loadedSpine == _spine) p.chars = curCharStart((uint32_t)_page);
+    if (_want == Want::Char)
+        p.chars = _wantValue;
+    else if (_want == Want::Fraction)
+        p.chars = (uint32_t)(_wantFraction * charsOf(_spine));
+    else if (_want == Want::None && _loadedSpine == _spine)
+        p.chars = curCharStart((uint32_t)_page);
     return p;
 }
 
@@ -34,9 +37,12 @@ float BookReader::getProgress() const {
         total += _spines[s].bytes;
     }
     double inChapter = 0.0;
-    if (_want == Want::Fraction) inChapter = _wantFraction;
-    else if (_loadedSpine == here.spine && curTotalChars() > 0) inChapter = (double)here.chars / curTotalChars();
-    else if (charsOf(here.spine) > 0) inChapter = (double)here.chars / charsOf(here.spine);
+    if (_want == Want::Fraction)
+        inChapter = _wantFraction;
+    else if (_loadedSpine == here.spine && curTotalChars() > 0)
+        inChapter = (double)here.chars / curTotalChars();
+    else if (charsOf(here.spine) > 0)
+        inChapter = (double)here.chars / charsOf(here.spine);
     if (inChapter > 1.0) inChapter = 1.0;
     const double at = (double)before + inChapter * (double)_spines[here.spine].bytes;
     return total > 0 ? (float)(at / (double)total) : 0.0f;
@@ -107,7 +113,8 @@ bool BookReader::setPageByXPath(const String& xpath, float fallbackPercent) {
     const int spine = xpath.substring(at + 12).toInt() - 1;
     if (spine < 0 || spine >= (int)_spines.size()) return false;
     // The xpath names the chapter; the percent places it inside when it agrees.
-    if (ProgressSync::hasProgress(fallbackPercent) && setPageByProgress(fallbackPercent) && _spine == spine) return true;
+    if (ProgressSync::hasProgress(fallbackPercent) && setPageByProgress(fallbackPercent) && _spine == spine)
+        return true;
     _spine = spine;
     _want = Want::Page;
     _wantValue = 0;
@@ -151,7 +158,6 @@ bool BookReader::walkChapter(int spine, EpubCfi::Walker& walker) {
     return ok;
 }
 
-
 namespace {
 // The chapter's text from an engine character on: tags left out, white space
 // collapsed, the common entities as characters.
@@ -186,17 +192,25 @@ public:
                     continue;
                 }
                 _inEntity = false;
-                if (_entity == "amp") put('&');
-                else if (_entity == "lt") put('<');
-                else if (_entity == "gt") put('>');
-                else if (_entity == "quot") put('"');
-                else space();
+                if (_entity == "amp")
+                    put('&');
+                else if (_entity == "lt")
+                    put('<');
+                else if (_entity == "gt")
+                    put('>');
+                else if (_entity == "quot")
+                    put('"');
+                else
+                    space();
                 continue;
             }
-            if (c == ' ' || c == '\n' || c == '\r' || c == '\t') space();
-            else put(c);
+            if (c == ' ' || c == '\n' || c == '\r' || c == '\t')
+                space();
+            else
+                put(c);
         }
     }
+
 private:
     // Character `_from` is the one that makes the count pass it.
     bool started() const { return _counter.emitted() > _from; }
@@ -299,8 +313,9 @@ bool BookReader::setPageByCfi(const String& cfi, float fallbackPercent) {
         }
         const uint32_t inChapter = charsOf(spine);
         const double frac = inChapter > 0 ? (double)chars / inChapter : 0.0;
-        const float at = total > 0 ? (float)(((double)before + (frac > 1 ? 1 : frac) * _spines[spine].bytes) / (double)total)
-                                   : 0.0f;
+        const float at =
+                total > 0 ? (float)(((double)before + (frac > 1 ? 1 : frac) * _spines[spine].bytes) / (double)total)
+                          : 0.0f;
         if (fabsf(at - fallbackPercent) > kCfiTrustTolerance) {
             Serial.printf("[CFI] '%s' points to %.1f%% but progress is %.1f%%: stale, not used\n", cfi.c_str(),
                           at * 100.0f, fallbackPercent * 100.0f);
@@ -431,8 +446,8 @@ bool BookReader::prevChapter() {
     // Inside a chapter: back to its start; at its start: the one before.
     const Position before = position();
     goToChapter(idx);
-    if (resolve() && position().spine == before.spine && position().chars >= before.chars && idx > 0) goToChapter(idx - 1);
+    if (resolve() && position().spine == before.spine && position().chars >= before.chars && idx > 0)
+        goToChapter(idx - 1);
     renderCurrentPage();
     return true;
 }
-

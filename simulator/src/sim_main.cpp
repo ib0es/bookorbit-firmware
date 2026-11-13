@@ -15,8 +15,8 @@ void setup();
 void loop();
 
 // Static definitions for simulated components
-bool InputManager::s_simState[InputManager::BTN_COUNT] = { false };
-bool InputManager::s_oneShotClicks[InputManager::BTN_COUNT] = { false };
+bool InputManager::s_simState[InputManager::BTN_COUNT] = {false};
+bool InputManager::s_oneShotClicks[InputManager::BTN_COUNT] = {false};
 freeink::DisplayUpdateCallback freeink::FreeInkDisplay::s_callback = nullptr;
 
 static SDL_Window* s_window = nullptr;
@@ -85,9 +85,7 @@ static void updateDisplayTexture(const uint8_t* rawEpdBuffer, int mode) {
     }
 }
 
-static void onDisplayUpdate(const uint8_t* buffer, int mode) {
-    updateDisplayTexture(buffer, mode);
-}
+static void onDisplayUpdate(const uint8_t* buffer, int mode) { updateDisplayTexture(buffer, mode); }
 
 void simInputPolled() {}
 
@@ -163,19 +161,22 @@ void simPumpEvents() {
                 default:
                     break;
             }
-        } else if (InputManager::s_touchEnabled && evt.type == SDL_MOUSEBUTTONDOWN && evt.button.button == SDL_BUTTON_LEFT) {
+        } else if (InputManager::s_touchEnabled && evt.type == SDL_MOUSEBUTTONDOWN &&
+                   evt.button.button == SDL_BUTTON_LEFT) {
             s_mouseDown = true;
             s_mouseDownX = evt.button.x < 0 ? 0 : (evt.button.x >= SCREEN_W ? SCREEN_W - 1 : evt.button.x);
             s_mouseDownY = evt.button.y < 0 ? 0 : (evt.button.y >= SCREEN_H ? SCREEN_H - 1 : evt.button.y);
-        } else if (InputManager::s_touchEnabled && evt.type == SDL_MOUSEBUTTONUP && evt.button.button == SDL_BUTTON_LEFT && s_mouseDown) {
+        } else if (InputManager::s_touchEnabled && evt.type == SDL_MOUSEBUTTONUP &&
+                   evt.button.button == SDL_BUTTON_LEFT && s_mouseDown) {
             s_mouseDown = false;
             const int ux = evt.button.x < 0 ? 0 : (evt.button.x >= SCREEN_W ? SCREEN_W - 1 : evt.button.x);
             const int uy = evt.button.y < 0 ? 0 : (evt.button.y >= SCREEN_H ? SCREEN_H - 1 : evt.button.y);
             const int dx = ux - s_mouseDownX;
             const int dy = uy - s_mouseDownY;
             if (dx * dx + dy * dy >= 30 * 30) {
-                InputManager::simSwipe((float)s_mouseDownY / EPD_WIDTH, (float)(EPD_HEIGHT - 1 - s_mouseDownX) / EPD_HEIGHT,
-                                       (float)uy / EPD_WIDTH, (float)(EPD_HEIGHT - 1 - ux) / EPD_HEIGHT);
+                InputManager::simSwipe((float)s_mouseDownY / EPD_WIDTH,
+                                       (float)(EPD_HEIGHT - 1 - s_mouseDownX) / EPD_HEIGHT, (float)uy / EPD_WIDTH,
+                                       (float)(EPD_HEIGHT - 1 - ux) / EPD_HEIGHT);
             } else {
                 InputManager::simTap((float)uy / EPD_WIDTH, (float)(EPD_HEIGHT - 1 - ux) / EPD_HEIGHT);
             }
@@ -228,14 +229,8 @@ int main(int argc, char* argv[]) {
 #else
     snprintf(winTitle, sizeof(winTitle), "XTEINK X4 - Book Orbit Simulator (%dx%d)", SCREEN_W, SCREEN_H);
 #endif
-    s_window = SDL_CreateWindow(
-        winTitle,
-        SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED,
-        SCREEN_W,
-        SCREEN_H,
-        SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI
-    );
+    s_window = SDL_CreateWindow(winTitle, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_W, SCREEN_H,
+                                SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI);
 
     if (!s_window) {
         fprintf(stderr, "Failed to create SDL window: %s\n", SDL_GetError());
@@ -248,13 +243,8 @@ int main(int argc, char* argv[]) {
         s_renderer = SDL_CreateRenderer(s_window, -1, 0);
     }
 
-    s_texture = SDL_CreateTexture(
-        s_renderer,
-        SDL_PIXELFORMAT_ARGB8888,
-        SDL_TEXTUREACCESS_STREAMING,
-        SCREEN_W,
-        SCREEN_H
-    );
+    s_texture =
+            SDL_CreateTexture(s_renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_W, SCREEN_H);
 
     // Register display callback
     freeink::FreeInkDisplay::setUpdateCallback(onDisplayUpdate);

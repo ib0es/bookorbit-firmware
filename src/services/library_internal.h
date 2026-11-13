@@ -19,4 +19,4 @@ bool isBookFile(const String& name);
 // library_covers.cpp
 String epubCoverPath(const String& filePath);
 bool isEpubPath(const String& filePath);
-}
+}  // namespace LibraryInternal

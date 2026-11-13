@@ -10,9 +10,7 @@ void I18n::setLanguage(AppLanguage lang) {
     }
 }
 
-AppLanguage I18n::getLanguage() {
-    return s_currentLanguage;
-}
+AppLanguage I18n::getLanguage() { return s_currentLanguage; }
 
 const char* I18n::get(MsgId id) {
     size_t idIdx = (size_t)id;
@@ -58,6 +56,4 @@ AppLanguage I18n::languageFromCode(const String& code) {
     return AppLanguage::EN;
 }
 
-int I18n::getLanguageCount() {
-    return (int)AppLanguage::COUNT;
-}
+int I18n::getLanguageCount() { return (int)AppLanguage::COUNT; }

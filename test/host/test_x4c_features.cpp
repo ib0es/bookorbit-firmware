@@ -20,8 +20,14 @@ bool ConfigStore::load(AppConfig&) { return false; }
 bool ConfigStore::save(const AppConfig&) { return false; }
 
 static int g_failed = 0, g_checks = 0;
-#define CHECK(cond) do { g_checks++; if (!(cond)) { g_failed++; \
-    printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); } } while (0)
+#define CHECK(cond)                                                  \
+    do {                                                             \
+        g_checks++;                                                  \
+        if (!(cond)) {                                               \
+            g_failed++;                                              \
+            printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
+        }                                                            \
+    } while (0)
 
 static void testPowerPolicyIdleDeepSleep() {
     constexpr uint32_t kTimeout = 300000;

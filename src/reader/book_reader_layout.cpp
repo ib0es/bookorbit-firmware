@@ -29,7 +29,10 @@ bool BookReader::chapterSource(int spine, ZipEntry& entry, BookSource*& source, 
         ok = _cache.endWrite() && ok && reader.totalProduced() == entry.uncompressedSize;
         Serial.printf("[Reader] Chapter %d unpacked: %u bytes in %lu ms%s\n", spine, (unsigned)entry.uncompressedSize,
                       (unsigned long)(millis() - t0), ok ? "" : " FAILED");
-        if (!ok) { _cache.remove(name); return false; }
+        if (!ok) {
+            _cache.remove(name);
+            return false;
+        }
     }
     if (!unpacked.open(path)) return false;
     entry = ZipEntryReader::rawEntry(entry.uncompressedSize);
@@ -43,7 +46,7 @@ bool BookReader::layoutChapter(int spine) {
     const Spine& sp = _spines[spine];
     if (sp.bytes > 60000) {   // a big one: say why the screen waits
         Ui::status(tr(MsgId::READER_FORMAT_TITLE), utf8Prefix(_title, 64).c_str(), tr(MsgId::READER_FORMAT_LINE),
-                        tr(MsgId::READER_OPENING_WAIT));
+                   tr(MsgId::READER_OPENING_WAIT));
     }
     ZipEntry entry;
     BookSource* chapter = &_src;
@@ -61,13 +64,15 @@ bool BookReader::layoutChapter(int spine) {
     BookStatus st = BookStatus::OutOfMemory;
     size_t layoutUsed = 0, parseUsed = 0;
     PageCacheWriter writer;
-    for (size_t cap = kLayoutBytes; st == BookStatus::OutOfMemory && cap <= kLayoutBytes + Platform::kMemory.layoutExtraMax; cap += 16 * 1024) {
+    for (size_t cap = kLayoutBytes;
+         st == BookStatus::OutOfMemory && cap <= kLayoutBytes + Platform::kMemory.layoutExtraMax; cap += 16 * 1024) {
         Buffer layoutMem(cap);
         Buffer parseMem(kStoredParseBytes);
         if (!layoutMem.p || !parseMem.p) {
             const MemStats::Snapshot m = MemStats::now();
             Serial.printf("[Reader] Not enough memory to lay out chapter %d (%u KB): free %u KB, largest block %u KB\n",
-                          spine, (unsigned)(cap / 1024), (unsigned)(m.freeBytes / 1024), (unsigned)(m.largestBlock / 1024));
+                          spine, (unsigned)(cap / 1024), (unsigned)(m.freeBytes / 1024),
+                          (unsigned)(m.largestBlock / 1024));
             break;
         }
         Arena layout(layoutMem.p, cap);
@@ -97,7 +102,8 @@ bool BookReader::layoutChapter(int spine) {
             writer.setTotalChars(chars);
             if (!writer.finish() || writer.failed()) st = BookStatus::IoError;
         } else if (st == BookStatus::OutOfMemory) {
-            Serial.printf("[Reader] Chapter %d: layout buffer of %u KB full, retrying bigger\n", spine, (unsigned)(cap / 1024));
+            Serial.printf("[Reader] Chapter %d: layout buffer of %u KB full, retrying bigger\n", spine,
+                          (unsigned)(cap / 1024));
             writer.finish();   // closes the half-built file...
             _cache.remove(name);   // ...which must not pass for a laid-out chapter
         }
@@ -179,20 +185,36 @@ bool BookReader::resolve() {
     }
     // While the chapter is still being laid out, only as much as the target needs.
     switch (_want) {
-        case Want::Char: buildUntilChar(_wantValue); break;
-        case Want::Page: buildUntilPages(_wantValue + 1); break;
-        case Want::Anchor: buildUntilAnchor(_wantValue); break;
+        case Want::Char:
+            buildUntilChar(_wantValue);
+            break;
+        case Want::Page:
+            buildUntilPages(_wantValue + 1);
+            break;
+        case Want::Anchor:
+            buildUntilAnchor(_wantValue);
+            break;
         case Want::LastPage:
-        case Want::Fraction: if (building()) finishBackground(); break;   // needs the chapter's end
-        case Want::None: buildUntilPages((uint32_t)_page + 1); break;
+        case Want::Fraction:
+            if (building()) finishBackground();
+            break;   // needs the chapter's end
+        case Want::None:
+            buildUntilPages((uint32_t)_page + 1);
+            break;
     }
     if (_loadedSpine != _spine && !loadChapter(_spine)) return false;   // the job failed: laid out in full
     const int count = (int)curCount();
     if (count == 0) return false;
     switch (_want) {
-        case Want::Char: _page = (int)curPageForChar(_wantValue); break;
-        case Want::Page: _page = (int)_wantValue; break;
-        case Want::LastPage: _page = count - 1; break;
+        case Want::Char:
+            _page = (int)curPageForChar(_wantValue);
+            break;
+        case Want::Page:
+            _page = (int)_wantValue;
+            break;
+        case Want::LastPage:
+            _page = count - 1;
+            break;
         case Want::Anchor: {
             uint32_t at = 0;
             _page = curCharForAnchor(_wantValue, &at) ? (int)curPageForChar(at) : 0;
@@ -203,7 +225,8 @@ bool BookReader::resolve() {
             _page = (int)curPageForChar((uint32_t)((double)total * _wantFraction + 0.5));
             break;
         }
-        case Want::None: break;
+        case Want::None:
+            break;
     }
     _want = Want::None;
     _held.spine = -1;
@@ -333,7 +356,10 @@ bool BookReader::stepBackground() {
         uint8_t buf[1024];
         for (int i = 0; i < 8; i++) {
             const int32_t n = job->unpacker.read(buf, sizeof(buf));
-            if (n < 0 || (n > 0 && !job->cache.write(buf, (uint32_t)n))) { failed = true; break; }
+            if (n < 0 || (n > 0 && !job->cache.write(buf, (uint32_t)n))) {
+                failed = true;
+                break;
+            }
             if (n == 0) break;
         }
         if (!failed && job->unpacker.totalProduced() >= job->bookEntry.uncompressedSize) {
@@ -386,23 +412,29 @@ bool BookReader::stepBackground() {
         job->writer.setTotalChars(chars);
         job->writing = false;
         const bool ok = job->writer.finish() && !job->writer.failed();
-        Serial.printf("[Reader] Chapter %d laid out in the background: %s, %u pages, %u chars, %lu ms of work in %lu ms "
-                      "(layout %u B)\n", job->spine, ok ? "ok" : "write failed", (unsigned)pages, (unsigned)chars,
-                      (unsigned long)job->busyMs, (unsigned long)(millis() - job->t0),
-                      (unsigned)job->layout.highWater());
+        Serial.printf(
+                "[Reader] Chapter %d laid out in the background: %s, %u pages, %u chars, %lu ms of work in %lu ms "
+                "(layout %u B)\n",
+                job->spine, ok ? "ok" : "write failed", (unsigned)pages, (unsigned)chars, (unsigned long)job->busyMs,
+                (unsigned long)(millis() - job->t0), (unsigned)job->layout.highWater());
         const int spine = job->spine;
         const bool current = job->current;
         if (!ok) {
             job->current = false;
             if (current) {
-                if (_want == Want::None && pages > 0) { _want = Want::Page; _wantValue = (uint32_t)_page; }
+                if (_want == Want::None && pages > 0) {
+                    _want = Want::Page;
+                    _wantValue = (uint32_t)_page;
+                }
                 _loadedSpine = -1;
             }
         }
         delete job;
         _bg = nullptr;
-        if (ok) commitLaidOut(spine, pages, chars);
-        else _spines[spine].bgFailed = true;
+        if (ok)
+            commitLaidOut(spine, pages, chars);
+        else
+            _spines[spine].bgFailed = true;
         if (ok && current) {
             _loadedSpine = -1;   // the same pages, now from the finished cache file
             loadChapter(spine);
@@ -428,7 +460,7 @@ bool BookReader::finishBackground() {
                   (unsigned)(left / 1024));
     if (left > 60000) {
         Ui::status(tr(MsgId::READER_FORMAT_TITLE), utf8Prefix(_title, 64).c_str(), tr(MsgId::READER_FORMAT_LINE),
-                        tr(MsgId::READER_OPENING_WAIT));
+                   tr(MsgId::READER_OPENING_WAIT));
     }
     while (stepBackground()) {}
     return true;
@@ -464,7 +496,7 @@ bool BookReader::buildIncrementally(int spine) {
         if (_catalog.spineEntry((size_t)spine, &e) == BookStatus::Ok && e.method != 0 && e.uncompressedSize > 200000 &&
             _cache.fileSize(unpacked) != (int64_t)e.uncompressedSize) {
             Ui::status(tr(MsgId::READER_FORMAT_TITLE), utf8Prefix(_title, 64).c_str(), tr(MsgId::READER_FORMAT_LINE),
-                            tr(MsgId::READER_OPENING_WAIT));   // unpacking a big one takes seconds
+                       tr(MsgId::READER_OPENING_WAIT));   // unpacking a big one takes seconds
         }
         if (!startBackground(spine)) return false;
     }
@@ -485,7 +517,7 @@ void BookReader::sayCatchingUp(uint32_t pagesLeft) {
     if (pagesLeft < 40) return;
     Serial.printf("[Reader] Chapter %d: laying out ~%u pages to get there\n", _bg->spine, (unsigned)pagesLeft);
     Ui::status(tr(MsgId::READER_FORMAT_TITLE), utf8Prefix(_title, 64).c_str(), tr(MsgId::READER_FORMAT_LINE),
-                    tr(MsgId::READER_OPENING_WAIT));
+               tr(MsgId::READER_OPENING_WAIT));
 }
 
 void BookReader::buildUntilPages(uint32_t count) {
@@ -536,4 +568,3 @@ uint32_t BookReader::curTotalChars() const {
     if (done == 0) return made;
     return (uint32_t)((double)made * (double)total / (double)done);
 }
-

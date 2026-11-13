@@ -13,18 +13,34 @@ bool ConfigStore::load(AppConfig& cfg) {
             JsonDocument doc;
             DeserializationError error = JsonFile::read("/config.json", doc);
             if (!error) {
-                if (doc["wifi_ssid"].is<const char*>()) { cfg.wifiSsid = doc["wifi_ssid"].as<String>(); cfg.wifiSsid.trim(); }
+                if (doc["wifi_ssid"].is<const char*>()) {
+                    cfg.wifiSsid = doc["wifi_ssid"].as<String>();
+                    cfg.wifiSsid.trim();
+                }
                 // Passwords as typed: spaces in them are significant (names and addresses are trimmed).
                 if (doc["wifi_pass"].is<const char*>()) cfg.wifiPass = doc["wifi_pass"].as<String>();
-                if (doc["server_url"].is<const char*>()) { cfg.serverHost = doc["server_url"].as<String>(); cfg.serverHost.trim(); }
+                if (doc["server_url"].is<const char*>()) {
+                    cfg.serverHost = doc["server_url"].as<String>();
+                    cfg.serverHost.trim();
+                }
 
-                if (doc["username"].is<const char*>()) { cfg.bookOrbitUser = doc["username"].as<String>(); cfg.bookOrbitUser.trim(); }
-                else if (doc["user"].is<const char*>()) { cfg.bookOrbitUser = doc["user"].as<String>(); cfg.bookOrbitUser.trim(); }
+                if (doc["username"].is<const char*>()) {
+                    cfg.bookOrbitUser = doc["username"].as<String>();
+                    cfg.bookOrbitUser.trim();
+                } else if (doc["user"].is<const char*>()) {
+                    cfg.bookOrbitUser = doc["user"].as<String>();
+                    cfg.bookOrbitUser.trim();
+                }
 
-                if (doc["password"].is<const char*>()) cfg.bookOrbitPass = doc["password"].as<String>();
-                else if (doc["pass"].is<const char*>()) cfg.bookOrbitPass = doc["pass"].as<String>();
+                if (doc["password"].is<const char*>())
+                    cfg.bookOrbitPass = doc["password"].as<String>();
+                else if (doc["pass"].is<const char*>())
+                    cfg.bookOrbitPass = doc["pass"].as<String>();
 
-                if (doc["token"].is<const char*>()) { cfg.authToken = doc["token"].as<String>(); cfg.authToken.trim(); }
+                if (doc["token"].is<const char*>()) {
+                    cfg.authToken = doc["token"].as<String>();
+                    cfg.authToken.trim();
+                }
 
                 if (doc["sync_on_boot"].is<bool>()) cfg.syncOnBoot = doc["sync_on_boot"].as<bool>();
                 if (doc["sync_on_sleep"].is<bool>()) cfg.syncOnSleep = doc["sync_on_sleep"].as<bool>();
@@ -47,7 +63,7 @@ bool ConfigStore::load(AppConfig& cfg) {
                 if (doc["font_pt"].is<int>()) {
                     cfg.readerFontSize = FontEngine::clampSize((doc["font_pt"].as<int>() - 12) / 2);
                 } else if (doc["font_size"].is<int>()) {
-                    static const int kOld[4] = { 0, 2, 4, 6 };   // -> 12, 16, 20, 24 pt
+                    static const int kOld[4] = {0, 2, 4, 6};   // -> 12, 16, 20, 24 pt
                     const int v = doc["font_size"].as<int>();
                     cfg.readerFontSize = (v >= 0 && v <= 3) ? kOld[v] : FontEngine::kDefaultSize;
                 } else {
@@ -133,9 +149,11 @@ bool ConfigStore::save(const AppConfig& cfg) {
     // when it changed: config.json is saved often (font, light, toggles).
     Preferences prefs;
     if (prefs.begin("bookorbit", false)) {
-        const struct { const char* key; const String& value; } fields[] = {
-            { "server_url", cfg.serverHost }, { "wifi_ssid", cfg.wifiSsid }, { "wifi_pass", cfg.wifiPass },
-            { "username", cfg.bookOrbitUser }, { "password", cfg.bookOrbitPass }, { "token", cfg.authToken } };
+        const struct {
+            const char* key;
+            const String& value;
+        } fields[] = {{"server_url", cfg.serverHost},  {"wifi_ssid", cfg.wifiSsid},     {"wifi_pass", cfg.wifiPass},
+                      {"username", cfg.bookOrbitUser}, {"password", cfg.bookOrbitPass}, {"token", cfg.authToken}};
         for (const auto& f : fields) {
             if (f.value.length() == 0) {
                 if (prefs.isKey(f.key)) prefs.remove(f.key);

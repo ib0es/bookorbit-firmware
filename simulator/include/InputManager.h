@@ -10,16 +10,7 @@ void simInputPolled();
 
 class InputManager {
 public:
-    enum Button {
-        BTN_POWER = 0,
-        BTN_CONFIRM,
-        BTN_BACK,
-        BTN_LEFT,
-        BTN_RIGHT,
-        BTN_UP,
-        BTN_DOWN,
-        BTN_COUNT
-    };
+    enum Button { BTN_POWER = 0, BTN_CONFIRM, BTN_BACK, BTN_LEFT, BTN_RIGHT, BTN_UP, BTN_DOWN, BTN_COUNT };
 
     InputManager() {
         memset(_pressed, 0, sizeof(_pressed));
@@ -37,10 +28,17 @@ public:
     void update() {
         simPumpEvents();
         simInputPolled();
-        _tapNow = s_tapQueued; _tapNowX = s_tapX; _tapNowY = s_tapY; s_tapQueued = false;
-        _swipeNow = s_swipeQueued; for (int k = 0; k < 4; k++) _swipeNowP[k] = s_swipeP[k]; s_swipeQueued = false;
-        _homeTapNow = s_homeTapQueued; s_homeTapQueued = false;
-        _homeLongNow = s_homeLongQueued; s_homeLongQueued = false;
+        _tapNow = s_tapQueued;
+        _tapNowX = s_tapX;
+        _tapNowY = s_tapY;
+        s_tapQueued = false;
+        _swipeNow = s_swipeQueued;
+        for (int k = 0; k < 4; k++) _swipeNowP[k] = s_swipeP[k];
+        s_swipeQueued = false;
+        _homeTapNow = s_homeTapQueued;
+        s_homeTapQueued = false;
+        _homeLongNow = s_homeLongQueued;
+        s_homeLongQueued = false;
         for (int i = 0; i < BTN_COUNT; i++) {
             _prevPressed[i] = _pressed[i];
             _pressed[i] = s_simState[i];
@@ -95,20 +93,26 @@ public:
     // InputManager), queued by the headless script ('T' x,y) and reported by
     // the next update().
 #if (defined(FREEINK_CAP_TOUCH) && FREEINK_CAP_TOUCH) || (defined(FREEINK_DEVICE_X4PRO) && FREEINK_DEVICE_X4PRO) || \
-    (defined(FREEINK_DEVICE_PICCO) && FREEINK_DEVICE_PICCO)
+        (defined(FREEINK_DEVICE_PICCO) && FREEINK_DEVICE_PICCO)
     static inline bool s_touchEnabled = true;
 #else
     static inline bool s_touchEnabled = false;
 #endif
     static inline bool s_tapQueued = false;
     static inline float s_tapX = 0, s_tapY = 0;
-    static void simTap(float nx, float ny) { s_touchEnabled = true; s_tapQueued = true; s_tapX = nx; s_tapY = ny; }
+    static void simTap(float nx, float ny) {
+        s_touchEnabled = true;
+        s_tapQueued = true;
+        s_tapX = nx;
+        s_tapY = ny;
+    }
     bool hasTouch() const { return s_touchEnabled; }
     bool isTouchPressed() const { return false; }
     bool isDebouncePending() const { return false; }
     bool wasTouchTap(float& nx, float& ny) const {
         if (!_tapNow) return false;
-        nx = _tapNowX; ny = _tapNowY;
+        nx = _tapNowX;
+        ny = _tapNowY;
         return true;
     }
 
@@ -134,12 +138,19 @@ public:
     static inline bool s_swipeQueued = false;
     static inline float s_swipeP[4] = {0, 0, 0, 0};
     static void simSwipe(float x0, float y0, float x1, float y1) {
-        s_touchEnabled = true; s_swipeQueued = true;
-        s_swipeP[0] = x0; s_swipeP[1] = y0; s_swipeP[2] = x1; s_swipeP[3] = y1;
+        s_touchEnabled = true;
+        s_swipeQueued = true;
+        s_swipeP[0] = x0;
+        s_swipeP[1] = y0;
+        s_swipeP[2] = x1;
+        s_swipeP[3] = y1;
     }
     bool wasSwipe(float& x0, float& y0, float& x1, float& y1) const {
         if (!_swipeNow) return false;
-        x0 = _swipeNowP[0]; y0 = _swipeNowP[1]; x1 = _swipeNowP[2]; y1 = _swipeNowP[3];
+        x0 = _swipeNowP[0];
+        y0 = _swipeNowP[1];
+        x1 = _swipeNowP[2];
+        y1 = _swipeNowP[3];
         return true;
     }
 

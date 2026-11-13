@@ -24,7 +24,10 @@ int32_t SdBookSource::readAt(uint64_t offset, void* dst, uint32_t len) {
     if (offset >= _size) return 0;
     if (offset != _pos && !_file.seek((uint32_t)offset)) return -1;
     const int n = _file.read((uint8_t*)dst, len);
-    if (n < 0) { _pos = UINT64_MAX; return -1; }
+    if (n < 0) {
+        _pos = UINT64_MAX;
+        return -1;
+    }
     _pos = offset + (uint32_t)n;
     return n;
 }
@@ -34,7 +37,10 @@ int32_t SdBookSource::readAt(uint64_t offset, void* dst, uint32_t len) {
 bool SdCacheStorage::exists(const char* name) { return Storage.exists(path(name).c_str()); }
 
 bool SdCacheStorage::remove(const char* name) {
-    if (_readName == name) { _read.close(); _readName = ""; }
+    if (_readName == name) {
+        _read.close();
+        _readName = "";
+    }
     return Storage.remove(path(name).c_str());
 }
 
@@ -51,7 +57,10 @@ int32_t SdCacheStorage::readAt(const char* name, uint32_t offset, void* dst, uin
     if (_readName != name || !_read) {
         if (_read) _read.close();
         _read = Storage.open(path(name).c_str(), O_RDONLY);
-        if (!_read) { _readName = ""; return -1; }
+        if (!_read) {
+            _readName = "";
+            return -1;
+        }
         _readName = name;
     }
     if (!_read.seek(offset)) return -1;
@@ -78,7 +87,10 @@ bool SdCacheStorage::write(const void* data, uint32_t len) {
 bool SdCacheStorage::endWrite() {
     if (!_write) return false;
     _write.close();
-    if (_readName == _writeName) { _read.close(); _readName = ""; }
+    if (_readName == _writeName) {
+        _read.close();
+        _readName = "";
+    }
     const String tmp = path(_writeName.c_str()) + ".tmp";
     const bool ok = Storage.replaceFile(tmp.c_str(), path(_writeName.c_str()).c_str());
     _writeName = "";

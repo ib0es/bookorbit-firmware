@@ -196,27 +196,46 @@ void Walker::feed(const char* data, size_t len) {
                     if (textCharStarts(isSpace(c))) return;
                     const unsigned char u = (unsigned char)c;
                     int units = 1;
-                    if (c == '&') _state = State::Entity;
-                    else if (u >= 0xF0) { _utf8Pending = 3; units = 2; }   // outside the BMP: a UTF-16 pair
-                    else if (u >= 0xE0) _utf8Pending = 2;
-                    else if (u >= 0xC0) _utf8Pending = 1;
+                    if (c == '&')
+                        _state = State::Entity;
+                    else if (u >= 0xF0) {
+                        _utf8Pending = 3;
+                        units = 2;
+                    }   // outside the BMP: a UTF-16 pair
+                    else if (u >= 0xE0)
+                        _utf8Pending = 2;
+                    else if (u >= 0xC0)
+                        _utf8Pending = 1;
                     _textChars += units;
                 }
                 break;
             case State::Entity:
                 if (c == ';' || c == '<' || isSpace(c)) _state = State::Text;
-                if (c == '<') { _state = State::Tag; _tag.clear(); }
+                if (c == '<') {
+                    _state = State::Tag;
+                    _tag.clear();
+                }
                 break;
             case State::Tag: {
                 _tag += c;
-                if (_tag == "!--") { _state = State::Comment; _special.clear(); break; }
-                if (_tag == "![CDATA[") { _state = State::CData; _special.clear(); break; }
+                if (_tag == "!--") {
+                    _state = State::Comment;
+                    _special.clear();
+                    break;
+                }
+                if (_tag == "![CDATA[") {
+                    _state = State::CData;
+                    _special.clear();
+                    break;
+                }
                 if (c == '>') {
                     // '>' inside a quoted attribute value does not end the tag.
                     char quote = 0;
                     for (char t : _tag) {
-                        if (quote) { if (t == quote) quote = 0; }
-                        else if (t == '"' || t == '\'') quote = t;
+                        if (quote) {
+                            if (t == quote) quote = 0;
+                        } else if (t == '"' || t == '\'')
+                            quote = t;
                     }
                     if (!quote) {
                         _sink.feed(&c, 1);

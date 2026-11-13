@@ -3,8 +3,7 @@
 
 EPDDisplay Display;
 
-EPDDisplay::EPDDisplay() 
-    : Adafruit_GFX(EPD_WIDTH, EPD_HEIGHT), _eink(nullptr) {}
+EPDDisplay::EPDDisplay() : Adafruit_GFX(EPD_WIDTH, EPD_HEIGHT), _eink(nullptr) {}
 
 EPDDisplay::~EPDDisplay() {
     if (_eink) {
@@ -72,13 +71,9 @@ void EPDDisplay::wake() {
     }
 }
 
-uint8_t* EPDDisplay::getBuffer() {
-    return _eink ? _eink->getFrameBuffer() : nullptr;
-}
+uint8_t* EPDDisplay::getBuffer() { return _eink ? _eink->getFrameBuffer() : nullptr; }
 
-const char* EPDDisplay::getControllerName() const {
-    return _eink ? _eink->getControllerName() : "Unknown";
-}
+const char* EPDDisplay::getControllerName() const { return _eink ? _eink->getControllerName() : "Unknown"; }
 
 void EPDDisplay::clear(EPDColor color) {
     if (_eink) {
@@ -135,22 +130,22 @@ void EPDDisplay::drawPixel(int16_t x, int16_t y, uint16_t color) {
     // Handle Adafruit_GFX rotation
     int16_t t;
     switch (rotation) {
-    case 1:
-        t = x;
-        x = EPD_WIDTH - 1 - y;
-        y = t;
-        break;
-    case 2:
-        x = EPD_WIDTH - 1 - x;
-        y = EPD_HEIGHT - 1 - y;
-        break;
-    case 3:
-        t = x;
-        x = y;
-        y = EPD_HEIGHT - 1 - t;
-        break;
-    default:
-        break;
+        case 1:
+            t = x;
+            x = EPD_WIDTH - 1 - y;
+            y = t;
+            break;
+        case 2:
+            x = EPD_WIDTH - 1 - x;
+            y = EPD_HEIGHT - 1 - y;
+            break;
+        case 3:
+            t = x;
+            x = y;
+            y = EPD_HEIGHT - 1 - t;
+            break;
+        default:
+            break;
     }
 
     if (x < 0 || x >= EPD_WIDTH || y < 0 || y >= EPD_HEIGHT) return;
@@ -167,7 +162,10 @@ void EPDDisplay::drawPixel(int16_t x, int16_t y, uint16_t color) {
 
 void EPDDisplay::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
     if (y < 0 || y >= _height || w <= 0) return;
-    if (x < 0) { w += x; x = 0; }
+    if (x < 0) {
+        w += x;
+        x = 0;
+    }
     if (x + w > _width) w = _width - x;
     if (w <= 0) return;
 
@@ -178,7 +176,10 @@ void EPDDisplay::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) 
 
 void EPDDisplay::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
     if (x < 0 || x >= _width || h <= 0) return;
-    if (y < 0) { h += y; y = 0; }
+    if (y < 0) {
+        h += y;
+        y = 0;
+    }
     if (y + h > _height) h = _height - y;
     if (h <= 0) return;
 
@@ -198,8 +199,14 @@ void EPDDisplay::drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16
         drawPixel(x0, y0, color);
         if (x0 == x1 && y0 == y1) break;
         int e2 = 2 * err;
-        if (e2 >= dy) { err += dy; x0 += sx; }
-        if (e2 <= dx) { err += dx; y0 += sy; }
+        if (e2 >= dy) {
+            err += dy;
+            x0 += sx;
+        }
+        if (e2 <= dx) {
+            err += dx;
+            y0 += sy;
+        }
     }
 }
 
@@ -216,7 +223,8 @@ void EPDDisplay::fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t c
     }
 }
 
-void EPDDisplay::drawBitmap(int16_t x, int16_t y, const uint8_t bitmap[], int16_t w, int16_t h, uint16_t color, uint16_t bg) {
+void EPDDisplay::drawBitmap(int16_t x, int16_t y, const uint8_t bitmap[], int16_t w, int16_t h, uint16_t color,
+                            uint16_t bg) {
     int byteWidth = (w + 7) / 8;
     for (int j = 0; j < h; j++) {
         for (int i = 0; i < w; i++) {

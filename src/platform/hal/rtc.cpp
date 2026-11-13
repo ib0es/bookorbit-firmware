@@ -58,8 +58,8 @@ bool RtcHelper::writeUtc(uint32_t utc) {
     const bool ok = _rtc.set(dt);
     if (ok) {
         _lastReadOk = true;
-        Serial.printf("[RTC] Updated from server: %04d-%02d-%02d %02d:%02d:%02dZ\n",
-                      c.year, c.month, c.day, c.hour, c.minute, c.second);
+        Serial.printf("[RTC] Updated from server: %04d-%02d-%02d %02d:%02d:%02dZ\n", c.year, c.month, c.day, c.hour,
+                      c.minute, c.second);
     }
     return ok;
 }

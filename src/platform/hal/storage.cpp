@@ -57,21 +57,15 @@ bool StorageManager::begin() {
     return true;
 }
 
-void StorageManager::shutdown() {
-    SDCardManager::getInstance().shutdown();
-}
+void StorageManager::shutdown() { SDCardManager::getInstance().shutdown(); }
 
 FsBlockDeviceInterface* StorageManager::detachForUsbMsc() {
     return SDCardManager::getInstance().detachFilesystemForRawAccess();
 }
 
-bool StorageManager::isAvailable() const {
-    return SDCardManager::getInstance().ready();
-}
+bool StorageManager::isAvailable() const { return SDCardManager::getInstance().ready(); }
 
-uint64_t StorageManager::totalBytes() const {
-    return SDCardManager::getInstance().sdTotalBytes();
-}
+uint64_t StorageManager::totalBytes() const { return SDCardManager::getInstance().sdTotalBytes(); }
 
 uint64_t StorageManager::usedBytes() {
     // SDCardManager counts the free clusters by walking the whole FAT: seconds on
@@ -197,17 +191,11 @@ bool StorageManager::wipeAll() {
     return allRemoved;
 }
 
-FsFile StorageManager::open(const char* path, oflag_t oflag) {
-    return SDCardManager::getInstance().open(path, oflag);
-}
+FsFile StorageManager::open(const char* path, oflag_t oflag) { return SDCardManager::getInstance().open(path, oflag); }
 
-bool StorageManager::exists(const char* path) {
-    return SDCardManager::getInstance().exists(path);
-}
+bool StorageManager::exists(const char* path) { return SDCardManager::getInstance().exists(path); }
 
-bool StorageManager::remove(const char* path) {
-    return SDCardManager::getInstance().remove(path);
-}
+bool StorageManager::remove(const char* path) { return SDCardManager::getInstance().remove(path); }
 
 bool StorageManager::rename(const char* path, const char* newPath) {
     return SDCardManager::getInstance().rename(path, newPath);
@@ -217,13 +205,9 @@ bool StorageManager::replaceFile(const char* tmpPath, const char* path) {
     return SDCardManager::getInstance().replaceFile(tmpPath, path);
 }
 
-bool StorageManager::mkdir(const char* path) {
-    return SDCardManager::getInstance().mkdir(path);
-}
+bool StorageManager::mkdir(const char* path) { return SDCardManager::getInstance().mkdir(path); }
 
-bool StorageManager::removeDir(const char* path) {
-    return SDCardManager::getInstance().removeDir(path);
-}
+bool StorageManager::removeDir(const char* path) { return SDCardManager::getInstance().removeDir(path); }
 
 std::vector<String> StorageManager::listSubdirs(const String& path) {
     std::vector<String> result;
@@ -296,11 +280,11 @@ std::vector<DirEntry> StorageManager::listDirectory(const String& path) {
         fullPath += name;
 
         if (isDir) {
-            result.push_back({ name, fullPath, true, 0 });
+            result.push_back({name, fullPath, true, 0});
         } else {
             // Every book format the library lists (EPUB, FB2, MOBI, AZW3, AZW, TXT).
             if (BookFormats::fromPath(name.c_str()) != BookFormats::Unknown) {
-                result.push_back({ name, fullPath, false, sz });
+                result.push_back({name, fullPath, false, sz});
             }
         }
     }

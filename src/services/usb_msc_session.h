@@ -9,4 +9,4 @@ struct AppContext;
 namespace UsbMscSession {
 bool begin(AppContext& ctx);
 void exit(AppContext& ctx);
-}
+}  // namespace UsbMscSession

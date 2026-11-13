@@ -37,7 +37,6 @@
 
 using namespace freeink::book;
 
-
 namespace ReaderInternal {
 
 // Working memory (FREEINK_BOOK_SMALL). On the X4 after boot the heap's biggest
@@ -106,7 +105,8 @@ inline bool buildContainerIndex(SdBookSource& src, SdCacheStorage& cache, bool& 
     const uint32_t t0 = millis();
     BookStatus st = BookStatus::OutOfMemory;
     // Record tables grow with the book (~70 KB for a 1,700-chapter omnibus): retried larger.
-    for (size_t cap = kIndexScratchBytes; st == BookStatus::OutOfMemory && cap <= Platform::kMemory.indexScratchMax; cap *= 2) {
+    for (size_t cap = kIndexScratchBytes; st == BookStatus::OutOfMemory && cap <= Platform::kMemory.indexScratchMax;
+         cap *= 2) {
         Buffer parse(kInflateBytes), scratch(cap);
         if (!scratch.p || !parse.p) {
             const MemStats::Snapshot m = MemStats::now();
@@ -131,7 +131,6 @@ inline String stemOf(const String& path) {
     return path.substring(slash + 1, dot > slash ? dot : path.length());
 }
 
-
 // A page's pictures into the frame (as PageRenderer::renderImages, with a choice
 // of how gray becomes black and white): Floyd-Steinberg error diffusion, or a
 // plain threshold at mid-gray.
@@ -140,10 +139,22 @@ inline bool panelXY(const FrameTarget& t, int32_t x, int32_t y, int32_t& px, int
     const int32_t lw = tall ? t.height : t.width, lh = tall ? t.width : t.height;
     if (x < 0 || y < 0 || x >= lw || y >= lh) return false;
     switch (t.rotation) {
-        case FrameRotation::Portrait: px = y; py = t.height - 1 - x; break;
-        case FrameRotation::PortraitInverted: px = t.width - 1 - y; py = x; break;
-        case FrameRotation::UpsideDown: px = t.width - 1 - x; py = t.height - 1 - y; break;
-        case FrameRotation::None: px = x; py = y; break;
+        case FrameRotation::Portrait:
+            px = y;
+            py = t.height - 1 - x;
+            break;
+        case FrameRotation::PortraitInverted:
+            px = t.width - 1 - y;
+            py = x;
+            break;
+        case FrameRotation::UpsideDown:
+            px = t.width - 1 - x;
+            py = t.height - 1 - y;
+            break;
+        case FrameRotation::None:
+            px = x;
+            py = y;
+            break;
     }
     return true;
 }
@@ -158,7 +169,8 @@ struct PictureBlit {
 
     void black(int32_t lx, int32_t ly) const {
         int32_t px, py;
-        if (panelXY(*t, lx, ly, px, py)) t->framebuffer[py * t->widthBytes + (px >> 3)] &= (uint8_t)~(0x80u >> (px & 7));
+        if (panelXY(*t, lx, ly, px, py))
+            t->framebuffer[py * t->widthBytes + (px >> 3)] &= (uint8_t)~(0x80u >> (px & 7));
     }
     static bool onRow(void* user, uint16_t row, const uint8_t* gray, uint16_t w) {
         PictureBlit* b = static_cast<PictureBlit*>(user);
@@ -186,7 +198,7 @@ struct PictureBlit {
 };
 
 inline BookStatus drawImagesInto(const Page& page, BookSource& source, const ZipCatalog& zip, Arena& scratch,
-                          const FrameTarget& frame, bool sharp) {
+                                 const FrameTarget& frame, bool sharp) {
     BookStatus worst = BookStatus::Ok;
     for (uint16_t m = 0; m < page.imageCount; ++m) {
         const PageImage& image = page.images[m];

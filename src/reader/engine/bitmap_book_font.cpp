@@ -15,13 +15,39 @@ bool lookup(uint32_t cp, uint16_t sizePx, FontEngine::GlyphInfo& g) {
 
 uint32_t BitmapBookFont::normalized(uint32_t cp) {
     switch (cp) {
-        case 0x2018: case 0x2019: case 0x201A: case 0x2032: case 0x02BC: return 0x27;   // '
-        case 0x201C: case 0x201D: case 0x201E: case 0x2033: return 0x22;                // "
-        case 0x2010: case 0x2011: case 0x2012: case 0x2013: case 0x2014: case 0x2015: case 0x2212: return 0x2D;
-        case 0x2026: return 0x2E;                                                       // . of ...
-        case 0x00A0: case 0x2002: case 0x2003: case 0x2009: case 0x200A: case 0x202F: return 0x20;
-        case 0x2022: case 0x2219: return 0xB7;                                          // bullet -> middle dot
-        default: return cp;
+        case 0x2018:
+        case 0x2019:
+        case 0x201A:
+        case 0x2032:
+        case 0x02BC:
+            return 0x27;   // '
+        case 0x201C:
+        case 0x201D:
+        case 0x201E:
+        case 0x2033:
+            return 0x22;                // "
+        case 0x2010:
+        case 0x2011:
+        case 0x2012:
+        case 0x2013:
+        case 0x2014:
+        case 0x2015:
+        case 0x2212:
+            return 0x2D;
+        case 0x2026:
+            return 0x2E;                                                       // . of ...
+        case 0x00A0:
+        case 0x2002:
+        case 0x2003:
+        case 0x2009:
+        case 0x200A:
+        case 0x202F:
+            return 0x20;
+        case 0x2022:
+        case 0x2219:
+            return 0xB7;                                          // bullet -> middle dot
+        default:
+            return cp;
     }
 }
 

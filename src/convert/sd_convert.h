@@ -26,7 +26,7 @@ bool needsConversion(const String& path);
 // `why` (optional) says what failed: a protected (DRM) book, a format variant not
 // supported (HUFF/CDIC), unreadable data.
 enum class ConvertProblem : uint8_t { None, NoMemory, Drm, Unsupported, Broken };
-bool ensureConverted(const String& path, const String& cacheDir, String& epubPath, ProgressFn progress,
-                     void* user, bool* noMemory = nullptr, ConvertProblem* why = nullptr);
+bool ensureConverted(const String& path, const String& cacheDir, String& epubPath, ProgressFn progress, void* user,
+                     bool* noMemory = nullptr, ConvertProblem* why = nullptr);
 
 }  // namespace convert

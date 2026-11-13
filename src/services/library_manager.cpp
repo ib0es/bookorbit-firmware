@@ -38,7 +38,8 @@ std::vector<RecentBookInfo> LibraryManager::getRecentBooks() {
         return r;
     };
     auto listed = [&](const String& path) {
-        for (const auto& e : list) if (e.filePath.equalsIgnoreCase(path)) return true;
+        for (const auto& e : list)
+            if (e.filePath.equalsIgnoreCase(path)) return true;
         return false;
     };
 
@@ -57,9 +58,16 @@ std::vector<RecentBookInfo> LibraryManager::getRecentBooks() {
         r.totalPages = max(1, lastBook.totalPages);
         r.isDownloaded = true;
         for (const auto& b : masterBooks) {
-            if ((lastBook.fileId > 0 && b.fileId == lastBook.fileId) || b.filePath.equalsIgnoreCase(lastBook.filePath)) {
-                if (b.fileId > 0 && r.fileId <= 0) { r.fileId = b.fileId; lastBook.fileId = b.fileId; }
-                if (b.docId.length() > 0 && r.docId.length() == 0) { r.docId = b.docId; lastBook.docId = b.docId; }
+            if ((lastBook.fileId > 0 && b.fileId == lastBook.fileId) ||
+                b.filePath.equalsIgnoreCase(lastBook.filePath)) {
+                if (b.fileId > 0 && r.fileId <= 0) {
+                    r.fileId = b.fileId;
+                    lastBook.fileId = b.fileId;
+                }
+                if (b.docId.length() > 0 && r.docId.length() == 0) {
+                    r.docId = b.docId;
+                    lastBook.docId = b.docId;
+                }
                 if (r.author.length() == 0) r.author = b.author;
                 break;
             }
@@ -81,7 +89,7 @@ std::vector<RecentBookInfo> LibraryManager::getRecentBooks() {
             if (!b.isDownloaded) continue;
             if (const BookProgressRecord* rec = store.find(b.fileId, b.filePath)) {
                 if (ProgressSync::hasProgress(rec->state.local.percent) || rec->state.local.page > 1) {
-                    opened.push_back({ rec->state.localChangedAt, isOffline, i });
+                    opened.push_back({rec->state.localChangedAt, isOffline, i});
                 }
             }
         }
@@ -101,7 +109,8 @@ std::vector<RecentBookInfo> LibraryManager::getRecentBooks() {
         for (const auto& b : vec) {
             if (list.size() >= 4) break;
             if (!b.isDownloaded || b.isDirectory || listed(b.filePath)) continue;
-            if (!b.formats.empty() && !BookFormats::readable((BookFormats::Kind)b.activeKind())) continue;   // not openable yet
+            if (!b.formats.empty() && !BookFormats::readable((BookFormats::Kind)b.activeKind()))
+                continue;   // not openable yet
             list.push_back(toInfo(b));
         }
     };
@@ -136,10 +145,17 @@ String foldString(const String& s) {
     char buf[4];
     while (*p) {
         const uint32_t cp = LibraryManager::foldCodepoint(LibraryManager::nextCodepoint(p));
-        if (cp < 0x80) { out += (char)cp; continue; }
+        if (cp < 0x80) {
+            out += (char)cp;
+            continue;
+        }
         int n = 0;
-        if (cp < 0x800) { buf[n++] = (char)(0xC0 | (cp >> 6)); }
-        else { buf[n++] = (char)(0xE0 | (cp >> 12)); buf[n++] = (char)(0x80 | ((cp >> 6) & 0x3F)); }
+        if (cp < 0x800) {
+            buf[n++] = (char)(0xC0 | (cp >> 6));
+        } else {
+            buf[n++] = (char)(0xE0 | (cp >> 12));
+            buf[n++] = (char)(0x80 | ((cp >> 6) & 0x3F));
+        }
         buf[n++] = (char)(0x80 | (cp & 0x3F));
         for (int i = 0; i < n; i++) out += buf[i];
     }
@@ -157,9 +173,15 @@ String trimmed(const String& s) {
 uint32_t LibraryManager::nextCodepoint(const char*& p) {
     const uint8_t c = (uint8_t)p[0];
     if (!c) return 0;
-    if (c < 0x80) { p += 1; return c; }
+    if (c < 0x80) {
+        p += 1;
+        return c;
+    }
     const uint8_t c1 = (uint8_t)p[1];
-    if ((c & 0xE0) == 0xC0 && (c1 & 0xC0) == 0x80) { p += 2; return ((c & 0x1F) << 6) | (c1 & 0x3F); }
+    if ((c & 0xE0) == 0xC0 && (c1 & 0xC0) == 0x80) {
+        p += 2;
+        return ((c & 0x1F) << 6) | (c1 & 0x3F);
+    }
     const uint8_t c2 = c1 ? (uint8_t)p[2] : 0;
     if ((c & 0xF0) == 0xE0 && (c1 & 0xC0) == 0x80 && (c2 & 0xC0) == 0x80) {
         p += 3;
@@ -251,12 +273,14 @@ String BookItem::downloadUrl() const {
 }
 
 bool BookItem::inCatalog() const {
-    for (const auto& f : formats) if (f.fileId > 0 || f.url.length() > 0) return true;
+    for (const auto& f : formats)
+        if (f.fileId > 0 || f.url.length() > 0) return true;
     return false;
 }
 
 bool BookItem::anyOnCard() const {
-    for (const auto& f : formats) if (f.onCard) return true;
+    for (const auto& f : formats)
+        if (f.onCard) return true;
     return isDownloaded;
 }
 
@@ -272,9 +296,7 @@ String withoutExtension(const String& path) {
 // Folded "<dir>/<stem>": formats of one book share it.
 std::string bookKey(const String& path) { return std::string(foldString(withoutExtension(path)).c_str()); }
 
-bool isBookFile(const String& name) {
-    return BookFormats::fromPath(name.c_str()) != BookFormats::Unknown;
-}
+bool isBookFile(const String& name) { return BookFormats::fromPath(name.c_str()) != BookFormats::Unknown; }
 
 }  // namespace LibraryInternal
 
@@ -308,7 +330,10 @@ int LibraryManager::lastReadFormat(const BookItem& b) {
         if (!rec) continue;
         const bool read = ProgressSync::hasProgress(rec->state.local.percent) || rec->state.local.page > 1;
         if (!read) continue;
-        if (best < 0 || rec->state.localChangedAt > bestAt) { best = i; bestAt = rec->state.localChangedAt; }
+        if (best < 0 || rec->state.localChangedAt > bestAt) {
+            best = i;
+            bestAt = rec->state.localChangedAt;
+        }
     }
     // The book open last is the current one, whatever the change times say.
     const LastBookInfo& last = getInstance().lastBook;
@@ -326,13 +351,15 @@ void LibraryManager::chooseFormat(BookItem& b) {
         for (int i = 0; i < (int)b.formats.size(); i++) {
             if (!ok(b.formats[i])) continue;
             if (idx < 0 || BookFormats::rank((BookFormats::Kind)b.formats[i].kind) <
-                           BookFormats::rank((BookFormats::Kind)b.formats[idx].kind)) idx = i;
+                                   BookFormats::rank((BookFormats::Kind)b.formats[idx].kind))
+                idx = i;
         }
         return idx;
     };
     auto readable = [](const BookFormatSlot& f) { return BookFormats::readable((BookFormats::Kind)f.kind); };
     if (pick < 0) pick = best([&](const BookFormatSlot& f) { return f.onCard && readable(f); });
-    if (pick < 0) pick = best([&](const BookFormatSlot& f) { return readable(f) && (f.fileId > 0 || f.url.length() > 0); });
+    if (pick < 0)
+        pick = best([&](const BookFormatSlot& f) { return readable(f) && (f.fileId > 0 || f.url.length() > 0); });
     if (pick < 0) pick = best([](const BookFormatSlot& f) { return f.onCard; });
     if (pick < 0) pick = 0;
     selectFormat(b, pick);
@@ -357,8 +384,8 @@ void LibraryManager::openFormats(int idx) {
 
 void LibraryManager::closeFormats() {
     if (!currentFolder.equals("@formats")) return;
-    currentFolder = formatsReturnFolder.length() > 0 ? formatsReturnFolder
-                  : String(formatsOffline ? kOfflineDir : "/books");
+    currentFolder =
+            formatsReturnFolder.length() > 0 ? formatsReturnFolder : String(formatsOffline ? kOfflineDir : "/books");
     selectedBookIndex = formatsReturnIndex;
     formatsBook = -1;
     formatsOffline = false;
@@ -400,7 +427,8 @@ static void collectAllLocalBooks(const String& dir, int depth, std::vector<BookI
         item.formats.push_back(slot);
         item.activeFormat = 0;
         const LastBookInfo& last = LibraryManager::getInstance().lastBook;
-        if (withoutExtension(last.filePath).equalsIgnoreCase(withoutExtension(entry.fullPath)) && last.author.length() > 0)
+        if (withoutExtension(last.filePath).equalsIgnoreCase(withoutExtension(entry.fullPath)) &&
+            last.author.length() > 0)
             item.author = last.author;
         byKey->emplace(key, (int)out.size());
         out.push_back(item);
@@ -441,7 +469,10 @@ void LibraryManager::buildMaster() {
             auto it = byFileId.find(std::to_string(b.fileId));
             if (it != byFileId.end()) idx = it->second;
         }
-        if (idx < 0) { auto it = byKey.find(bookKey(destPath)); if (it != byKey.end()) idx = it->second; }
+        if (idx < 0) {
+            auto it = byKey.find(bookKey(destPath));
+            if (it != byKey.end()) idx = it->second;
+        }
         if (idx < 0) {
             masterBooks.push_back(BookItem());
             idx = (int)masterBooks.size() - 1;
@@ -458,7 +489,10 @@ void LibraryManager::buildMaster() {
         for (auto& f : b.formats) {
             BookFormatSlot* slot = nullptr;
             for (auto& sl : item.formats) {
-                if ((f.fileId > 0 && sl.fileId == f.fileId) || (sl.fileId <= 0 && sl.kind == f.kind)) { slot = &sl; break; }
+                if ((f.fileId > 0 && sl.fileId == f.fileId) || (sl.fileId <= 0 && sl.kind == f.kind)) {
+                    slot = &sl;
+                    break;
+                }
             }
             if (!slot) {
                 item.formats.push_back(BookFormatSlot());
@@ -470,11 +504,15 @@ void LibraryManager::buildMaster() {
             if (f.fileId > 0) byFileId.emplace(std::to_string(f.fileId), idx);
         }
         // The cover is resolved when it is drawn (home card); the server one lands here.
-        if (!item.isDownloaded || item.coverPath.length() == 0) item.coverPath = "/covers/" + catalogStem(b.title, bookId) + ".jpg";
+        if (!item.isDownloaded || item.coverPath.length() == 0)
+            item.coverPath = "/covers/" + catalogStem(b.title, bookId) + ".jpg";
         item.coverUrl = std::move(b.coverUrl);
         if (bookId > 0) item.bookId = bookId;
         if (item.author.length() == 0) item.author = std::move(b.author);
-        if (b.series.length() > 0) { item.series = std::move(b.series); item.seriesIndex = b.seriesIndex; }
+        if (b.series.length() > 0) {
+            item.series = std::move(b.series);
+            item.seriesIndex = b.seriesIndex;
+        }
         if (b.library.length() > 0) item.libraryIdx = (int16_t)internLibrary(b.library);
         // No position from the catalog: this device's own (if any) comes in refreshProgress().
     }
@@ -489,8 +527,8 @@ void LibraryManager::buildMaster() {
     }
     scanOfflineBooks();
     Serial.printf("[Library] Master list: %d books (%d in the catalog, %d libraries, %d offline) in %lu ms\n",
-                  (int)masterBooks.size(), (int)catalogSize, (int)libraryNames.size(),
-                  (int)offlineBooks.size(), (unsigned long)(millis() - t0));
+                  (int)masterBooks.size(), (int)catalogSize, (int)libraryNames.size(), (int)offlineBooks.size(),
+                  (unsigned long)(millis() - t0));
 }
 
 void LibraryManager::refreshProgressOf(BookItem& item) {
@@ -564,13 +602,19 @@ void LibraryManager::refreshLocalFiles() {
             auto it = foundByPath.find(foldString(formatPath(b, f)).c_str());
             const bool onCard = it != foundByPath.end();
             if (onCard) matched[it->second] = true;
-            if (onCard != f.onCard) { f.onCard = onCard; changed = true; }
+            if (onCard != f.onCard) {
+                f.onCard = onCard;
+                changed = true;
+            }
         }
         if (b.formats.empty()) {   // not expected for a book, kept as before
             auto it = foundByPath.find(foldString(b.filePath).c_str());
             const bool onCard = it != foundByPath.end();
             if (onCard) matched[it->second] = true;
-            if (onCard != b.isDownloaded) { b.isDownloaded = onCard; changed = true; }
+            if (onCard != b.isDownloaded) {
+                b.isDownloaded = onCard;
+                changed = true;
+            }
         }
         // A new format of a book already in the list ("Name.fb2" next to "Name.epub").
         auto kt = foundByKey.find(bookKey(b.filePath));
@@ -578,7 +622,10 @@ void LibraryManager::refreshLocalFiles() {
             for (const auto& nf : found[kt->second].formats) {
                 bool known = false;
                 for (const auto& f : b.formats) known = known || f.kind == nf.kind;
-                if (!known) { b.formats.push_back(nf); changed = true; }
+                if (!known) {
+                    b.formats.push_back(nf);
+                    changed = true;
+                }
             }
             matched[kt->second] = true;
         }
@@ -591,13 +638,19 @@ void LibraryManager::refreshLocalFiles() {
                 continue;
             }
             const int8_t keep = b.activeFormat;
-            if (keep >= 0 && keep < (int)b.formats.size() && b.formats[keep].onCard) selectFormat(b, keep);
-            else chooseFormat(b);
+            if (keep >= 0 && keep < (int)b.formats.size() && b.formats[keep].onCard)
+                selectFormat(b, keep);
+            else
+                chooseFormat(b);
         }
         i++;
     }
     for (size_t i = 0; i < found.size(); i++) {
-        if (!matched[i]) { masterBooks.push_back(found[i]); chooseFormat(masterBooks.back()); added++; }
+        if (!matched[i]) {
+            masterBooks.push_back(found[i]);
+            chooseFormat(masterBooks.back());
+            added++;
+        }
     }
     if (added) refreshProgress();
     scanOfflineBooks();
@@ -622,8 +675,10 @@ void LibraryManager::refreshCounts() {
     // Distinct authors / series: sort by the folded name, count the changes.
     auto distinct = [&](auto field, bool skipEmpty) {
         std::vector<int> v;
-        for (int i : visible) if (!skipEmpty || field(masterBooks[i]).length() > 0) v.push_back(i);
-        std::sort(v.begin(), v.end(), [&](int a, int b) { return foldCompare(field(masterBooks[a]), field(masterBooks[b])) < 0; });
+        for (int i : visible)
+            if (!skipEmpty || field(masterBooks[i]).length() > 0) v.push_back(i);
+        std::sort(v.begin(), v.end(),
+                  [&](int a, int b) { return foldCompare(field(masterBooks[a]), field(masterBooks[b])) < 0; });
         int n = 0;
         for (size_t k = 0; k < v.size(); k++) {
             if (k == 0 || foldCompare(field(masterBooks[v[k]]), field(masterBooks[v[k - 1]])) != 0) n++;
@@ -636,7 +691,10 @@ void LibraryManager::refreshCounts() {
     bool unassigned = false;
     for (int i : visible) {
         const int l = masterBooks[i].libraryIdx;
-        if (l >= 0) libSeen[l] = true; else unassigned = true;
+        if (l >= 0)
+            libSeen[l] = true;
+        else
+            unassigned = true;
     }
     for (bool s : libSeen) c.libraries += s ? 1 : 0;
     if (unassigned && c.libraries > 0) c.libraries++;   // the "[no library]" group
@@ -656,7 +714,8 @@ void LibraryManager::scanLocalBooks(bool forceMasterScan) {
         return;
     }
     if (currentFolder.length() == 0) currentFolder = (currentFilter == FILTER_OFFLINE) ? kOfflineDir : "/books";
-    if (masterBooks.empty() || forceMasterScan || !_scanned) buildMaster();
+    if (masterBooks.empty() || forceMasterScan || !_scanned)
+        buildMaster();
     else {
         refreshProgress();   // positions changed by reading / syncing since the last list
         if (currentFilter == FILTER_OFFLINE) scanOfflineBooks();
@@ -695,15 +754,19 @@ void LibraryManager::rebuildRows() {
     // Groups of the visible books by a name (author, series, library), sorted.
     auto groups = [&](auto name, const String& prefix, const char* emptyLabel, const char* emptyKey) {
         std::vector<int> v;
-        for (int i = 0; i < (int)masterBooks.size(); i++) if (visible(masterBooks[i])) v.push_back(i);
-        std::sort(v.begin(), v.end(), [&](int a, int b) { return foldCompare(name(masterBooks[a]), name(masterBooks[b])) < 0; });
+        for (int i = 0; i < (int)masterBooks.size(); i++)
+            if (visible(masterBooks[i])) v.push_back(i);
+        std::sort(v.begin(), v.end(),
+                  [&](int a, int b) { return foldCompare(name(masterBooks[a]), name(masterBooks[b])) < 0; });
         int emptyCount = 0;
         for (size_t k = 0; k < v.size();) {
             const String g = trimmed(name(masterBooks[v[k]]));
             size_t e = k + 1;
             while (e < v.size() && foldCompare(trimmed(name(masterBooks[v[e]])), g) == 0) e++;
-            if (g.length() == 0) emptyCount += (int)(e - k);
-            else addFolder(folderItem(g, prefix + g, (int)(e - k)));
+            if (g.length() == 0)
+                emptyCount += (int)(e - k);
+            else
+                addFolder(folderItem(g, prefix + g, (int)(e - k)));
             k = e;
         }
         if (emptyCount > 0 && emptyLabel) addFolder(folderItem(emptyLabel, prefix + emptyKey, emptyCount));
@@ -730,7 +793,7 @@ void LibraryManager::rebuildRows() {
         const BookItem* parent = formatBookItem();
         if (!parent) {
             currentFolder = formatsReturnFolder.length() > 0 ? formatsReturnFolder
-                          : String(formatsOffline ? kOfflineDir : "/books");
+                                                             : String(formatsOffline ? kOfflineDir : "/books");
             formatsBook = -1;
             formatsOffline = false;
             rebuildRows();
@@ -765,21 +828,27 @@ void LibraryManager::rebuildRows() {
         upItem("@catalog", tr(MsgId::HOME_CAT_CATALOG));
         // Only a mix of library / no library gets the "[no library]" group.
         bool anyLib = false;
-        for (const auto& b : masterBooks) if (b.libraryIdx >= 0 && visible(b)) { anyLib = true; break; }
-        groups([this](const BookItem& b) -> const String& { return libraryOf(b); }, "@library:",
-               anyLib ? tr(MsgId::CATALOG_UNKNOWN_LIBRARY) : nullptr, "__none__");
+        for (const auto& b : masterBooks)
+            if (b.libraryIdx >= 0 && visible(b)) {
+                anyLib = true;
+                break;
+            }
+        groups([this](const BookItem& b) -> const String& { return libraryOf(b); },
+               "@library:", anyLib ? tr(MsgId::CATALOG_UNKNOWN_LIBRARY) : nullptr, "__none__");
     } else if (f.startsWith("@library:")) {
         upItem("@libraries", tr(MsgId::CATALOG_BY_LIBRARIES));
         const String target = f.substring(9);
         const bool none = target == "__none__";
-        members([&](const BookItem& b) {
-            const String& l = libraryOf(b);
-            return none ? l.length() == 0 : foldCompare(l, target) == 0;
-        }, byTitle);
+        members(
+                [&](const BookItem& b) {
+                    const String& l = libraryOf(b);
+                    return none ? l.length() == 0 : foldCompare(l, target) == 0;
+                },
+                byTitle);
     } else if (f.equalsIgnoreCase("@authors")) {
         upItem("@catalog", tr(MsgId::HOME_CAT_CATALOG));
-        groups([](const BookItem& b) -> const String& { return b.author; }, "@author:",
-               tr(MsgId::CATALOG_UNKNOWN_AUTHOR), "");
+        groups([](const BookItem& b) -> const String& { return b.author; },
+               "@author:", tr(MsgId::CATALOG_UNKNOWN_AUTHOR), "");
     } else if (f.startsWith("@author:")) {
         upItem("@authors", tr(MsgId::CATALOG_BY_AUTHORS));
         const String target = f.substring(8);
@@ -797,22 +866,26 @@ void LibraryManager::rebuildRows() {
                 });
     } else if (f.equalsIgnoreCase("@series")) {
         upItem("@catalog", tr(MsgId::HOME_CAT_CATALOG));
-        groups([](const BookItem& b) -> const String& { return b.series; }, "@series:",
-               tr(MsgId::CATALOG_STANDALONE), "__none__");
+        groups([](const BookItem& b) -> const String& { return b.series; }, "@series:", tr(MsgId::CATALOG_STANDALONE),
+               "__none__");
     } else if (f.startsWith("@series:")) {
         upItem("@series", tr(MsgId::CATALOG_BY_SERIES));
         const String target = f.substring(8);
         const bool none = target == "__none__";
-        members([&](const BookItem& b) {
-            return none ? trimmed(b.series).length() == 0 : foldCompare(trimmed(b.series), target) == 0;
-        }, none ? std::function<bool(int, int)>(byTitle) : std::function<bool(int, int)>(bySeriesThenTitle));
+        members(
+                [&](const BookItem& b) {
+                    return none ? trimmed(b.series).length() == 0 : foldCompare(trimmed(b.series), target) == 0;
+                },
+                none ? std::function<bool(int, int)>(byTitle) : std::function<bool(int, int)>(bySeriesThenTitle));
     } else if (currentFilter == FILTER_SEARCH || f.equalsIgnoreCase("@search")) {
         upItem("@catalog", tr(MsgId::HOME_CAT_CATALOG));
         const String needle = foldString(searchQuery);
-        members([&](const BookItem& b) {
-            return needle.length() == 0 || foldString(b.title).indexOf(needle) >= 0 ||
-                   foldString(b.author).indexOf(needle) >= 0 || foldString(b.series).indexOf(needle) >= 0;
-        }, byTitle);
+        members(
+                [&](const BookItem& b) {
+                    return needle.length() == 0 || foldString(b.title).indexOf(needle) >= 0 ||
+                           foldString(b.author).indexOf(needle) >= 0 || foldString(b.series).indexOf(needle) >= 0;
+                },
+                byTitle);
     } else if (f.startsWith("/books") && (currentFilter == FILTER_FOLDERS || f.length() > 6)) {
         // SD folders: the top level lists the folders of /books, a folder its
         // subfolders and book files.
@@ -824,7 +897,8 @@ void LibraryManager::rebuildRows() {
             const String parent = f.substring(0, slash);
             const bool parentIsTop = parent.equalsIgnoreCase("/books");
             upItem(parentIsTop && currentFilter != FILTER_FOLDERS ? String("/books") : parent,
-                   parentIsTop ? String(tr(currentFilter == FILTER_FOLDERS ? MsgId::CATALOG_BY_FOLDERS : MsgId::CATALOG_ALL_BOOKS))
+                   parentIsTop ? String(tr(currentFilter == FILTER_FOLDERS ? MsgId::CATALOG_BY_FOLDERS
+                                                                           : MsgId::CATALOG_ALL_BOOKS))
                                : parent.substring(parent.lastIndexOf('/') + 1));
         }
         std::vector<BookItem> dirs;
@@ -836,7 +910,8 @@ void LibraryManager::rebuildRows() {
             if (e.isDirectory) {
                 const String prefix = e.fullPath + "/";
                 int cnt = 0;
-                for (const auto& mb : masterBooks) if (mb.isDownloaded && mb.filePath.startsWith(prefix)) cnt++;
+                for (const auto& mb : masterBooks)
+                    if (mb.isDownloaded && mb.filePath.startsWith(prefix)) cnt++;
                 dirs.push_back(folderItem(e.name, e.fullPath, cnt));
                 continue;
             }
@@ -849,7 +924,8 @@ void LibraryManager::rebuildRows() {
             const auto found = byKey.find(bookKey(e.fullPath));
             const int idx = found != byKey.end() ? found->second : -1;
             if (idx >= 0) {
-                if (visible(masterBooks[idx]) && std::find(files.begin(), files.end(), idx) == files.end()) files.push_back(idx);
+                if (visible(masterBooks[idx]) && std::find(files.begin(), files.end(), idx) == files.end())
+                    files.push_back(idx);
             } else {
                 BookItem it;
                 const int dot = e.name.lastIndexOf('.');
@@ -864,7 +940,8 @@ void LibraryManager::rebuildRows() {
                 looseFiles.push_back(it);
             }
         }
-        std::sort(dirs.begin(), dirs.end(), [](const BookItem& a, const BookItem& b) { return foldCompare(a.title, b.title) < 0; });
+        std::sort(dirs.begin(), dirs.end(),
+                  [](const BookItem& a, const BookItem& b) { return foldCompare(a.title, b.title) < 0; });
         std::sort(files.begin(), files.end(), byTitle);
         for (const auto& d : dirs) addFolder(d);
         for (int i : files) rows.push_back(i);
@@ -874,9 +951,8 @@ void LibraryManager::rebuildRows() {
             if (!visible(offlineBooks[i])) continue;
             rows.push_back(i);
         }
-        std::stable_sort(rows.begin(), rows.end(), [&](int a, int b) {
-            return foldCompare(offlineBooks[a].title, offlineBooks[b].title) < 0;
-        });
+        std::stable_sort(rows.begin(), rows.end(),
+                         [&](int a, int b) { return foldCompare(offlineBooks[a].title, offlineBooks[b].title) < 0; });
     } else {
         // "/books": all books, downloaded or completed: the ones on the card, then
         // the ones only on the server, each by title (was the order of the card
@@ -897,4 +973,3 @@ void LibraryManager::rebuildRows() {
     if (selectedBookIndex < 0) selectedBookIndex = 0;
     Serial.printf("[Library] List %s: %d rows\n", currentFolder.c_str(), (int)rows.size());
 }
-

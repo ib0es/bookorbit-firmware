@@ -24,7 +24,7 @@ void openBookMenu(AppContext& ctx);
 bool openFormatsOfSelected(AppContext& ctx);
 void handleBookMenuEvent(AppContext& ctx, const ButtonEvent& event);
 void openWebSettingsFromOffline(AppContext& ctx);
-}
+}  // namespace LibraryScreen
 
 namespace ReaderScreen {
 void handleReadingEvent(AppContext& ctx, const ButtonEvent& event);
@@ -39,13 +39,12 @@ void handleStatusBarEvent(AppContext& ctx, const ButtonEvent& event);
 // Opens a book, restores the position (xpath > progress > page), records it as
 // lastBook and switches to STATE_READING. On failure shows a message and
 // returns false (the current screen is redrawn when the message closes).
-bool openBook(AppContext& ctx, const String& path, const String& title, const String& author,
-              const String& coverPath, float progress, int page, const String& xpath,
-              const String& docId, int fileId = 0);
+bool openBook(AppContext& ctx, const String& path, const String& title, const String& author, const String& coverPath,
+              float progress, int page, const String& xpath, const String& docId, int fileId = 0);
 
 // Wake-from-sleep fast path: reopens lastBook at its saved position.
 bool resumeLastBook(AppContext& ctx);
-}
+}  // namespace ReaderScreen
 
 namespace SettingsScreen {
 void handleSettingsEvent(AppContext& ctx, const ButtonEvent& event);
@@ -67,4 +66,4 @@ void handleFrontlightTap(AppContext& ctx, int action, int value, int16_t x);
 // current screen. False where there is no light or on a busy screen.
 bool openFrontlightFrom(AppContext& ctx);
 // Touch on the frontlight screen (hit action/value from settings_view, tap x).
-}
+}  // namespace SettingsScreen

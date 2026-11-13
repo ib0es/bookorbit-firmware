@@ -88,7 +88,8 @@ struct AppConfig {
 };
 
 const int NUM_HOME_ITEMS = 5;      // 0=Recent, 1=Catalog, 2=Offline, 3=Settings, 4=Sync
-const int NUM_CATALOG_ITEMS = 9;   // Search, All, Libraries, Authors, Series, Folders, Downloaded, Completed, Toggle Hide Completed
+const int NUM_CATALOG_ITEMS =
+        9;   // Search, All, Libraries, Authors, Series, Folders, Downloaded, Completed, Toggle Hide Completed
 const int NUM_SETTINGS_ITEMS = 8;  // base count before optional Frontlight, USB-MSC, Touch Wake
 bool hasUsbMscSetting();
 bool hasTouchWakeSetting();

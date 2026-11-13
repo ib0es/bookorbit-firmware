@@ -20,11 +20,13 @@ void drawSleepScreen(const SleepScreen& s) {
         const int16_t statusBarY = (int16_t)(H - statusBarH);
 
         if (s.coverPath && *s.coverPath) {
-            drewCover = JpegViewer::drawCover(s.coverPath, 0, 0, W, statusBarY, s.coverCrop ? COVER_FIT_CROP : COVER_FIT_SCALE);
+            drewCover = JpegViewer::drawCover(s.coverPath, 0, 0, W, statusBarY,
+                                              s.coverCrop ? COVER_FIT_CROP : COVER_FIT_SCALE);
         }
         if (!drewCover && s.title && *s.title) {
             Serial.println("[Power] Drawing sleep cover placeholder");
-            JpegViewer::drawCoverPlaceholder(s.title, s.author, kMargin, kMargin, W - 2 * kMargin, statusBarY - 2 * kMargin);
+            JpegViewer::drawCoverPlaceholder(s.title, s.author, kMargin, kMargin, W - 2 * kMargin,
+                                             statusBarY - 2 * kMargin);
             drewCover = true;
         }
         if (drewCover) {
@@ -49,12 +51,16 @@ void drawSleepScreen(const SleepScreen& s) {
         Rect box{30, (int16_t)(H / 2 - 160), (int16_t)(W - 60), 320};
         frameRect(box, Color::Black, 2);
         Rect in = insetXY(box, 20, 30);
-        text(takeTop(in, (int16_t)(lineHeight(FontLarge) + 8)), deviceDisplayName(), FontLarge, Color::Black, TextAlign::Center);
-        text(takeTop(in, (int16_t)(lineHeight(FontLarge) + 8)), tr(MsgId::POWER_SLEEP_BANNER), FontLarge, Color::Black, TextAlign::Center);
+        text(takeTop(in, (int16_t)(lineHeight(FontLarge) + 8)), deviceDisplayName(), FontLarge, Color::Black,
+             TextAlign::Center);
+        text(takeTop(in, (int16_t)(lineHeight(FontLarge) + 8)), tr(MsgId::POWER_SLEEP_BANNER), FontLarge, Color::Black,
+             TextAlign::Center);
         takeTop(in, 16);
         hline((int16_t)(in.x + 20), (int16_t)(in.right() - 20), in.y);
         takeTop(in, 24);
-        text(takeTop(in, (int16_t)(lineHeight(FontBody) + 8)), tr(MsgId::POWER_WAKE_HINT_L1), FontBody, Color::Black, TextAlign::Center);
-        text(takeTop(in, (int16_t)(lineHeight(FontBody) + 8)), tr(MsgId::POWER_WAKE_HINT_L2), FontBody, Color::Black, TextAlign::Center);
+        text(takeTop(in, (int16_t)(lineHeight(FontBody) + 8)), tr(MsgId::POWER_WAKE_HINT_L1), FontBody, Color::Black,
+             TextAlign::Center);
+        text(takeTop(in, (int16_t)(lineHeight(FontBody) + 8)), tr(MsgId::POWER_WAKE_HINT_L2), FontBody, Color::Black,
+             TextAlign::Center);
     }
 }

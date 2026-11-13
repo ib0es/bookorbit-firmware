@@ -40,19 +40,21 @@ bool SyncService::downloadBook(AppContext& ctx, BookItem& book, AppState returnS
         return true;
     };
     Ui::status(tr(MsgId::SYNC_DOWNLOAD_BOOK_TITLE), utf8Prefix(book.title, 64).c_str(), tr(MsgId::SYNC_CONNECTING_WIFI),
-                    tr(MsgId::COMMON_WAIT), nullptr, tr(MsgId::COMMON_CANCEL));
+               tr(MsgId::COMMON_WAIT), nullptr, tr(MsgId::COMMON_CANCEL));
 
-    const bool wifi = BookOrbit.connectWiFi(ctx.config.wifiSsid.c_str(), ctx.config.wifiPass.c_str(), 15000, checkSyncCancel);
+    const bool wifi =
+            BookOrbit.connectWiFi(ctx.config.wifiSsid.c_str(), ctx.config.wifiPass.c_str(), 15000, checkSyncCancel);
     if (cancelled()) return false;
     if (!wifi) {
         Ui::status(tr(MsgId::WIFI_ERR_TITLE), tr(MsgId::WIFI_TEST_ERR_L1),
-                        wifiFailureLine(BookOrbit.lastWifiFailure(), tr(MsgId::WIFI_ERR_CHECK_SETTINGS)));
+                   wifiFailureLine(BookOrbit.lastWifiFailure(), tr(MsgId::WIFI_ERR_CHECK_SETTINGS)));
         PowerService::waitOrKey(2000);
         return false;
     }
 
-    Ui::status(tr(MsgId::SYNC_DOWNLOAD_BOOK_TITLE), utf8Prefix(book.title, 64).c_str(), tr(MsgId::SYNC_DOWNLOADING_FROM_SERVER),
-                    ctx.config.serverHost.c_str(), nullptr, tr(MsgId::COMMON_CANCEL));
+    Ui::status(tr(MsgId::SYNC_DOWNLOAD_BOOK_TITLE), utf8Prefix(book.title, 64).c_str(),
+               tr(MsgId::SYNC_DOWNLOADING_FROM_SERVER), ctx.config.serverHost.c_str(), nullptr,
+               tr(MsgId::COMMON_CANCEL));
     ensureToken(ctx);
     if (cancelled()) return false;
 
@@ -61,11 +63,13 @@ bool SyncService::downloadBook(AppContext& ctx, BookItem& book, AppState returnS
     s_downloadingBookTitle = utf8Prefix(book.title, 64);
 
     bool ok = BookOrbit.downloadBook(ctx.config.serverHost, url, book.filePath, ctx.config.bookOrbitUser,
-                                     ctx.config.bookOrbitPass, ctx.config.authToken, reportDownloadProgress, checkSyncCancel);
+                                     ctx.config.bookOrbitPass, ctx.config.authToken, reportDownloadProgress,
+                                     checkSyncCancel);
 
     if (ok) {
         book.isDownloaded = true;
-        if (book.activeFormat >= 0 && book.activeFormat < (int)book.formats.size()) book.formats[book.activeFormat].onCard = true;
+        if (book.activeFormat >= 0 && book.activeFormat < (int)book.formats.size())
+            book.formats[book.activeFormat].onCard = true;
         Serial.printf("[Sync] Book %s downloaded successfully!\n", book.filePath.c_str());
         LibraryManager::getInstance().cardMayHaveChanged();
         if (book.coverPath.length() == 0) {
@@ -85,7 +89,8 @@ bool SyncService::downloadBook(AppContext& ctx, BookItem& book, AppState returnS
         book.coverPath = LibraryManager::resolveCoverPath(book.filePath, book.title, book.coverPath);
 
         // Initialise this device's position from the server while Wi-Fi is up.
-        BookProgressRecord& rec = ProgressStore::instance().getOrCreate(book.fileId, book.bookId, book.filePath, book.title);
+        BookProgressRecord& rec =
+                ProgressStore::instance().getOrCreate(book.fileId, book.bookId, book.filePath, book.title);
         syncBookProgress(ctx, rec);
         book.progress = rec.state.local.percent;
         book.page = rec.state.local.page > 0 ? rec.state.local.page : 1;

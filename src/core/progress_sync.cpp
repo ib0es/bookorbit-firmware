@@ -74,9 +74,12 @@ void applyConverged(BookState& s, const Remote& r) {
 
 const char* actionName(Action a) {
     switch (a) {
-        case Action::None: return "none";
-        case Action::Push: return "push";
-        case Action::Pull: return "pull";
+        case Action::None:
+            return "none";
+        case Action::Push:
+            return "push";
+        case Action::Pull:
+            return "pull";
     }
     return "?";
 }

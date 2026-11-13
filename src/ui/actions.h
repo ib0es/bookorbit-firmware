@@ -11,11 +11,14 @@
 
 enum class Action : uint8_t {
     None,
-    Up, Down,       // move in a list (reading: the chapter before / after)
+    Up,
+    Down,       // move in a list (reading: the chapter before / after)
     Select,         // OK
     Back,
-    Less, More,     // a value row: one step down / up (LEFT / RIGHT)
-    Prev, Next,     // the page or item before / after (LEFT / RIGHT)
+    Less,
+    More,     // a value row: one step down / up (LEFT / RIGHT)
+    Prev,
+    Next,     // the page or item before / after (LEFT / RIGHT)
     Menu,           // the screen's menu (a held BACK / Home key)
     Delete,
 };

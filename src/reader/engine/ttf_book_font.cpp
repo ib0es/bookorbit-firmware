@@ -10,7 +10,8 @@
 #include <chrono>
 static uint32_t micros() {
     return (uint32_t)std::chrono::duration_cast<std::chrono::microseconds>(
-               std::chrono::steady_clock::now().time_since_epoch()).count();
+                   std::chrono::steady_clock::now().time_since_epoch())
+            .count();
 }
 #endif
 
@@ -160,7 +161,7 @@ void TtfFamily::release() {
 
 size_t TtfFamily::cacheBytes() const {
     return (_mem ? sizeof(AdvanceEntry) * TTF_ADVANCE_SLOTS + sizeof(KernEntry) * TTF_KERN_SLOTS +
-                       sizeof(GlyphEntry) * TTF_GLYPH_SLOTS + TTF_GLYPH_BITS_BYTES
+                            sizeof(GlyphEntry) * TTF_GLYPH_SLOTS + TTF_GLYPH_BITS_BYTES
                  : 0) +
            _scratchCap;
 }
@@ -273,9 +274,12 @@ const GlyphBitmap* TtfFace::rasterize(uint32_t cp, uint16_t sizePx) {
         const auto live = [fam](const TtfFamily::GlyphEntry* x) {
             return x->key != kEmpty && x->generation == fam->_generation;
         };
-        if (live(a) && a->key == key) e = a;
-        else if (live(b) && b->key == key) e = b;
-        else e = !live(a) ? a : !live(b) ? b : ((key >> 3) & 1 ? b : a);   // else one of them goes
+        if (live(a) && a->key == key)
+            e = a;
+        else if (live(b) && b->key == key)
+            e = b;
+        else
+            e = !live(a) ? a : !live(b) ? b : ((key >> 3) & 1 ? b : a);   // else one of them goes
     }
     GlyphBitmap& out = fam->_glyph;
     out.advance = px(adv, sizePx);

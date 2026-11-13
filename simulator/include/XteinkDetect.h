@@ -10,4 +10,4 @@ inline bool selectXteinkDevice() {
     return false;
 #endif
 }
-}
+}  // namespace freeink

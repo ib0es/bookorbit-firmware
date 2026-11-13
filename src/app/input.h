@@ -14,4 +14,4 @@ struct AppContext;
 namespace Input {
 void install(AppContext& ctx);
 ButtonId orient(ButtonId physical);
-}
+}  // namespace Input

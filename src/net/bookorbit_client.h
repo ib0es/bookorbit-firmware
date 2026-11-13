@@ -63,22 +63,35 @@ public:
     bool login(const String& serverHost, const String& username, const String& password, String& outToken);
 
     // OPDS Catalog & Library
-    bool fetchLibraries(const String& serverHost, const String& username, const String& password, const String& token, std::vector<ServerLibrary>& outLibraries);
-    bool fetchCatalogFromUrl(const String& serverHost, const String& initialUrl, const String& username, const String& password, const String& token, const String& libraryName, std::vector<BookMetadata>& outBooks);
-    bool fetchCatalog(const String& serverHost, const String& username, const String& password, const String& token, std::vector<BookMetadata>& outBooks);
+    bool fetchLibraries(const String& serverHost, const String& username, const String& password, const String& token,
+                        std::vector<ServerLibrary>& outLibraries);
+    bool fetchCatalogFromUrl(const String& serverHost, const String& initialUrl, const String& username,
+                             const String& password, const String& token, const String& libraryName,
+                             std::vector<BookMetadata>& outBooks);
+    bool fetchCatalog(const String& serverHost, const String& username, const String& password, const String& token,
+                      std::vector<BookMetadata>& outBooks);
 
     // File / Book Download (Streams directly to MicroSD)
-    bool downloadFile(const String& serverHost, const String& fileUrl, const String& destSdPath, const String& username, const String& password, const String& token = "", void (*onProgress)(int percent) = nullptr, bool (*checkCancel)() = nullptr);
-    bool downloadBook(const String& serverHost, const String& downloadUrl, const String& destSdPath, const String& username, const String& password, const String& token = "", void (*onProgress)(int percent) = nullptr, bool (*checkCancel)() = nullptr);
-    bool downloadCover(const String& serverHost, const String& coverUrl, const String& destSdPath, const String& username, const String& password, const String& token = "", bool (*checkCancel)() = nullptr);
+    bool downloadFile(const String& serverHost, const String& fileUrl, const String& destSdPath, const String& username,
+                      const String& password, const String& token = "", void (*onProgress)(int percent) = nullptr,
+                      bool (*checkCancel)() = nullptr);
+    bool downloadBook(const String& serverHost, const String& downloadUrl, const String& destSdPath,
+                      const String& username, const String& password, const String& token = "",
+                      void (*onProgress)(int percent) = nullptr, bool (*checkCancel)() = nullptr);
+    bool downloadCover(const String& serverHost, const String& coverUrl, const String& destSdPath,
+                       const String& username, const String& password, const String& token = "",
+                       bool (*checkCancel)() = nullptr);
 
     // Native Book Orbit Reading Progress Sync.
     // `token` is refreshed in place (login with username/password) when missing or rejected.
     // fetchBookProgress returns false on a network/HTTP error; true with out.exists=false
     // when the server simply has no progress for the book.
     // Only the record of `fileId` (the format read here) counts; 0 = any file of the book.
-    bool fetchBookProgress(const String& serverHost, const String& username, const String& password, String& token, int bookId, int fileId, ServerProgress& out);
-    bool updateBookProgress(const String& serverHost, const String& username, const String& password, String& token, int fileId, float percent, int page, const String& cfi = "", uint32_t* outUpdatedAt = nullptr);
+    bool fetchBookProgress(const String& serverHost, const String& username, const String& password, String& token,
+                           int bookId, int fileId, ServerProgress& out);
+    bool updateBookProgress(const String& serverHost, const String& username, const String& password, String& token,
+                            int fileId, float percent, int page, const String& cfi = "",
+                            uint32_t* outUpdatedAt = nullptr);
 
     // Bookmarks of the web reader. fetchBookmarks: CFIs in file `fileId`'s terms
     // (the server converts those made in another EPUB of the book); false on a

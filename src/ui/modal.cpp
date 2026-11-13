@@ -7,8 +7,8 @@ ModalManager Modal;
 
 static const char* orNull(const String& s) { return s.length() > 0 ? s.c_str() : nullptr; }
 
-void ModalManager::open(Kind kind, const String& title, const String& l1, const String& l2,
-                        const String& l3, const String& l4, const String& footer) {
+void ModalManager::open(Kind kind, const String& title, const String& l1, const String& l2, const String& l3,
+                        const String& l4, const String& footer) {
     _active = true;
     _kind = kind;
     drawStatusModal(title.c_str(), l1.c_str(), orNull(l2), orNull(l3), orNull(l4), orNull(footer));
@@ -17,9 +17,9 @@ void ModalManager::open(Kind kind, const String& title, const String& l1, const 
     _openedAt = millis();
 }
 
-void ModalManager::showMessage(const String& title, const String& line1, const String& line2,
-                               const String& line3, const String& line4, uint32_t autoCloseMs,
-                               bool fullRedraw, const String& footer, Action onClose) {
+void ModalManager::showMessage(const String& title, const String& line1, const String& line2, const String& line3,
+                               const String& line4, uint32_t autoCloseMs, bool fullRedraw, const String& footer,
+                               Action onClose) {
     _autoCloseMs = autoCloseMs;
     _fullRedraw = fullRedraw;
     _onClose = std::move(onClose);
@@ -28,15 +28,14 @@ void ModalManager::showMessage(const String& title, const String& line1, const S
     open(Kind::Message, title, line1, line2, line3, line4, footer);
 }
 
-void ModalManager::showInfo(const String& title, const String& line1, const String& line2,
-                            const String& line3, const String& line4, const String& footer) {
+void ModalManager::showInfo(const String& title, const String& line1, const String& line2, const String& line3,
+                            const String& line4, const String& footer) {
     String foot = footer.length() > 0 ? footer : String(tr(MsgId::MODAL_DEFAULT_BACK));
     showMessage(title, line1, line2, line3, line4, 0, false, foot);
 }
 
-void ModalManager::showConfirm(const String& title, const String& line1, const String& line2,
-                               const String& line3, const String& footer,
-                               Action onConfirm, Action onCancel, const String& okLabel) {
+void ModalManager::showConfirm(const String& title, const String& line1, const String& line2, const String& line3,
+                               const String& footer, Action onConfirm, Action onCancel, const String& okLabel) {
     _autoCloseMs = 0;
     _fullRedraw = false;
     _onClose = nullptr;
@@ -91,8 +90,10 @@ bool ModalManager::handleEvent(const ButtonEvent& event) {
         // Touch: the OK button confirms; anything else (Cancel, outside) cancels.
         freeink::ui::ActionId action = 0;
         int16_t value = 0;
-        if (uikit::hitTest(event.x, event.y, action, value) && action == MODAL_HIT_OK) close(_onConfirm);
-        else close(_onCancel);
+        if (uikit::hitTest(event.x, event.y, action, value) && action == MODAL_HIT_OK)
+            close(_onConfirm);
+        else
+            close(_onCancel);
     } else if (event.id == BTN_BACK) {
         close(_onCancel);
     }

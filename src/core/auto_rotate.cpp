@@ -8,10 +8,20 @@ int AutoRotateTracker::classifyGravity(float ax, float ay, float az, const ImuCa
 
     float rx = x, ry = y;
     switch (cal.rot & 3) {
-        case 1: rx = -y; ry = x; break;
-        case 2: rx = -x; ry = -y; break;
-        case 3: rx = y; ry = -x; break;
-        default: break;
+        case 1:
+            rx = -y;
+            ry = x;
+            break;
+        case 2:
+            rx = -x;
+            ry = -y;
+            break;
+        case 3:
+            rx = y;
+            ry = -x;
+            break;
+        default:
+            break;
     }
 
     const float magSq = rx * rx + ry * ry + az * az;
@@ -29,9 +39,7 @@ int AutoRotateTracker::classifyGravity(float ax, float ay, float az, const ImuCa
     return -1;
 }
 
-void AutoRotateTracker::reset() {
-    _hasPending = false;
-}
+void AutoRotateTracker::reset() { _hasPending = false; }
 
 int AutoRotateTracker::update(float ax, float ay, float az, int currentUiOrient, uint32_t nowMs,
                               const ImuCalibration& cal) {

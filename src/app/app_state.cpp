@@ -2,13 +2,9 @@
 #include "../platform/hal/frontlight.h"
 #include "../storage/config_store.h"
 
-bool AppConfig::load() {
-    return ConfigStore::load(*this);
-}
+bool AppConfig::load() { return ConfigStore::load(*this); }
 
-bool AppConfig::save() {
-    return ConfigStore::save(*this);
-}
+bool AppConfig::save() { return ConfigStore::save(*this); }
 
 bool hasUsbMscSetting() { return Platform::kDevice.usbMassStorage; }
 
@@ -32,6 +28,4 @@ int webSettingIndex() {
     return orientationSettingIndex() + 1 + (hasUsbMscSetting() ? 1 : 0) + (hasTouchWakeSetting() ? 1 : 0);
 }
 
-int settingsItemCount() {
-    return webSettingIndex() + 1;
-}
+int settingsItemCount() { return webSettingIndex() + 1; }

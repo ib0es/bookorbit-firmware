@@ -42,4 +42,4 @@ void waitForHeapToSettle(uint32_t maxMs) {
     MemStats::log("heap settled after Wi-Fi off");
 }
 
-}
+}  // namespace WifiSession

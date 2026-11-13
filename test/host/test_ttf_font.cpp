@@ -10,10 +10,13 @@
 #include "reader/fonts/builtin_font.h"
 
 static int g_failed = 0, g_checks = 0;
-#define CHECK(c)                                                                                \
-    do {                                                                                        \
-        g_checks++;                                                                             \
-        if (!(c)) { g_failed++; printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #c); }         \
+#define CHECK(c)                                                  \
+    do {                                                          \
+        g_checks++;                                               \
+        if (!(c)) {                                               \
+            g_failed++;                                           \
+            printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #c); \
+        }                                                         \
     } while (0)
 
 static std::vector<uint8_t> copyOf(const freeink::book::GlyphBitmap* g) {

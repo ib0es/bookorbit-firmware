@@ -53,8 +53,8 @@ void openBookFormat(AppContext& ctx, BookItem& book) {
             return;
         }
     }
-    ReaderScreen::openBook(ctx, book.filePath, book.title, book.author, book.coverPath,
-                           book.progress, book.page, book.xpath, book.docId, book.fileId);
+    ReaderScreen::openBook(ctx, book.filePath, book.title, book.author, book.coverPath, book.progress, book.page,
+                           book.xpath, book.docId, book.fileId);
 }
 
 void openSelected(AppContext& ctx) {
@@ -84,7 +84,9 @@ void openSelected(AppContext& ctx) {
     // A book in several formats opens in the one read last; never read here,
     // the formats are listed to choose from.
     const int listIdx = (lib.currentFilter == FILTER_OFFLINE && lib.selectedBookIndex >= 0 &&
-                         lib.selectedBookIndex < lib.rowCount()) ? lib.rows[lib.selectedBookIndex] : masterIdx;
+                         lib.selectedBookIndex < lib.rowCount())
+                                ? lib.rows[lib.selectedBookIndex]
+                                : masterIdx;
     if (!book->isDirectory && book->formats.size() > 1 && listIdx >= 0) {
         const int last = LibraryManager::lastReadFormat(*book);
         if (last < 0) {
@@ -176,13 +178,18 @@ void deleteBookFile(int masterIdx, const String& path) {
             }
         }
         if (!book) {
-            for (auto& r : lib.folderRows) if (!r.isDirectory && r.filePath == path) { book = &r; break; }
+            for (auto& r : lib.folderRows)
+                if (!r.isDirectory && r.filePath == path) {
+                    book = &r;
+                    break;
+                }
         }
     }
     if (!book) return;
     // Only the active format goes; the book stays while another format is on
     // the card or the server has it.
-    if (book->activeFormat >= 0 && book->activeFormat < (int)book->formats.size()) book->formats[book->activeFormat].onCard = false;
+    if (book->activeFormat >= 0 && book->activeFormat < (int)book->formats.size())
+        book->formats[book->activeFormat].onCard = false;
     bool otherOnCard = false;
     for (const auto& f : book->formats) otherOnCard = otherOnCard || f.onCard;
     const bool keepInCatalog = book->inCatalog() || otherOnCard;
@@ -202,18 +209,23 @@ void deleteBookFile(int masterIdx, const String& path) {
         // downloaded book, which looked as if the deletion had not taken).
         if (masterIdx >= 0) {
             for (int i = 0; i < lib.rowCount(); i++) {
-                if (lib.rowMasterIndex(i) == masterIdx) { lib.selectedBookIndex = i; break; }
+                if (lib.rowMasterIndex(i) == masterIdx) {
+                    lib.selectedBookIndex = i;
+                    break;
+                }
             }
         }
-        Modal.showMessage(tr(MsgId::LIB_DELETE_SUCCESS_TITLE), tr(MsgId::LIB_DELETE_SUCCESS_L1), tr(MsgId::LIB_DELETE_SUCCESS_L2),
-                          tr(MsgId::LIB_DELETE_SUCCESS_L3), "", 1600);
+        Modal.showMessage(tr(MsgId::LIB_DELETE_SUCCESS_TITLE), tr(MsgId::LIB_DELETE_SUCCESS_L1),
+                          tr(MsgId::LIB_DELETE_SUCCESS_L2), tr(MsgId::LIB_DELETE_SUCCESS_L3), "", 1600);
     } else {
-        if (inOffline) lib.offlineBooks.erase(lib.offlineBooks.begin() + offlineIdx);
-        else if (masterIdx >= 0 && book == &lib.masterBooks[masterIdx]) lib.masterBooks.erase(lib.masterBooks.begin() + masterIdx);
+        if (inOffline)
+            lib.offlineBooks.erase(lib.offlineBooks.begin() + offlineIdx);
+        else if (masterIdx >= 0 && book == &lib.masterBooks[masterIdx])
+            lib.masterBooks.erase(lib.masterBooks.begin() + masterIdx);
         lib.updateLastBookAfterDeletion(path);
         lib.rebuildFilteredIndices();   // also clamps the selection
-        Modal.showMessage(tr(MsgId::LIB_DELETE_SUCCESS_TITLE), tr(MsgId::LIB_DELETE_SUCCESS_L1), tr(MsgId::LIB_DELETE_SUCCESS_L2),
-                          "", "", 1600);
+        Modal.showMessage(tr(MsgId::LIB_DELETE_SUCCESS_TITLE), tr(MsgId::LIB_DELETE_SUCCESS_L1),
+                          tr(MsgId::LIB_DELETE_SUCCESS_L2), "", "", 1600);
     }
 }
 
@@ -224,15 +236,12 @@ void askDeleteSelected() {
     if (!book || book->isDirectory) return;
 
     if (book->isDownloaded && Storage.exists(book->filePath.c_str())) {
-        const char* noteLine = book->inCatalog()
-            ? tr(MsgId::LIB_DELETE_LINE3)
-            : tr(MsgId::LIB_DELETE_LINE2);
+        const char* noteLine = book->inCatalog() ? tr(MsgId::LIB_DELETE_LINE3) : tr(MsgId::LIB_DELETE_LINE2);
         const String path = book->filePath;
-        Modal.showConfirm(tr(MsgId::LIB_DELETE_TITLE), utf8Prefix(book->title, 64),
-                          tr(MsgId::LIB_DELETE_LINE1), noteLine,
-                          tr(MsgId::LIB_DELETE_FOOTER),
-                          [masterIdx, path]() { deleteBookFile(masterIdx, path); }, nullptr,
-                          tr(MsgId::LIB_DELETE_BTN));
+        Modal.showConfirm(
+                tr(MsgId::LIB_DELETE_TITLE), utf8Prefix(book->title, 64), tr(MsgId::LIB_DELETE_LINE1), noteLine,
+                tr(MsgId::LIB_DELETE_FOOTER), [masterIdx, path]() { deleteBookFile(masterIdx, path); }, nullptr,
+                tr(MsgId::LIB_DELETE_BTN));
     } else {
         Modal.showMessage(tr(MsgId::LIB_FILTER_CLOUD), utf8Prefix(book->title, 64), tr(MsgId::LIB_EMPTY_MSG_1),
                           tr(MsgId::LIB_HINT_DOWNLOAD_BOOK), "", 1800, false, tr(MsgId::COMMON_BACK));
@@ -259,16 +268,13 @@ void goBack(AppContext& ctx) {
         lib.selectedBookIndex = lib.savedSeriesIndex;
         lib.scanLocalBooks();
         drawLibraryScreen(ctx, uikit::periodicFullRefresh());
-    } else if (lib.currentFolder.equalsIgnoreCase("@libraries") ||
-               lib.currentFolder.equalsIgnoreCase("@authors") ||
-               lib.currentFolder.equalsIgnoreCase("@series") ||
-               lib.currentFolder.equalsIgnoreCase("@search") ||
+    } else if (lib.currentFolder.equalsIgnoreCase("@libraries") || lib.currentFolder.equalsIgnoreCase("@authors") ||
+               lib.currentFolder.equalsIgnoreCase("@series") || lib.currentFolder.equalsIgnoreCase("@search") ||
                lib.currentFilter == FILTER_SEARCH) {
         ctx.currentState = STATE_CATALOG;
         drawCatalogScreen(ctx, false);
     } else if (!lib.currentFolder.equalsIgnoreCase("/books") &&
-               !lib.currentFolder.equalsIgnoreCase(LibraryManager::kOfflineDir) &&
-               !lib.currentFolder.equals("/")) {
+               !lib.currentFolder.equalsIgnoreCase(LibraryManager::kOfflineDir) && !lib.currentFolder.equals("/")) {
         int lastSlash = lib.currentFolder.lastIndexOf('/');
         lib.currentFolder = (lastSlash > 0) ? lib.currentFolder.substring(0, lastSlash) : String("/books");
         lib.selectedBookIndex = 0;
@@ -345,7 +351,9 @@ bool openFormatsOfSelected(AppContext& ctx) {
     int masterIdx = -1;
     BookItem* book = selectedBook(lib, &masterIdx);
     const int listIdx = (lib.currentFilter == FILTER_OFFLINE && lib.selectedBookIndex >= 0 &&
-                         lib.selectedBookIndex < lib.rowCount()) ? lib.rows[lib.selectedBookIndex] : masterIdx;
+                         lib.selectedBookIndex < lib.rowCount())
+                                ? lib.rows[lib.selectedBookIndex]
+                                : masterIdx;
     if (!book || book->isDirectory || listIdx < 0 || book->formats.size() < 2) return false;
     lib.openFormats(listIdx);
     ctx.currentState = STATE_LIBRARY;
@@ -405,11 +413,11 @@ void handleBookMenuEvent(AppContext& ctx, const ButtonEvent& event) {
         case BOOK_MENU_SYNC:
             // Back to the menu afterwards: the result message closes onto it.
             ctx.currentState = STATE_BOOK_MENU;
-        {
-            const auto r = SyncService::syncBookItem(ctx, *book);
-            drawBookMenuScreen(ctx, uikit::periodicFullRefresh());  // over the status screen
-            SyncService::showBookSyncResult(r, *book);
-        }
+            {
+                const auto r = SyncService::syncBookItem(ctx, *book);
+                drawBookMenuScreen(ctx, uikit::periodicFullRefresh());  // over the status screen
+                SyncService::showBookSyncResult(r, *book);
+            }
             break;
         case BOOK_MENU_FORMATS:
             openFormatsOfSelected(ctx);
@@ -427,8 +435,6 @@ void handleBookMenuEvent(AppContext& ctx, const ButtonEvent& event) {
     }
 }
 
-void openWebSettingsFromOffline(AppContext& ctx) {
-    SettingsScreen::openWebSettings(ctx, STATE_LIBRARY);
-}
+void openWebSettingsFromOffline(AppContext& ctx) { SettingsScreen::openWebSettings(ctx, STATE_LIBRARY); }
 
 }  // namespace LibraryScreen

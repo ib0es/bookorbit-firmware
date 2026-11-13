@@ -14,17 +14,17 @@ namespace fs = std::filesystem;
 typedef int oflag_t;
 #define O_RDONLY 0x00
 #define O_WRONLY 0x01
-#define O_RDWR   0x02
-#define O_CREAT  0x0100
-#define O_TRUNC  0x0200
+#define O_RDWR 0x02
+#define O_CREAT 0x0100
+#define O_TRUNC 0x0200
 #ifndef O_WRITE
-#define O_WRITE  O_WRONLY
+#define O_WRITE O_WRONLY
 #endif
 
 class FsFile {
 public:
     FsFile() : _f(nullptr), _size(0), _isDir(false), _dirIterIndex(0) {}
-    FsFile(FILE* f, size_t sz, bool isDir = false, const std::string& name = "") 
+    FsFile(FILE* f, size_t sz, bool isDir = false, const std::string& name = "")
         : _f(f), _size(sz), _isDir(isDir), _name(name), _dirIterIndex(0) {}
     ~FsFile() = default;
 
@@ -47,9 +47,7 @@ public:
 
     size_t size() const { return _size; }
 
-    int available() const {
-        return (curPosition() < size()) ? (int)(size() - curPosition()) : 0;
-    }
+    int available() const { return (curPosition() < size()) ? (int)(size() - curPosition()) : 0; }
 
     size_t readBytesUntil(char terminator, char* buffer, size_t length) {
         if (!_f || !buffer || length == 0) return 0;
@@ -69,9 +67,7 @@ public:
         return (uint32_t)ftell(_f);
     }
 
-    uint32_t position() const {
-        return curPosition();
-    }
+    uint32_t position() const { return curPosition(); }
 
     template <typename... Args>
     void printf(const char* fmt, Args... args) {
@@ -88,9 +84,7 @@ public:
         return fread(buf, 1, count, _f);
     }
 
-    size_t readBytes(char* buf, size_t count) {
-        return read(buf, count);
-    }
+    size_t readBytes(char* buf, size_t count) { return read(buf, count); }
 
     bool preAllocate(uint32_t) { return false; }
     bool truncate(uint32_t) { return true; }
@@ -102,17 +96,13 @@ public:
         return n;
     }
 
-    size_t write(uint8_t b) {
-        return write(&b, 1);
-    }
+    size_t write(uint8_t b) { return write(&b, 1); }
 
     void flush() {
         if (_f) fflush(_f);
     }
 
-    void sync() {
-        flush();
-    }
+    void sync() { flush(); }
 
     void close() {
         if (_f) {
@@ -162,9 +152,9 @@ struct BoardConfig_Type {
 
 struct BoardConfig {
 #if defined(FREEINK_DEVICE_X4CLASSIC) && FREEINK_DEVICE_X4CLASSIC
-    static inline BoardConfig_Type ACTIVE = { { 6, false, 40000000u }, { 9, 8, 5, 2, 0, 7, 3, false } };
+    static inline BoardConfig_Type ACTIVE = {{6, false, 40000000u}, {9, 8, 5, 2, 0, 7, 3, false}};
 #else
-    static inline BoardConfig_Type ACTIVE = { { 13, true, 40000000u }, { -1, -1, -1, -1, 0, 7, 3, false } };
+    static inline BoardConfig_Type ACTIVE = {{13, true, 40000000u}, {-1, -1, -1, -1, 0, 7, 3, false}};
 #endif
     static void holdPowerRails() {}
     static void releaseSdRail() {}
@@ -186,13 +176,9 @@ public:
         return instance;
     }
 
-    void setRoot(const std::string& path) {
-        _rootDir = path;
-    }
+    void setRoot(const std::string& path) { _rootDir = path; }
 
-    const std::string& getRoot() const {
-        return _rootDir;
-    }
+    const std::string& getRoot() const { return _rootDir; }
 
     std::string resolvePath(const char* path) const {
         std::string p = path ? path : "";
@@ -200,7 +186,10 @@ public:
         return _rootDir + "/" + p;
     }
 
-    bool begin() { _detached = false; return true; }
+    bool begin() {
+        _detached = false;
+        return true;
+    }
     bool ready() const { return !_detached; }
     void shutdown() { _detached = true; }
     FsBlockDeviceInterface* detachFilesystemForRawAccess() {
@@ -328,9 +317,7 @@ public:
         }
     }
 
-    bool mkdir(const char* path) {
-        return ensureDirectoryExists(path);
-    }
+    bool mkdir(const char* path) { return ensureDirectoryExists(path); }
 
     bool writeFile(const char* path, const String& content) {
         FsFile f = open(path, O_WRONLY | O_CREAT | O_TRUNC);
@@ -344,7 +331,10 @@ public:
         FsFile f = open(path, O_RDONLY);
         if (!f) return "";
         size_t sz = f.size();
-        if (sz == 0) { f.close(); return ""; }
+        if (sz == 0) {
+            f.close();
+            return "";
+        }
         std::string buf(sz, '\0');
         f.read(&buf[0], sz);
         f.close();

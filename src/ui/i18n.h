@@ -14,6 +14,4 @@ public:
     static int getLanguageCount();
 };
 
-inline const char* tr(MsgId id) {
-    return I18n::get(id);
-}
+inline const char* tr(MsgId id) { return I18n::get(id); }

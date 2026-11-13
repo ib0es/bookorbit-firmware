@@ -7,7 +7,11 @@
 
 class Preferences {
 public:
-    bool begin(const char* ns, bool readOnly = false) { _ns = ns ? ns : ""; _ro = readOnly; return true; }
+    bool begin(const char* ns, bool readOnly = false) {
+        _ns = ns ? ns : "";
+        _ro = readOnly;
+        return true;
+    }
     void end() {}
     String getString(const char* key, const String& def = String()) {
         auto& m = store()[_ns];
@@ -20,7 +24,11 @@ public:
         return value.length();
     }
     bool remove(const char* key) { return !_ro && store()[_ns].erase(key) > 0; }
-    bool clear() { if (_ro) return false; store()[_ns].clear(); return true; }
+    bool clear() {
+        if (_ro) return false;
+        store()[_ns].clear();
+        return true;
+    }
     bool isKey(const char* key) { return store()[_ns].count(key) > 0; }
 
 private:

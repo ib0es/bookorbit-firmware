@@ -20,14 +20,22 @@ struct Layout {
 };
 
 static const Layout kLayouts[] = {
-    {{"1234567890-=", "qwertyuiop[]", "asdfghjkl;'\\", "zxcvbnm,./_@"},
-     {"!@#$%^&*()_+", "QWERTYUIOP{}", "ASDFGHJKL:\"|", "ZXCVBNM<>?~`"}, MsgId::KEYBOARD_LAYER_LOWER, "abc"},
-    {{"1234567890-.", "йцукенгшщзхъ", "фывапролджэ,", "ячсмитьбюё_@"},
-     {"!\"#;%:?*()_+", "ЙЦУКЕНГШЩЗХЪ", "ФЫВАПРОЛДЖЭ,", "ЯЧСМИТЬБЮЁ_@"}, MsgId::KEYBOARD_LAYER_CYR, "абв"},
-    {{"1234567890¿¡", "áéíóúüñçàèìò", "ùâêîôûäëïöß'", "£«»¢§°\"-_.,@"},
-     {"1234567890¿¡", "ÁÉÍÓÚÜÑÇÀÈÌÒ", "ÙÂÊÎÔÛÄËÏÖß'", "£«»¢§°\"-_.,@"}, MsgId::KEYBOARD_LAYER_ACC, "áéñ"},
-    {{"1234567890!?", "@#$%^&*()-_+", "=[]{}\\|;:'\"~", "<>,./`:;!?-_"},
-     {"1234567890!?", "@#$%^&*()-_+", "=[]{}\\|;:'\"~", "<>,./`:;!?-_"}, MsgId::KEYBOARD_LAYER_SYM, "#+="},
+        {{"1234567890-=", "qwertyuiop[]", "asdfghjkl;'\\", "zxcvbnm,./_@"},
+         {"!@#$%^&*()_+", "QWERTYUIOP{}", "ASDFGHJKL:\"|", "ZXCVBNM<>?~`"},
+         MsgId::KEYBOARD_LAYER_LOWER,
+         "abc"},
+        {{"1234567890-.", "йцукенгшщзхъ", "фывапролджэ,", "ячсмитьбюё_@"},
+         {"!\"#;%:?*()_+", "ЙЦУКЕНГШЩЗХЪ", "ФЫВАПРОЛДЖЭ,", "ЯЧСМИТЬБЮЁ_@"},
+         MsgId::KEYBOARD_LAYER_CYR,
+         "абв"},
+        {{"1234567890¿¡", "áéíóúüñçàèìò", "ùâêîôûäëïöß'", "£«»¢§°\"-_.,@"},
+         {"1234567890¿¡", "ÁÉÍÓÚÜÑÇÀÈÌÒ", "ÙÂÊÎÔÛÄËÏÖß'", "£«»¢§°\"-_.,@"},
+         MsgId::KEYBOARD_LAYER_ACC,
+         "áéñ"},
+        {{"1234567890!?", "@#$%^&*()-_+", "=[]{}\\|;:'\"~", "<>,./`:;!?-_"},
+         {"1234567890!?", "@#$%^&*()-_+", "=[]{}\\|;:'\"~", "<>,./`:;!?-_"},
+         MsgId::KEYBOARD_LAYER_SYM,
+         "#+="},
 };
 static constexpr int kLayoutCount = sizeof(kLayouts) / sizeof(kLayouts[0]);
 static constexpr int kSymbolLayout = 3;
@@ -76,14 +84,12 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
 
     // Action Row Buttons Configuration (Row 4, 6 buttons aligned with 12 keys above)
     // Width: 64 + 2 + 64 + 2 + 108 + 2 + 56 + 2 + 82 + 2 + 80 = 464px. Margins: 8px left, 8px right.
-    const ActionBtnDef actionBtns[6] = {
-        { 8,   64,  "A/a",    1 },
-        { 74,  64,  "abc",    1 },
-        { 140, 108, tr(MsgId::KEYBOARD_BTN_SPACE), 1 },
-        { 250, 56,  "< ⌫",   1 },
-        { 308, 82,  tr(MsgId::KEYBOARD_BTN_CANCEL), 0 },
-        { 392, 80,  tr(MsgId::KEYBOARD_BTN_OK),   1 }
-    };
+    const ActionBtnDef actionBtns[6] = {{8, 64, "A/a", 1},
+                                        {74, 64, "abc", 1},
+                                        {140, 108, tr(MsgId::KEYBOARD_BTN_SPACE), 1},
+                                        {250, 56, "< ⌫", 1},
+                                        {308, 82, tr(MsgId::KEYBOARD_BTN_CANCEL), 0},
+                                        {392, 80, tr(MsgId::KEYBOARD_BTN_OK), 1}};
 
     auto renderKeyboard = [&]() {
         using namespace uikit;
@@ -150,21 +156,25 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
 
         // 5. Action row: widths keep the proportions of the original layout.
         Rect row = takeTop(area, keyH);
-        const int weights[6] = { 64, 64, 108, 56, 82, 80 };
+        const int weights[6] = {64, 64, 108, 56, 82, 80};
         const int totalW = 454;  // sum of weights
         int16_t x = row.x;
         for (int b = 0; b < 6; b++) {
-            const int16_t w = (b == 5) ? (int16_t)(row.right() - x)
-                                       : (int16_t)((row.width - 5 * 2) * weights[b] / totalW);
+            const int16_t w =
+                    (b == 5) ? (int16_t)(row.right() - x) : (int16_t)((row.width - 5 * 2) * weights[b] / totalW);
             Rect btn{x, row.y, w, row.height};
             x = (int16_t)(x + w + 2);
             const char* label = actionBtns[b].label;
-            if (b == 0) label = shift ? "a/A" : "A/a";
-            else if (b == 1) label = kLayouts[(layout + 1) % kLayoutCount].label;   // the one it switches to
+            if (b == 0)
+                label = shift ? "a/A" : "A/a";
+            else if (b == 1)
+                label = kLayouts[(layout + 1) % kLayoutCount].label;   // the one it switches to
             const bool sel = (selRow == 4 && selCol == b);
             const fi::FontId font = actionBtns[b].fontScale == 0 ? FontSmall : FontBody;
-            if (sel) fill(btn, Color::Black, 3);
-            else frameRect(btn, Color::Black, 1, 3);
+            if (sel)
+                fill(btn, Color::Black, 3);
+            else
+                frameRect(btn, Color::Black, 1, 3);
             text(btn, label, font, sel ? Color::White : Color::Black, TextAlign::Center);
             f.hit(btn, 2, (int16_t)b);
         }
@@ -190,8 +200,15 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
                 freeink::ui::ActionId action = 0;
                 int16_t value = 0;
                 if (uikit::hitTest(event.x, event.y, action, value)) {
-                    if (action == 1 && value >= 0 && value < 48) { selRow = value / 12; selCol = value % 12; event.id = BTN_CONFIRM; }
-                    else if (action == 2 && value >= 0 && value < 6) { selRow = 4; selCol = value; event.id = BTN_CONFIRM; }
+                    if (action == 1 && value >= 0 && value < 48) {
+                        selRow = value / 12;
+                        selCol = value % 12;
+                        event.id = BTN_CONFIRM;
+                    } else if (action == 2 && value >= 0 && value < 6) {
+                        selRow = 4;
+                        selCol = value;
+                        event.id = BTN_CONFIRM;
+                    }
                 }
             }
             if (event.action == ACTION_CLICK) {
@@ -271,7 +288,10 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
                     bool held = false;
                     while (Buttons.isPressed(BTN_BACK)) {
                         Buttons.update();
-                        if (millis() - pressedAt >= 600) { held = true; break; }
+                        if (millis() - pressedAt >= 600) {
+                            held = true;
+                            break;
+                        }
                         delay(10);
                     }
                     if (held) {

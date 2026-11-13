@@ -5,8 +5,14 @@
 #include <cstdio>
 
 static int g_failed = 0, g_checks = 0;
-#define CHECK(cond) do { g_checks++; if (!(cond)) { g_failed++; \
-    printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); } } while (0)
+#define CHECK(cond)                                                  \
+    do {                                                             \
+        g_checks++;                                                  \
+        if (!(cond)) {                                               \
+            g_failed++;                                              \
+            printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
+        }                                                            \
+    } while (0)
 
 static LightSleepPolicy::Inputs safeInputs() {
     LightSleepPolicy::Inputs in;
@@ -48,20 +54,76 @@ static void testFrontlightPolicy() {
 static void testLightSleepPolicyEligibility() {
     CHECK(LightSleepPolicy::canEnter(safeInputs()));
 
-    { auto in = safeInputs(); in.featureBuilt = false; CHECK(!LightSleepPolicy::canEnter(in)); }
-    { auto in = safeInputs(); in.settingEnabled = false; CHECK(!LightSleepPolicy::canEnter(in)); }
-    { auto in = safeInputs(); in.touchWakeIrqPin = -1; CHECK(!LightSleepPolicy::canEnter(in)); }
-    { auto in = safeInputs(); in.wifiOff = false; CHECK(!LightSleepPolicy::canEnter(in)); }
-    { auto in = safeInputs(); in.syncBgActive = true; CHECK(!LightSleepPolicy::canEnter(in)); }
-    { auto in = safeInputs(); in.readerBgActive = true; CHECK(!LightSleepPolicy::canEnter(in)); }
-    { auto in = safeInputs(); in.usbMscActive = true; CHECK(!LightSleepPolicy::canEnter(in)); }
-    { auto in = safeInputs(); in.debouncePending = true; CHECK(!LightSleepPolicy::canEnter(in)); }
-    { auto in = safeInputs(); in.touchPressed = true; CHECK(!LightSleepPolicy::canEnter(in)); }
-    { auto in = safeInputs(); in.homeKeyDown = true; CHECK(!LightSleepPolicy::canEnter(in)); }
-    { auto in = safeInputs(); in.usbSerialConnected = true; CHECK(!LightSleepPolicy::canEnter(in)); }
-    { auto in = safeInputs(); in.irqAlreadyAsserted = true; CHECK(!LightSleepPolicy::canEnter(in)); }
-    { auto in = safeInputs(); in.idleMs = 499; CHECK(!LightSleepPolicy::canEnter(in)); }
-    { auto in = safeInputs(); in.idleMs = 500; CHECK(LightSleepPolicy::canEnter(in)); }
+    {
+        auto in = safeInputs();
+        in.featureBuilt = false;
+        CHECK(!LightSleepPolicy::canEnter(in));
+    }
+    {
+        auto in = safeInputs();
+        in.settingEnabled = false;
+        CHECK(!LightSleepPolicy::canEnter(in));
+    }
+    {
+        auto in = safeInputs();
+        in.touchWakeIrqPin = -1;
+        CHECK(!LightSleepPolicy::canEnter(in));
+    }
+    {
+        auto in = safeInputs();
+        in.wifiOff = false;
+        CHECK(!LightSleepPolicy::canEnter(in));
+    }
+    {
+        auto in = safeInputs();
+        in.syncBgActive = true;
+        CHECK(!LightSleepPolicy::canEnter(in));
+    }
+    {
+        auto in = safeInputs();
+        in.readerBgActive = true;
+        CHECK(!LightSleepPolicy::canEnter(in));
+    }
+    {
+        auto in = safeInputs();
+        in.usbMscActive = true;
+        CHECK(!LightSleepPolicy::canEnter(in));
+    }
+    {
+        auto in = safeInputs();
+        in.debouncePending = true;
+        CHECK(!LightSleepPolicy::canEnter(in));
+    }
+    {
+        auto in = safeInputs();
+        in.touchPressed = true;
+        CHECK(!LightSleepPolicy::canEnter(in));
+    }
+    {
+        auto in = safeInputs();
+        in.homeKeyDown = true;
+        CHECK(!LightSleepPolicy::canEnter(in));
+    }
+    {
+        auto in = safeInputs();
+        in.usbSerialConnected = true;
+        CHECK(!LightSleepPolicy::canEnter(in));
+    }
+    {
+        auto in = safeInputs();
+        in.irqAlreadyAsserted = true;
+        CHECK(!LightSleepPolicy::canEnter(in));
+    }
+    {
+        auto in = safeInputs();
+        in.idleMs = 499;
+        CHECK(!LightSleepPolicy::canEnter(in));
+    }
+    {
+        auto in = safeInputs();
+        in.idleMs = 500;
+        CHECK(LightSleepPolicy::canEnter(in));
+    }
 }
 
 static void testLightSleepTiming() {

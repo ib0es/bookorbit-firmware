@@ -21,8 +21,14 @@ static bool convertString(const std::string& fb2, std::string& epub, convert::Co
     if (const char* dump = getenv("FB2_DUMP")) {   // keep the EPUB (and its CFI map) to look at
         static int n = 0;
         const std::string base = std::string(dump) + "/fb2-" + std::to_string(++n);
-        if (FILE* f = fopen((base + ".epub").c_str(), "wb")) { fwrite(epub.data(), 1, epub.size(), f); fclose(f); }
-        if (FILE* f = fopen((base + ".cfimap").c_str(), "wb")) { fwrite(st.cfiMap.data(), 1, st.cfiMap.size(), f); fclose(f); }
+        if (FILE* f = fopen((base + ".epub").c_str(), "wb")) {
+            fwrite(epub.data(), 1, epub.size(), f);
+            fclose(f);
+        }
+        if (FILE* f = fopen((base + ".cfimap").c_str(), "wb")) {
+            fwrite(st.cfiMap.data(), 1, st.cfiMap.size(), f);
+            fclose(f);
+        }
     }
     if (r != convert::ConvertResult::Ok) printf("  convert: %s %s\n", convert::resultName(r), st.error.c_str());
     return r == convert::ConvertResult::Ok;
@@ -32,52 +38,56 @@ static bool convertString(const std::string& fb2, std::string& epub, convert::Co
 
 // 1x1 PNG
 static const char* kPng =
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==";
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==";
 
 static std::string fixture() {
     std::string big;
-    for (int i = 0; i < 1200; i++) big += "<p>Long chapter paragraph number " + std::to_string(i) + " with some words in it.</p>\n";
+    for (int i = 0; i < 1200; i++)
+        big += "<p>Long chapter paragraph number " + std::to_string(i) + " with some words in it.</p>\n";
     return std::string(
-        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
-        "<FictionBook xmlns=\"http://www.gribuser.ru/xml/fictionbook/2.0\" xmlns:l=\"http://www.w3.org/1999/xlink\">\n"
-        "<description><title-info><genre>prose</genre>"
-        "<author><first-name>Ivan</first-name><middle-name>I.</middle-name><last-name>Testov</last-name></author>"
-        "<author><nickname>Anon</nickname></author>"
-        "<book-title>Test &amp; Book</book-title>"
-        "<annotation><p>First line.</p><p>Second line.</p></annotation>"
-        "<coverpage><image l:href=\"#cover.png\"/></coverpage>"
-        "<lang>en</lang><sequence name=\"Tests\" number=\"3\"/></title-info>"
-        "<document-info><author><first-name>Not</first-name><last-name>Me</last-name></author></document-info>"
-        "</description>\n"
-        "<body><title><p>Test Book</p><p>Subtitle line</p></title>"
-        "<epigraph><p>An epigraph.</p><text-author>Somebody</text-author></epigraph>"
-        "<section id=\"ch1\"><title><p>Chapter One</p></title>"
-        "<p>Text with <emphasis>em</emphasis>, <strong>strong</strong>, <strikethrough>gone</strikethrough>, "
-        "x<sup>2</sup>, H<sub>2</sub>O, <code>code()</code> and a note<a l:href=\"#n1\" type=\"note\">[1]</a>.</p>"
-        "<empty-line/>"
-        "<p>Link to <a l:href=\"#ch2\">chapter two</a> and <a l:href=\"https://example.com/?a=1&amp;b=2\">out</a>.</p>"
-        "<image l:href=\"#pic.png\"/>"
-        "<p>Inline <image l:href=\"#pic.png\"/> image &lt;tag&gt;.</p>"
-        "<poem><title><p>Poem title</p></title><stanza><v>Line one</v><v>Line two</v></stanza>"
-        "<stanza><v>Line three</v></stanza><text-author>Poet</text-author><date>1900</date></poem>"
-        "<cite><p>Cited.</p><text-author>Citer</text-author></cite>"
-        "<table><tr><th>A</th><th>B</th></tr><tr><td colspan=\"2\">both</td></tr></table>"
-        "<subtitle>A subtitle</subtitle>"
-        "<section id=\"ch1-1\"><title><p>Part 1.1</p></title><p id=\"p11\">Inside part.</p></section>"
-        "</section>\n"
-        "<section id=\"ch2\"><title><p>Chapter Two</p></title><p>Second chapter.</p></section>\n"
-        "<section><title><p>Long Chapter</p></title>") +
-        big +
-        "</section>\n"
-        "<section id=\"empty\"/>\n"
-        "</body>\n"
-        "<body name=\"notes\"><title><p>Notes</p></title>"
-        "<section id=\"n1\"><title><p>1</p></title><p>The note text, back to <a l:href=\"#p11\">part</a>.</p></section>"
-        "</body>\n"
-        "<binary id=\"cover.png\" content-type=\"image/png\">" + kPng + "</binary>\n"
-        "<binary id=\"pic.png\" content-type=\"image/png\">\n" + std::string(kPng).substr(0, 40) + "\n" +
-        std::string(kPng).substr(40) + "\n</binary>\n"
-        "</FictionBook>\n";
+                   "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
+                   "<FictionBook xmlns=\"http://www.gribuser.ru/xml/fictionbook/2.0\" xmlns:l=\"http://www.w3.org/1999/xlink\">\n"
+                   "<description><title-info><genre>prose</genre>"
+                   "<author><first-name>Ivan</first-name><middle-name>I.</middle-name><last-name>Testov</last-name></author>"
+                   "<author><nickname>Anon</nickname></author>"
+                   "<book-title>Test &amp; Book</book-title>"
+                   "<annotation><p>First line.</p><p>Second line.</p></annotation>"
+                   "<coverpage><image l:href=\"#cover.png\"/></coverpage>"
+                   "<lang>en</lang><sequence name=\"Tests\" number=\"3\"/></title-info>"
+                   "<document-info><author><first-name>Not</first-name><last-name>Me</last-name></author></document-info>"
+                   "</description>\n"
+                   "<body><title><p>Test Book</p><p>Subtitle line</p></title>"
+                   "<epigraph><p>An epigraph.</p><text-author>Somebody</text-author></epigraph>"
+                   "<section id=\"ch1\"><title><p>Chapter One</p></title>"
+                   "<p>Text with <emphasis>em</emphasis>, <strong>strong</strong>, <strikethrough>gone</strikethrough>, "
+                   "x<sup>2</sup>, H<sub>2</sub>O, <code>code()</code> and a note<a l:href=\"#n1\" type=\"note\">[1]</a>.</p>"
+                   "<empty-line/>"
+                   "<p>Link to <a l:href=\"#ch2\">chapter two</a> and <a l:href=\"https://example.com/?a=1&amp;b=2\">out</a>.</p>"
+                   "<image l:href=\"#pic.png\"/>"
+                   "<p>Inline <image l:href=\"#pic.png\"/> image &lt;tag&gt;.</p>"
+                   "<poem><title><p>Poem title</p></title><stanza><v>Line one</v><v>Line two</v></stanza>"
+                   "<stanza><v>Line three</v></stanza><text-author>Poet</text-author><date>1900</date></poem>"
+                   "<cite><p>Cited.</p><text-author>Citer</text-author></cite>"
+                   "<table><tr><th>A</th><th>B</th></tr><tr><td colspan=\"2\">both</td></tr></table>"
+                   "<subtitle>A subtitle</subtitle>"
+                   "<section id=\"ch1-1\"><title><p>Part 1.1</p></title><p id=\"p11\">Inside part.</p></section>"
+                   "</section>\n"
+                   "<section id=\"ch2\"><title><p>Chapter Two</p></title><p>Second chapter.</p></section>\n"
+                   "<section><title><p>Long Chapter</p></title>") +
+           big +
+           "</section>\n"
+           "<section id=\"empty\"/>\n"
+           "</body>\n"
+           "<body name=\"notes\"><title><p>Notes</p></title>"
+           "<section id=\"n1\"><title><p>1</p></title><p>The note text, back to <a l:href=\"#p11\">part</a>.</p></section>"
+           "</body>\n"
+           "<binary id=\"cover.png\" content-type=\"image/png\">" +
+           kPng +
+           "</binary>\n"
+           "<binary id=\"pic.png\" content-type=\"image/png\">\n" +
+           std::string(kPng).substr(0, 40) + "\n" + std::string(kPng).substr(40) +
+           "\n</binary>\n"
+           "</FictionBook>\n";
 }
 
 static void testFixture() {
@@ -153,19 +163,20 @@ static void testCp1251() {
     printf("windows-1251\n");
     // "Привет, мир" in windows-1251 with a title "Глава"
     const std::string fb2 =
-        "<?xml version=\"1.0\" encoding=\"windows-1251\"?>"
-        "<FictionBook xmlns=\"http://www.gribuser.ru/xml/fictionbook/2.0\"><description><title-info>"
-        "<book-title>\xCA\xED\xE8\xE3\xE0</book-title><lang>ru</lang></title-info></description>"
-        "<body><section><title><p>\xC3\xEB\xE0\xE2\xE0</p></title><p>\xCF\xF0\xE8\xE2\xE5\xF2, \xEC\xE8\xF0 \xB9 \xAB\xBB</p></section></body>"
-        "</FictionBook>";
+            "<?xml version=\"1.0\" encoding=\"windows-1251\"?>"
+            "<FictionBook xmlns=\"http://www.gribuser.ru/xml/fictionbook/2.0\"><description><title-info>"
+            "<book-title>\xCA\xED\xE8\xE3\xE0</book-title><lang>ru</lang></title-info></description>"
+            "<body><section><title><p>\xC3\xEB\xE0\xE2\xE0</p></title><p>\xCF\xF0\xE8\xE2\xE5\xF2, \xEC\xE8\xF0 \xB9 \xAB\xBB</p></section></body>"
+            "</FictionBook>";
     std::string epub;
     convert::ConvertStats st;
     CHECK(convertString(fb2, epub, st));
     const Opened o = openEpub(epub);
     CHECK(o.ok);
     CHECK(o.title == "\xD0\x9A\xD0\xBD\xD0\xB8\xD0\xB3\xD0\xB0");   // Книга
-    CHECK(contains(o.chapters, "\xD0\x9F\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82, \xD0\xBC\xD0\xB8\xD1\x80 "
-                               "\xE2\x84\x96 \xC2\xAB\xC2\xBB"));   // Привет, мир № «»
+    CHECK(contains(o.chapters,
+                   "\xD0\x9F\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82, \xD0\xBC\xD0\xB8\xD1\x80 "
+                   "\xE2\x84\x96 \xC2\xAB\xC2\xBB"));   // Привет, мир № «»
     CHECK(o.toc.size() == 1 && o.toc[0].find("\xD0\x93\xD0\xBB\xD0\xB0\xD0\xB2\xD0\xB0") != std::string::npos);
 }
 
@@ -182,16 +193,21 @@ static void testEdges() {
     CHECK(convertString("<FictionBook><description/><body/></FictionBook>", epub, st));
     CHECK(openEpub(epub).ok);
     // Untitled sections: several -> named by their first short line; one -> the book title.
-    CHECK(convertString("<FictionBook><description><title-info><book-title>B</book-title></title-info></description>"
-                        "<body><section><p>Contents</p><p>CHAPTER I.</p></section><section><p>CHAPTER I.</p><p>Down the Hole</p></section><section><empty-line/><p>CHAPTER II.</p></section>"
-                        "<section><p>" + std::string(200, 'y') + "</p></section></body></FictionBook>", epub, st));
+    CHECK(convertString(
+            "<FictionBook><description><title-info><book-title>B</book-title></title-info></description>"
+            "<body><section><p>Contents</p><p>CHAPTER I.</p></section><section><p>CHAPTER I.</p><p>Down the Hole</p></section><section><empty-line/><p>CHAPTER II.</p></section>"
+            "<section><p>" +
+                    std::string(200, 'y') + "</p></section></body></FictionBook>",
+            epub, st));
     Opened o = openEpub(epub);
     CHECK(o.toc.size() == 4 && o.toc[0].find("|Contents|") != std::string::npos &&
           o.toc[1].find("|CHAPTER I. Down the Hole|") != std::string::npos &&
           o.toc[2].find("|CHAPTER II.|") != std::string::npos && o.toc[3].find("|4|") != std::string::npos);
     for (const auto& t : o.toc) printf("    toc %s\n", t.c_str());
-    CHECK(convertString("<FictionBook><description><title-info><book-title>B</book-title></title-info></description>"
-                        "<body><section><p>only</p></section></body></FictionBook>", epub, st));
+    CHECK(
+            convertString("<FictionBook><description><title-info><book-title>B</book-title></title-info></description>"
+                          "<body><section><p>only</p></section></body></FictionBook>",
+                          epub, st));
     o = openEpub(epub);
     CHECK(o.toc.size() == 1 && o.toc[0].find("|B|") != std::string::npos);
     // One untitled section split by size: an entry per file, by its first words.
@@ -202,7 +218,8 @@ static void testEdges() {
     o = openEpub(epub);
     CHECK(o.chapters.size() > 1 && o.toc.size() == o.chapters.size());
     if (o.toc.size() > 1) {
-        CHECK(o.toc[0].find("|1. First words of the book that go on for a while here\xE2\x80\xA6|") != std::string::npos);
+        CHECK(o.toc[0].find("|1. First words of the book that go on for a while here\xE2\x80\xA6|") !=
+              std::string::npos);
         CHECK(o.toc[1].find("|2. Paragraph ") != std::string::npos);
         printf("    toc %s\n    toc %s\n", o.toc[0].c_str(), o.toc[1].c_str());
     }
@@ -261,7 +278,10 @@ static void testRealBooks(const char* dir) {
         if (getenv("FB2_KEEP")) {
             const std::string out = std::string(getenv("FB2_KEEP")) + "/" + f.substr(f.rfind('/') + 1) + ".epub";
             FILE* w = fopen(out.c_str(), "wb");
-            if (w) { fwrite(epub.data(), 1, epub.size(), w); fclose(w); }
+            if (w) {
+                fwrite(epub.data(), 1, epub.size(), w);
+                fclose(w);
+            }
         }
     }
 }

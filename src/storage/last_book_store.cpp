@@ -43,7 +43,7 @@ bool LastBookStore::load(LastBookInfo& outInfo) {
     if (doc["docId"].is<const char*>()) outInfo.docId = doc["docId"].as<String>();
     if (doc["xpath"].is<const char*>()) outInfo.xpath = doc["xpath"].as<String>();
 
-    Serial.printf("[Storage] Last read book loaded: %s (page %d/%d)\n", 
-                  outInfo.title.c_str(), outInfo.page, outInfo.totalPages);
+    Serial.printf("[Storage] Last read book loaded: %s (page %d/%d)\n", outInfo.title.c_str(), outInfo.page,
+                  outInfo.totalPages);
     return (outInfo.filePath.length() > 0);
 }

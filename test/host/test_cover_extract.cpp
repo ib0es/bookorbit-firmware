@@ -18,14 +18,17 @@ void simPumpEvents() {}
 
 namespace Platform {
 void feedWatchdog() {}
-}
+}  // namespace Platform
 
 namespace {
 
 class MemIn : public convert::InFile {
 public:
     explicit MemIn(std::vector<uint8_t> data) : _data(std::move(data)) {}
-    bool rewind() override { _pos = 0; return true; }
+    bool rewind() override {
+        _pos = 0;
+        return true;
+    }
     bool seek(uint64_t pos) override {
         if (pos > _data.size()) return false;
         _pos = (size_t)pos;
@@ -56,12 +59,12 @@ public:
         fseek(_f, 0, SEEK_SET);
         return true;
     }
-    ~FileIn() override { if (_f) fclose(_f); }
+    ~FileIn() override {
+        if (_f) fclose(_f);
+    }
     bool rewind() override { return fseek(_f, 0, SEEK_SET) == 0; }
     bool seek(uint64_t pos) override { return fseek(_f, (long)pos, SEEK_SET) == 0; }
-    int32_t read(void* dst, uint32_t len) override {
-        return (int32_t)fread(dst, 1, len, _f);
-    }
+    int32_t read(void* dst, uint32_t len) override { return (int32_t)fread(dst, 1, len, _f); }
     uint64_t size() const override { return _sz; }
 
 private:
@@ -153,26 +156,32 @@ std::vector<uint8_t> makeSyntheticMobi(const std::vector<uint8_t>& coverImg, boo
 }  // namespace
 
 static int g_failed = 0, g_checks = 0;
-#define CHECK(cond) do { g_checks++; if (!(cond)) { g_failed++; \
-    printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); } } while (0)
+#define CHECK(cond)                                                  \
+    do {                                                             \
+        g_checks++;                                                  \
+        if (!(cond)) {                                               \
+            g_failed++;                                              \
+            printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
+        }                                                            \
+    } while (0)
 
 int main(int argc, char** argv) {
     // 1. Synthetic FB2 with l:href and whitespace-padded base64
     {
         // "\xFF\xD8\xFF\xE0" "JFIF" base64 = "/9j/4EpGSUY="
         const std::string fb2 =
-            "<?xml version=\"1.0\" encoding=\"utf-8\"?>"
-            "<FictionBook xmlns:l=\"http://www.w3.org/1999/xlink\">"
-            "<description><title-info>"
-            "<coverpage><image l:href=\"#cov.jpg\"/></coverpage>"
-            "<book-title>Test</book-title>"
-            "</title-info></description>"
-            "<body><section><p>Hello</p></section></body>"
-            "<binary id=\"other.jpg\" content-type=\"image/jpeg\">AAAA</binary>"
-            "<binary content-type=\"image/jpeg\" id=\"cov.jpg\">\n"
-            "  /9j/ 4EpG\r\n  SUY=\n"
-            "</binary>"
-            "</FictionBook>";
+                "<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+                "<FictionBook xmlns:l=\"http://www.w3.org/1999/xlink\">"
+                "<description><title-info>"
+                "<coverpage><image l:href=\"#cov.jpg\"/></coverpage>"
+                "<book-title>Test</book-title>"
+                "</title-info></description>"
+                "<body><section><p>Hello</p></section></body>"
+                "<binary id=\"other.jpg\" content-type=\"image/jpeg\">AAAA</binary>"
+                "<binary content-type=\"image/jpeg\" id=\"cov.jpg\">\n"
+                "  /9j/ 4EpG\r\n  SUY=\n"
+                "</binary>"
+                "</FictionBook>";
         MemIn in(std::vector<uint8_t>(fb2.begin(), fb2.end()));
         MemOut out;
         CHECK(convert::extractFb2Cover(in, out));
@@ -183,9 +192,9 @@ int main(int argc, char** argv) {
     // 2. FB2 without coverpage returns false cleanly
     {
         const std::string fb2 =
-            "<FictionBook><description><title-info><book-title>NoCover</book-title>"
-            "</title-info></description><body><section><p>Text</p></section></body>"
-            "<binary id=\"x.jpg\" content-type=\"image/jpeg\">/9j/4AAQ</binary></FictionBook>";
+                "<FictionBook><description><title-info><book-title>NoCover</book-title>"
+                "</title-info></description><body><section><p>Text</p></section></body>"
+                "<binary id=\"x.jpg\" content-type=\"image/jpeg\">/9j/4AAQ</binary></FictionBook>";
         MemIn in(std::vector<uint8_t>(fb2.begin(), fb2.end()));
         MemOut out;
         CHECK(!convert::extractFb2Cover(in, out));
@@ -221,7 +230,10 @@ int main(int argc, char** argv) {
 
         // Build >300 byte JPEG payload in FB2
         std::vector<uint8_t> jpg(360, 0x11);
-        jpg[0] = 0xFF; jpg[1] = 0xD8; jpg[2] = 0xFF; jpg[3] = 0xE0;
+        jpg[0] = 0xFF;
+        jpg[1] = 0xD8;
+        jpg[2] = 0xFF;
+        jpg[3] = 0xE0;
         static const char kB64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
         std::string b64;
         for (size_t i = 0; i < jpg.size(); i += 3) {
@@ -231,8 +243,10 @@ int main(int argc, char** argv) {
             b64 += kB64[(v >> 6) & 63];
             b64 += kB64[v & 63];
         }
-        const std::string fb2 = "<FictionBook><description><title-info><coverpage><image href=\"#c\"/></coverpage>"
-                                "</title-info></description><body/><binary id=\"c\">" + b64 + "</binary></FictionBook>";
+        const std::string fb2 =
+                "<FictionBook><description><title-info><coverpage><image href=\"#c\"/></coverpage>"
+                "</title-info></description><body/><binary id=\"c\">" +
+                b64 + "</binary></FictionBook>";
         {
             std::ofstream f(tmp / "offline" / "sample.fb2", std::ios::binary);
             f.write(fb2.data(), (std::streamsize)fb2.size());

@@ -27,8 +27,7 @@ bool QrCode::encode(const char* text) {
     size_ = 0;
     if (!text || !*text) return false;
     uint8_t temp[kBufferBytes];
-    if (!qrcodegen_encodeText(text, temp, modules_, qrcodegen_Ecc_MEDIUM,
-                              qrcodegen_VERSION_MIN, kMaxVersion,
+    if (!qrcodegen_encodeText(text, temp, modules_, qrcodegen_Ecc_MEDIUM, qrcodegen_VERSION_MIN, kMaxVersion,
                               qrcodegen_Mask_AUTO, true)) {
         return false;
     }

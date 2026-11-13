@@ -46,7 +46,10 @@ public:
     void touch() { _modified = true; }
 
     // For tests / simulator resets.
-    void clear() { _records.clear(); _modified = true; }
+    void clear() {
+        _records.clear();
+        _modified = true;
+    }
 
 private:
     ProgressStore() = default;

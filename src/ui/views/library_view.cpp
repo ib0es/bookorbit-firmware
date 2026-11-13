@@ -26,8 +26,10 @@ void clipUtf8(char* s) {
 
 void drawRow(Frame& f, Rect r, const BookItem& item, bool selected, int index) {
     const Color ink = selected ? Color::White : Color::Black;
-    if (selected) fill(r, Color::Black);
-    else frameRect(r, Color::Black);
+    if (selected)
+        fill(r, Color::Black);
+    else
+        frameRect(r, Color::Black);
     f.hit(r, ActionOpenItem, (int16_t)index);
 
     Rect inner = insetX(r, 10);
@@ -47,8 +49,10 @@ void drawRow(Frame& f, Rect r, const BookItem& item, bool selected, int index) {
         }
     } else {
         // Icon: where the book is. Badge: how far it is read (or where it is).
-        if (item.isDownloaded) icon::check(inner.x, iconY, ink);
-        else icon::cloud(inner.x, iconY, ink);
+        if (item.isDownloaded)
+            icon::check(inner.x, iconY, ink);
+        else
+            icon::cloud(inner.x, iconY, ink);
         // Filled pill = on the card (how far it is read), outlined pill = only
         // in the cloud (no position: none is asked for until it is downloaded).
         char pct[12];
@@ -56,9 +60,12 @@ void drawRow(Frame& f, Rect r, const BookItem& item, bool selected, int index) {
         if (item.progress >= LibraryManager::kCompletedAt) read = tr(MsgId::LIB_BADGE_COMPLETED);
         // Any position at all, rounded as on the home screen's card (a book just
         // begun showed "0%" there and nothing here below 1%).
-        else if (item.progress > 0.0f) { snprintf(pct, sizeof(pct), "%d%%", (int)roundf(item.progress * 100.0f)); read = pct; }
+        else if (item.progress > 0.0f) {
+            snprintf(pct, sizeof(pct), "%d%%", (int)roundf(item.progress * 100.0f));
+            read = pct;
+        }
         if (item.isDownloaded) {
-            snprintf(badgeBuf, sizeof(badgeBuf), "%s", read ? read : tr(MsgId::HOME_CAT_DOWNLOADED));   // pct is local
+            snprintf(badgeBuf, sizeof(badgeBuf), "%s", read ? read : tr(MsgId::HOME_CAT_DOWNLOADED));  // pct is local
         } else {
             badgeDark = false;
             badge = tr(MsgId::HOME_CAT_CLOUD);
@@ -140,10 +147,14 @@ void drawLibraryScreen(AppContext& ctx, bool fullRefresh) {
 
     char titleBuf[96];
     const char* filterName = tr(MsgId::LIB_FILTER_ALL);
-    if (lib.currentFilter == FILTER_DOWNLOADED) filterName = tr(MsgId::LIB_FILTER_DOWNLOADED);
-    else if (lib.currentFilter == FILTER_CLOUD) filterName = tr(MsgId::LIB_FILTER_CLOUD);
-    else if (lib.currentFilter == FILTER_COMPLETED) filterName = tr(MsgId::LIB_FILTER_COMPLETED);
-    else if (lib.currentFilter == FILTER_FOLDERS) filterName = tr(MsgId::LIB_FILTER_FOLDERS);
+    if (lib.currentFilter == FILTER_DOWNLOADED)
+        filterName = tr(MsgId::LIB_FILTER_DOWNLOADED);
+    else if (lib.currentFilter == FILTER_CLOUD)
+        filterName = tr(MsgId::LIB_FILTER_CLOUD);
+    else if (lib.currentFilter == FILTER_COMPLETED)
+        filterName = tr(MsgId::LIB_FILTER_COMPLETED);
+    else if (lib.currentFilter == FILTER_FOLDERS)
+        filterName = tr(MsgId::LIB_FILTER_FOLDERS);
 
     // Virtual lists: "<name> (<entries>)"; the ".." row is not counted.
     const int entries = total > 0 && lib.rowAt(0).title.startsWith("..") ? total - 1 : total;
@@ -151,8 +162,11 @@ void drawLibraryScreen(AppContext& ctx, bool fullRefresh) {
     if (folder.equals("@formats") && lib.formatBookItem()) {
         snprintf(titleBuf, sizeof(titleBuf), tr(MsgId::LIB_FORMATS_HEADER_FMT), lib.formatBookItem()->title.c_str());
     } else if (lib.currentFilter == FILTER_OFFLINE) {
-        if (total == 0) snprintf(titleBuf, sizeof(titleBuf), "%s", tr(MsgId::LIB_TITLE_OFFLINE));
-        else snprintf(titleBuf, sizeof(titleBuf), "%s (%d/%d)", tr(MsgId::LIB_TITLE_OFFLINE), lib.selectedBookIndex + 1, total);
+        if (total == 0)
+            snprintf(titleBuf, sizeof(titleBuf), "%s", tr(MsgId::LIB_TITLE_OFFLINE));
+        else
+            snprintf(titleBuf, sizeof(titleBuf), "%s (%d/%d)", tr(MsgId::LIB_TITLE_OFFLINE), lib.selectedBookIndex + 1,
+                     total);
     } else if (folder.equalsIgnoreCase("@libraries")) {
         snprintf(titleBuf, sizeof(titleBuf), tr(MsgId::LIB_LIBRARIES_HEADER_FMT), entries);
     } else if (folder.startsWith("@library:")) {
@@ -174,44 +188,51 @@ void drawLibraryScreen(AppContext& ctx, bool fullRefresh) {
     } else if (lib.currentFilter == FILTER_SEARCH || folder.equalsIgnoreCase("@search")) {
         snprintf(titleBuf, sizeof(titleBuf), tr(MsgId::LIB_SEARCH_HEADER_FMT), lib.searchQuery.c_str(), entries);
     } else if (lib.currentFolder.equalsIgnoreCase("/books") || lib.currentFolder.equals("/")) {
-        if (total == 0) snprintf(titleBuf, sizeof(titleBuf), "%s", filterName);
-        else snprintf(titleBuf, sizeof(titleBuf), "%s (%d/%d)", filterName, lib.selectedBookIndex + 1, total);
+        if (total == 0)
+            snprintf(titleBuf, sizeof(titleBuf), "%s", filterName);
+        else
+            snprintf(titleBuf, sizeof(titleBuf), "%s (%d/%d)", filterName, lib.selectedBookIndex + 1, total);
     } else {
         int lastSlash = lib.currentFolder.lastIndexOf('/');
         String folderName = (lastSlash >= 0) ? lib.currentFolder.substring(lastSlash + 1) : lib.currentFolder;
         char name[64];
         snprintf(name, sizeof(name), tr(MsgId::LIB_FOLDER_HEADER_FMT), folderName.c_str());
-        if (total == 0) snprintf(titleBuf, sizeof(titleBuf), "%s", name);
-        else snprintf(titleBuf, sizeof(titleBuf), "%s (%d/%d)", name, lib.selectedBookIndex + 1, total);
+        if (total == 0)
+            snprintf(titleBuf, sizeof(titleBuf), "%s", name);
+        else
+            snprintf(titleBuf, sizeof(titleBuf), "%s (%d/%d)", name, lib.selectedBookIndex + 1, total);
     }
 
-    clipUtf8(titleBuf);   // snprintf may have cut a long name inside a character
+    clipUtf8(titleBuf);  // snprintf may have cut a long name inside a character
     Rect area = topBar(f, titleBuf);
 
     const bool curIsDir = total > 0 && lib.rowAt(lib.selectedBookIndex).isDirectory;
     const bool curDownloaded = total > 0 && lib.rowAt(lib.selectedBookIndex).isDownloaded;
     if (curIsDir) {
         area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_OPEN), "", tr(MsgId::KEY_OPEN)});
-    } else if (folder.equals("@formats")) {   // format rows have no book menu
+    } else if (folder.equals("@formats")) {  // format rows have no book menu
         area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_READ), "", tr(MsgId::KEY_READ)});
     } else if (lib.currentFilter == FILTER_OFFLINE) {
         if (total == 0) {
             area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_WEB), "", tr(MsgId::KEY_WEB)});
         } else {
-            area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_READ), tr(MsgId::KEY_MENU), tr(MsgId::KEY_WEB)});
+            area = keyHints(f, area,
+                            KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_READ), tr(MsgId::KEY_MENU),
+                                      tr(MsgId::KEY_WEB)});
         }
     } else {
         (void)curDownloaded;
-        area = keyHints(f, area, KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_READ), tr(MsgId::KEY_MENU), tr(MsgId::KEY_READ)});
+        area = keyHints(f, area,
+                        KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_READ), tr(MsgId::KEY_MENU), tr(MsgId::KEY_READ)});
     }
     area = insetXY(area, kMargin, 10);
 
     if (total == 0) {
         takeTop(area, lib.currentFilter == FILTER_OFFLINE ? 10 : (area.height / 4));
         const MsgId msgs[3] = {
-            lib.currentFilter == FILTER_OFFLINE ? MsgId::LIB_EMPTY_OFFLINE_1 : MsgId::LIB_EMPTY_MSG_1,
-            lib.currentFilter == FILTER_OFFLINE ? MsgId::LIB_EMPTY_OFFLINE_2 : MsgId::LIB_EMPTY_MSG_2,
-            lib.currentFilter == FILTER_OFFLINE ? MsgId::LIB_EMPTY_OFFLINE_3 : MsgId::LIB_EMPTY_MSG_3,
+                lib.currentFilter == FILTER_OFFLINE ? MsgId::LIB_EMPTY_OFFLINE_1 : MsgId::LIB_EMPTY_MSG_1,
+                lib.currentFilter == FILTER_OFFLINE ? MsgId::LIB_EMPTY_OFFLINE_2 : MsgId::LIB_EMPTY_MSG_2,
+                lib.currentFilter == FILTER_OFFLINE ? MsgId::LIB_EMPTY_OFFLINE_3 : MsgId::LIB_EMPTY_MSG_3,
         };
         for (MsgId m : msgs) {
             const int16_t h = wrappedHeight(tr(m), FontBody, area.width, 3);
@@ -226,7 +247,7 @@ void drawLibraryScreen(AppContext& ctx, bool fullRefresh) {
                  ActionLaunchWeb, 0);
         }
     } else {
-        const int16_t rowH = (int16_t)(2 * lineHeight(FontBody) + 18);   // two lines (U1)
+        const int16_t rowH = (int16_t)(2 * lineHeight(FontBody) + 18);  // two lines (U1)
         const int16_t step = (int16_t)(rowH + 5);
         int perPage = (area.height + 5) / step;
         if (perPage < 1) perPage = 1;
@@ -247,8 +268,7 @@ void drawLibraryScreen(AppContext& ctx, bool fullRefresh) {
         const int pages = (total + perPage - 1) / perPage;
         if (pages > 1) {
             const int16_t trackX = (int16_t)(width() - 6);
-            Rect track{trackX, (int16_t)(lineHeight(FontTitle) + 28), 3,
-                       (int16_t)(perPage * step - 5)};
+            Rect track{trackX, (int16_t)(lineHeight(FontTitle) + 28), 3, (int16_t)(perPage * step - 5)};
             vline(trackX + 1, track.y, track.bottom(), Color::Black, 1);
             const int16_t thumbH = (int16_t)(track.height / pages);
             fill(Rect{trackX, (int16_t)(track.y + (pageStart / perPage) * thumbH), 3, thumbH}, Color::Black);
@@ -257,9 +277,11 @@ void drawLibraryScreen(AppContext& ctx, bool fullRefresh) {
 
     present(fullRefresh);
     Serial.printf("[UI] drawLibraryScreen finished in %lu ms.\n", millis() - t0);
-    if (total > 0) {   // what is selected, for the logs (and the walkthrough tests)
+    if (total > 0) {  // what is selected, for the logs (and the walkthrough tests)
         const BookItem& sel = lib.rowAt(lib.selectedBookIndex);
         Serial.printf("[UI] Library row %d/%d: '%s' %s\n", lib.selectedBookIndex + 1, total, sel.title.c_str(),
-                      sel.isDirectory ? "folder" : sel.isDownloaded ? "on card" : "cloud");
+                      sel.isDirectory    ? "folder"
+                      : sel.isDownloaded ? "on card"
+                                         : "cloud");
     }
 }

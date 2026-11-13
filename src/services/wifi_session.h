@@ -18,4 +18,4 @@ void giveMemoryToReader();
 // Wi-Fi gives its memory back a moment after it is turned off: waits, at most
 // `maxMs`, until the free heap stops growing (P2).
 void waitForHeapToSettle(uint32_t maxMs = 500);
-}
+}  // namespace WifiSession

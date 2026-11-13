@@ -34,7 +34,8 @@ static void drawModal(const char* title, const char* line1, const char* line2 = 
 
 // Connecting takes up to 14 s: BACK (a tap on touch boards) gives up. Returns
 // 1 connected, 0 failed, -1 cancelled.
-static int connectCancellable(const char* title, const char* line1, const String& ssid, const char* pass, uint32_t timeoutMs) {
+static int connectCancellable(const char* title, const char* line1, const String& ssid, const char* pass,
+                              uint32_t timeoutMs) {
     SyncService::resetCancel();
     drawStatusModal(title, line1, ssid.c_str(), tr(MsgId::COMMON_WAIT), nullptr, tr(MsgId::COMMON_CANCEL));
     const bool ok = BookOrbit.connectWiFi(ssid.c_str(), pass, timeoutMs, SyncService::checkSyncCancel);
@@ -71,15 +72,20 @@ static void drawNetworkList(const std::vector<ScannedNet>& list, int selectedInd
         const bool selected = (i == selectedIndex);
         const ScannedNet& net = list[i];
         const Color ink = selected ? Color::White : Color::Black;
-        if (selected) fill(row, Color::Black);
-        else frameRect(row, Color::Black);
+        if (selected)
+            fill(row, Color::Black);
+        else
+            frameRect(row, Color::Black);
         f.hit(row, 1, (int16_t)i);
 
         // RSSI: -30 (best) .. -90 (weak)
         int bars = 1;
-        if (net.rssi >= -60) bars = 4;
-        else if (net.rssi >= -70) bars = 3;
-        else if (net.rssi >= -80) bars = 2;
+        if (net.rssi >= -60)
+            bars = 4;
+        else if (net.rssi >= -70)
+            bars = 3;
+        else if (net.rssi >= -80)
+            bars = 2;
         icon::signal((int16_t)(row.x + 10), (int16_t)(row.y + (row.height - 20) / 2), bars, ink);
 
         // Right tag
@@ -106,7 +112,8 @@ static void drawNetworkList(const std::vector<ScannedNet>& list, int selectedInd
 bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
     while (true) {
         Serial.println("[WifiUI] Starting Wi-Fi network scan...");
-        drawModal(tr(MsgId::WIFI_SCAN_MODAL_TITLE), tr(MsgId::WIFI_SCAN_MODAL_SCANNING), tr(MsgId::WIFI_SCAN_MODAL_WAIT));
+        drawModal(tr(MsgId::WIFI_SCAN_MODAL_TITLE), tr(MsgId::WIFI_SCAN_MODAL_SCANNING),
+                  tr(MsgId::WIFI_SCAN_MODAL_WAIT));
 
         WifiSession::prepare();
         WiFi.mode(WIFI_STA);
@@ -139,7 +146,7 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
                 }
             }
             if (!found) {
-                list.push_back({ s, r, openNet, auth });
+                list.push_back({s, r, openNet, auth});
             }
         }
         WiFi.scanDelete();
@@ -215,14 +222,16 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
 
                     if (chosen.isOpen) {
                         // Open network without password
-                        const int c = connectCancellable(tr(MsgId::WIFI_CONNECTING_TITLE), tr(MsgId::WIFI_CONNECTING_OPEN), chosen.ssid, "", 12000);
+                        const int c = connectCancellable(tr(MsgId::WIFI_CONNECTING_TITLE),
+                                                         tr(MsgId::WIFI_CONNECTING_OPEN), chosen.ssid, "", 12000);
                         if (c < 0) {
                             redraw = true;
                         } else if (c > 0) {
                             outSsid = chosen.ssid;
                             outPass = "";
                             String ipStr = "IP: " + WiFi.localIP().toString();
-                            drawModal(tr(MsgId::WIFI_CONNECTED_TITLE), tr(MsgId::WIFI_CONNECTED_OPEN), chosen.ssid.c_str(), ipStr.c_str());
+                            drawModal(tr(MsgId::WIFI_CONNECTED_TITLE), tr(MsgId::WIFI_CONNECTED_OPEN),
+                                      chosen.ssid.c_str(), ipStr.c_str());
                             PowerService::waitOrKey(2200);
                             return true;
                         } else {
@@ -237,7 +246,8 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
                         // If matching current saved network and has password, offer fast connect
                         if (chosen.ssid.equalsIgnoreCase(outSsid) && outPass.length() > 0) {
                             passCandidate = outPass;
-                            const int c = connectCancellable(tr(MsgId::WIFI_CONNECTING_TITLE), tr(MsgId::WIFI_CONNECTING_SAVED), chosen.ssid,
+                            const int c = connectCancellable(tr(MsgId::WIFI_CONNECTING_TITLE),
+                                                             tr(MsgId::WIFI_CONNECTING_SAVED), chosen.ssid,
                                                              passCandidate.c_str(), 14000);
                             if (c < 0) {
                                 redraw = true;
@@ -246,11 +256,13 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
                             if (c > 0) {
                                 outSsid = chosen.ssid;
                                 String ipStr = "IP: " + WiFi.localIP().toString();
-                                drawModal(tr(MsgId::WIFI_CONNECTED_TITLE), tr(MsgId::WIFI_CONNECTED_SAVED), chosen.ssid.c_str(), ipStr.c_str());
+                                drawModal(tr(MsgId::WIFI_CONNECTED_TITLE), tr(MsgId::WIFI_CONNECTED_SAVED),
+                                          chosen.ssid.c_str(), ipStr.c_str());
                                 PowerService::waitOrKey(2200);
                                 return true;
                             } else {
-                                drawModal(tr(MsgId::COMMON_ERROR), tr(MsgId::WIFI_ERR_SAVED_PASS_L1), tr(MsgId::WIFI_ERR_SAVED_PASS_L2));
+                                drawModal(tr(MsgId::COMMON_ERROR), tr(MsgId::WIFI_ERR_SAVED_PASS_L1),
+                                          tr(MsgId::WIFI_ERR_SAVED_PASS_L2));
                                 PowerService::waitOrKey(2000);
                             }
                         } else if (chosen.ssid.equalsIgnoreCase(lastEnteredSsid)) {
@@ -267,7 +279,8 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
                         lastEnteredSsid = chosen.ssid;
                         lastEnteredPass = passCandidate;
 
-                        const int c = connectCancellable(tr(MsgId::WIFI_CHECKING_PASS_TITLE), tr(MsgId::WIFI_CONNECTING_PREFIX), chosen.ssid,
+                        const int c = connectCancellable(tr(MsgId::WIFI_CHECKING_PASS_TITLE),
+                                                         tr(MsgId::WIFI_CONNECTING_PREFIX), chosen.ssid,
                                                          passCandidate.c_str(), 14000);
                         if (c < 0) {
                             redraw = true;
@@ -275,7 +288,8 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
                             outSsid = chosen.ssid;
                             outPass = passCandidate;
                             String ipStr = "IP: " + WiFi.localIP().toString();
-                            drawModal(tr(MsgId::WIFI_CONNECTED_TITLE), tr(MsgId::WIFI_CONNECTED_SAVED_MSG), chosen.ssid.c_str(), ipStr.c_str());
+                            drawModal(tr(MsgId::WIFI_CONNECTED_TITLE), tr(MsgId::WIFI_CONNECTED_SAVED_MSG),
+                                      chosen.ssid.c_str(), ipStr.c_str());
                             PowerService::waitOrKey(2200);
                             return true;
                         } else {

@@ -44,9 +44,8 @@ using RedrawFn = void (*)(AppContext&, bool);
 using UpdateSelectionFn = void (*)(AppContext&, int, int);
 
 // Up/Down/Confirm/Back navigation shared by the settings menus.
-void handleMenu(AppContext& ctx, const ButtonEvent& event, int& selected, int count,
-                UpdateSelectionFn updateSelection, void (*execute)(AppContext&, int),
-                AppState backState, RedrawFn backRedraw, bool backFull = false) {
+void handleMenu(AppContext& ctx, const ButtonEvent& event, int& selected, int count, UpdateSelectionFn updateSelection,
+                void (*execute)(AppContext&, int), AppState backState, RedrawFn backRedraw, bool backFull = false) {
     if (event.action != ACTION_CLICK) return;
     switch (Actions::of(event)) {
         case Action::Down: {
@@ -81,8 +80,7 @@ void handleMenu(AppContext& ctx, const ButtonEvent& event, int& selected, int co
 
 // On-screen keyboard for one config field.
 void editField(AppContext& ctx, const char* title, const String& prompt, String& field, KeyboardMode mode,
-               RedrawFn redraw, const String& savedLine1, bool showValue,
-               void (*beforeSave)(AppContext&) = nullptr) {
+               RedrawFn redraw, const String& savedLine1, bool showValue, void (*beforeSave)(AppContext&) = nullptr) {
     // The list shows the new value: no "Saved" message to wait out (1.5 s and two refreshes).
     (void)savedLine1;
     (void)showValue;
@@ -190,7 +188,8 @@ void executeSetting(AppContext& ctx, int index) {
             break;
         case 5: {  // System info
             char batStr[128];
-            snprintf(batStr, sizeof(batStr), tr(MsgId::SETTINGS_INFO_BATTERY_FMT), Battery.getPercentage(), Battery.getVoltage());
+            snprintf(batStr, sizeof(batStr), tr(MsgId::SETTINGS_INFO_BATTERY_FMT), Battery.getPercentage(),
+                     Battery.getVoltage());
             String batLine = batStr;
             if (BoardRtc.present()) {
                 char clk[16], tz[16], rtcBuf[64];
@@ -216,7 +215,8 @@ void executeSetting(AppContext& ctx, int index) {
                 } else if (!BoardImu.active()) {
                     snprintf(imuBuf, sizeof(imuBuf), "%s", tr(MsgId::SETTINGS_INFO_IMU_OFF));
                 } else if (BoardImu.hasLastSample()) {
-                    snprintf(imuBuf, sizeof(imuBuf), tr(MsgId::SETTINGS_INFO_IMU_FMT), BoardImu.lastAx(), BoardImu.lastAy(), BoardImu.lastAz());
+                    snprintf(imuBuf, sizeof(imuBuf), tr(MsgId::SETTINGS_INFO_IMU_FMT), BoardImu.lastAx(),
+                             BoardImu.lastAy(), BoardImu.lastAz());
                 } else {
                     imuBuf[0] = '\0';
                 }
@@ -246,23 +246,19 @@ void executeSdSetting(AppContext& ctx, int index) {
                 // Everything in the file takes effect (an open book is laid out again once).
                 AppController::getInstance().applyConfig();
                 if (Reader.isOpened()) LibraryManager::getInstance().flushReaderPosition();
-                Modal.showMessage(tr(MsgId::SETTINGS_MODAL_SD_LOAD_OK_TITLE),
-                                  tr(MsgId::SETTINGS_MODAL_SD_LOAD_OK_L1),
+                Modal.showMessage(tr(MsgId::SETTINGS_MODAL_SD_LOAD_OK_TITLE), tr(MsgId::SETTINGS_MODAL_SD_LOAD_OK_L1),
                                   tr(MsgId::SETTINGS_MODAL_SD_LOAD_OK_L2));
             } else {
-                Modal.showMessage(tr(MsgId::SETTINGS_MODAL_SD_LOAD_ERR_TITLE),
-                                  tr(MsgId::SETTINGS_MODAL_SD_LOAD_ERR_L1),
+                Modal.showMessage(tr(MsgId::SETTINGS_MODAL_SD_LOAD_ERR_TITLE), tr(MsgId::SETTINGS_MODAL_SD_LOAD_ERR_L1),
                                   tr(MsgId::SETTINGS_MODAL_SD_LOAD_ERR_L2));
             }
             break;
         case 1:  // Save to SD
             if (ctx.config.save()) {
-                Modal.showMessage(tr(MsgId::SETTINGS_MODAL_SD_SAVE_OK_TITLE),
-                                  tr(MsgId::SETTINGS_MODAL_SD_SAVE_OK_L1),
+                Modal.showMessage(tr(MsgId::SETTINGS_MODAL_SD_SAVE_OK_TITLE), tr(MsgId::SETTINGS_MODAL_SD_SAVE_OK_L1),
                                   tr(MsgId::SETTINGS_MODAL_SD_SAVE_OK_L2));
             } else {
-                Modal.showMessage(tr(MsgId::SETTINGS_MODAL_SD_SAVE_ERR_TITLE),
-                                  tr(MsgId::SETTINGS_MODAL_SD_SAVE_ERR_L1),
+                Modal.showMessage(tr(MsgId::SETTINGS_MODAL_SD_SAVE_ERR_TITLE), tr(MsgId::SETTINGS_MODAL_SD_SAVE_ERR_L1),
                                   tr(MsgId::SETTINGS_MODAL_SD_SAVE_ERR_L2));
             }
             break;
@@ -272,12 +268,15 @@ void executeSdSetting(AppContext& ctx, int index) {
 // ---------------------------------------------------------------- Wi-Fi settings
 void testWifi(AppContext& ctx) {
     if (ctx.config.wifiSsid.length() == 0) {
-        Modal.showMessage(tr(MsgId::COMMON_ERROR), tr(MsgId::WIFI_TEST_NOT_SET_L1), tr(MsgId::WIFI_TEST_NOT_SET_L2), "", "", 2000);
+        Modal.showMessage(tr(MsgId::COMMON_ERROR), tr(MsgId::WIFI_TEST_NOT_SET_L1), tr(MsgId::WIFI_TEST_NOT_SET_L2), "",
+                          "", 2000);
         return;
     }
     SyncService::resetCancel();
-    drawStatusModal(tr(MsgId::WIFI_TEST_MODAL_TITLE), tr(MsgId::WIFI_TEST_MODAL_CONNECTING), ctx.config.wifiSsid.c_str(), tr(MsgId::COMMON_WAIT), nullptr, tr(MsgId::COMMON_CANCEL));
-    const bool ok = BookOrbit.connectWiFi(ctx.config.wifiSsid.c_str(), ctx.config.wifiPass.c_str(), 14000, SyncService::checkSyncCancel);
+    drawStatusModal(tr(MsgId::WIFI_TEST_MODAL_TITLE), tr(MsgId::WIFI_TEST_MODAL_CONNECTING),
+                    ctx.config.wifiSsid.c_str(), tr(MsgId::COMMON_WAIT), nullptr, tr(MsgId::COMMON_CANCEL));
+    const bool ok = BookOrbit.connectWiFi(ctx.config.wifiSsid.c_str(), ctx.config.wifiPass.c_str(), 14000,
+                                          SyncService::checkSyncCancel);
     if (cancelledDuringTest(ctx, STATE_WIFI_SETTINGS)) return;
     if (ok) {
         String ipStr = "IP: " + WiFi.localIP().toString();
@@ -300,14 +299,15 @@ void executeWifiSetting(AppContext& ctx, int index) {
             drawWifiSettingsScreen(ctx, false);
             break;
         case 1:
-            editField(ctx, tr(MsgId::WIFI_KB_SSID_TITLE), tr(MsgId::WIFI_KB_SSID_PROMPT), ctx.config.wifiSsid, KB_MODE_TEXT,
-                      drawWifiSettingsScreen, tr(MsgId::WIFI_KB_SSID_SAVED), true);
+            editField(ctx, tr(MsgId::WIFI_KB_SSID_TITLE), tr(MsgId::WIFI_KB_SSID_PROMPT), ctx.config.wifiSsid,
+                      KB_MODE_TEXT, drawWifiSettingsScreen, tr(MsgId::WIFI_KB_SSID_SAVED), true);
             break;
         case 2: {
             char promptBuf[128];
-            snprintf(promptBuf, sizeof(promptBuf), tr(MsgId::WIFI_KB_PASS_PROMPT_FMT), 
+            snprintf(promptBuf, sizeof(promptBuf), tr(MsgId::WIFI_KB_PASS_PROMPT_FMT),
                      (ctx.config.wifiSsid.length() > 0 ? ctx.config.wifiSsid.c_str() : tr(MsgId::WIFI_KB_PASS_NONE)));
-            if (KeyboardUI::show(tr(MsgId::WIFI_KB_PASS_TITLE), String(promptBuf), ctx.config.wifiPass, KB_MODE_PASSWORD)) {
+            if (KeyboardUI::show(tr(MsgId::WIFI_KB_PASS_TITLE), String(promptBuf), ctx.config.wifiPass,
+                                 KB_MODE_PASSWORD)) {
                 ctx.config.save();
             }
             drawWifiSettingsScreen(ctx, false);   // the row shows the (masked) password or "open"
@@ -318,12 +318,14 @@ void executeWifiSetting(AppContext& ctx, int index) {
             break;
         case 4:  // Forget network
             if (ctx.config.wifiSsid.length() == 0 && ctx.config.wifiPass.length() == 0) {
-                Modal.showMessage(tr(MsgId::WIFI_FORGET_EMPTY_TITLE), tr(MsgId::WIFI_FORGET_EMPTY_L1), "", "", "", 1500);
+                Modal.showMessage(tr(MsgId::WIFI_FORGET_EMPTY_TITLE), tr(MsgId::WIFI_FORGET_EMPTY_L1), "", "", "",
+                                  1500);
             } else {
                 ctx.config.wifiSsid = "";
                 ctx.config.wifiPass = "";
                 ctx.config.save();
-                Modal.showMessage(tr(MsgId::WIFI_FORGET_RESET_TITLE), tr(MsgId::WIFI_FORGET_RESET_L1), tr(MsgId::WIFI_FORGET_RESET_L2));
+                Modal.showMessage(tr(MsgId::WIFI_FORGET_RESET_TITLE), tr(MsgId::WIFI_FORGET_RESET_L1),
+                                  tr(MsgId::WIFI_FORGET_RESET_L2));
             }
             break;
     }
@@ -355,26 +357,33 @@ void executeWebSetting(AppContext& ctx, int index) {
 // ---------------------------------------------------------------- server settings
 void testServer(AppContext& ctx) {
     SyncService::resetCancel();
-    drawStatusModal(tr(MsgId::SERVER_TEST_TITLE), tr(MsgId::SERVER_TEST_WIFI_CONNECTING), ctx.config.wifiSsid.c_str(), nullptr, nullptr, tr(MsgId::COMMON_CANCEL));
-    if (!BookOrbit.connectWiFi(ctx.config.wifiSsid.c_str(), ctx.config.wifiPass.c_str(), 15000, SyncService::checkSyncCancel)) {
+    drawStatusModal(tr(MsgId::SERVER_TEST_TITLE), tr(MsgId::SERVER_TEST_WIFI_CONNECTING), ctx.config.wifiSsid.c_str(),
+                    nullptr, nullptr, tr(MsgId::COMMON_CANCEL));
+    if (!BookOrbit.connectWiFi(ctx.config.wifiSsid.c_str(), ctx.config.wifiPass.c_str(), 15000,
+                               SyncService::checkSyncCancel)) {
         if (cancelledDuringTest(ctx, STATE_SERVER_SETTINGS)) return;
         Modal.showMessage(tr(MsgId::SERVER_TEST_WIFI_ERR_TITLE), tr(MsgId::SERVER_TEST_WIFI_ERR_L1),
-                          wifiFailureLine(BookOrbit.lastWifiFailure(), tr(MsgId::SERVER_TEST_WIFI_ERR_L2)), "", "", 3500);
+                          wifiFailureLine(BookOrbit.lastWifiFailure(), tr(MsgId::SERVER_TEST_WIFI_ERR_L2)), "", "",
+                          3500);
         return;
     }
     if (cancelledDuringTest(ctx, STATE_SERVER_SETTINGS)) return;
 
-    drawStatusModal(tr(MsgId::SERVER_TEST_TITLE), tr(MsgId::SERVER_TEST_WIFI_OK), tr(MsgId::SERVER_TEST_PINGING), ctx.config.serverHost.c_str(), nullptr, tr(MsgId::COMMON_CANCEL));
+    drawStatusModal(tr(MsgId::SERVER_TEST_TITLE), tr(MsgId::SERVER_TEST_WIFI_OK), tr(MsgId::SERVER_TEST_PINGING),
+                    ctx.config.serverHost.c_str(), nullptr, tr(MsgId::COMMON_CANCEL));
     if (!BookOrbit.pingServer(ctx.config.serverHost)) {
         BookOrbit.disconnectWiFi();
-        Modal.showMessage(tr(MsgId::SERVER_TEST_SERVER_ERR_TITLE), tr(MsgId::SERVER_TEST_SERVER_ERR_L1), tr(MsgId::SERVER_TEST_SERVER_ERR_L2), "", "", 3000);
+        Modal.showMessage(tr(MsgId::SERVER_TEST_SERVER_ERR_TITLE), tr(MsgId::SERVER_TEST_SERVER_ERR_L1),
+                          tr(MsgId::SERVER_TEST_SERVER_ERR_L2), "", "", 3000);
         return;
     }
     if (cancelledDuringTest(ctx, STATE_SERVER_SETTINGS)) return;
 
-    drawStatusModal(tr(MsgId::SERVER_TEST_TITLE), tr(MsgId::SERVER_TEST_SERVER_OK), tr(MsgId::SERVER_TEST_AUTH), ctx.config.bookOrbitUser.c_str(), nullptr, tr(MsgId::COMMON_CANCEL));
+    drawStatusModal(tr(MsgId::SERVER_TEST_TITLE), tr(MsgId::SERVER_TEST_SERVER_OK), tr(MsgId::SERVER_TEST_AUTH),
+                    ctx.config.bookOrbitUser.c_str(), nullptr, tr(MsgId::COMMON_CANCEL));
     String freshToken;
-    const bool loggedIn = BookOrbit.login(ctx.config.serverHost, ctx.config.bookOrbitUser, ctx.config.bookOrbitPass, freshToken);
+    const bool loggedIn =
+            BookOrbit.login(ctx.config.serverHost, ctx.config.bookOrbitUser, ctx.config.bookOrbitPass, freshToken);
     BookOrbit.disconnectWiFi();
     if (loggedIn) {
         ctx.config.authToken = freshToken;
@@ -387,10 +396,12 @@ void testServer(AppContext& ctx) {
             Modal.showMessage(tr(MsgId::SERVER_TEST_SUCCESS_TITLE), tr(MsgId::SERVER_TEST_SUCCESS_L1), String(userBuf),
                               tr(MsgId::SERVER_HTTP_WARN_L1), tr(MsgId::SERVER_HTTP_WARN_L2), 6000);
         } else {
-            Modal.showMessage(tr(MsgId::SERVER_TEST_SUCCESS_TITLE), tr(MsgId::SERVER_TEST_SUCCESS_L1), String(userBuf), "", "", 3000);
+            Modal.showMessage(tr(MsgId::SERVER_TEST_SUCCESS_TITLE), tr(MsgId::SERVER_TEST_SUCCESS_L1), String(userBuf),
+                              "", "", 3000);
         }
     } else {
-        Modal.showMessage(tr(MsgId::SERVER_TEST_AUTH_ERR_TITLE), tr(MsgId::SERVER_TEST_AUTH_ERR_L1), tr(MsgId::SERVER_TEST_AUTH_ERR_L2), "", "", 3000);
+        Modal.showMessage(tr(MsgId::SERVER_TEST_AUTH_ERR_TITLE), tr(MsgId::SERVER_TEST_AUTH_ERR_L1),
+                          tr(MsgId::SERVER_TEST_AUTH_ERR_L2), "", "", 3000);
     }
 }
 
@@ -409,18 +420,19 @@ void executeServerSetting(AppContext& ctx, int index) {
     switch (index) {
         case 0: {
             const String before = ctx.config.serverHost;
-            editField(ctx, tr(MsgId::SERVER_KB_HOST_TITLE), tr(MsgId::SERVER_KB_HOST_PROMPT), ctx.config.serverHost, KB_MODE_URL,
-                      drawServerSettingsScreen, tr(MsgId::SERVER_KB_HOST_SAVED), true);
+            editField(ctx, tr(MsgId::SERVER_KB_HOST_TITLE), tr(MsgId::SERVER_KB_HOST_PROMPT), ctx.config.serverHost,
+                      KB_MODE_URL, drawServerSettingsScreen, tr(MsgId::SERVER_KB_HOST_SAVED), true);
             if (ctx.config.serverHost != before) showPlainHttpWarning(ctx);   // B4
             break;
         }
         case 1:
-            editField(ctx, tr(MsgId::SERVER_KB_USER_TITLE), tr(MsgId::SERVER_KB_USER_PROMPT), ctx.config.bookOrbitUser, KB_MODE_TEXT,
-                      drawServerSettingsScreen, tr(MsgId::SERVER_KB_USER_SAVED), true);
+            editField(ctx, tr(MsgId::SERVER_KB_USER_TITLE), tr(MsgId::SERVER_KB_USER_PROMPT), ctx.config.bookOrbitUser,
+                      KB_MODE_TEXT, drawServerSettingsScreen, tr(MsgId::SERVER_KB_USER_SAVED), true);
             break;
         case 2: {
-            editField(ctx, tr(MsgId::SERVER_KB_PASS_TITLE), tr(MsgId::SERVER_KB_PASS_PROMPT), ctx.config.bookOrbitPass, KB_MODE_PASSWORD,
-                      drawServerSettingsScreen, tr(MsgId::SERVER_KB_PASS_SAVED), false, invalidateToken);
+            editField(ctx, tr(MsgId::SERVER_KB_PASS_TITLE), tr(MsgId::SERVER_KB_PASS_PROMPT), ctx.config.bookOrbitPass,
+                      KB_MODE_PASSWORD, drawServerSettingsScreen, tr(MsgId::SERVER_KB_PASS_SAVED), false,
+                      invalidateToken);
             break;
         }
         case 3:
@@ -431,8 +443,8 @@ void executeServerSetting(AppContext& ctx, int index) {
 
 // ---------------------------------------------------------------- sync settings
 void executeSyncSetting(AppContext& ctx, int index) {
-    bool* flags[NUM_SYNC_SETTINGS_ITEMS] = { &ctx.config.syncOnClose, &ctx.config.syncOnSleep,
-                                             &ctx.config.syncOnWake, &ctx.config.syncOnBoot };
+    bool* flags[NUM_SYNC_SETTINGS_ITEMS] = {&ctx.config.syncOnClose, &ctx.config.syncOnSleep, &ctx.config.syncOnWake,
+                                            &ctx.config.syncOnBoot};
     if (index < 0 || index >= NUM_SYNC_SETTINGS_ITEMS) return;
     *flags[index] = !*flags[index];
     ctx.config.save();
@@ -463,7 +475,8 @@ void executeSleepCoverSetting(AppContext& ctx, int index) {
 void executeUsbMscSetting(AppContext& ctx, int index) {
     if (index == 0) {
         if (!ctx.config.usbMscEnabled) {
-            Modal.showMessage(tr(MsgId::USB_MSC_MENU_TITLE), tr(MsgId::USB_MSC_DISABLED_L1), tr(MsgId::USB_MSC_DISABLED_L2));
+            Modal.showMessage(tr(MsgId::USB_MSC_MENU_TITLE), tr(MsgId::USB_MSC_DISABLED_L1),
+                              tr(MsgId::USB_MSC_DISABLED_L2));
             return;
         }
         if (!UsbMscSession::begin(ctx)) {
@@ -494,8 +507,8 @@ void exitUsbMscScreen(AppContext& ctx) {
 namespace SettingsScreen {
 
 void handleSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
-    handleMenu(ctx, event, ctx.selectedSettingIndex, settingsItemCount(), updateSettingsSelection,
-               executeSetting, STATE_HOME, drawHomeScreen, false);
+    handleMenu(ctx, event, ctx.selectedSettingIndex, settingsItemCount(), updateSettingsSelection, executeSetting,
+               STATE_HOME, drawHomeScreen, false);
 }
 
 void handleSdSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
@@ -658,8 +671,10 @@ int& frontlightValue(AppContext& ctx, int row) { return row == 0 ? ctx.config.fr
 
 // Redraws where the light is set: the panel (the edge swipe) or Settings' screen.
 void redrawFrontlight(AppContext& ctx) {
-    if (Modal.isActive()) Modal.redrawPanel();
-    else drawFrontlightScreen(ctx, false);
+    if (Modal.isActive())
+        Modal.redrawPanel();
+    else
+        drawFrontlightScreen(ctx, false);
 }
 
 void setFrontlight(AppContext& ctx, int row, int value) {
@@ -690,12 +705,18 @@ void frontlightTap(AppContext& ctx, int& row, int action, int value, int16_t x) 
     row = value;
     int v = 0;
     switch (action) {
-        case 2: setFrontlight(ctx, value, frontlightValue(ctx, value) - 10); break;
-        case 3: setFrontlight(ctx, value, frontlightValue(ctx, value) + 10); break;
+        case 2:
+            setFrontlight(ctx, value, frontlightValue(ctx, value) - 10);
+            break;
+        case 3:
+            setFrontlight(ctx, value, frontlightValue(ctx, value) + 10);
+            break;
         case 4:
             if (frontlightTrackValue(value, x, v)) setFrontlight(ctx, value, v);
             break;
-        default: redrawFrontlight(ctx); break;
+        default:
+            redrawFrontlight(ctx);
+            break;
     }
 }
 
@@ -707,11 +728,19 @@ bool frontlightKey(AppContext& ctx, int& row, const ButtonEvent& event) {
             row = (row + 1) % frontlightRows();
             redrawFrontlight(ctx);
             return true;
-        case Action::Less: setFrontlight(ctx, row, frontlightValue(ctx, row) - 10); return true;
-        case Action::More: setFrontlight(ctx, row, frontlightValue(ctx, row) + 10); return true;
-        case Action::Select: toggleFrontlight(ctx); return true;
-        case Action::Back: return false;
-        default: return true;
+        case Action::Less:
+            setFrontlight(ctx, row, frontlightValue(ctx, row) - 10);
+            return true;
+        case Action::More:
+            setFrontlight(ctx, row, frontlightValue(ctx, row) + 10);
+            return true;
+        case Action::Select:
+            toggleFrontlight(ctx);
+            return true;
+        case Action::Back:
+            return false;
+        default:
+            return true;
     }
 }
 

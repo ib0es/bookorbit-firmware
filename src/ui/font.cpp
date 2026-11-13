@@ -7,9 +7,7 @@ static_assert(FontEngine::kSizeCount == bookfonts::kFontCount, "regenerate src/u
 
 FontEngine::FontEngine() : _initialized(false), _currentScale(-1) {}
 
-int FontEngine::clampSize(int scale) {
-    return scale < 0 ? 0 : (scale >= kSizeCount ? kSizeCount - 1 : scale);
-}
+int FontEngine::clampSize(int scale) { return scale < 0 ? 0 : (scale >= kSizeCount ? kSizeCount - 1 : scale); }
 int FontEngine::sizePx(int scale) { return 12 + 2 * clampSize(scale); }
 int FontEngine::headingSize(int body) { return clampSize(clampSize(body) + 3); }
 int FontEngine::paragraphIndent(int body) { return (sizePx(body) * 3 + 1) / 2; }
@@ -27,7 +25,6 @@ void FontEngine::selectFont(int scale) {
     _font = &bookfonts::kFonts[scale];
 }
 
-
 int FontEngine::ascentPx() const { return (*_font).ascent; }
 int FontEngine::descentPx() const { return (*_font).descent; }
 
@@ -35,13 +32,23 @@ int FontEngine::descentPx() const { return (*_font).descent; }
 static uint32_t nextCodepoint(const uint8_t*& p) {
     while (*p) {
         const uint8_t c = p[0];
-        if (c < 0x80) { p += 1; return c; }
-        if ((c & 0xE0) == 0xC0 && (p[1] & 0xC0) == 0x80) { const uint32_t cp = ((c & 0x1F) << 6) | (p[1] & 0x3F); p += 2; return cp; }
+        if (c < 0x80) {
+            p += 1;
+            return c;
+        }
+        if ((c & 0xE0) == 0xC0 && (p[1] & 0xC0) == 0x80) {
+            const uint32_t cp = ((c & 0x1F) << 6) | (p[1] & 0x3F);
+            p += 2;
+            return cp;
+        }
         if ((c & 0xF0) == 0xE0 && (p[1] & 0xC0) == 0x80 && (p[2] & 0xC0) == 0x80) {
-            const uint32_t cp = ((c & 0x0F) << 12) | ((p[1] & 0x3F) << 6) | (p[2] & 0x3F); p += 3; return cp;
+            const uint32_t cp = ((c & 0x0F) << 12) | ((p[1] & 0x3F) << 6) | (p[2] & 0x3F);
+            p += 3;
+            return cp;
         }
         if ((c & 0xF8) == 0xF0 && (p[1] & 0xC0) == 0x80 && (p[2] & 0xC0) == 0x80 && (p[3] & 0xC0) == 0x80) {
-            p += 4; return '?';   // outside the BMP: not in the fonts
+            p += 4;
+            return '?';   // outside the BMP: not in the fonts
         }
         p += 1;   // stray byte
     }
@@ -54,7 +61,10 @@ static const bookfonts::Glyph* findGlyph(const bookfonts::Font& f, uint32_t cp) 
         const int mid = (lo + hi) / 2;
         const uint16_t c = f.codepoints[mid];
         if (c == cp) return &f.glyphs[mid];
-        if (c < cp) lo = mid + 1; else hi = mid - 1;
+        if (c < cp)
+            lo = mid + 1;
+        else
+            hi = mid - 1;
     }
     return nullptr;
 }
@@ -135,7 +145,7 @@ int FontEngine::drawString(int x, int y, const char* text, EPDColor color, int s
     if (maxWidth < 0) maxWidth = Display.width() - x;
 
     selectFont(scale);
-        _color = (color == EPD_BLACK) ? 0 : 1;
+    _color = (color == EPD_BLACK) ? 0 : 1;
 
     int ascent = ascentPx();
     int descent = -descentPx(); // below the baseline, as a negative number
@@ -207,15 +217,13 @@ int FontEngine::drawString(int x, int y, const char* text, EPDColor color, int s
     return curY + lineHeight;
 }
 
-BookPageGeometry bookPageGeometry() {
-    return BookPageGeometry{20, 42, Display.width() - 40, Display.height() - 55};
-}
+BookPageGeometry bookPageGeometry() { return BookPageGeometry{20, 42, Display.width() - 40, Display.height() - 55}; }
 
 int FontEngine::drawBookPage(int x, int y, const char* text, int maxWidth, bool startsWithParagraph, int fontScale) {
     if (!text || !*text) return y;
     if (!_initialized) begin(Display);
 
-        _color = 0;  // black
+    _color = 0;  // black
 
     int bodyScale = clampSize(fontScale);
     int headerScale = headingSize(bodyScale);

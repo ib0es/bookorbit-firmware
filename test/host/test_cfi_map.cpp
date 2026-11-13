@@ -9,7 +9,14 @@
 using EpubCfi::Location;
 
 static int g_failed = 0, g_checks = 0;
-#define CHECK(cond) do { g_checks++; if (!(cond)) { g_failed++; printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); } } while (0)
+#define CHECK(cond)                                                  \
+    do {                                                             \
+        g_checks++;                                                  \
+        if (!(cond)) {                                               \
+            g_failed++;                                              \
+            printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
+        }                                                            \
+    } while (0)
 
 static std::string pub(const CfiMap& m, const char* ours) {
     Location l;
@@ -21,9 +28,13 @@ static std::string loc(const CfiMap& m, const char* theirs) {
     if (!EpubCfi::parse(theirs, l) || !m.toLocal(l)) return "-";
     return EpubCfi::format(l);
 }
-#define ROUND(m, ours, theirs) do { CHECK(pub(m, ours) == theirs); CHECK(loc(m, theirs) == ours); \
-    if (pub(m, ours) != theirs) printf("    pub %s -> %s (want %s)\n", ours, pub(m, ours).c_str(), theirs); \
-    if (loc(m, theirs) != ours) printf("    loc %s -> %s (want %s)\n", theirs, loc(m, theirs).c_str(), ours); } while (0)
+#define ROUND(m, ours, theirs)                                                                                    \
+    do {                                                                                                          \
+        CHECK(pub(m, ours) == theirs);                                                                            \
+        CHECK(loc(m, theirs) == ours);                                                                            \
+        if (pub(m, ours) != theirs) printf("    pub %s -> %s (want %s)\n", ours, pub(m, ours).c_str(), theirs);   \
+        if (loc(m, theirs) != ours) printf("    loc %s -> %s (want %s)\n", theirs, loc(m, theirs).c_str(), ours); \
+    } while (0)
 
 int main() {
     // Files: 1 = section 0 (the title); 2, 3, 4 = section 1, cut inside its child 1
@@ -31,13 +42,13 @@ int main() {
     // long paragraph in file 4 at 4/2/6 (two pieces: the second after 1 child
     // element, 40 units into the text there).
     const char* text =
-        "fb2cfi 1\n"
-        "F 1 0\n"
-        "F 2 1\n"
-        "F 3 1 1 7\n"
-        "F 4 1 900\n"
-        "F 5 2\n"
-        "L 4 4/2/6 0 0 1 40\n";
+            "fb2cfi 1\n"
+            "F 1 0\n"
+            "F 2 1\n"
+            "F 3 1 1 7\n"
+            "F 4 1 900\n"
+            "F 5 2\n"
+            "L 4 4/2/6 0 0 1 40\n";
     CfiMap m;
     CHECK(m.parse(text, strlen(text)));
     CHECK(!m.empty());

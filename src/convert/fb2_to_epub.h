@@ -29,7 +29,7 @@ struct ConvertStats {
     std::string cfiMap;
 };
 
-ConvertResult fb2ToEpub(InFile& in, OutFile& out, TempFile& tmp, ProgressFn progress = nullptr,
-                        void* user = nullptr, ConvertStats* stats = nullptr);
+ConvertResult fb2ToEpub(InFile& in, OutFile& out, TempFile& tmp, ProgressFn progress = nullptr, void* user = nullptr,
+                        ConvertStats* stats = nullptr);
 
 }  // namespace convert

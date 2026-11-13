@@ -44,7 +44,11 @@ public:
     int findIn(int spine, uint32_t from, uint32_t to) const;
     void add(const Bookmark& b);   // kept sorted
     void remove(int index);        // one on the server is deleted there at the next sync
-    void clear() { _items.clear(); _deleted.clear(); _path = ""; }
+    void clear() {
+        _items.clear();
+        _deleted.clear();
+        _path = "";
+    }
 
     // Sync. Server ids still to delete there:
     const std::vector<int>& deletedOnDevice() const { return _deleted; }

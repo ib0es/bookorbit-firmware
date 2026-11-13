@@ -5,8 +5,14 @@
 #include <cstring>
 
 static int g_failed = 0, g_checks = 0;
-#define CHECK(cond) do { g_checks++; if (!(cond)) { g_failed++; \
-    printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); } } while (0)
+#define CHECK(cond)                                                  \
+    do {                                                             \
+        g_checks++;                                                  \
+        if (!(cond)) {                                               \
+            g_failed++;                                              \
+            printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
+        }                                                            \
+    } while (0)
 
 // Every byte of `s` that starts a character is followed by its whole sequence.
 static bool wholeCharacters(const String& s) {
@@ -14,7 +20,8 @@ static bool wholeCharacters(const String& s) {
         const uint8_t c = (uint8_t)s[i];
         const size_t n = c < 0x80 ? 1 : c >= 0xF0 ? 4 : c >= 0xE0 ? 3 : c >= 0xC0 ? 2 : 0;
         if (n == 0 || i + n > s.length()) return false;
-        for (size_t k = 1; k < n; k++) if (((uint8_t)s[i + k] & 0xC0) != 0x80) return false;
+        for (size_t k = 1; k < n; k++)
+            if (((uint8_t)s[i + k] & 0xC0) != 0x80) return false;
         i += n;
     }
     return true;

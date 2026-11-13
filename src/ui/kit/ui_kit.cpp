@@ -109,16 +109,29 @@ bool fastFill(Rect r, Color c) {
     int32_t x0 = std::max<int32_t>({r.x, clip.x, 0});
     int32_t y0 = std::max<int32_t>({r.y, clip.y, 0});
     int32_t x1 = std::min<int32_t>({(int32_t)r.x + r.width, (int32_t)clip.x + clip.width, (int32_t)g_device.width}) - 1;
-    int32_t y1 = std::min<int32_t>({(int32_t)r.y + r.height, (int32_t)clip.y + clip.height, (int32_t)g_device.height}) - 1;
+    int32_t y1 =
+            std::min<int32_t>({(int32_t)r.y + r.height, (int32_t)clip.y + clip.height, (int32_t)g_device.height}) - 1;
     if (x1 < x0 || y1 < y0) return true;
     const int32_t pw = Display.rawWidth(), ph = Display.rawHeight(), pwb = pw / 8;
     // The two corners in the panel's frame (as DisplayTarget::plot turns them).
     auto toPanel = [&](int32_t x, int32_t y, int32_t& px, int32_t& py) {
         switch (t.orientation()) {
-            case fi::Orientation::Portrait: px = y; py = ph - 1 - x; break;
-            case fi::Orientation::PortraitInverted: px = pw - 1 - y; py = x; break;
-            case fi::Orientation::LandscapeClockwise: px = pw - 1 - x; py = ph - 1 - y; break;
-            default: px = x; py = y; break;
+            case fi::Orientation::Portrait:
+                px = y;
+                py = ph - 1 - x;
+                break;
+            case fi::Orientation::PortraitInverted:
+                px = pw - 1 - y;
+                py = x;
+                break;
+            case fi::Orientation::LandscapeClockwise:
+                px = pw - 1 - x;
+                py = ph - 1 - y;
+                break;
+            default:
+                px = x;
+                py = y;
+                break;
         }
     };
     int32_t ax, ay, bx, by;
@@ -207,7 +220,9 @@ bool touchOnly() { return Platform::kDevice.touchOnly; }
 
 bool touchUi() { return Platform::kDevice.touch; }
 
-namespace { bool g_touchMissing = false; }
+namespace {
+bool g_touchMissing = false;
+}
 void setTouchMissing(bool missing) { g_touchMissing = missing; }
 bool touchMissing() { return g_touchMissing; }
 
@@ -275,7 +290,8 @@ void fill(Rect r, Color color, uint8_t radius) {
 }
 
 void frameRect(Rect r, Color color, uint8_t w, uint8_t radius) {
-    if (radius == 0 && w > 0 && r.width > 2 * w && r.height > 2 * w && (color == Color::Black || color == Color::White)) {
+    if (radius == 0 && w > 0 && r.width > 2 * w && r.height > 2 * w &&
+        (color == Color::Black || color == Color::White)) {
         // Four solid bands: the same pixels as stroke() with square corners.
         fill(Rect{r.x, r.y, r.width, w}, color);
         fill(Rect{r.x, (int16_t)(r.bottom() - w), r.width, w}, color);
@@ -299,7 +315,9 @@ void battery(Frame& f, Rect r, Color color) {
     char label[12];
     snprintf(label, sizeof(label), "%d%%%s", Battery.getPercentage(), Battery.isCharging() ? "+" : "");
     fi::BatteryIndicatorProps b;
-    b.percent = (uint8_t)(Battery.getPercentage() < 0 ? 0 : (Battery.getPercentage() > 100 ? 100 : Battery.getPercentage()));
+    b.percent =
+            (uint8_t)(Battery.getPercentage() < 0 ? 0
+                                                  : (Battery.getPercentage() > 100 ? 100 : Battery.getPercentage()));
     b.charging = Battery.isCharging();
     b.color = color;
     b.glyphWidth = 24;
@@ -316,10 +334,14 @@ namespace {
 // 1 top (portrait upside down), 2 right (landscape), 3 left (landscape upside down).
 int keyEdge() {
     switch (target().orientation()) {
-        case fi::Orientation::PortraitInverted: return 1;
-        case fi::Orientation::LandscapeCounterClockwise: return 2;
-        case fi::Orientation::LandscapeClockwise: return 3;
-        default: return 0;
+        case fi::Orientation::PortraitInverted:
+            return 1;
+        case fi::Orientation::LandscapeCounterClockwise:
+            return 2;
+        case fi::Orientation::LandscapeClockwise:
+            return 3;
+        default:
+            return 0;
     }
 }
 int16_t keyTabHeight() { return (int16_t)(lineHeight(FontSmall) + 10); }
@@ -389,14 +411,16 @@ Rect footerHints(Frame&, Rect area, const char* line1, const char* line2, const 
 }
 
 Rect keyHints(Frame& f, Rect area, const KeyLabels& keys, const char* info) {
-    if (touchOnly()) return footerHints(f, area, info ? info : "x", nullptr, keys.touch);   // replaced by the touch hints
+    if (touchOnly())
+        return footerHints(f, area, info ? info : "x", nullptr, keys.touch);   // replaced by the touch hints
     // The tabs stand at the keys (the device profile's centres along the bottom
     // edge) wherever the screen is turned: along the top (upside down: the keys
     // in the other order, LEFT and RIGHT swapped, see keysReversed()), or down a
     // side in landscape.
     const int16_t* kCentre = Platform::kDevice.keyCentres;
     const int edge = keyEdge();
-    const char* labels[4] = {keys.back, keys.ok, edge == 1 ? keys.right : keys.left, edge == 1 ? keys.left : keys.right};
+    const char* labels[4] = {keys.back, keys.ok, edge == 1 ? keys.right : keys.left,
+                             edge == 1 ? keys.left : keys.right};
     const int16_t W = width(), H = height();
     const int16_t tabH = keyTabHeight();
     if (edge == 0) takeBottom(area, (int16_t)(tabH + 8));
@@ -433,7 +457,8 @@ Rect keyHints(Frame& f, Rect area, const KeyLabels& keys, const char* info) {
     const int16_t tabW = 96, keyTabH = (int16_t)(70 * panelH / 480);
     Rect strip = edge == 2 ? Rect{(int16_t)(area.right() - tabW - 6), area.y, (int16_t)(tabW + 6), area.height}
                            : Rect{area.x, area.y, (int16_t)(tabW + 6), area.height};
-    if (edge == 2) area.width = (int16_t)(area.width - strip.width);
+    if (edge == 2)
+        area.width = (int16_t)(area.width - strip.width);
     else {
         area.x = (int16_t)(area.x + strip.width);
         area.width = (int16_t)(area.width - strip.width);
@@ -551,33 +576,32 @@ namespace icon {
 void book(int16_t x, int16_t y, Color c) {
     // Open book icon (20x20).
     static const uint8_t kBookBits[60] = {
-        0x00, 0x00, 0x00,  // row  0
-        0x00, 0x00, 0x00,  // row  1
-        0x3E, 0x07, 0xC0,  // row  2: ..#####......#####..
-        0x41, 0x98, 0x20,  // row  3: .#.....##..##.....#.
-        0x80, 0x60, 0x10,  // row  4: #........##........#
-        0x80, 0x60, 0x10,  // row  5: #........##........#
-        0x9F, 0x6F, 0x90,  // row  6: #..#####.##.#####..#
-        0x80, 0x60, 0x10,  // row  7: #........##........#
-        0x80, 0x60, 0x10,  // row  8: #........##........#
-        0x9F, 0x6F, 0x90,  // row  9: #..#####.##.#####..#
-        0x80, 0x60, 0x10,  // row 10: #........##........#
-        0x80, 0x60, 0x10,  // row 11: #........##........#
-        0x9E, 0x67, 0x90,  // row 12: #..####..##..####..#
-        0x80, 0x60, 0x10,  // row 13: #........##........#
-        0x80, 0x60, 0x10,  // row 14: #........##........#
-        0x7E, 0x67, 0xE0,  // row 15: .######..##..######.
-        0x01, 0xF8, 0x00,  // row 16: .......######.......
-        0x00, 0x60, 0x00,  // row 17: .........##.........
-        0x00, 0x00, 0x00,  // row 18
-        0x00, 0x00, 0x00,  // row 19
+            0x00, 0x00, 0x00,  // row  0
+            0x00, 0x00, 0x00,  // row  1
+            0x3E, 0x07, 0xC0,  // row  2: ..#####......#####..
+            0x41, 0x98, 0x20,  // row  3: .#.....##..##.....#.
+            0x80, 0x60, 0x10,  // row  4: #........##........#
+            0x80, 0x60, 0x10,  // row  5: #........##........#
+            0x9F, 0x6F, 0x90,  // row  6: #..#####.##.#####..#
+            0x80, 0x60, 0x10,  // row  7: #........##........#
+            0x80, 0x60, 0x10,  // row  8: #........##........#
+            0x9F, 0x6F, 0x90,  // row  9: #..#####.##.#####..#
+            0x80, 0x60, 0x10,  // row 10: #........##........#
+            0x80, 0x60, 0x10,  // row 11: #........##........#
+            0x9E, 0x67, 0x90,  // row 12: #..####..##..####..#
+            0x80, 0x60, 0x10,  // row 13: #........##........#
+            0x80, 0x60, 0x10,  // row 14: #........##........#
+            0x7E, 0x67, 0xE0,  // row 15: .######..##..######.
+            0x01, 0xF8, 0x00,  // row 16: .......######.......
+            0x00, 0x60, 0x00,  // row 17: .........##.........
+            0x00, 0x00, 0x00,  // row 18
+            0x00, 0x00, 0x00,  // row 19
     };
-    target().bitmap(Rect{x, y, 20, 20}, fi::BitmapRef{kBookBits, 20, 20, fi::BitmapFormat::BW1}, fi::BitmapMode::Center, solid(c));
+    target().bitmap(Rect{x, y, 20, 20}, fi::BitmapRef{kBookBits, 20, 20, fi::BitmapFormat::BW1}, fi::BitmapMode::Center,
+                    solid(c));
 }
 
-void logo(int16_t x, int16_t y, Color c) {
-    book(x, y, c);
-}
+void logo(int16_t x, int16_t y, Color c) { book(x, y, c); }
 
 void folder(int16_t x, int16_t y, Color c) {
     fill(Rect{x, y, 6, 2}, c);
@@ -613,8 +637,10 @@ void signal(int16_t x, int16_t y, int bars, Color c) {
     for (int b = 0; b < 4; ++b) {
         const int16_t bh = (int16_t)((b + 1) * 5);
         Rect r{(int16_t)(x + b * 6), (int16_t)(y + 20 - bh), 4, bh};
-        if (b < bars) fill(r, c);
-        else frameRect(r, c);
+        if (b < bars)
+            fill(r, c);
+        else
+            frameRect(r, c);
     }
 }
 

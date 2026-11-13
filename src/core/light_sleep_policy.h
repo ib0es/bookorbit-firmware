@@ -49,8 +49,9 @@ inline uint32_t nextWakeDelayMs(const WakeTiming& t) {
         const uint32_t toIdleSleep = (t.idleMs >= t.sleepTimeoutMs) ? 0 : (t.sleepTimeoutMs - t.idleMs);
         if (toIdleSleep < wait) wait = toIdleSleep;
     }
-    const uint32_t toBattery =
-        (t.msSinceBatteryCheck >= t.batteryCheckIntervalMs) ? 0 : (t.batteryCheckIntervalMs - t.msSinceBatteryCheck);
+    const uint32_t toBattery = (t.msSinceBatteryCheck >= t.batteryCheckIntervalMs)
+                                       ? 0
+                                       : (t.batteryCheckIntervalMs - t.msSinceBatteryCheck);
     if (toBattery < wait) wait = toBattery;
     if (t.modalRemainingMs > 0 && t.modalRemainingMs < wait) wait = t.modalRemainingMs;
     if (t.waitingPrelayout && t.msToPrelayout < wait) wait = t.msToPrelayout;

@@ -6,12 +6,17 @@
 // (tap = BACK, hold = reader menu), two side keys (UP / DOWN) and POWER;
 // warm/cool frontlight, RTC, USB mass storage, touch wake.
 inline constexpr DeviceProfile kX4ProProfile = {
-    /*name*/ "XTEINK X4 PRO",
-    /*memory*/ &kLargeMemory,
-    /*touch*/ true, /*touchOnly*/ true, /*upDownTurnPages*/ true, /*okOpensBookMenu*/ true,
-    /*keyCentres*/ {96, 178, 279, 370},   // unused: no key hint tabs on a touch-only board
-    /*autoRotateByDefault*/ false, /*usbMassStorage*/ true, /*touchWake*/ true,
-    /*sdPowerPin*/ -1,                    // SDMMC enable, in the SDK profile
-    /*imuMountRot*/ 0,
-    /*imuMountFlipY*/ false,
+        /*name*/ "XTEINK X4 PRO",
+        /*memory*/ &kLargeMemory,
+        /*touch*/ true,
+        /*touchOnly*/ true,
+        /*upDownTurnPages*/ true,
+        /*okOpensBookMenu*/ true,
+        /*keyCentres*/ {96, 178, 279, 370},   // unused: no key hint tabs on a touch-only board
+        /*autoRotateByDefault*/ false,
+        /*usbMassStorage*/ true,
+        /*touchWake*/ true,
+        /*sdPowerPin*/ -1,                    // SDMMC enable, in the SDK profile
+        /*imuMountRot*/ 0,
+        /*imuMountFlipY*/ false,
 };
