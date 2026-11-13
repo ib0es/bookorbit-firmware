@@ -967,8 +967,10 @@ CASES = [
         lambda log, sd: (
             log.count("Refreshing legacy EPUB cover: /covers/offline#Prog.jpg") == 1
             and open(os.path.join(sd, "covers/offline#Prog.jpg"), "rb").read(9)[6:9] == b"BG\x01"
-            and all(not os.path.exists(os.path.join(sd, "covers/offline#Prog" + suffix))
-                    for suffix in ("_thumb_fit.bmp", "_thumb_crop.bmp", "_fit.bmp", "_crop.bmp"))
+            and all(
+                not os.path.exists(os.path.join(sd, "covers/offline#Prog" + suffix))
+                for suffix in ("_thumb_fit.bmp", "_thumb_crop.bmp", "_fit.bmp", "_crop.bmp")
+            )
         ),
     ),
     (

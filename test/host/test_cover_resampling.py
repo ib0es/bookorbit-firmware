@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Exercise the production streaming JPEG resampler without device hardware."""
-from pathlib import Path
+
 import platform
 import subprocess
 import tempfile
+from pathlib import Path
 
 source = (Path(__file__).resolve().parents[2] / 'src/ui/jpeg_viewer.cpp').read_text()
-context = source[source.index('struct JpegContext {'):source.index('// Fast 1-bit RAM cache')]
-functions = source[source.index('static bool coverDitherBlack'):source.index('// Output function for TJpgDec')]
+context = source[source.index('struct JpegContext {') : source.index('// Fast 1-bit RAM cache')]
+functions = source[source.index('static bool coverDitherBlack') : source.index('// Output function for TJpgDec')]
 harness = r'''
 #include <algorithm>
 #include <cstdint>
@@ -99,7 +100,11 @@ with tempfile.TemporaryDirectory() as temp:
     cpp = Path(temp) / 'resampling.cpp'
     cpp.write_text(harness + context + functions + main)
     binary = Path(temp) / 'resampling'
-    flags = ['-I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1'] if platform.system() == 'Darwin' else []
+    flags = (
+        ['-I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1']
+        if platform.system() == 'Darwin'
+        else []
+    )
     subprocess.run(['c++', '-std=c++17', *flags, str(cpp), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True)
 print('Cover resampling: OK')

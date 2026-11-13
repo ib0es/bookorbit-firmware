@@ -129,8 +129,7 @@ static const uint8_t bayer8x8[8][8] = {{2, 130, 34, 162, 10, 138, 42, 170},  {19
 // Keep diffusion errors in sixteenths: rounding each neighbour separately
 // biases pale tones. Alternate row direction and decorrelate the
 // threshold to break the periodic patterns on flat cover backgrounds.
-static bool coverDitherBlack(uint8_t gray, int x, int y, int direction,
-                             int16_t* current, int16_t* next) {
+static bool coverDitherBlack(uint8_t gray, int x, int y, int direction, int16_t* current, int16_t* next) {
     uint32_t noise = (uint32_t)x * 0x1f123bb5u ^ (uint32_t)y * 0x5f356495u;
     noise ^= noise >> 16;
     noise *= 0x7feb352du;
@@ -155,8 +154,7 @@ static void finalizeDstRow(JpegContext* ctx) {
 
     uint8_t left = 255;
     const int direction = (ctx->curDstY & 1) ? -1 : 1;
-    for (int dx = direction > 0 ? 0 : ctx->finalW - 1;
-         dx >= 0 && dx < ctx->finalW; dx += direction) {
+    for (int dx = direction > 0 ? 0 : ctx->finalW - 1; dx >= 0 && dx < ctx->finalW; dx += direction) {
         if (ctx->accCnt[dx] > 0) {
             left = (uint8_t)(ctx->accSum[dx] / ctx->accCnt[dx]);
             ctx->lastGray[dx] = left;
@@ -164,8 +162,8 @@ static void finalizeDstRow(JpegContext* ctx) {
             left = ctx->lastGray[dx];
         }
 
-        const EPDColor color = coverDitherBlack(left, dx, ctx->curDstY, direction,
-                                                ctx->errCur, ctx->errNext) ? EPD_BLACK : EPD_WHITE;
+        const EPDColor color =
+                coverDitherBlack(left, dx, ctx->curDstY, direction, ctx->errCur, ctx->errNext) ? EPD_BLACK : EPD_WHITE;
 
         int px = ctx->targetX + dx;
         if (inBoxY && px >= ctx->boxX && px < ctx->boxX + ctx->maxW) {
@@ -551,8 +549,7 @@ bool JpegViewer::drawBmp(const char* filePath, int x, int y, int maxW, int maxH,
             }
 
             const int direction = (dy & 1) ? -1 : 1;
-            for (int dx = direction > 0 ? 0 : finalW - 1;
-                 dx >= 0 && dx < finalW; dx += direction) {
+            for (int dx = direction > 0 ? 0 : finalW - 1; dx >= 0 && dx < finalW; dx += direction) {
                 int px = targetX + dx;
                 int sx0 = (int32_t)dx * w / finalW;
                 int sx1 = (int32_t)(dx + 1) * w / finalW;

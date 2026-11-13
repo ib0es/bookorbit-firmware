@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Compare the firmware cover decoder with libjpeg on high-contrast edges."""
-from pathlib import Path
-from PIL import Image, ImageDraw
+
 import subprocess
 import tempfile
+from pathlib import Path
+
+from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[2]
 HARNESS = r'''
@@ -43,13 +45,15 @@ int main(int argc, char** argv) {
     return 0;
 }
 '''
-with tempfile.TemporaryDirectory() as tmp:
-    tmp = Path(tmp)
+with tempfile.TemporaryDirectory() as temp_dir:
+    tmp = Path(temp_dir)
     source = tmp / 'decode.c'
     source.write_text(HARNESS)
     exe = tmp / 'decode'
-    subprocess.run(['cc', '-std=c99', '-I', str(ROOT), str(source),
-                    str(ROOT / 'src/ui/vendor/cover_tjpgd.c'), '-o', str(exe)], check=True)
+    subprocess.run(
+        ['cc', '-std=c99', '-I', str(ROOT), str(source), str(ROOT / 'src/ui/vendor/cover_tjpgd.c'), '-o', str(exe)],
+        check=True,
+    )
     image = Image.new('L', (64, 64), 255)
     draw = ImageDraw.Draw(image)
     draw.rectangle((8, 6, 30, 50), fill=0)
@@ -60,7 +64,7 @@ with tempfile.TemporaryDirectory() as tmp:
         image.convert('RGB').save(jpeg, quality=quality)
         expected = Image.open(jpeg).convert('L').tobytes()
         subprocess.run([str(exe), str(jpeg), str(raw)], check=True)
-        errors = [abs(a-b) for a, b in zip(expected, raw.read_bytes())]
+        errors = [abs(a - b) for a, b in zip(expected, raw.read_bytes())]
         assert len(errors) == 4096
         assert max(errors) <= 4, f'JPEG quality {quality}: error {max(errors)} (sample wrapping?)'
 print('Cover JPEG clipping: OK')
