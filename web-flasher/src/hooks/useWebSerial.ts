@@ -512,8 +512,12 @@ export function useWebSerial() {
         });
 
         if (fontImage) {
-          const partition = findSpiffsPartition(info.partitions)!;
-          await installCatalogFont(loader, partition, fontImage, setProgress);
+          try {
+            const partition = findSpiffsPartition(info.partitions)!;
+            await installCatalogFont(loader, partition, fontImage, setProgress);
+          } catch (fontErr) {
+            addLog(`\n⚠ Font pre-installation failed (${errText(fontErr)}), but firmware was flashed successfully.`);
+          }
         }
         const installedFont = await scanInstalledFont(loader, addLog);
         detectionRef.current = { ...detectionRef.current, installedFont };
@@ -540,7 +544,8 @@ export function useWebSerial() {
     async (family: FontFamilyMeta | string): Promise<boolean> => {
       const port = knownPortRef.current;
       const detected = detectionRef.current;
-      if (!port || status !== 'connected' || fontWriteBusy.current) throw new FlasherError('err_not_connected');
+      if (fontWriteBusy.current) throw new Error('Operation in progress. Please wait.');
+      if (!port || status !== 'connected') throw new FlasherError('err_not_connected');
       if (!detected.isBookOrbitInstalled) throw new Error('Install Book Orbit firmware before writing a font.');
       fontWriteBusy.current = true;
       setStatus('flashing');
