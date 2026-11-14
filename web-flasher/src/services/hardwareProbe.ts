@@ -143,6 +143,13 @@ async function probeI2cBus(
  */
 export async function probeC3Board(loader: ESPLoader, log: Log): Promise<'x3' | 'x4' | null> {
   try {
+    // Only safe over native USB CDC: GPIO20 is U0RXD, which breaks external UART bridge chips (CP2102/CH340).
+    const transport = loader.transport as unknown as { port?: { getInfo?: () => { usbVendorId?: number } } };
+    const vid = transport.port?.getInfo?.()?.usbVendorId;
+    if (vid !== undefined && vid !== 0x303a) { // 0x303a = Espressif native USB JTAG/CDC
+      log('UART bridge detected: skipping GPIO20 probe to avoid RX desync.');
+      return 'x4';
+    }
     log('Probing I2C bus on ESP32-C3 (SDA=20, SCL=0)...');
     const r = await probeI2cBus(loader, 'C3', 20, 0, [0x55, 0x55, 0x55], log);
     if (r.ackAddr === 0x55) {
