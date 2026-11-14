@@ -369,10 +369,12 @@ bool JpegViewer::save1BitBmp(const char* filePath, int w, int h, const uint8_t* 
     header[19] = (uint8_t)(w >> 8);
     header[20] = (uint8_t)(w >> 16);
     header[21] = (uint8_t)(w >> 24);
-    header[22] = (uint8_t)(h);
-    header[23] = (uint8_t)(h >> 8);
-    header[24] = (uint8_t)(h >> 16);
-    header[25] = (uint8_t)(h >> 24);
+    // Negative height indicates top-down BMP (first row is top of image)
+    int32_t topDownH = -h;
+    header[22] = (uint8_t)(topDownH);
+    header[23] = (uint8_t)(topDownH >> 8);
+    header[24] = (uint8_t)(topDownH >> 16);
+    header[25] = (uint8_t)(topDownH >> 24);
     header[26] = 1;  // Planes = 1
     header[28] = 1;  // Bit count = 1
     header[34] = (uint8_t)(imageSize);
@@ -401,7 +403,7 @@ bool JpegViewer::save1BitBmp(const char* filePath, int w, int h, const uint8_t* 
     uint8_t rowPad[4] = {0, 0, 0, 0};
     int padBytes = bmpStride - rowBytes;
 
-    for (int y = h - 1; y >= 0; y--) {
+    for (int y = 0; y < h; y++) {
         const uint8_t* rowSrc = buffer + y * rowBytes;
         f.write(rowSrc, rowBytes);
         if (padBytes > 0) {
