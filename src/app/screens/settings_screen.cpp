@@ -347,6 +347,7 @@ void executeWebSetting(AppContext& ctx, int index) {
     LibraryManager::getInstance().scanOfflineBooks();
     LibraryManager::getInstance().cardMayHaveChanged();   // files can be uploaded/deleted there
     if (s_webSettingsReturnState == STATE_LIBRARY) {
+        LibraryManager::getInstance().rebuildFilteredIndices();
         ctx.currentState = STATE_LIBRARY;
         drawLibraryScreen(ctx, uikit::periodicFullRefresh());
         return;
@@ -545,6 +546,7 @@ void handleWebSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
     const Action a = Actions::of(event);
     if (a == Action::Back || a == Action::Prev) {
         if (s_webSettingsReturnState == STATE_LIBRARY) {
+            LibraryManager::getInstance().rebuildFilteredIndices();
             ctx.currentState = STATE_LIBRARY;
             drawLibraryScreen(ctx, false);
             return;
