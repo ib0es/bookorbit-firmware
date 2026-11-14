@@ -277,7 +277,7 @@ bool readRecordVec(PalmDb& db, uint32_t i, std::vector<uint8_t>& out) {
 }
 
 // An INDX table: its header record, the index records after it, then CNCX.
-bool readIndex(PalmDb& db, uint32_t idx, IndexTable& t, uint32_t maxEntries = 20000) {
+bool readIndex(PalmDb& db, uint32_t idx, IndexTable& t, uint32_t maxEntries = 20000, bool loadCncx = true) {
     std::vector<uint8_t> h;
     if (idx >= db.count() || !readRecordVec(db, idx, h) || h.size() < 192 || memcmp(h.data(), "INDX", 4) != 0)
         return false;
@@ -294,9 +294,11 @@ bool readIndex(PalmDb& db, uint32_t idx, IndexTable& t, uint32_t maxEntries = 20
     std::vector<TagX> tags;
     for (uint32_t i = tagx + 12; i + 4 <= tagx + first && i <= h.size() && 4 <= h.size() - i; i += 4)
         tags.push_back({h[i], h[i + 1], h[i + 2], h[i + 3]});
-    for (uint32_t c = 0; c < ncncx && idx + count + 1 + c < db.count(); c++) {
-        t.cncx.emplace_back();
-        readRecordVec(db, idx + count + 1 + c, t.cncx.back());
+    if (loadCncx) {
+        for (uint32_t c = 0; c < ncncx && idx + count + 1 + c < db.count(); c++) {
+            t.cncx.emplace_back();
+            readRecordVec(db, idx + count + 1 + c, t.cncx.back());
+        }
     }
     std::vector<uint8_t> d;
     for (uint32_t r = idx + 1; r <= idx + count && r < db.count(); r++) {
@@ -1872,7 +1874,8 @@ bool MobiConverter::loadKf8() {
         }
     }
     IndexTable skel, frag;
-    if (!readIndex(_db, _h.skel, skel) || !readIndex(_db, _h.frag, frag)) {
+    if (!readIndex(_db, _h.skel, skel, 20000, /*loadCncx=*/false) ||
+        !readIndex(_db, _h.frag, frag, 20000, /*loadCncx=*/false)) {
         _stats.error = "KF8 part tables unreadable";
         return false;
     }
