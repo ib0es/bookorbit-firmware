@@ -107,8 +107,8 @@ void ButtonManager::update() {
         _sharedPowerKey = BTN_CONFIRM;
         _sharedPowerSince = millis();
         _sharedPowerFired = false;
-    } else if (Platform::kDevice.powerSharedWithBack &&
-               (_freeinkInput.wasPressed(InputManager::BTN_BACK) || _freeinkInput.wasPressed(InputManager::BTN_POWER))) {
+    } else if (Platform::kDevice.powerSharedWithBack && (_freeinkInput.wasPressed(InputManager::BTN_BACK) ||
+                                                         _freeinkInput.wasPressed(InputManager::BTN_POWER))) {
         _sharedPowerKey = BTN_BACK;
         _sharedPowerSince = millis();
         _sharedPowerFired = false;

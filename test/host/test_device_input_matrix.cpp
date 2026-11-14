@@ -62,20 +62,9 @@ static void validateProfile(const DeviceProfile& p) {
 int main() {
     printf("== DeviceInputMatrix\n");
     const std::vector<const DeviceProfile*> profiles = {
-        &kX4Profile,
-        &kX3Profile,
-        &kX4ClassicProfile,
-        &kX4ProProfile,
-        &kPiccoProfile,
-        &kDeLinkProfile,
-        &kPaperMonoProfile,
-        &kStickyProfile,
-        &kWs397Profile,
-        &kMetalioEInk4Profile,
-        &kMurphyM4Profile,
-        &kEegoA4Profile,
-        &kLilyGoProfile,
-        &kPaperS3Profile,
+            &kX4Profile,       &kX3Profile,        &kX4ClassicProfile, &kX4ProProfile,   &kPiccoProfile,
+            &kDeLinkProfile,   &kPaperMonoProfile, &kStickyProfile,    &kWs397Profile,   &kMetalioEInk4Profile,
+            &kMurphyM4Profile, &kEegoA4Profile,    &kLilyGoProfile,    &kPaperS3Profile,
     };
 
     for (const auto* p : profiles) {

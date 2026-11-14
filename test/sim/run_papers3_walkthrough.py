@@ -17,6 +17,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
+from typing import Any
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SD_LEFTOVERS = shutil.ignore_patterns("offline", "offline#*")
@@ -32,7 +34,7 @@ def pages(log):
     return [int(p) for p in re.findall(r"\[Reader\] Page (\d+)/\d+", log)]
 
 
-CASES = [
+CASES: list[tuple[str, str, Callable[..., bool], Any, Any]] = [
     (
         "boot: papers3 reports M5STACK PAPERS3, touch=1, no power button, no up/down",
         "",
