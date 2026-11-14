@@ -687,6 +687,7 @@
     "WEB_HTML_UPLOAD_DESC": "Formatos: EPUB, FB2, MOBI, AZW3, AZW, TXT. Uno o varios archivos.",
     "WEB_HTML_PICK_FILES": "Elegir archivos...",
     "WEB_HTML_OVERWRITE": "Sobrescribir existentes",
+    "WEB_HTML_KEEP_PROGRESS": "Conservar el progreso de lectura al sobrescribir",
     "WEB_HTML_BTN_UPLOAD": "Subir",
     "WEB_HTML_BTN_CLOSE_PORTAL": "Terminar y cerrar",
     "WEB_HTML_BOOKS_LIST_TITLE": "Libros en biblioteca local",
@@ -725,6 +726,5 @@
     "TYPEFACE_SD_TITLE": "Fuentes en la tarjeta SD",
     "TYPEFACE_STORAGE_EMPTY": "No hay fuentes en este almacenamiento.",
     "TYPEFACE_DELETE_CONFIRM": "¿Eliminar la familia de este almacenamiento?",
-    "TYPEFACE_DELETE_FAILED": "No se pudo eliminar la familia.",
-    "WEB_HTML_KEEP_PROGRESS": "Conservar el progreso de lectura al sobrescribir",
+    "TYPEFACE_DELETE_FAILED": "No se pudo eliminar la familia."
 }
