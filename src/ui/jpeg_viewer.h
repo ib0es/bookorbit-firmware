@@ -16,7 +16,8 @@ public:
     static bool drawCover(const char* filePath, int x, int y, int maxW, int maxH, CoverFitMode fit = COVER_FIT_SCALE);
 
     // Fast direct BMP stream renderer (1-bit, 8-bit, 24-bit/32-bit BMP)
-    static bool drawBmp(const char* filePath, int x, int y, int maxW, int maxH, CoverFitMode fit = COVER_FIT_SCALE);
+    static bool drawBmp(const char* filePath, int x, int y, int maxW, int maxH, CoverFitMode fit = COVER_FIT_SCALE,
+                        const char* cacheKey = nullptr);
 
     // JPEG decoder with serpentine error diffusion (ordered fallback on low memory)
     static bool drawJpeg(const char* filePath, int x, int y, int maxW, int maxH, CoverFitMode fit = COVER_FIT_SCALE);
