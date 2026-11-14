@@ -7,6 +7,7 @@
 #include <new>
 #include <vector>
 
+#include "../platform/system.h"
 #include "zip_writer.h"
 
 namespace convert {
@@ -981,6 +982,9 @@ ConvertResult TxtConverter::run() {
                 }
             }
             continue;
+        }
+        if ((_consumed & 0x7FFF) < 4) {
+            Platform::feedWatchdog();
         }
         if (lineStart) {
             if (c == ' ' || c == '\t' || c == 0xA0 || c == 0x3000 || c == 0xFEFF) {

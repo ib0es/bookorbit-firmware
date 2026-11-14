@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "../platform/system.h"
 #include "zip_writer.h"
 
 namespace convert {
@@ -807,9 +808,11 @@ ConvertResult MobiConverter::pass(int which) {
                 if (!feedText(skelAt, before, asmPos)) return ConvertResult::IoError;
                 skelAt += before;
                 asmPos += before;
+                Platform::feedWatchdog();
                 if (!feedText(base, fr.len, asmPos)) return ConvertResult::IoError;
                 base += fr.len;
                 asmPos += fr.len;
+                Platform::feedWatchdog();
             }
             if (!feedText(skelAt, sk.pos + sk.len - skelAt, asmPos)) return ConvertResult::IoError;
             if (_progress) {
