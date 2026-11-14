@@ -23,6 +23,9 @@ using namespace SyncInternal;
 
 namespace {
 struct DownloadJob {
+    DownloadJob(const AppConfig& config, const String& url, const String& path)
+        : config(config), url(url), path(path) {}
+
     const AppConfig& config;
     const String& url;
     const String& path;
