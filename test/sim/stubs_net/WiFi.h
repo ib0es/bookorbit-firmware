@@ -24,6 +24,7 @@ class IPAddress {
 public:
     IPAddress() : _v(0) {}
     IPAddress(uint8_t a, uint8_t b, uint8_t c, uint8_t d) : _v((uint32_t)a << 24 | b << 16 | c << 8 | d) {}
+    IPAddress(uint32_t v) : _v(v) {}
     bool operator!=(const IPAddress& o) const { return _v != o._v; }
     bool operator==(const IPAddress& o) const { return _v == o._v; }
     String toString() const {
@@ -70,6 +71,7 @@ public:
     wifi_auth_mode_t encryptionType(int i) { return (i == 0) ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN; }
     void scanDelete() {}
     bool softAP(const char*, const char* = nullptr) { return true; }
+    bool softAPConfig(const IPAddress&, const IPAddress&, const IPAddress&) { return true; }
     IPAddress softAPIP() { return IPAddress(192, 168, 4, 1); }
     bool softAPdisconnect(bool = false) { return true; }
 
