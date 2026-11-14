@@ -64,19 +64,38 @@ bool BookReader::layoutChapter(int spine) {
     BookStatus st = BookStatus::OutOfMemory;
     size_t layoutUsed = 0, parseUsed = 0;
     PageCacheWriter writer;
+    // Foreground layout has already stopped the background job and drawn its
+    // waiting screen. The framebuffer can supply the parse arena while the
+    // heap supplies the layout arena; no UI is called until this lease returns.
+    DisplayBuildScratch frame(true);
+    const bool useFrame = frame.data && frame.bytes >= kStoredParseBytes;
+    if (useFrame) Serial.printf("[Reader] Chapter %d parse uses display storage\n", spine);
     for (size_t cap = kLayoutBytes;
          st == BookStatus::OutOfMemory && cap <= kLayoutBytes + Platform::kMemory.layoutExtraMax; cap += 16 * 1024) {
-        Buffer layoutMem(cap);
-        Buffer parseMem(kStoredParseBytes);
-        if (!layoutMem.p || !parseMem.p) {
+        size_t layoutCapacity = cap;
+        if (useFrame && cap == kLayoutBytes) {
+            const size_t largest = MemStats::now().largestBlock;
+            if (largest < cap && largest > 1024) {
+                // The engine reports OutOfMemory if this arena is too small;
+                // do not reject a usable 53 KB block merely because the usual
+                // first allocation is 54 KB. Keep a small allocator margin.
+                layoutCapacity = largest - 256;
+                Serial.printf("[Reader] Chapter %d uses available layout arena: %u bytes\n", spine,
+                              (unsigned)layoutCapacity);
+            }
+        }
+        Buffer layoutMem(layoutCapacity);
+        Buffer parseMem(useFrame ? 0 : kStoredParseBytes);
+        uint8_t* parseData = useFrame ? frame.data : parseMem.p;
+        if (!layoutMem.p || !parseData) {
             const MemStats::Snapshot m = MemStats::now();
             Serial.printf("[Reader] Not enough memory to lay out chapter %d (%u KB): free %u KB, largest block %u KB\n",
                           spine, (unsigned)(cap / 1024), (unsigned)(m.freeBytes / 1024),
                           (unsigned)(m.largestBlock / 1024));
             break;
         }
-        Arena layout(layoutMem.p, cap);
-        Arena parse(parseMem.p, kStoredParseBytes);
+        Arena layout(layoutMem.p, layoutCapacity);
+        Arena parse(parseData, kStoredParseBytes);
         const size_t wcap = writerBytesFor(entry.uncompressedSize, (int)((cap - kLayoutBytes) / (16 * 1024)));
         Buffer writerMem(wcap);
         if (!writerMem.p) break;

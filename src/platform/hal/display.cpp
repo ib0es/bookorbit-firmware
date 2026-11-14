@@ -122,6 +122,18 @@ void EPDDisplay::waitSync() {
     }
 }
 
+uint8_t* EPDDisplay::lendBuildStorage(uint32_t* bytes) {
+    if (!_eink) {
+        if (bytes) *bytes = 0;
+        return nullptr;
+    }
+    return _eink->lendBuildStorage(bytes);
+}
+
+void EPDDisplay::returnBuildStorage() {
+    if (_eink) _eink->returnBuildStorage();
+}
+
 void EPDDisplay::drawPixel(int16_t x, int16_t y, uint16_t color) {
     if (!_eink) return;
     uint8_t* buffer = _eink->getFrameBuffer();

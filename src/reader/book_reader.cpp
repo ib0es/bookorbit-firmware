@@ -180,7 +180,7 @@ void BookReader::drawConvertProgress(void* self, int permille) {
 bool BookReader::openContainer() {
     for (int attempt = 0; attempt < 2; attempt++) {
         if (attempt > 0 || !_cache.exists(BookCatalog::kCatalogName)) {
-            if (!buildContainerIndex(_src, _cache, _noMemory)) return false;
+            if (!buildContainerIndex(_src, _cache, _noMemory, true)) return false;
         }
         size_t resident = 0;
         if (BookCatalog::residentBytes(_cache, &resident) != BookStatus::Ok) continue;

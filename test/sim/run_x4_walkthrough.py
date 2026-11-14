@@ -20,6 +20,7 @@ import json
 import os
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -108,6 +109,36 @@ def big_catalog(sd):
     ]
     json.dump(books, open(os.path.join(sd, "books/catalog.json"), "w"), ensure_ascii=False)
     assert os.path.getsize(os.path.join(sd, "books/catalog.json")) > 60000
+
+
+def fresh_index_big_catalog(sd):
+    big_catalog(sd)
+    shutil.rmtree(os.path.join(sd, "cache"), ignore_errors=True)
+    os.makedirs(os.path.join(sd, "cache"))
+    # Pre-existing, current-version covers keep Home from building the book's
+    # container index during cover extraction, before the open under test.
+    width = height = 64
+    pixels = bytes([255]) * (width * height)
+    palette = b"".join(bytes([i, i, i, 0]) for i in range(256))
+    offset = 14 + 40 + len(palette)
+    bmp = struct.pack("<2sIHHI", b"BM", offset + len(pixels), 0x4742, 1, offset)
+    bmp += struct.pack("<IIIHHIIIIII", 40, width, height, 1, 8, 0, len(pixels), 0, 0, 256, 0)
+    bmp += palette + pixels
+    os.makedirs(os.path.join(sd, "covers"), exist_ok=True)
+    for name in os.listdir(os.path.join(sd, "books")):
+        if name.lower().endswith(".epub"):
+            with open(os.path.join(sd, "covers", os.path.splitext(name)[0] + ".jpg"), "wb") as f:
+                f.write(bmp)
+
+
+def broken_index_last(sd):
+    fresh_index_big_catalog(sd)
+    with open(os.path.join(sd, "books/BrokenIndex.epub"), "wb") as f:
+        f.write(b"not an EPUB container" * 100)
+    json.dump(
+        {"filePath": "/books/BrokenIndex.epub", "title": "BrokenIndex", "page": 1},
+        open(os.path.join(sd, "books/last_book.json"), "w"),
+    )
 
 
 def corrupt_progress(sd):
@@ -643,6 +674,47 @@ CASES = [
         {"SIM_BATTERY_PCT": "0", "SIM_BATTERY_VOLTS": "0", "SIM_BATTERY_CHECK_MS": "300"},
         OPEN_BOOK + "w",
         lambda log, sd: "Battery critical" not in log,
+    ),
+    (
+        "reader memory: releases library lists and rebuilds them after closing",
+        fresh_index_big_catalog,
+        {},
+        OPEN_BOOK + "B" + ALL_BOOKS,
+        lambda log, sd: (
+            re.search(r"Reader memory: releasing 40\d catalog books", log)
+            and log.count("Loaded 400 books metadata") >= 2
+            and "Index uses 48000 bytes of display storage" in log
+            and "[Reader] Opened " in log
+            and re.search(r"Master list: 40\d books", after(log, ">>> BACK"))
+            and "Cannot open the book" not in log
+            and "restarting into it" not in log
+        ),
+    ),
+    (
+        "reader memory: selected library item survives releasing its source list",
+        fresh_index_big_catalog,
+        {},
+        ALL_BOOKS + "C" + "B" + "C" + "DC",
+        lambda log, sd: (
+            re.search(r"Reader memory: releasing 40\d catalog books", log)
+            and "[Reader] Opened " in log
+            and log.count("Loaded 400 books metadata") >= 2
+            and "Cannot open the book" not in log
+            and "restarting into it" not in log
+        ),
+    ),
+    (
+        "reader memory: failed index returns display storage and restores library",
+        broken_index_last,
+        {},
+        OPEN_BOOK + "w" + "D" + "C",
+        lambda log, sd: (
+            "Index uses 48000 bytes of display storage" in log
+            and "Cannot open the book's index" in log
+            and log.count("Loaded 400 books metadata") >= 2
+            and "drawHomeScreen finished" in log[log.find("Cannot open the book's index") :]
+            and "restarting into it" not in log
+        ),
     ),
     (
         "storage: a catalog.json over 50 KB is read whole (B1)",

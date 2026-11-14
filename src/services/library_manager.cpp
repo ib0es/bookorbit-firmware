@@ -1,6 +1,7 @@
 #include "library_manager.h"
 #include "library_internal.h"
 #include "../platform/system.h"
+#include "../platform/device.h"
 #include "../core/progress_sync.h"
 #include "sync_clock.h"
 #include "../reader/reader.h"
@@ -570,6 +571,10 @@ void LibraryManager::scanOfflineBooks() {
 }
 
 void LibraryManager::refreshLocalFilesIfChanged() {
+    if (!_scanned) {
+        scanLocalBooks();
+        return;
+    }
     if (!_cardMayHaveChanged) {
         Serial.println("[Library] Card unchanged since the last walk: list kept (P3)");
         return;
@@ -706,6 +711,26 @@ void LibraryManager::rebuildFilteredIndices() {
     _countsDirty = true;
 }
 
+bool LibraryManager::releaseListsForReader() {
+    if (!Platform::kMemory.wifiTakesReaderMemory) return false;
+    if (masterBooks.capacity() == 0 && offlineBooks.capacity() == 0 && libraryNames.capacity() == 0 &&
+        rows.capacity() == 0 && folderRows.capacity() == 0)
+        return false;
+    Serial.printf("[Library] Reader memory: releasing %u catalog books and %u offline books\n",
+                  (unsigned)masterBooks.size(), (unsigned)offlineBooks.size());
+    if (currentFolder.equals("@formats")) {
+        if (const BookItem* owner = formatBookItem()) _releasedFormatStem = withoutExtension(owner->filePath);
+    }
+    std::vector<int>().swap(rows);
+    std::vector<BookItem>().swap(folderRows);
+    std::vector<BookItem>().swap(masterBooks);
+    std::vector<BookItem>().swap(offlineBooks);
+    std::vector<String>().swap(libraryNames);
+    _scanned = false;
+    touch();
+    return true;
+}
+
 void LibraryManager::scanLocalBooks(bool forceMasterScan) {
     if (!Storage.isAvailable()) {
         Serial.println("[Library] MicroSD storage not available.");
@@ -721,6 +746,26 @@ void LibraryManager::scanLocalBooks(bool forceMasterScan) {
         if (currentFilter == FILTER_OFFLINE) scanOfflineBooks();
     }
     _scanned = true;
+    if (_releasedFormatStem.length() > 0) {
+        if (currentFolder.equals("@formats")) {
+            // A just-downloaded file can change master-list indices. Restore
+            // this book by its format-independent path, never by the old index.
+            const auto& source = formatsOffline ? offlineBooks : masterBooks;
+            formatsBook = -1;
+            for (int i = 0; i < (int)source.size(); ++i) {
+                if (withoutExtension(source[i].filePath).equalsIgnoreCase(_releasedFormatStem)) {
+                    formatsBook = i;
+                    break;
+                }
+            }
+            if (formatsBook < 0) {
+                currentFolder = formatsReturnFolder.length() > 0 ? formatsReturnFolder
+                                                                 : String(formatsOffline ? kOfflineDir : "/books");
+                selectedBookIndex = formatsReturnIndex;
+            }
+        }
+        _releasedFormatStem = String();
+    }
     rebuildRows();
     _countsDirty = true;
 }

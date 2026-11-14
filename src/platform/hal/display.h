@@ -45,6 +45,10 @@ public:
     void clear(EPDColor color = EPD_WHITE);
     void update(RefreshMode mode = REFRESH_FULL);
     void waitSync();
+    // Exclusive transient scratch: drains refreshes and disables framebuffer
+    // access until returned. No allocation moves; return clears it to white.
+    uint8_t* lendBuildStorage(uint32_t* bytes);
+    void returnBuildStorage();
     // Called every few ms while the panel refreshes (a full refresh blocks ~3.8 s):
     // the keys are polled there, so that a press made meanwhile is not lost.
     void setRefreshPoll(void (*poll)());

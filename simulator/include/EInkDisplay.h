@@ -26,7 +26,18 @@ public:
     uint16_t getDisplayWidthBytes() const { return _w / 8; }
     uint32_t getBufferSize() const { return (uint32_t)_w * _h / 8; }
     void deepSleep() {}
-    uint8_t* getFrameBuffer() { return _fb; }
+    uint8_t* getFrameBuffer() { return _buildLent ? nullptr : _fb; }
+    uint8_t* lendBuildStorage(uint32_t* size) {
+        if (size) *size = _buildLent ? 0 : getBufferSize();
+        if (_buildLent) return nullptr;
+        _buildLent = true;
+        return _fb;
+    }
+    void returnBuildStorage() {
+        if (!_buildLent) return;
+        _buildLent = false;
+        memset(_fb, 0xFF, getBufferSize());
+    }
 
     void clearScreen(uint8_t colorByte = 0xFF) { memset(_fb, colorByte, getBufferSize()); }
 
@@ -49,6 +60,7 @@ public:
     static DisplayUpdateCallback s_callback;
 
 private:
+    bool _buildLent = false;
     uint16_t _w = 800, _h = 480;
     uint8_t _fb[52272]; // large enough for X3 (792 * 528 / 8); X4 uses 48000
 };

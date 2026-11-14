@@ -310,6 +310,11 @@ inline uint32_t g_simFreeHeap = 184 * 1024;
 class EspClass {
 public:
     uint32_t getFreeHeap() { return g_simFreeHeap; }
+    uint32_t getMaxAllocHeap() {
+        const char* limit = std::getenv("SIM_LARGEST_HEAP_BLOCK");
+        const uint32_t largest = limit ? (uint32_t)std::strtoul(limit, nullptr, 10) : g_simFreeHeap;
+        return std::min(g_simFreeHeap, largest);
+    }
 };
 inline EspClass ESP;
 
