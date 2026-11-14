@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <new>
 
 namespace {
 
@@ -99,7 +100,16 @@ int fileIdOf(const std::string& href) {
 }  // namespace
 
 OpdsStreamParser::OpdsStreamParser(EntryCallback onEntry, size_t maxEntryBytes)
-    : _onEntry(std::move(onEntry)), _maxEntryBytes(maxEntryBytes) {}
+    : _onEntry(std::move(onEntry)), _maxEntryBytes(maxEntryBytes) {
+    // One allocation for the whole page, made before the heap is cut up by the
+    // entries: growing the buffer by doubling needs a second, bigger contiguous
+    // block at the worst moment (an entry plus a 4 KB chunk, ~16 KB on a C3).
+    try {
+        _buf.reserve(maxEntryBytes + 4096 + 512);
+    } catch (const std::bad_alloc&) {
+        // Go on unreserved; feed() reports a failed allocation instead of aborting.
+    }
+}
 
 std::string OpdsStreamParser::decodeEntities(const std::string& in) {
     if (in.find('&') == std::string::npos) return in;
@@ -286,6 +296,20 @@ void OpdsStreamParser::scanFeedLevel(size_t end) {
 
 bool OpdsStreamParser::feed(const char* data, size_t len) {
     if (_stopped) return false;
+    // A failed allocation (the buffer, an entry, the callback's book list) ends
+    // the feed: an exception out of here would reach std::terminate and reset
+    // the device in the middle of a sync.
+    try {
+        return feedBuffered(data, len);
+    } catch (const std::bad_alloc&) {
+        _oom = true;
+        _stopped = true;
+        std::string().swap(_buf);   // give the memory back at once
+        return false;
+    }
+}
+
+bool OpdsStreamParser::feedBuffered(const char* data, size_t len) {
     _buf.append(data, len);
 
     while (true) {

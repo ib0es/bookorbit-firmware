@@ -53,6 +53,9 @@ public:
     bool feed(const char* data, size_t len);
 
     bool stopped() const { return _stopped; }
+    // Parsing ended because an allocation failed (heap too small or fragmented):
+    // the feed is incomplete, but the device must not crash.
+    bool outOfMemory() const { return _oom; }
     size_t booksParsed() const { return _books; }
     size_t entriesSkipped() const { return _skipped; }   // oversized, or without title/download link
     // Feed-level <link rel="next" href="..."> (pagination), entity-decoded; empty if none.
@@ -66,6 +69,7 @@ public:
 
 private:
     void scanFeedLevel(size_t end);   // look for rel="next" in _buf[0, end)
+    bool feedBuffered(const char* data, size_t len);   // feed() without the allocation guard
 
     EntryCallback _onEntry;
     size_t _maxEntryBytes;
@@ -73,6 +77,7 @@ private:
     bool _inEntry = false;
     bool _discardingEntry = false;    // current entry exceeded the limit; skip to </entry>
     bool _stopped = false;
+    bool _oom = false;
     size_t _books = 0;
     size_t _skipped = 0;
     std::string _nextUrl;
