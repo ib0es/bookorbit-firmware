@@ -1579,9 +1579,12 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
                         if (FontStore::sameFamilyName(family, BookReader::builtinFontName()))
                             return up.reject(tr(MsgId::WEB_HTML_FONT_BUILTIN_ONLY));
                         if (FontStore::contains(family)) return up.reject(tr(MsgId::WEB_HTML_FONT_DELETE_FIRST));
+                        const String familyDir = String(FontStore::kDir) + "/" + family;
+                        Storage.mkdir(familyDir.c_str());
+                        up.targetPath = familyDir + "/" + cleanName;
+                    } else {
+                        up.targetPath = String(LibraryManager::kOfflineDir) + "/" + cleanName;
                     }
-                    up.targetPath =
-                            String(fontUpload ? FontStore::kDir : LibraryManager::kOfflineDir) + "/" + cleanName;
                     up.partPath = up.targetPath + ".part";
 
                     const String owArg = server.arg("overwrite");
