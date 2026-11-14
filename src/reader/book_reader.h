@@ -190,6 +190,8 @@ public:
     // converted from another format sits in the cache directory of that file).
     static bool extractCover(const String& epubPath, const String& outPath, bool* noMemory = nullptr,
                              const String& cacheDir = String());
+    // Converts a raw PNG or progressive JPEG image file on SD into an 8-bit gray BMP cover.
+    static bool convertCoverImage(const String& imgPath, const String& bmpPath, bool* noMemory = nullptr);
 
     // The book's layout cache directory on the card ("/cache/<file name>.fib").
     static String cacheDirFor(const String& bookPath);

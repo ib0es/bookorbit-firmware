@@ -403,3 +403,14 @@ bool BookReader::extractCover(const String& epubPath, const String& outPath, boo
     if (noMemory) *noMemory = oom && !ok;
     return ok;
 }
+
+bool BookReader::convertCoverImage(const String& imgPath, const String& bmpPath, bool* noMemory) {
+    if (noMemory) *noMemory = false;
+    bool oom = false;
+    ImageInfo info;
+    const CoverKind kind = coverKindOf(imgPath, info);
+    if (kind != CoverKind::Convert) return false;
+    const bool ok = imageFileToGrayBmp(imgPath, info, bmpPath, oom);
+    if (noMemory) *noMemory = oom && !ok;
+    return ok;
+}
