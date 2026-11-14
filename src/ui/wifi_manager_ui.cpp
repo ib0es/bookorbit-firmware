@@ -233,6 +233,7 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
                             drawModal(tr(MsgId::WIFI_CONNECTED_TITLE), tr(MsgId::WIFI_CONNECTED_OPEN),
                                       chosen.ssid.c_str(), ipStr.c_str());
                             PowerService::waitOrKey(2200);
+                            BookOrbit.disconnectWiFi();
                             return true;
                         } else {
                             drawModal(tr(MsgId::COMMON_ERROR), tr(MsgId::WIFI_ERR_OPEN), chosen.ssid.c_str());
@@ -259,6 +260,7 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
                                 drawModal(tr(MsgId::WIFI_CONNECTED_TITLE), tr(MsgId::WIFI_CONNECTED_SAVED),
                                           chosen.ssid.c_str(), ipStr.c_str());
                                 PowerService::waitOrKey(2200);
+                                BookOrbit.disconnectWiFi();
                                 return true;
                             } else {
                                 drawModal(tr(MsgId::COMMON_ERROR), tr(MsgId::WIFI_ERR_SAVED_PASS_L1),
@@ -291,6 +293,7 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
                             drawModal(tr(MsgId::WIFI_CONNECTED_TITLE), tr(MsgId::WIFI_CONNECTED_SAVED_MSG),
                                       chosen.ssid.c_str(), ipStr.c_str());
                             PowerService::waitOrKey(2200);
+                            BookOrbit.disconnectWiFi();
                             return true;
                         } else {
                             drawModal(tr(MsgId::WIFI_ERR_TITLE), tr(MsgId::WIFI_TEST_ERR_L1),
