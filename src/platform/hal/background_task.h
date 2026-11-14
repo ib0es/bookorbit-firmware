@@ -29,7 +29,9 @@ public:
 #if defined(ESP_PLATFORM)
         // ESP-IDF specifies stack size in bytes. Leave core placement to the
         // scheduler: X4 is single-core, while Picco can run beside the UI.
-        _started = xTaskCreate(entry, "book-download", 8192, this, 1, nullptr) == pdPASS;
+        TaskHandle_t handle = nullptr;
+        _started = xTaskCreate(entry, "book-download", 8192, this, 1, &handle) == pdPASS;
+        _task = handle;
 #else
         try {
             _thread = std::thread(entry, this);
@@ -46,7 +48,14 @@ public:
     void join() {
         if (!_started) return;
         while (!finished()) delay(10);
-#if !defined(ESP_PLATFORM)
+#if defined(ESP_PLATFORM)
+        if (_task) {
+            while (eTaskGetState(static_cast<TaskHandle_t>(_task)) != eDeleted) {
+                delay(5);
+            }
+            _task = nullptr;
+        }
+#else
         _thread.join();
 #endif
         _started = false;
@@ -68,7 +77,9 @@ private:
     void* _context = nullptr;
     bool _started = false;
     std::atomic<bool> _done{false};
-#if !defined(ESP_PLATFORM)
+#if defined(ESP_PLATFORM)
+    TaskHandle_t _task = nullptr;
+#else
     std::thread _thread;
 #endif
 };
