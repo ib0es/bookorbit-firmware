@@ -712,7 +712,8 @@ void TxtConverter::newFile() {
 void TxtConverter::writePiece(const Piece& p) {
     // A file is kept to ~40 KB, so that one never takes long to lay out:
     // split between paragraphs, or inside a very long one.
-    if (_fileOpen && _fileHasText && ((!p.cont && _fileBytes >= 40000) || _fileBytes >= 64000)) closeFile();
+    // Cap chunk splitting at 500 files to avoid exhausting RAM with labels and ZIP entries on 16MB+ files.
+    if (_fileOpen && _fileHasText && _file < 500 && ((!p.cont && _fileBytes >= 40000) || _fileBytes >= 64000)) closeFile();
     ensureFile();
     if (p.whole && isSeparator(p.text)) {
         emit("<p class=\"sep\">" + xmlEscape(p.text) + "</p>\n");
