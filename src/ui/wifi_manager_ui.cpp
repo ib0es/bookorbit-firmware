@@ -126,7 +126,6 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
         std::vector<ScannedNet> list;
         for (int i = 0; i < n; i++) {
             String s = WiFi.SSID(i);
-            s.trim();
             if (s.length() == 0) continue;
 
             int r = WiFi.RSSI(i);
@@ -135,7 +134,7 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
 
             bool found = false;
             for (auto& item : list) {
-                if (item.ssid.equalsIgnoreCase(s)) {
+                if (item.ssid == s) {
                     if (r > item.rssi) {
                         item.rssi = r;
                         item.authMode = auth;
@@ -153,7 +152,7 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
 
         // Put current SSID first if found, otherwise keep list
         for (size_t i = 0; i < list.size(); i++) {
-            if (list[i].ssid.equalsIgnoreCase(outSsid)) {
+            if (list[i].ssid == outSsid) {
                 ScannedNet cur = list[i];
                 list.erase(list.begin() + i);
                 list.insert(list.begin(), cur);
@@ -164,7 +163,9 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
         if (list.empty()) {
             // C9: on a touch board a tap closes the dialog and a swipe down searches again.
             const bool touchHints = uikit::touchOnly() && !uikit::touchMissing();
-            drawModal(tr(MsgId::WIFI_SCAN_NONE_TITLE), tr(MsgId::WIFI_SCAN_NONE_L1),
+            const char* emptyTitle = n < 0 ? tr(MsgId::COMMON_ERROR) : tr(MsgId::WIFI_SCAN_NONE_TITLE);
+            const char* emptyL1 = n < 0 ? tr(MsgId::WIFI_TEST_ERR_L1) : tr(MsgId::WIFI_SCAN_NONE_L1);
+            drawModal(emptyTitle, emptyL1,
                       tr(touchHints ? MsgId::WIFI_SCAN_NONE_TOUCH_RESCAN : MsgId::WIFI_SCAN_NONE_HINT_CONFIRM),
                       tr(touchHints ? MsgId::WIFI_SCAN_NONE_TOUCH_BACK : MsgId::WIFI_SCAN_NONE_HINT_BACK));
             while (true) {
