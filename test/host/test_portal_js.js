@@ -22,7 +22,14 @@ const vm = require('vm');
 const ROOT = path.resolve(__dirname, '..', '..');
 const src = fs.readFileSync(path.join(ROOT, 'src/net/web_config.cpp'), 'utf8');
 const raws = [...src.matchAll(/R"rawliteral\(([\s\S]*?)\)rawliteral"/g)].map((m) => m[1]);
-const tokens = {};
+const tokens = {
+  '%LOADING%': { id: 'WEB_HTML_LOADING', js: false },
+  '%CONFIRM_NOTE%': { id: 'WEB_HTML_CONFIRM_NOTE', js: false },
+  '%BTN_YES%': { id: 'WEB_HTML_YES', js: false },
+  '%BTN_NO%': { id: 'WEB_HTML_NO', js: false },
+  '%JS_LOADING%': { id: 'WEB_HTML_LOADING', js: true },
+  '%JS_RETRY%': { id: 'WEB_HTML_RETRY', js: true },
+};
 for (const m of src.matchAll(/\{"(%[A-Z_]+%)",\s*MsgId::([A-Z_0-9]+),\s*(true|false)\}/g)) {
   tokens[m[1]] = { id: m[2], js: m[3] === 'true' };
 }
@@ -83,11 +90,19 @@ class El {
     this.checked = false;
     this.value = '';
     this.files = [];
-    this.textContent = '';
+    this._textContent = '';
+    Object.defineProperty(this, 'textContent', {
+      get: () => this._textContent,
+      set: (val) => {
+        this._textContent = val;
+        this.children = [];
+      }
+    });
     this.innerHTML = '';
     this.children = [];
     this.options = [];
     this.handlers = {};
+    this.focus = () => {};
     this.fields = [];
     const named = {};
     this.elements = { namedItem: (n) => named[n] || (named[n] = new El(n)) };
@@ -371,38 +386,42 @@ async function scenarios(lang) {
   const names = w.$('blist').children.map((r) => r.children[0].textContent);
   check(names[0].startsWith('A.epub') && names[1].startsWith('B.fb2'), P(`the books are named: ${names}`));
   w = await start(lang, '?pin=123456', (b) => b.route('GET', '/api/books', 200, { free: 0, total: 0, books: [] }));
-  check(w.$('blist').innerHTML.includes(T('WEB_HTML_NO_BOOKS')), P('an empty list says so'));
+  check(w.$('blist').children.length === 1 && w.$('blist').children[0].children[0].textContent === T('WEB_HTML_NO_BOOKS'), P('an empty list says so'));
 
-  // ---- books: delete (two presses on the button, no native dialog)
+  // ---- books: delete with modal confirmation dialog
   w = await start(lang);
   const del = () => w.$('blist').children[0].children[1];
   check(del().textContent === T('WEB_HTML_BTN_DELETE'), P('the delete button says Delete'));
   w.reset();
   del().click();
-  check(w.calls.fetch.length === 0, P('the first press deletes nothing'));
-  check(del().textContent === T('WEB_HTML_BTN_DELETE') + '?', P('the first press asks on the button itself'));
-  w.route('POST', '/api/books/delete', 200, { ok: true });
+  await w.settle();
+  check(w.$('dlg').classList.contains('open'), P('clicking delete opens confirmation dialog'));
+  check(w.$('dlg-name').textContent === 'A.epub', P('dialog shows target book name'));
+  check(w.calls.fetch.length === 0, P('opening dialog sends no delete request'));
+  // clicking No cancels
+  w.$('dlg-no').click();
+  await w.settle();
+  check(!w.$('dlg').classList.contains('open'), P('clicking No closes dialog'));
+  check(w.calls.fetch.length === 0, P('clicking No sent no delete request'));
+  // clicking Yes confirms
   del().click();
   await w.settle();
+  w.route('POST', '/api/books/delete', 200, { ok: true });
+  w.$('dlg-yes').click();
+  await w.settle();
+  check(!w.$('dlg').classList.contains('open'), P('confirming delete closes dialog'));
   const posts = w.fetches('/api/books/delete');
-  check(posts.length === 1 && posts[0].url === '/api/books/delete?pin=123456', P('the second press deletes, with the PIN'));
-  check(posts[0] && /^name=A\.epub$/.test(posts[0].body), P('the book named is the one pressed'));
+  check(posts.length === 1 && posts[0].url === '/api/books/delete?pin=123456', P('delete request sent with PIN'));
+  check(posts[0] && /^name=A\.epub$/.test(posts[0].body), P('the book named is the one confirmed'));
   check(w.fetches('/api/books').length >= 1, P('the list is read again after a delete'));
   // a refusal is shown
   w = await start(lang);
   w.route('POST', '/api/books/delete', 404, { ok: false, error: 'File not found' });
   del().click();
-  del().click();
+  await w.settle();
+  w.$('dlg-yes').click();
   await w.settle();
   check(toastOf(w).textContent === 'File not found' && /err/.test(toastOf(w).className), P('a refused delete shows the reason'));
-  // the question lapses
-  w = await start(lang);
-  del().click();
-  w.runTimers();
-  check(del().textContent === T('WEB_HTML_BTN_DELETE'), P('an unanswered question lapses'));
-  w.reset();
-  del().click();
-  check(w.calls.fetch.length === 0, P('a press after the lapse asks again'));
 
   // ---- books: upload
   w = await start(lang);
@@ -460,8 +479,8 @@ async function scenarios(lang) {
   w.run('loadFonts()');
   await w.settle();
   check(w.$('font-list').children.length === 3, P('every font on the card is listed'));
-  const sdButtons = w.$('font-list').children.map((r) => r.children[0].textContent);
-  check(sdButtons.every((t) => t === T('WEB_HTML_FONT_SD_DELETE')), P('each font on the card has its delete button'));
+  const sdButtons = w.$('font-list').children.map((r) => r.children[1].textContent);
+  check(sdButtons.every((t) => t === T('WEB_HTML_BTN_DELETE')), P('each font on the card has its delete button'));
   const flash = w.$('font-flash-family').options;
   const opt = (name) => flash.find((o) => o.value === name);
   check(opt('Huge') && opt('Huge').disabled, P('a font that does not fit cannot be picked for Flash'));
@@ -510,7 +529,7 @@ async function scenarios(lang) {
   check(toastOf(w).textContent === 'Flash is full' && /err/.test(toastOf(w).className), P('a refused install shows the reason'));
   check(w.$('btn-save').disabled === false, P('Save comes back after a refused install'));
 
-  // ---- fonts: delete from Flash (two presses, no native dialog)
+  // ---- fonts: delete from Flash with modal confirmation
   w = await start(lang);
   w.run('loadFonts()');
   await w.settle();
@@ -520,40 +539,32 @@ async function scenarios(lang) {
   w.route('POST', '/api/fonts/flash/delete', 200, { ok: true });
   w.reset();
   w.run('runFontAction()');
-  check(w.calls.fetch.length === 0, P('the first press on a Flash font deletes nothing'));
-  check(flashBtn().textContent === T('WEB_HTML_BTN_DELETE') + '?', P('the first press asks on the button'));
-  w.run('runFontAction()');
+  await w.settle();
+  check(w.$('dlg').classList.contains('open'), P('clicking delete Flash font opens dialog'));
+  check(w.calls.fetch.length === 0, P('opening dialog sends no delete request'));
+  w.$('dlg-yes').click();
   await w.settle();
   const fd = w.fetches('/api/fonts/flash/delete');
-  check(fd.length === 1 && fd[0].url === '/api/fonts/flash/delete?pin=123456' && fd[0].body === 'name=Literata', P('the second press deletes it, with the PIN'));
+  check(fd.length === 1 && fd[0].url === '/api/fonts/flash/delete?pin=123456' && fd[0].body === 'name=Literata', P('confirmed delete sent with PIN'));
   check(w.$('cfg-form').elements.namedItem('font_family').value === '', P('deleting the reading font clears the choice'));
   check(toastOf(w).textContent === T('WEB_HTML_FONT_DELETED'), P('a Flash delete says it is done'));
-  w = await start(lang);
-  w.run('loadFonts()');
-  await w.settle();
-  w.$('font-flash-family').value = 'Literata';
-  w.run('updateFontAction()');
-  w.run('runFontAction()');
-  w.runTimers();
-  w.reset();
-  w.run('runFontAction()');
-  check(w.calls.fetch.length === 0, P('an unanswered Flash question lapses'));
 
-  // ---- fonts: delete from the card
+  // ---- fonts: delete from the card with modal confirmation
   w = await start(lang);
   w.run('loadFonts()');
   await w.settle();
   w.$('cfg-form').elements.namedItem('font_family').value = 'Lora';
   w.route('POST', '/api/fonts/card/delete', 200, { ok: true, inFlash: false });
-  const sdRemove = (i) => w.$('font-list').children[i].children[0];
+  const sdRemove = (i) => w.$('font-list').children[i].children[1];
   w.reset();
   sdRemove(1).click();
-  check(w.calls.fetch.length === 0 && sdRemove(1).textContent === T('WEB_HTML_BTN_DELETE') + '?', P('the first press on a card font asks'));
-  sdRemove(1).click();
+  await w.settle();
+  check(w.$('dlg').classList.contains('open'), P('clicking delete SD font opens dialog'));
+  w.$('dlg-yes').click();
   await w.settle();
   const cd = w.fetches('/api/fonts/card/delete');
-  check(cd.length === 1 && cd[0].url === '/api/fonts/card/delete?pin=123456' && cd[0].body === 'name=Lora', P('the second press deletes the card font, with the PIN'));
-  check(w.$('cfg-form').elements.namedItem('font_family').value === '', P('deleting the reading font from the card clears the choice'));
+  check(cd.length === 1 && cd[0].url === '/api/fonts/card/delete?pin=123456' && cd[0].body === 'name=Lora', P('confirmed card delete sent with PIN'));
+  check(w.$('cfg-form').elements.namedItem('font_family').value === '', P('deleting reading font from card clears choice'));
   check(toastOf(w).textContent === T('WEB_HTML_FONT_SD_DELETED'), P('a card delete says it is done'));
   // a copy in Flash keeps the choice
   w = await start(lang);
@@ -562,7 +573,8 @@ async function scenarios(lang) {
   w.$('cfg-form').elements.namedItem('font_family').value = 'Literata';
   w.route('POST', '/api/fonts/card/delete', 200, { ok: true, inFlash: true });
   sdRemove(0).click();
-  sdRemove(0).click();
+  await w.settle();
+  w.$('dlg-yes').click();
   await w.settle();
   check(w.$('cfg-form').elements.namedItem('font_family').value === 'Literata', P('a copy in Flash keeps the reading font'));
   w = await start(lang);
@@ -570,7 +582,8 @@ async function scenarios(lang) {
   await w.settle();
   w.route('POST', '/api/fonts/card/delete', 409, { ok: false, error: 'Built-in font cannot be modified' });
   sdRemove(0).click();
-  sdRemove(0).click();
+  await w.settle();
+  w.$('dlg-yes').click();
   await w.settle();
   check(toastOf(w).textContent === 'Built-in font cannot be modified', P('a refused card delete shows the reason'));
   check(w.$('btn-save').disabled === false, P('Save comes back after a refused delete'));
