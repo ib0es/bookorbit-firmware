@@ -167,7 +167,7 @@ var booksLoading=false;
 function loadBooks(){
   if(booksLoading)return;
   booksLoading=true;
-  fetch('/api/books').then(function(r){return r.json();}).then(function(d){
+  fetch('/api/books?pin='+encodeURIComponent(pin)).then(function(r){return r.json();}).then(function(d){
     booksLoading=false;
     $('sd-info').textContent=(d.free?fmtSz(d.free):'?')+' / '+(d.total?fmtSz(d.total):'?');
     var list=$('blist');list.innerHTML='';
@@ -272,7 +272,7 @@ function runFontAction(){
   return choice.installed?twice($('font-flash-install'),deletePortalFont):installPortalFont();
 }
 function loadFonts(){
-  return fetch('/api/fonts').then(function(r){if(!r.ok)throw Error(T.err);return r.json();}).then(function(d){
+  return fetch('/api/fonts?pin='+encodeURIComponent(pin)).then(function(r){if(!r.ok)throw Error(T.err);return r.json();}).then(function(d){
     var list=$('font-list');list.textContent='';
     var select=$('cfg-form').elements.namedItem('font_family'),current=select.value;
     while(select.options.length>1)select.remove(1);
@@ -436,7 +436,7 @@ async function uploadFonts(){
   try{
     $('font-result').textContent='%JS_ZIP_PREPARING%';
     files=await expandFontFiles(files);
-    var stateResponse=await fetch('/api/fonts');if(!stateResponse.ok)throw Error(T.err);
+    var stateResponse=await fetch('/api/fonts?pin='+encodeURIComponent(pin));if(!stateResponse.ok)throw Error(T.err);
     var state=await stateResponse.json();
     files=files.filter(function(f){return fontFamilyKey(fontFamilyFromFile(f.name))!==fontFamilyKey(state.builtin||'Noto Serif');});
     if(files.some(function(f){return (state.installedFamilies||[]).some(function(installed){return fontFamilyKey(fontFamilyFromFile(f.name))===fontFamilyKey(installed.name);});}))throw Error('%JS_FONT_DELETE_FIRST%');
@@ -732,7 +732,10 @@ void sendPortalTemplate(PortalWriter& out, const char* text, size_t length, cons
             }
             for (const auto& entry : tokens) {
                 if (strlen(entry.token) == size && memcmp(part, entry.token, size) == 0) {
-                    out += entry.javascript ? jsEscape(tr(entry.message)) : htmlEscape(tr(entry.message));
+                    // A translation may name the device itself ("... %DEVICE% ...").
+                    String text = tr(entry.message);
+                    text.replace("%DEVICE%", Platform::kDevice.name);
+                    out += entry.javascript ? jsEscape(text) : htmlEscape(text);
                     return;
                 }
             }
@@ -1417,21 +1420,26 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
         server.on("/fwlink", handleRedirect);
     }
 
+    // Every address asks for the PIN on a home Wi-Fi portal, the page and the lists
+    // too (they carry the saved settings), not only the actions.
     server.on("/", HTTP_GET, [&]() {
         PowerService::noteActivity();
         sendNoCache();
+        if (!checkAuth()) return;
         streamPortalPage(server, cfg, fonts);
     });
 
     server.on("/api/books", HTTP_GET, [&]() {
         PowerService::noteActivity();
         sendNoCache();
+        if (!checkAuth()) return;
         sendBooksListJson(server);
     });
 
     server.on("/api/fonts", HTTP_GET, [&]() {
         PowerService::noteActivity();
         sendNoCache();
+        if (!checkAuth()) return;
         fonts = Storage.isAvailable() ? FontStore::scanCard() : std::vector<FontStore::Family>();
         String json =
                 "{\"builtin\":\"" + jsonEscape(BookReader::builtinFontName()) +
@@ -1791,6 +1799,7 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
     server.on("/api/close", HTTP_POST, [&]() {
         PowerService::noteActivity();
         sendNoCache();
+        if (!checkAuth()) return;
         server.send(200, "application/json; charset=utf-8", "{\"ok\":true}");
         closeRequested = true;
     });
