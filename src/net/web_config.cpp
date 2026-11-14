@@ -40,7 +40,7 @@ WebConfigManager::WebConfigManager() {}
 namespace {
 
 const char HTML_HEAD[] PROGMEM = R"rawliteral(<!DOCTYPE html>
-<html>
+<html lang='%LANG%'>
 <head>
 <meta name='viewport' content='width=device-width, initial-scale=1'>
 <meta charset='utf-8'>
@@ -57,8 +57,11 @@ p.desc { font-size: 13px; color: #666; margin: 0 0 12px; line-height: 1.4; }
 .panel { display: none; }
 .panel.active { display: block; }
 .sd-bar { font-size: 12px; color: #444; background: #f3f4f6; padding: 8px 10px; border-radius: 6px; margin-bottom: 10px; }
-.drop { border: 2px dashed #bbb; border-radius: 8px; padding: 14px; text-align: center; background: #fafafa; margin-bottom: 10px; }
-.drop input[type='file'] { width: 100%; font-size: 14px; }
+.drop { border: 2px dashed #bbb; border-radius: 8px; padding: 16px; text-align: center; background: #fafafa; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s; }
+.drop:hover { border-color: #000; }
+.drop input[type='file'] { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+.drop-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #fff; color: #111; border: 1px solid #ccc; padding: 9px 18px; font-size: 14px; font-weight: 600; border-radius: 6px; cursor: pointer; pointer-events: none; }
+.drop-hint { display: block; font-size: 12px; color: #777; margin-top: 6px; pointer-events: none; }
 .qitem { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #eee; font-size: 13px; gap: 8px; }
 .qname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 .badge { font-size: 12px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: #e5e7eb; }
@@ -115,7 +118,7 @@ button.btn-sm { width: auto; padding: 7px 12px; font-size: 13px; margin: 0; bord
 <div class='sd-bar'>%SD_FREE_LBL%: <span id='sd-info'>...</span></div>
 <h2>%UPLOAD_TITLE%</h2>
 <p class='desc'>%UPLOAD_DESC%</p>
-<div class='drop'><input type='file' id='file-input' multiple accept='.epub,.fb2,.mobi,.azw3,.azw,.txt' title='%PICK_FILES%'></div>
+<div class='drop' onclick="$('file-input').click()"><input type='file' id='file-input' multiple accept='.epub,.fb2,.mobi,.azw3,.azw,.txt'><span class='drop-btn'>📁 %PICK_FILES%</span><span id='file-hint' class='drop-hint'>.epub, .fb2, .mobi, .azw3, .txt</span></div>
 <label class='chk'><input type='checkbox' id='overwrite'>%OVERWRITE_LBL%</label>
 <label class='chk' id='lbl-keep-prog' style='display:none'><input type='checkbox' id='keep-progress' checked>%KEEP_PROGRESS_LBL%</label>
 <button type='button' id='btn-up' class='btn' onclick='startUpload()' disabled>%BTN_UPLOAD%</button>
@@ -130,7 +133,7 @@ button.btn-sm { width: auto; padding: 7px 12px; font-size: 13px; margin: 0; bord
 <div id='tab-fonts' class='panel'>
 <h2>%FONT_SD_TITLE%</h2>
 <p class='desc'>%FONTS_DESC%</p>
-<div class='drop'><input type='file' id='font-input' multiple accept='.zip,.ttf,.otf'></div>
+<div class='drop' onclick="$('font-input').click()"><input type='file' id='font-input' multiple accept='.zip,.ttf,.otf'><span class='drop-btn'>📁 %PICK_FILES%</span><span id='font-hint' class='drop-hint'>.zip, .ttf, .otf</span></div>
 <label class='chk'><input type='checkbox' id='font-overwrite'>%OVERWRITE_LBL%</label>
 <button type='button' id='font-up' class='btn' onclick='uploadFonts()' disabled>%FONT_SD_UPLOAD%</button>
 <progress id='font-progress' value='0' max='100' style='display:none'></progress>
@@ -251,6 +254,7 @@ function delBook(name){
 $('file-input').addEventListener('change',function(){
   if(uploading)return;
   upQueue=Array.prototype.slice.call(this.files||[]);
+  $('file-hint').textContent=upQueue.length?(upQueue.length===1?upQueue[0].name:upQueue.length+' files'):'.epub, .fb2, .mobi, .azw3, .txt';
   renderQueue();
   $('prog-wrap').style.display='none';
   $('p-batch').value=0;
@@ -493,7 +497,7 @@ async function installPortalFont(){
   }
 }
 var fontUploading=false;
-$('font-input').addEventListener('change',function(){$('font-up').disabled=fontUploading||!this.files.length;});
+$('font-input').addEventListener('change',function(){var l=this.files?this.files.length:0;$('font-up').disabled=fontUploading||!l;$('font-hint').textContent=l?(l===1?this.files[0].name:l+' files'):'.zip, .ttf, .otf';});
 async function uploadFonts(){
   if(fontUploading||uploading)return;
   var files=Array.prototype.slice.call($('font-input').files||[]);if(!files.length)return;
@@ -739,6 +743,7 @@ struct PortalToken {
 };
 const PortalToken kHeadTokens[] = {
         {"%HTML_TITLE%", MsgId::WEB_HTML_TITLE, false},
+        {"%LANG%", MsgId::SETTINGS_ITEM_LANGUAGE, false},
         {"%HTML_HEADING%", MsgId::WEB_HTML_HEADING, false},
         {"%HTML_SUBHEAD%", MsgId::WEB_HTML_SUBHEAD, false},
         {"%FONT_FLASH_DELETE%", MsgId::WEB_HTML_FONT_FLASH_DELETE, false},
@@ -802,6 +807,10 @@ void sendPortalTemplate(PortalWriter& out, const char* text, size_t length, cons
         if (token) {
             if (size == sizeof("%DEVICE%") - 1 && memcmp(part, "%DEVICE%", size) == 0) {
                 out += htmlEscape(Platform::kDevice.name);
+                return;
+            }
+            if (size == sizeof("%LANG%") - 1 && memcmp(part, "%LANG%", size) == 0) {
+                out += htmlEscape(I18n::getLanguageCode(I18n::getLanguage()));
                 return;
             }
             for (const auto& entry : tokens) {

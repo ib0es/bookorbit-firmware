@@ -23,6 +23,7 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const src = fs.readFileSync(path.join(ROOT, 'src/net/web_config.cpp'), 'utf8');
 const raws = [...src.matchAll(/R"rawliteral\(([\s\S]*?)\)rawliteral"/g)].map((m) => m[1]);
 const tokens = {
+  '%LANG%': { id: 'SETTINGS_ITEM_LANGUAGE', js: false },
   '%LOADING%': { id: 'WEB_HTML_LOADING', js: false },
   '%CONFIRM_NOTE%': { id: 'WEB_HTML_CONFIRM_NOTE', js: false },
   '%BTN_YES%': { id: 'WEB_HTML_YES', js: false },
