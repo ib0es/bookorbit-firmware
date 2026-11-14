@@ -126,7 +126,8 @@ static void applyNested(const NestedStep& s) {
         exit(3);
     }
 #elif defined(SIM_KEYS_TOUCH_ONLY)
-    if (s.kind == 'U' || s.kind == 'D' || s.kind == 'L' || s.kind == 'R' || s.kind == 'C' || s.kind == 'B' || s.kind == 'h') {
+    if (s.kind == 'U' || s.kind == 'D' || s.kind == 'L' || s.kind == 'R' || s.kind == 'C' || s.kind == 'B' ||
+        s.kind == 'h') {
         printf("!!! KEY_NOT_ON_DEVICE (nested) '%c': this board has touch only\n", s.kind);
         exit(3);
     }

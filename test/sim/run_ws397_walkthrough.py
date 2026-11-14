@@ -16,35 +16,35 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
+from typing import Any
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SD_LEFTOVERS = shutil.ignore_patterns("offline", "offline#*")
 BIN = os.environ.get("WS397_HEADLESS") or os.path.join(ROOT, "test/sim/build-ws397/x4_headless")
 
+
 def config(sd):
     with open(os.path.join(sd, "config.json")) as f:
         return json.load(f)
 
+
 def pages(log):
     return [int(p) for p in re.findall(r"\[Reader\] Page (\d+)/\d+", log)]
 
-CASES = [
+
+CASES: list[tuple[str, str, Callable[..., bool], Any, Any]] = [
     (
         "boot: ws397 reports WAVESHARE 3.97, no touch, powerSharedWithBack",
         "",
-        lambda log, sd: (
-            "[BOOT] device=WAVESHARE 3.97" in log
-            and "touch=0" in log
-        ),
+        lambda log, sd: "[BOOT] device=WAVESHARE 3.97" in log and "touch=0" in log,
         None,
         {},
     ),
     (
         "reading: UP/DOWN turn pages because upDownTurnPages is enabled",
         "C" + "DD",  # Open last book, turn pages forward twice
-        lambda log, sd: (
-            len(pages(log)) >= 2
-        ),
+        lambda log, sd: len(pages(log)) >= 2,
         None,
         {},
     ),
@@ -52,9 +52,7 @@ CASES = [
         "reader menu: OK opens menu, BACK closes book and returns home",
         "C" + "C" + "B",  # Open book, open reader menu, BACK returns home
         lambda log, sd: (
-            "[UI] drawReaderMenuScreen finished" in log
-            or "Book closed" in log
-            or "[UI] drawHomeScreen finished" in log
+            "[UI] drawReaderMenuScreen finished" in log or "Book closed" in log or "[UI] drawHomeScreen finished" in log
         ),
         None,
         {},
@@ -62,10 +60,7 @@ CASES = [
     (
         "settings: accessible via DOWN+CONFIRM",
         "DDDC" + "B",  # Home -> Settings, then BACK to Home
-        lambda log, sd: (
-            "[UI] drawSettingsScreen finished" in log
-            and "[UI] drawHomeScreen finished" in log
-        ),
+        lambda log, sd: "[UI] drawSettingsScreen finished" in log and "[UI] drawHomeScreen finished" in log,
         None,
         {},
     ),
@@ -81,6 +76,7 @@ CASES = [
         {},
     ),
 ]
+
 
 def run(script, config_mods=None, srv=None, env=None, setup=None):
     tmp = tempfile.mkdtemp()
@@ -107,9 +103,12 @@ def run(script, config_mods=None, srv=None, env=None, setup=None):
     finally:
         shutil.rmtree(tmp)
 
+
 def main():
     if not os.path.isfile(BIN):
-        print(f"WS397 headless binary not found at {BIN}. Build it first with: make -f test/sim/Makefile DEVICE=ws397 all")
+        print(
+            f"WS397 headless binary not found at {BIN}. Build it first with: make -f test/sim/Makefile DEVICE=ws397 all"
+        )
         return 2
     failed = 0
     for name, script, check, config_mods, env in CASES:
@@ -138,6 +137,7 @@ def main():
     else:
         print(f"FAILED: {failed}/{len(CASES)} cases failed")
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

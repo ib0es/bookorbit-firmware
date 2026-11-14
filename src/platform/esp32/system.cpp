@@ -113,7 +113,9 @@ void enterDeepSleep() {
     digitalWrite(44, HIGH);
     delay(100);
     digitalWrite(44, LOW);
-    while (true) { delay(1000); }
+    while (true) {
+        delay(1000);
+    }
 #else
     freeink::PowerManager::waitForPowerButtonRelease();
     freeink::PowerManager::armPowerButtonWakeup();
