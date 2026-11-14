@@ -413,7 +413,8 @@ bool JpegViewer::save1BitBmp(const char* filePath, int w, int h, const uint8_t* 
     return true;
 }
 
-bool JpegViewer::drawBmp(const char* filePath, int x, int y, int maxW, int maxH, CoverFitMode fit) {
+bool JpegViewer::drawBmp(const char* filePath, int x, int y, int maxW, int maxH, CoverFitMode fit,
+                         const char* cacheKey) {
     if (!filePath || strlen(filePath) == 0 || !Storage.isAvailable() || !Storage.exists(filePath)) return false;
     FsFile f = Storage.open(filePath, O_RDONLY);
     if (!f) return false;
@@ -608,7 +609,7 @@ bool JpegViewer::drawBmp(const char* filePath, int x, int y, int maxW, int maxH,
         if (errNext) free(errNext);
     }
 
-    if (slot) commitSlot(slot, filePath, maxW, maxH, fit);
+    if (slot) commitSlot(slot, cacheKey ? cacheKey : filePath, maxW, maxH, fit);
 
     free(lineBuf);
     f.close();
@@ -680,7 +681,7 @@ bool JpegViewer::drawCover(const char* filePath, int x, int y, int maxW, int max
             }
             bf.close();
             if (sizeMatches) {
-                return drawBmp(bmpCachePath.c_str(), x, y, maxW, maxH, fit);
+                return drawBmp(bmpCachePath.c_str(), x, y, maxW, maxH, fit, filePath);
             }
         } else if (bf) {
             bf.close();
