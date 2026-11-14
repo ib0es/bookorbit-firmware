@@ -360,6 +360,10 @@ void BookReader::renderCurrentPage() {
                     page.imageCount = count;
                     MemStats::log("reader: detached image pass");
                     ist = drawLadder(kImageBytes);
+                    // A ZIP-deflated large JPEG needs both the inflate window
+                    // and its MCU band/scaler. Retry above the normal 52 KB
+                    // limit only after releasing the page record and caches.
+                    if (ist == BookStatus::OutOfMemory) ist = drawImages(80 * 1024);
                 }
             }
             if (ist == BookStatus::OutOfMemory) {
