@@ -592,17 +592,24 @@ ConvertResult Fb2Converter::run() {
     if (r != ConvertResult::Ok) return r;
     // Ids sorted for lookup (stable: the first of duplicated ids wins).
     {
-        std::vector<uint32_t> order(_idHash.size());
-        for (uint32_t i = 0; i < order.size(); i++) order[i] = i;
-        std::stable_sort(order.begin(), order.end(), [&](uint32_t a, uint32_t b) { return _idHash[a] < _idHash[b]; });
-        std::vector<uint32_t> h(order.size());
-        std::vector<uint16_t> f(order.size());
-        for (uint32_t i = 0; i < order.size(); i++) {
-            h[i] = _idHash[order[i]];
-            f[i] = _idFile[order[i]];
+        struct IdEntry {
+            uint32_t hash;
+            uint16_t file;
+            uint32_t seq;
+        };
+        const size_t n = _idHash.size();
+        std::vector<IdEntry> entries(n);
+        for (size_t i = 0; i < n; i++) {
+            entries[i] = {_idHash[i], _idFile[i], (uint32_t)i};
         }
-        _idHash.swap(h);
-        _idFile.swap(f);
+        std::stable_sort(entries.begin(), entries.end(),
+                         [](const IdEntry& a, const IdEntry& b) {
+                             return a.hash != b.hash ? a.hash < b.hash : a.seq < b.seq;
+                         });
+        for (size_t i = 0; i < n; i++) {
+            _idHash[i] = entries[i].hash;
+            _idFile[i] = entries[i].file;
+        }
     }
     _stats.ids = (uint32_t)_idHash.size();
     _spacerEmptyLines = _pCount > 0 && _emptyCount * 10 >= _pCount * 6;
