@@ -320,10 +320,16 @@ bool OpdsStreamParser::feed(const char* data, size_t len) {
         if (!_discardingEntry) {
             OpdsBookEntry entry;
             if (parseEntry(_buf.substr(0, end), entry)) {
-                accepted = true;
-                _books++;
-                if (_onEntry && !_onEntry(entry)) {
-                    _stopped = true;
+                if (_onEntry) {
+                    if (_onEntry(entry)) {
+                        accepted = true;
+                        _books++;
+                    } else {
+                        _stopped = true;
+                    }
+                } else {
+                    accepted = true;
+                    _books++;
                 }
             }
         }
