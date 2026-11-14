@@ -1,7 +1,7 @@
-"""Build an opt-in TCP-window experiment against the installed Arduino SDK.
+"""Build TCP-window tuning against the installed Arduino SDK.
 
 Only the five lwIP objects using TCP_WND / DEFAULT_TCP_RECVMBOX_SIZE are
-rebuilt. All other archive members, SDK packages and production envs stay intact.
+rebuilt. All other archive members and SDK packages stay intact.
 No ABI-affecting options (including window scaling) are changed.
 """
 
@@ -55,7 +55,7 @@ def build_archive(root: Path, sdk: Path, build: Path, cc: str, ar: str, memory: 
         raise RuntimeError('Experimental TCP window must be 5761..65535 bytes; scaling is intentionally unchanged')
     versions = (sdk / 'versions.txt').read_text()
     if 'esp-idf: v5.5.5 b774170ff46' not in versions:
-        raise RuntimeError('TCP window experiment requires the pinned ESP-IDF 5.5.5 b774170ff46 SDK')
+        raise RuntimeError('TCP window tuning requires the pinned ESP-IDF 5.5.5 b774170ff46 SDK')
     source = prepare_source(root)
     installed = sdk / 'include/lwip/lwip/src/include'
     for header in (source / 'src/include').rglob('*.h'):
