@@ -212,6 +212,13 @@ bool isRoman(const std::string& t) {   // lowercase
     if (t.empty() || t.size() > 8) return false;
     for (char c : t)
         if (!strchr("ivxlcdm", c)) return false;
+    // Basic grammar checks: no repeated non-repeatable letters, no invalid subsequences
+    static const char* const invalid[] = {"iiiii", "vv", "xxxx", "ll", "cccc", "dd", "mmmm",
+                                          "vx", "vl", "vc", "vd", "vm", "lc", "ld", "lm", "dm",
+                                          "xd", "xm", "il", "ic", "id", "im"};
+    for (const char* inv : invalid) {
+        if (t.find(inv) != std::string::npos) return false;
+    }
     return true;
 }
 
