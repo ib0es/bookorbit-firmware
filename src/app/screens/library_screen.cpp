@@ -216,7 +216,7 @@ void deleteBookFile(int masterIdx, const String& path) {
             }
         }
         Modal.showMessage(tr(MsgId::LIB_DELETE_SUCCESS_TITLE), tr(MsgId::LIB_DELETE_SUCCESS_L1),
-                          tr(MsgId::LIB_DELETE_SUCCESS_L2), tr(MsgId::LIB_DELETE_SUCCESS_L3), "", 1600);
+                          tr(MsgId::LIB_DELETE_SUCCESS_L2), inOffline ? "" : tr(MsgId::LIB_DELETE_SUCCESS_L3), "", 1600);
     } else {
         if (inOffline)
             lib.offlineBooks.erase(lib.offlineBooks.begin() + offlineIdx);
