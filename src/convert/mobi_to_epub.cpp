@@ -145,7 +145,7 @@ bool parseRecord0(const uint8_t* r, uint32_t n, MobiHeader& h) {
     h.encoding = be32(r + 28);
     h.version = be32(r + 36);
     const uint32_t nameOff = be32(r + 0x54), nameLen = be32(r + 0x58);
-    if (nameOff + nameLen <= n) h.title.assign((const char*)r + nameOff, nameLen);
+    if (nameOff <= n && nameLen <= n - nameOff) h.title.assign((const char*)r + nameOff, nameLen);
     h.firstImage = be32(r + 0x6C);
     if (h.version >= 8 && n >= 0x108) {
         h.fdst = be32(r + 0xC0);
@@ -156,12 +156,12 @@ bool parseRecord0(const uint8_t* r, uint32_t n, MobiHeader& h) {
     const uint32_t exthFlags = be32(r + 0x80);
     if (h.headerLength >= 0xE4 && 16 + 0xE4 <= n) h.extraFlags = be16(r + 0xF2);
     const uint32_t exth = 16 + h.headerLength;
-    if ((exthFlags & 0x40) && exth + 12 <= n && memcmp(r + exth, "EXTH", 4) == 0) {
+    if ((exthFlags & 0x40) && h.headerLength <= n && exth + 12 <= n && memcmp(r + exth, "EXTH", 4) == 0) {
         const uint32_t count = be32(r + exth + 8);
         uint32_t p = exth + 12;
         for (uint32_t i = 0; i < count && p + 8 <= n; i++) {
             const uint32_t type = be32(r + p), len = be32(r + p + 4);
-            if (len < 8 || p + len > n) break;
+            if (len < 8 || len > n - p) break;
             const uint8_t* v = r + p + 8;
             const uint32_t vl = len - 8;
             std::string s((const char*)v, vl);
@@ -282,15 +282,17 @@ bool readIndex(PalmDb& db, uint32_t idx, IndexTable& t, uint32_t maxEntries = 20
     if (idx >= db.count() || !readRecordVec(db, idx, h) || h.size() < 192 || memcmp(h.data(), "INDX", 4) != 0)
         return false;
     const uint32_t count = be32(&h[24]), ncncx = be32(&h[52]);
+    if (count > 20000 || ncncx > 1000) return false;
     uint32_t tagx = be32(&h[180]);
-    if (tagx == 0 || tagx + 12 > h.size()) tagx = be32(&h[4]);
-    if (tagx + 12 > h.size() || memcmp(&h[tagx], "TAGX", 4) != 0) return false;
+    if (tagx == 0 || tagx > h.size() || 12 > h.size() - tagx) tagx = be32(&h[4]);
+    if (tagx > h.size() || 12 > h.size() - tagx || memcmp(&h[tagx], "TAGX", 4) != 0) return false;
     const uint32_t first = be32(&h[tagx + 4]), cbc = be32(&h[tagx + 8]);
+    if (cbc > 128) return false;
     struct TagX {
         uint8_t tag, values, mask, eof;
     };
     std::vector<TagX> tags;
-    for (uint32_t i = tagx + 12; i + 4 <= tagx + first && i + 4 <= h.size(); i += 4)
+    for (uint32_t i = tagx + 12; i + 4 <= tagx + first && i <= h.size() && 4 <= h.size() - i; i += 4)
         tags.push_back({h[i], h[i + 1], h[i + 2], h[i + 3]});
     for (uint32_t c = 0; c < ncncx && idx + count + 1 + c < db.count(); c++) {
         t.cncx.emplace_back();
@@ -300,16 +302,17 @@ bool readIndex(PalmDb& db, uint32_t idx, IndexTable& t, uint32_t maxEntries = 20
     for (uint32_t r = idx + 1; r <= idx + count && r < db.count(); r++) {
         if (!readRecordVec(db, r, d) || d.size() < 28 || memcmp(d.data(), "INDX", 4) != 0) return false;
         const uint32_t idxt = be32(&d[20]), ec = be32(&d[24]);
-        if (idxt + 4 + 2 * ec > d.size()) return false;
+        if (ec > maxEntries || idxt > d.size() || 4 + 2 * ec > d.size() - idxt) return false;
         for (uint32_t j = 0; j < ec && t.entries.size() < maxEntries; j++) {
             const uint32_t sp = be16(&d[idxt + 4 + 2 * j]);
             const uint32_t ep = j + 1 < ec ? be16(&d[idxt + 4 + 2 * (j + 1)]) : idxt;
             if (sp >= ep || ep > d.size()) continue;
             IndexEntry e;
             const uint32_t tl = d[sp];
-            if (sp + 1 + tl > ep) continue;
+            if (tl > ep - sp - 1) continue;
             e.ident.assign((const char*)&d[sp + 1], tl);
             uint32_t p = sp + 1 + tl;
+            if (p > ep) continue;
             std::vector<uint8_t> cb(d.begin() + p, d.begin() + std::min<uint32_t>(p + cbc, ep));
             p += cbc;
             size_t cbi = 0;
