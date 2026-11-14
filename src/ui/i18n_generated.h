@@ -2317,7 +2317,7 @@ static const char* const STRINGS_ES[(size_t)MsgId::COUNT] PROGMEM = {
     /* SETTINGS_MODAL_SD_SAVE_ERR_TITLE */ "ERROR DE SD",
     /* SETTINGS_MODAL_SD_SAVE_ERR_L1 */ "No se pudo guardar en /config.json",
     /* SETTINGS_MODAL_SD_SAVE_ERR_L2 */ "Compruebe la tarjeta de memoria.",
-    /* SETTINGS_INFO_TITLE */ "INFORMACIÓN DEL DISPOSITIVO",
+    /* SETTINGS_INFO_TITLE */ "SISTEMA %DEVICE%",
     /* SETTINGS_INFO_FW */ "Firmware: Book Orbit v2.0",
     /* SETTINGS_INFO_BATTERY_FMT */ "Batería: %d%% (%.2f V)",
     /* SETTINGS_INFO_RAM_FMT */ "RAM libre: %lu KB",

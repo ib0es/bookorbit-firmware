@@ -394,6 +394,7 @@ async function deletePortalFont(){
   var name=$('font-flash-family').value;
   if(!name||!confirm(name+': '+T.del+'?'))return;
   fontUploading=true;$('font-flash-install').disabled=true;$('btn-save').disabled=true;$('btn-close').disabled=true;
+  try{
     var response=await fetch('/api/fonts/flash/delete?pin='+encodeURIComponent(pin),{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(name)}),result=await response.json();
     if(!response.ok||!result.ok)throw Error(result.error||T.err);
     var familySelect=$('cfg-form').elements.namedItem('font_family');if(familySelect.value===name)familySelect.value='';toast('%JS_FONT_DELETED%',true);
