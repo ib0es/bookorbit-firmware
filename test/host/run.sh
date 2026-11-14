@@ -86,5 +86,11 @@ echo "== Hyphenation";      "$OUT/hyph/test" || rc=1
 echo "== EngineTextCounter"; "$OUT/counter/test" "$ROOT/simulator/sdcard/books/Alice in Wonderland.epub" \
     "$ROOT/simulator/sdcard/books/01. Frankenstein (1818).epub" "$ROOT/simulator/sdcard/books/Pride and Prejudice.epub" \
     | grep -v "^units" || rc=1
+# The web portal's page, run as a browser would (needs node; CI has it, a bare machine may not).
+if command -v node >/dev/null 2>&1; then
+    echo "== Portal page"; node "$ROOT/test/host/test_portal_js.js" || rc=1
+else
+    echo "== Portal page: skipped (node is not installed)"
+fi
 [ -z "$COVERAGE_DIR" ] && rm -rf "$OUT"
 exit $rc
