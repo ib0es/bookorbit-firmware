@@ -303,11 +303,11 @@ void frameRect(Rect r, Color color, uint8_t w, uint8_t radius) {
 }
 
 void hline(int16_t x0, int16_t x1, int16_t y, Color color, uint8_t w) {
-    target().fill(Rect{x0, y, (int16_t)(x1 - x0), (int16_t)w}, solid(color));
+    fill(Rect{x0, y, (int16_t)(x1 - x0), (int16_t)w}, color);
 }
 
 void vline(int16_t x, int16_t y0, int16_t y1, Color color, uint8_t w) {
-    target().fill(Rect{x, y0, (int16_t)w, (int16_t)(y1 - y0)}, solid(color));
+    fill(Rect{x, y0, (int16_t)w, (int16_t)(y1 - y0)}, color);
 }
 
 // ---------------------------------------------------------------------------
