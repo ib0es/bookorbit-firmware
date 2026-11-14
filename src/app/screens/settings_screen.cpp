@@ -599,11 +599,11 @@ void handleReadingSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
                 ctx.currentState = STATE_STATUSBAR_MENU;
                 drawStatusBarScreen(ctx, false);
             } else if (Appearance::step(ctx.config, row, key == Action::Less ? -1 : 1)) {
-                ctx.config.save();
                 drawReadingSettingsScreen(ctx, false);
             }
             break;
         case Action::Back:
+            ctx.config.save();
             Reader.setFullRefreshEvery(ctx.config.fullRefreshEvery);
             Reader.setSharpImages(ctx.config.sharpImages);
             Reader.setStatusBar(StatusBarMenu::options(ctx.config));
