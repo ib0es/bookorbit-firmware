@@ -379,6 +379,9 @@ void BookReader::renderCurrentPage() {
         }
         break;
     }
+    if (tRead == 0 && _renderFailures > 0) {
+        drawPageProblem(tr(MsgId::READER_PAGE_ERR_MEMORY));
+    }
     // A full refresh every _fullEvery pages, counted from the first one: opening a
     // book from the (light) menus no longer costs a 3.8 s full refresh.
     // A redraw for the status bar (the clock) is not a page: not counted.
