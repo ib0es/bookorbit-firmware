@@ -501,6 +501,14 @@ bool BookOrbitClient::fetchCatalogFromUrl(const String& serverHost, const String
         lastCatalog.bytes += sink.bytes();
         lastCatalog.skipped += parser.entriesSkipped();
         if (written < 0) lastCatalog.streamError = written;
+        if (parser.outOfMemory()) {
+            // The heap could not take the next entry: keep what was read, and the
+            // sync fills in the rest from the saved catalog. Not a crash.
+            Serial.printf("[BookOrbit] OPDS page %d: out of memory (free %u, largest block %u), catalog kept partial\n",
+                          pageNo, (unsigned)ESP.getFreeHeap(), (unsigned)ESP.getMaxAllocHeap());
+            lastCatalog.truncated = true;
+            limitReached = true;
+        }
 
         Serial.printf("[BookOrbit] OPDS page %d: %u bytes, %u books, %u skipped entries, %lu ms (free heap %u)\n",
                       pageNo, (unsigned)sink.bytes(), (unsigned)parser.booksParsed(), (unsigned)parser.entriesSkipped(),
