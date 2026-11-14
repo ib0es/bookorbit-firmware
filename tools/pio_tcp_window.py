@@ -1,4 +1,4 @@
-"""Post-framework PlatformIO hook for the opt-in TCP-window environments."""
+"""Post-framework PlatformIO hook for all device environments."""
 
 import sys
 from pathlib import Path
@@ -13,7 +13,7 @@ from tcp_window import build_archive  # noqa: E402
 platform = env.PioPlatform()
 chip = env.BoardConfig().get('build.mcu')
 if chip not in ('esp32c3', 'esp32s3'):
-    raise RuntimeError('TCP window experiment supports ESP32-C3 and ESP32-S3 only')
+    raise RuntimeError('TCP window tuning supports ESP32-C3 and ESP32-S3 only')
 sdk = Path(platform.get_package_dir(f'framework-arduinoespressif32-{chip}-libs'))
 window = int(env.GetProjectOption('custom_tcp_window'))
 memory = 'dio_qspi' if chip == 'esp32c3' else 'dio_opi'

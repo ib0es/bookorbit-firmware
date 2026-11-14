@@ -28,18 +28,19 @@ from `include/secrets.h`) and prints every change, to see what the server really
 
 How progress sync works is described at the top of `src/core/progress_sync.h`.
 
-## Hardware TCP-window experiment
+## Hardware TCP-window tuning
 
-The normal `x4` and `picco` environments retain the SDK's 5760-byte receive
-window. Two opt-in environments rebuild the five lwIP objects that depend on
+All device environments rebuild the five lwIP objects that depend on
 receive-window / receive-mailbox settings, from the exact ESP-IDF 5.5.5 lwIP
-revision. The original SDK archives are not modified. The first build downloads
+revision. ESP32-C3 devices (`x4`, `x3`) use a 16384-byte window and 14 receive
+mailbox slots; ESP32-S3 devices (`picco`, `x4c`, `x4pro`) use 32768 bytes and
+25 slots. The original SDK archives are not modified. The first build downloads
 a checksum-verified source archive from Espressif into `.pio/lwip-window/`.
 
 ```sh
-pio run -e picco_tcp_window          # 32768-byte window, 25 receive mailbox slots
-pio run -e x4_tcp_window             # 16384-byte window, 14 receive mailbox slots
-pio run -e picco_tcp_window -t upload
+pio run -e x4
+pio run -e picco
+pio run -e picco -t upload
 ```
 
 Confirm `[NetPerf] TCP receive window: 32768 bytes` (Picco) or `16384 bytes`
@@ -47,13 +48,14 @@ Confirm `[NetPerf] TCP receive window: 32768 bytes` (Picco) or `16384 bytes`
 object, so an accidentally linked stock archive cannot pass this check.
 The build's `tcp-window/manifest.json` records the source revision and settings.
 
-Compare the same book on the same network with the normal and experimental
+Compare the same book on the same network with the previous stock-window and current
 builds: record HTTP-header time, body bytes/time, SD-write time, RSSI and heap.
 Repeat the download, cancel once during transfer, and update the catalog to
 check memory pressure, especially on the X4. Window scaling and SDK structure
-layouts remain unchanged; do not enable the experiment by adding a define to a
-normal environment. Return to the normal build with `pio run -e picco -t upload`
-(or `-e x4`). No speed improvement is assumed until measured on hardware.
+layouts remain unchanged; the build hook rebuilds the affected SDK objects,
+rather than only defining application macros. Hardware measurements cover X4 and Picco;
+other devices inherit the settings for their chip family but have not been
+measured on hardware.
 
 Measured on Picco on 2026-11-14, same 2,870,166-byte EPUB: the previous build
 transferred the body in 33.194 s; the experimental 32768-byte window / 25-slot
@@ -94,4 +96,4 @@ framebuffer hashes with normal rendering and forced low-memory image rendering
 (61 detached image passes). The existing one percent-position mismatch and two
 CFI round-trip mismatches were unchanged between normal and constrained runs.
 Three library-release/rebuild/failure-recovery scenarios also passed. Both
-`x4_tcp_window` and `picco_tcp_window` builds succeeded.
+experimental X4 and Picco builds succeeded (these settings are now the default).
