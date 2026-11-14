@@ -1648,6 +1648,7 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
                             BookItem old;
                             old.filePath = up.targetPath;
                             LibraryManager::deleteBookArtifacts(old, true);
+                            LibraryManager::getInstance().updateLastBookAfterDeletion(up.targetPath);
                         }
                         ok = ok && Storage.replaceFile(up.partPath.c_str(), up.targetPath.c_str());
                         if (ok) {
