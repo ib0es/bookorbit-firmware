@@ -396,8 +396,15 @@ void drawAppearanceScreen(AppContext& ctx, bool fullRefresh) {
     takeTop(area, 6);
     if (area.height > 40) {
         hline(0, width(), area.y);
-        Reader.drawPreview(area.y + 6, area.height - 8, tr(MsgId::APPEAR_SAMPLE), Appearance::layoutOptions(ctx.config),
-                           ctx.config.readerFontSize);
+        static LayoutOptions s_lastPreviewOpts{};
+        static int s_lastPreviewSize = -1;
+        const LayoutOptions curOpts = Appearance::layoutOptions(ctx.config);
+        if (fullRefresh || !(curOpts == s_lastPreviewOpts) || ctx.config.readerFontSize != s_lastPreviewSize) {
+            Reader.drawPreview(area.y + 6, area.height - 8, tr(MsgId::APPEAR_SAMPLE), curOpts,
+                               ctx.config.readerFontSize);
+            s_lastPreviewOpts = curOpts;
+            s_lastPreviewSize = ctx.config.readerFontSize;
+        }
     }
     present(fullRefresh);
 }
