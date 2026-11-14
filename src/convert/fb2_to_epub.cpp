@@ -1353,7 +1353,10 @@ ConvertResult Fb2Converter::rawBinaries(uint64_t offset) {
                 auto value = [&](const char* name) -> std::string {
                     for (size_t at = 0; (at = tag.find(name, at)) != std::string::npos; at++) {
                         const char before = at ? tag[at - 1] : ' ';
-                        const size_t q = at + strlen(name);
+                        size_t q = at + strlen(name);
+                        while (q < tag.size() && (tag[q] == ' ' || tag[q] == '\t')) q++;
+                        if (q < tag.size() && tag[q] == '=') q++;
+                        while (q < tag.size() && (tag[q] == ' ' || tag[q] == '\t')) q++;
                         if ((before == ' ' || before == '\t' || before == '\n' || before == '\r') && q < tag.size() &&
                             (tag[q] == '"' || tag[q] == '\'')) {
                             const size_t close = tag.find(tag[q], q + 1);
@@ -1362,7 +1365,7 @@ ConvertResult Fb2Converter::rawBinaries(uint64_t offset) {
                     }
                     return std::string();
                 };
-                binaryStart(value("id=").c_str(), value("content-type=").c_str());
+                binaryStart(value("id").c_str(), value("content-type").c_str());
                 st = DATA;
             }
         }
