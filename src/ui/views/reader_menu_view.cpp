@@ -280,10 +280,12 @@ void drawTypefaceMenuScreen(AppContext& ctx, bool fullRefresh) {
     const MsgId titleId = sources ? MsgId::TYPEFACE_MENU_TITLE
                                   : (ctx.typefaceStorage == 1 ? MsgId::TYPEFACE_FLASH_TITLE : MsgId::TYPEFACE_SD_TITLE);
     Rect area = topBar(f, tr(titleId));
-    area = keyHints(f, area,
-                    KeyLabels{tr(MsgId::KEY_BACK), tr(sources ? MsgId::KEY_SELECT : MsgId::KEY_APPLY),
-                              !sources && n ? tr(MsgId::KEY_DELETE) : "",
-                              tr(sources ? MsgId::KEY_SELECT : MsgId::KEY_APPLY)});
+    const KeyLabels hints{tr(MsgId::KEY_BACK), tr(sources ? MsgId::KEY_SELECT : MsgId::KEY_APPLY),
+                          !sources && n ? tr(MsgId::KEY_DELETE) : "", tr(sources ? MsgId::KEY_SELECT : MsgId::KEY_APPLY)};
+    // The keys on screen are what the tests (test/sim) check against what the keys do.
+    Serial.printf("[UI] drawTypefaceMenuScreen: storage=%d rows=%d selected=%d keys=[%s|%s|%s|%s]\n",
+                  ctx.typefaceStorage, n, sel, hints.back, hints.ok, hints.left, hints.right);
+    area = keyHints(f, area, hints);
     area = insetXY(area, kMargin, 8);
     const int16_t rowH = (int16_t)(lineHeight(FontBody) + lineHeight(FontSmall) + 18);
     const int perPage = std::max(1, (int)(area.height / (rowH + 6)));

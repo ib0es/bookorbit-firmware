@@ -613,6 +613,103 @@ def empty_flash_catalog(sd):
     return int.from_bytes(newest[12:16], "little") == 0
 
 
+def active_font(name):
+    """A card with two fonts and `name` set as the reading font."""
+
+    def setup(sd):
+        font_management_card(sd)
+        merge_config(sd, font_family=name)
+
+    return setup
+
+
+def typeface_draws(log):
+    """(storage, rows, [back, ok, left, right]) of every typeface-list screen drawn, in order."""
+    return [
+        (int(m.group(1)), int(m.group(2)), m.group(3).split("|"))
+        for m in re.finditer(r"drawTypefaceMenuScreen: storage=(\d) rows=(\d+) selected=\d+ keys=\[([^\]]*)\]", log)
+    ]
+
+
+def confirms(log):
+    """The confirmation dialogs opened: [title, line1, line2, line3, ok label]."""
+    return [m.group(1).split(" | ") for m in re.finditer(r"\[Modal\] confirm: (.*)", log)]
+
+
+def both_fonts_on_card(sd):
+    return bool(files(sd, "fonts/Literata*.ttf")) and bool(files(sd, "fonts/NotoSans*.ttf"))
+
+
+def sources_hide_delete(log, sd):
+    # The list of storages has no Delete key; a list of fonts has it on the left key.
+    draws = typeface_draws(log)
+    sources = [d for d in draws if d[0] == 0]
+    cards = [d for d in draws if d[0] == 2]
+    return (
+        bool(sources)
+        and all(d[1] == 3 and d[2][2] == "" for d in sources)
+        and bool(cards)
+        and all(d[1] == 2 and d[2][2] == "Delete" and d[2][0].endswith("Back") for d in cards)
+    )
+
+
+def left_on_sources_is_inert(log, sd):
+    return not confirms(log) and both_fonts_on_card(sd) and typeface_draws(log)[-1][0] == 0
+
+
+def delete_asks_first(log, sd):
+    asked = confirms(log)
+    return (
+        len(asked) == 1
+        and asked[0] == ["Delete", "Literata", "Fonts on SD card", "Delete this family from this storage?", "ok=Delete"]
+        and both_fonts_on_card(sd)
+    )
+
+
+def back_goes_up_not_delete(log, sd):
+    draws = typeface_draws(log)
+    return not confirms(log) and both_fonts_on_card(sd) and draws[-1][0] == 0 and any(d[0] == 2 for d in draws)
+
+
+def other_keys_do_not_confirm(log, sd):
+    return len(confirms(log)) == 1 and both_fonts_on_card(sd)
+
+
+def active_deleted_resets(log, sd):
+    return (
+        not files(sd, "fonts/Literata*.ttf")
+        and bool(files(sd, "fonts/NotoSans*.ttf"))
+        and cfg(sd).get("font_family") == ""
+    )
+
+
+def other_deleted_keeps_active(log, sd):
+    return (
+        not files(sd, "fonts/Literata*.ttf")
+        and bool(files(sd, "fonts/NotoSans*.ttf"))
+        and cfg(sd).get("font_family") == "NotoSans"
+    )
+
+
+def flash_delete_asks_first(log, sd):
+    asked = confirms(log)
+    return (
+        len(asked) == 1
+        and asked[0][0] == "Delete"
+        and asked[0][2] == "Fonts in Flash"
+        and asked[0][4] == "ok=Delete"
+        and not empty_flash_catalog(sd)
+    )
+
+
+def empty_storage_is_inert(log, sd):
+    flash = [d for d in typeface_draws(log) if d[0] == 1]
+    return bool(flash) and all(d[1] == 0 and d[2][2] == "" for d in flash) and not confirms(log)
+
+
+TYPEFACES = OPEN_BOOK + APPEARANCE + "C"  # reading -> Appearance -> the list of storages
+SD_FONTS = TYPEFACES + "DDC"  # -> the fonts on the card (Literata, NotoSans)
+
 CASES = [
     # name, setup(sd) or None, environment, script, check(log, sd)
     (
@@ -635,6 +732,69 @@ CASES = [
         {},
         OPEN_BOOK + APPEARANCE + "C" + "DDC" + "C" + "C" + "DC" + "LC",
         lambda log, sd: bool(files(sd, "fonts/Literata*.ttf")) and empty_flash_catalog(sd),
+    ),
+    (
+        "fonts: the list of storages has no Delete key, the fonts of a storage have it on the left key",
+        font_management_card,
+        {},
+        SD_FONTS,
+        sources_hide_delete,
+    ),
+    (
+        "fonts: the left key on the list of storages neither asks nor deletes",
+        font_management_card,
+        {},
+        TYPEFACES + "L",
+        left_on_sources_is_inert,
+    ),
+    (
+        "fonts: the left key on a font asks first, naming the family and the storage, and deletes nothing yet",
+        font_management_card,
+        {},
+        SD_FONTS + "L",
+        delete_asks_first,
+    ),
+    (
+        "fonts: BACK in a list of fonts goes up one level and deletes nothing",
+        font_management_card,
+        {},
+        SD_FONTS + "B",
+        back_goes_up_not_delete,
+    ),
+    (
+        "fonts: only OK confirms, the other keys leave the dialog open and delete nothing",
+        font_management_card,
+        {},
+        SD_FONTS + "L" + "R" + "D" + "U" + "L",
+        other_keys_do_not_confirm,
+    ),
+    (
+        "fonts: deleting the reading font resets the setting",
+        active_font("Literata"),
+        {},
+        SD_FONTS + "LC",
+        active_deleted_resets,
+    ),
+    (
+        "fonts: deleting another font keeps the reading font",
+        active_font("NotoSans"),
+        {},
+        SD_FONTS + "LC",
+        other_deleted_keeps_active,
+    ),
+    (
+        "fonts: Flash deletion asks first, naming Flash, and deletes nothing yet",
+        font_management_card,
+        {},
+        SD_FONTS + "C" + "C" + "DC" + "L",
+        flash_delete_asks_first,
+    ),
+    (
+        "fonts: an empty storage has no Delete key and the left key does nothing",
+        font_management_card,
+        {},
+        TYPEFACES + "DC" + "L",
+        empty_storage_is_inert,
     ),
     (
         "reader: page turns are saved while the reader is idle (B2)",
