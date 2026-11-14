@@ -30,7 +30,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 # Files a manual simulator session leaves on the card (uploaded offline books, their caches).
 SD_LEFTOVERS = shutil.ignore_patterns("offline", "offline#*")
 BIN = os.environ.get("X4_HEADLESS") or os.path.join(ROOT, "test/sim/build-x4/x4_headless")
-SCREEN_W = 528 if (os.environ.get("DEVICE") == "x3" or "build-x3" in BIN) else 480
+IS_X3 = os.environ.get("DEVICE") == "x3" or "build-x3" in BIN
+SCREEN_W = 528 if IS_X3 else 480
+DISPLAY_BUFFER_BYTES = SCREEN_W * (792 if IS_X3 else 800) // 8
 
 
 def kb_tap(x, y):
@@ -683,7 +685,7 @@ CASES = [
         lambda log, sd: (
             re.search(r"Reader memory: releasing 40\d catalog books", log)
             and log.count("Loaded 400 books metadata") >= 2
-            and "Index uses 48000 bytes of display storage" in log
+            and f"Index uses {DISPLAY_BUFFER_BYTES} bytes of display storage" in log
             and "[Reader] Opened " in log
             and re.search(r"Master list: 40\d books", after(log, ">>> BACK"))
             and "Cannot open the book" not in log
@@ -709,7 +711,7 @@ CASES = [
         {},
         OPEN_BOOK + "w" + "D" + "C",
         lambda log, sd: (
-            "Index uses 48000 bytes of display storage" in log
+            f"Index uses {DISPLAY_BUFFER_BYTES} bytes of display storage" in log
             and "Cannot open the book's index" in log
             and log.count("Loaded 400 books metadata") >= 2
             and "drawHomeScreen finished" in log[log.find("Cannot open the book's index") :]
