@@ -1334,7 +1334,8 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
         screenSsid = cfg.wifiSsid.c_str();
         Ui::status(tr(MsgId::WEB_STA_TITLE), tr(MsgId::WEB_WIFI_CONNECTING), screenSsid, nullptr, nullptr,
                    tr(MsgId::COMMON_CANCEL));
-        if (!BookOrbit.connectWiFi(cfg.wifiSsid.c_str(), cfg.wifiPass.c_str(), 12000)) {
+        SyncService::resetCancel();
+        if (!BookOrbit.connectWiFi(cfg.wifiSsid.c_str(), cfg.wifiPass.c_str(), 12000, SyncService::checkSyncCancel)) {
             Ui::message(tr(MsgId::WEB_STA_TITLE), tr(MsgId::WEB_WIFI_FAILED_L1), tr(MsgId::WEB_WIFI_FAILED_L2), "", "",
                         2500);
             return false;
