@@ -101,12 +101,6 @@ TARGETS = {
         "device": "LilyGo T5 S3",
         "desc": "ESP32-S3, 960x540 16-gray EPD, GT911 touch, PWM backlight, BOOT button",
     },
-    "m5paper_v11": {
-        "chip": "esp32",
-        "name": "Book Orbit for M5Paper v1.1",
-        "device": "M5Paper v1.1",
-        "desc": "ESP32, 960x540 IT8951, GT911 touch, 3-way rotary wheel",
-    },
     "papers3": {
         "chip": "esp32s3",
         "name": "Book Orbit for M5Stack PaperS3",
@@ -218,13 +212,7 @@ def generate_manifests(targets):
 
     for env in targets:
         info = TARGETS[env]
-        chip_map = {
-            "esp32": "ESP32",
-            "esp32c3": "ESP32-C3",
-            "esp32s3": "ESP32-S3",
-            "esp32c61": "ESP32-C61",
-        }
-        chip_family = chip_map.get(info["chip"], "ESP32-S3")
+        chip_family = "ESP32-C3" if info["chip"] == "esp32c3" else "ESP32-S3"
         manifest_data = {
             "name": info["name"],
             "version": "latest",

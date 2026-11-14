@@ -19,7 +19,6 @@ public:
         _w = 768;
         _h = 552;
 #elif (defined(FREEINK_DEVICE_LILYGO) && FREEINK_DEVICE_LILYGO) || \
-      (defined(FREEINK_DEVICE_M5PAPER) && FREEINK_DEVICE_M5PAPER) || \
       (defined(FREEINK_DEVICE_PAPERS3) && FREEINK_DEVICE_PAPERS3)
         _w = 960;
         _h = 540;

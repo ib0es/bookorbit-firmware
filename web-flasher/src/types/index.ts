@@ -14,13 +14,12 @@ export type DeviceKey =
   | 'murphy_m4'
   | 'eego_a4'
   | 'lilygo_t5s3'
-  | 'm5paper_v11'
   | 'papers3';
 
 export interface DeviceInfo {
   usbMassStorage: boolean;
   name: string;
-  chip: 'ESP32' | 'ESP32-C3' | 'ESP32-S3';
+  chip: 'ESP32-C3' | 'ESP32-S3';
   chipSubtitle: string;
   desc_en: string;
   desc_ru: string;

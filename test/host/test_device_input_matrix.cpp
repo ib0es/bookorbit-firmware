@@ -10,10 +10,8 @@
 #include "platform/devices/ws397.h"
 #include "platform/devices/metalio_eink4.h"
 #include "platform/devices/murphy_m4.h"
-#include "platform/devices/onepage.h"
 #include "platform/devices/eego_a4.h"
 #include "platform/devices/lilygo_t5s3.h"
-#include "platform/devices/m5paper_v11.h"
 #include "platform/devices/papers3.h"
 
 #include <cstdio>
@@ -75,10 +73,8 @@ int main() {
         &kWs397Profile,
         &kMetalioEInk4Profile,
         &kMurphyM4Profile,
-        &kOnePageProfile,
         &kEegoA4Profile,
         &kLilyGoProfile,
-        &kM5PaperV11Profile,
         &kPaperS3Profile,
     };
 

@@ -13,7 +13,6 @@ export class FlasherError extends Error {
 
 /** esp_image_header_t.chip_id values (see ESP-IDF esp_app_format.h). */
 export const IMAGE_CHIP_IDS: Record<DeviceInfo['chip'], number> = {
-  ESP32: 0,
   'ESP32-C3': 5,
   'ESP32-S3': 9,
 };
@@ -144,7 +143,6 @@ const BOARD_SIGNATURES: Record<string, DeviceKey> = {
   murphy_m4: 'murphy_m4',
   eego_a4: 'eego_a4',
   lilygo_t5s3: 'lilygo_t5s3',
-  m5paper_v11: 'm5paper_v11',
   m5paper_s3: 'papers3',
 };
 
