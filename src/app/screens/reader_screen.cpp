@@ -455,7 +455,6 @@ void handleTypefaceMenuEvent(AppContext& ctx, const ButtonEvent& event) {
             drawAppearanceScreen(ctx, false);
             break;
         }
-        case Action::Prev:
         case Action::Delete:
             if (!sources && sel >= 0 && sel < n) {
                 const String name = fams[sel].name;
@@ -465,21 +464,25 @@ void handleTypefaceMenuEvent(AppContext& ctx, const ButtonEvent& event) {
                         tr(storage == 1 ? MsgId::TYPEFACE_FLASH_TITLE : MsgId::TYPEFACE_SD_TITLE),
                         tr(MsgId::TYPEFACE_DELETE_CONFIRM), "",
                         [&ctx, name, storage]() {
-                            Reader.setFontFamily("");
+                            const bool wasActive = FontStore::sameFamilyName(ctx.config.readerFont, name);
+                            if (wasActive) Reader.setFontFamily("");
                             const bool ok =
                                     storage == 1 ? FontStore::removeInstalled(name) : FontStore::removeCard(name);
-                            if (FontStore::sameFamilyName(ctx.config.readerFont, name) && !FontStore::contains(name)) {
+                            if (wasActive && !FontStore::contains(name)) {
                                 ctx.config.readerFont = "";
                                 ctx.config.save();
                             }
-                            Reader.setFontFamily(ctx.config.readerFont);
-                            LibraryManager::getInstance().flushReaderPosition();
+                            if (wasActive) {
+                                Reader.setFontFamily(ctx.config.readerFont);
+                                LibraryManager::getInstance().flushReaderPosition();
+                            }
                             typefaceFamilies(true, storage);
                             if (!ok) Modal.showMessage(tr(MsgId::KEY_DELETE), tr(MsgId::TYPEFACE_DELETE_FAILED), name);
                         },
                         nullptr, tr(MsgId::KEY_DELETE));
             }
             break;
+        case Action::Prev:
         case Action::Back:
             if (!sources) {
                 sel = ctx.typefaceStorage;
