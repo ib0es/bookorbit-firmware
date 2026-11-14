@@ -146,7 +146,8 @@ export async function probeC3Board(loader: ESPLoader, log: Log): Promise<'x3' | 
     // Only safe over native USB CDC: GPIO20 is U0RXD, which breaks external UART bridge chips (CP2102/CH340).
     const transport = loader.transport as unknown as { port?: { getInfo?: () => { usbVendorId?: number } } };
     const vid = transport.port?.getInfo?.()?.usbVendorId;
-    if (vid !== undefined && vid !== 0x303a) { // 0x303a = Espressif native USB JTAG/CDC
+    if (vid !== undefined && vid !== 0x303a) {
+      // 0x303a = Espressif native USB JTAG/CDC
       log('UART bridge detected: skipping GPIO20 probe to avoid RX desync.');
       return 'x4';
     }

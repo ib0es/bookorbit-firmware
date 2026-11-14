@@ -58,8 +58,8 @@ export const SdFontsBox: React.FC<{
       if ((err as Error).name !== 'AbortError') {
         setCardFonts([]);
         setStatusMsg(t('fonts_install_err', { ERR: (err as Error).message }));
-          setStatusType('error');
-        }
+        setStatusType('error');
+      }
     } finally {
       setScanningCard(false);
     }

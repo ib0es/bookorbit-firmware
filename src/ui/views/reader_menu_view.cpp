@@ -281,7 +281,8 @@ void drawTypefaceMenuScreen(AppContext& ctx, bool fullRefresh) {
                                   : (ctx.typefaceStorage == 1 ? MsgId::TYPEFACE_FLASH_TITLE : MsgId::TYPEFACE_SD_TITLE);
     Rect area = topBar(f, tr(titleId));
     const KeyLabels hints{tr(MsgId::KEY_BACK), tr(sources ? MsgId::KEY_SELECT : MsgId::KEY_APPLY),
-                          !sources && n ? tr(MsgId::KEY_DELETE) : "", tr(sources ? MsgId::KEY_SELECT : MsgId::KEY_APPLY)};
+                          !sources && n ? tr(MsgId::KEY_DELETE) : "",
+                          tr(sources ? MsgId::KEY_SELECT : MsgId::KEY_APPLY)};
     // The keys on screen are what the tests (test/sim) check against what the keys do.
     Serial.printf("[UI] drawTypefaceMenuScreen: storage=%d rows=%d selected=%d keys=[%s|%s|%s|%s]\n",
                   ctx.typefaceStorage, n, sel, hints.back, hints.ok, hints.left, hints.right);

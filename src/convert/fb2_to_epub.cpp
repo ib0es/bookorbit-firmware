@@ -604,10 +604,9 @@ ConvertResult Fb2Converter::run() {
         for (size_t i = 0; i < n; i++) {
             entries[i] = {_idHash[i], _idFile[i], (uint32_t)i};
         }
-        std::stable_sort(entries.begin(), entries.end(),
-                         [](const IdEntry& a, const IdEntry& b) {
-                             return a.hash != b.hash ? a.hash < b.hash : a.seq < b.seq;
-                         });
+        std::stable_sort(entries.begin(), entries.end(), [](const IdEntry& a, const IdEntry& b) {
+            return a.hash != b.hash ? a.hash < b.hash : a.seq < b.seq;
+        });
         for (size_t i = 0; i < n; i++) {
             _idHash[i] = entries[i].hash;
             _idFile[i] = entries[i].file;

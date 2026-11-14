@@ -27,7 +27,8 @@ export function buildConfigEntries(cfg: DeviceInitialConfig, options: BuildConfi
   if (wifiPass && !wifiSsid.trim()) throw new FlasherError('err_wifi_ssid_missing');
   if (wifiSsid && utf8Len(wifiSsid) > 32) throw new FlasherError('err_wifi_ssid_len');
   const isHex64 = wifiPass.length === 64 && /^[0-9a-fA-F]{64}$/.test(wifiPass);
-  if (wifiPass && ((wifiPass.length < 8 || wifiPass.length > 63) && !isHex64)) throw new FlasherError('err_wifi_pass_len');
+  if (wifiPass && (wifiPass.length < 8 || wifiPass.length > 63) && !isHex64)
+    throw new FlasherError('err_wifi_pass_len');
   if (serverUrl && !/^https?:\/\/[^\s/]+/i.test(serverUrl)) throw new FlasherError('err_server_url');
 
   const entries: NVSValue[] = [];
