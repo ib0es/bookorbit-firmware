@@ -220,10 +220,9 @@ static void drawPageProblem(const char* why) {
 }
 
 void BookReader::redrawForStatusBar() {
-    if (!_opened) return;
-    TurnedUi turned(frameRotation());
-    drawStatusBar();
-    Display.update(REFRESH_PARTIAL);
+    _statusBarRedraw = true;
+    renderCurrentPage();
+    _statusBarRedraw = false;
 }
 
 void BookReader::renderCurrentPage() {
