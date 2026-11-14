@@ -100,15 +100,6 @@ export const DEVICES: Record<DeviceKey, DeviceInfo> = {
     desc_ru: 'Murphy M4: ESP32-S3, экран 800x480, тач FT6336U, двухканальная подсветка, 3 кнопки',
     merged: 'builds/murphy_m4/bookorbit-murphy_m4.bin',
   },
-  onepage: {
-    usbMassStorage: false,
-    name: 'OnePage',
-    chip: 'ESP32-C61',
-    chipSubtitle: 'ESP32-C61 Buttons',
-    desc_en: 'OnePage: ESP32-C61 (2MB PSRAM), 800x480 SSD1677, 7 buttons (ADC ladder + 3 side keys)',
-    desc_ru: 'OnePage: ESP32-C61 (2MB PSRAM), экран 800x480, 7 кнопок (4 на резистивном делителе + 3 боковых)',
-    merged: 'builds/onepage/bookorbit-onepage.bin',
-  },
   eego_a4: {
     usbMassStorage: false,
     name: 'EEGO Reader A4',

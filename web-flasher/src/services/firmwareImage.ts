@@ -16,7 +16,6 @@ export const IMAGE_CHIP_IDS: Record<DeviceInfo['chip'], number> = {
   ESP32: 0,
   'ESP32-C3': 5,
   'ESP32-S3': 9,
-  'ESP32-C61': 20,
 };
 
 const ESP_IMAGE_MAGIC = 0xe9;
@@ -143,7 +142,6 @@ const BOARD_SIGNATURES: Record<string, DeviceKey> = {
   ws397: 'ws397',
   metalio_eink4: 'metalio_eink4',
   murphy_m4: 'murphy_m4',
-  onepage: 'onepage',
   eego_a4: 'eego_a4',
   lilygo_t5s3: 'lilygo_t5s3',
   m5paper_v11: 'm5paper_v11',
