@@ -115,6 +115,27 @@ static void click(InputManager::Button b, const char* label) {
 }
 
 static void applyNested(const NestedStep& s) {
+#if defined(SIM_KEYS_UP_DOWN_POWER_ONLY)
+    if (s.kind == 'L' || s.kind == 'R' || s.kind == 'C' || s.kind == 'B' || s.kind == 'h') {
+        printf("!!! KEY_NOT_ON_DEVICE (nested) '%c': this board has only UP, DOWN and POWER\n", s.kind);
+        exit(3);
+    }
+#elif defined(SIM_KEYS_NO_LEFT_RIGHT)
+    if (s.kind == 'L' || s.kind == 'R') {
+        printf("!!! KEY_NOT_ON_DEVICE (nested) '%c': this board has no LEFT / RIGHT keys\n", s.kind);
+        exit(3);
+    }
+#elif defined(SIM_KEYS_TOUCH_ONLY)
+    if (s.kind == 'U' || s.kind == 'D' || s.kind == 'L' || s.kind == 'R' || s.kind == 'C' || s.kind == 'B' || s.kind == 'h') {
+        printf("!!! KEY_NOT_ON_DEVICE (nested) '%c': this board has touch only\n", s.kind);
+        exit(3);
+    }
+#elif defined(SIM_KEYS_TWO_BUTTON)
+    if (s.kind == 'L' || s.kind == 'R' || s.kind == 'C' || s.kind == 'B' || s.kind == 'h') {
+        printf("!!! KEY_NOT_ON_DEVICE (nested) '%c': this board has two buttons (UP and DOWN)\n", s.kind);
+        exit(3);
+    }
+#endif
     switch (s.kind) {
         case 'U':
             g_label = "n_UP";
@@ -214,6 +235,21 @@ int main(int argc, char** argv) {
 #if defined(SIM_KEYS_UP_DOWN_POWER_ONLY)
         if (c == 'L' || c == 'R' || c == 'C' || c == 'B') {
             printf("!!! KEY_NOT_ON_DEVICE '%c': this board has only UP, DOWN and POWER\n", c);
+            return 3;
+        }
+#elif defined(SIM_KEYS_NO_LEFT_RIGHT)
+        if (c == 'L' || c == 'R') {
+            printf("!!! KEY_NOT_ON_DEVICE '%c': this board has no LEFT / RIGHT keys\n", c);
+            return 3;
+        }
+#elif defined(SIM_KEYS_TOUCH_ONLY)
+        if (c == 'U' || c == 'D' || c == 'L' || c == 'R' || c == 'C' || c == 'B') {
+            printf("!!! KEY_NOT_ON_DEVICE '%c': this board has touch only (no navigation keys)\n", c);
+            return 3;
+        }
+#elif defined(SIM_KEYS_TWO_BUTTON)
+        if (c == 'L' || c == 'R' || c == 'C' || c == 'B') {
+            printf("!!! KEY_NOT_ON_DEVICE '%c': this board has two buttons (UP and DOWN)\n", c);
             return 3;
         }
 #endif

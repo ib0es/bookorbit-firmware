@@ -10,6 +10,11 @@ inline constexpr DeviceProfile kX3Profile = {
         /*touchOnly*/ false,
         /*upDownTurnPages*/ false,
         /*okOpensBookMenu*/ false,
+        /*hasLeftRight*/ true,
+        /*hasUpDown*/ true,
+        /*hasPowerButton*/ true,
+        /*powerSharedWithBack*/ false,
+        /*powerSharedWithConfirm*/ false,
         /*keyCentres*/ {96, 178, 279, 370},   // as the X4 (not measured on an X3)
         /*autoRotateByDefault*/ true,
         /*usbMassStorage*/ false,

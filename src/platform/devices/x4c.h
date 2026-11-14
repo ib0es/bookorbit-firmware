@@ -11,6 +11,11 @@ inline constexpr DeviceProfile kX4ClassicProfile = {
         /*touchOnly*/ false,
         /*upDownTurnPages*/ false,
         /*okOpensBookMenu*/ false,
+        /*hasLeftRight*/ true,
+        /*hasUpDown*/ true,
+        /*hasPowerButton*/ true,
+        /*powerSharedWithBack*/ false,
+        /*powerSharedWithConfirm*/ false,
         /*keyCentres*/ {96, 178, 279, 370},   // as the X4 (not measured on an X4 Classic)
         /*autoRotateByDefault*/ true,
         /*usbMassStorage*/ true,

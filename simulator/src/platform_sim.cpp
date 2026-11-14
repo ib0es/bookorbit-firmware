@@ -50,6 +50,7 @@ bool usbSerialConnected() {
 }
 
 void feedWatchdog() {}
+void enterDeepSleep() {}
 
 bool wakeInputActive(int8_t, bool) { return false; }
 void lightSleep(uint32_t, int8_t, bool) { delay(10); }

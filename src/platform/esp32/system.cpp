@@ -8,6 +8,9 @@
 #include <esp_system.h>
 #include <esp_task_wdt.h>
 #include <sys/time.h>
+#include <PowerManager.h>
+#include "../hal/frontlight.h"
+#include "../hal/imu.h"
 
 #include "config.h"
 
@@ -101,6 +104,24 @@ void lightSleep(uint32_t waitMs, int8_t irqPin, bool irqActiveLow) {
     gpio_wakeup_disable(static_cast<gpio_num_t>(irqPin));
     esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_GPIO);
     esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_TIMER);
+}
+
+void enterDeepSleep() {
+#if defined(FREEINK_DEVICE_PAPERS3) && FREEINK_DEVICE_PAPERS3
+    freeink::PowerManager::powerDownRailsForSleep();
+    pinMode(44, OUTPUT);
+    digitalWrite(44, HIGH);
+    delay(100);
+    digitalWrite(44, LOW);
+    while (true) { delay(1000); }
+#else
+    freeink::PowerManager::waitForPowerButtonRelease();
+    freeink::PowerManager::armPowerButtonWakeup();
+    Frontlight.prepareForSleep();
+    BoardImu.sleep();
+    freeink::PowerManager::powerDownRailsForSleep();
+    freeink::PowerManager::deepSleep();
+#endif
 }
 
 }  // namespace Platform

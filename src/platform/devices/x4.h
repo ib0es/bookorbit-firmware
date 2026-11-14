@@ -11,6 +11,11 @@ inline constexpr DeviceProfile kX4Profile = {
         /*touchOnly*/ false,
         /*upDownTurnPages*/ false,
         /*okOpensBookMenu*/ false,
+        /*hasLeftRight*/ true,
+        /*hasUpDown*/ true,
+        /*hasPowerButton*/ true,
+        /*powerSharedWithBack*/ false,
+        /*powerSharedWithConfirm*/ false,
         /*keyCentres*/ {86, 186, 294, 394},   // two rocker pairs centred on the screen
         /*autoRotateByDefault*/ false,
         /*usbMassStorage*/ false,

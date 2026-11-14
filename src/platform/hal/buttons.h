@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <Arduino.h>
 #include <InputManager.h>
 
@@ -60,7 +61,7 @@ public:
     // POWER left: then a held DOWN is OK and a held UP is BACK (C4). UP and DOWN
     // report their click on release (a hold is told from a click), and do not
     // repeat.
-    void setHoldFallback(bool on) { _holdFallback = on; }
+    void setHoldFallback(bool on);
     bool holdFallback() const { return _holdFallback; }
 
     // Side slide switch that turns the frontlight on/off (Picco, GPIO6).
@@ -89,6 +90,9 @@ private:
     ButtonId _holdKey = BTN_NONE;   // UP or DOWN down, in the hold fallback
     uint32_t _holdSince = 0;
     bool _holdFired = false;
+    ButtonId _sharedPowerKey = BTN_NONE;
+    uint32_t _sharedPowerSince = 0;
+    bool _sharedPowerFired = false;
     ButtonEvent _pendingEvent;
     bool _hasPendingEvent;
     bool _powerLongPressFired;

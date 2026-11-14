@@ -6,6 +6,7 @@
 #include "ui/font.h"
 #include "ui/i18n.h"
 #include "ui/kit/ui_kit.h"
+#include "platform/device.h"
 #include "actions.h"
 
 // -----------------------------------------------------------------------------
@@ -217,26 +218,44 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
             }
             if (event.action == ACTION_CLICK) {
                 const Action key = Actions::of(event);
+                const bool linearNav = !Platform::kDevice.hasLeftRight && !Platform::kDevice.touch;
                 if (key == Action::Up) {
-                    if (selRow == 0) {
-                        selRow = 4;
-                        selCol = selCol / 2;
-                    } else if (selRow == 4) {
-                        selRow = 3;
-                        selCol = selCol * 2;
+                    if (linearNav) {
+                        selCol--;
+                        if (selCol < 0) {
+                            selRow = (selRow - 1 + 5) % 5;
+                            selCol = (selRow == 4) ? 5 : 11;
+                        }
                     } else {
-                        selRow--;
+                        if (selRow == 0) {
+                            selRow = 4;
+                            selCol = selCol / 2;
+                        } else if (selRow == 4) {
+                            selRow = 3;
+                            selCol = selCol * 2;
+                        } else {
+                            selRow--;
+                        }
                     }
                     renderKeyboard();
                 } else if (key == Action::Down) {
-                    if (selRow == 4) {
-                        selRow = 0;
-                        selCol = selCol * 2;
-                    } else if (selRow == 3) {
-                        selRow = 4;
-                        selCol = selCol / 2;
+                    if (linearNav) {
+                        const int maxCols = (selRow == 4) ? 6 : 12;
+                        selCol++;
+                        if (selCol >= maxCols) {
+                            selCol = 0;
+                            selRow = (selRow + 1) % 5;
+                        }
                     } else {
-                        selRow++;
+                        if (selRow == 4) {
+                            selRow = 0;
+                            selCol = selCol * 2;
+                        } else if (selRow == 3) {
+                            selRow = 4;
+                            selCol = selCol / 2;
+                        } else {
+                            selRow++;
+                        }
                     }
                     renderKeyboard();
                 } else if (key == Action::Prev) {

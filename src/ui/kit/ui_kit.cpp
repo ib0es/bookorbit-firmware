@@ -382,15 +382,24 @@ Rect appHeader(Frame& f) {
     Rect bar = takeTop(area, h);
     Rect inner = insetX(bar, kMargin + 4);
     icon::book(inner.x, (int16_t)(inner.y + (inner.height - 20) / 2), Color::Black);
-    const int16_t batW = 92;
-    text(Rect{(int16_t)(inner.x + 28), inner.y, (int16_t)(inner.width - 28 - batW), inner.height}, "book orbit",
+    int16_t rightSpace = 92;
+    battery(f, Rect{(int16_t)(inner.right() - rightSpace), inner.y, rightSpace, inner.height}, Color::Black);
+    if (!Platform::kDevice.hasPowerButton && Platform::kDevice.touch) {
+        const int16_t pwrW = 32;
+        Rect pwrBtn{(int16_t)(inner.right() - rightSpace - pwrW - 8), (int16_t)(inner.y + (inner.height - 22) / 2),
+                    pwrW, 22};
+        frameRect(pwrBtn, Color::Black, 1, 3);
+        text(pwrBtn, "Zz", FontSmall, Color::Black, TextAlign::Center);
+        f.hit(pwrBtn, 1003, 0);  // ActionSleep -> BTN_POWER
+        rightSpace = (int16_t)(rightSpace + pwrW + 12);
+    }
+    text(Rect{(int16_t)(inner.x + 28), inner.y, (int16_t)(inner.width - 28 - rightSpace), inner.height}, "book orbit",
          FontTitle);
-    battery(f, Rect{(int16_t)(inner.right() - batW), inner.y, batW, inner.height}, Color::Black);
     hline(0, width(), (int16_t)(bar.bottom() - 1));
     return area;
 }
 
-Rect footerHints(Frame&, Rect area, const char* line1, const char* line2, const char* touchLine) {
+Rect footerHints(Frame& f, Rect area, const char* line1, const char* line2, const char* touchLine) {
     if (touchOnly() && ((line1 && *line1) || (line2 && *line2))) {
         // The screens' hints name LEFT / RIGHT / OK / BACK, which this board lacks;
         // with the touch panel silent, the held keys stand in for them (C4).
@@ -405,6 +414,19 @@ Rect footerHints(Frame&, Rect area, const char* line1, const char* line2, const 
     Rect foot = takeBottom(area, (int16_t)(h1 + h2 + 14));
     hline(0, width(), foot.y);
     Rect inner = insetXY(foot, kMargin + 4, 8);
+    if (!Platform::kDevice.hasUpDown && Platform::kDevice.touch && !g_touchMissing) {
+        const int16_t btnSize = 28;
+        Rect btnDown{(int16_t)(inner.right() - btnSize), (int16_t)(inner.y + (inner.height - btnSize) / 2), btnSize,
+                     btnSize};
+        Rect btnUp{(int16_t)(btnDown.x - btnSize - 6), btnDown.y, btnSize, btnSize};
+        frameRect(btnUp, Color::Black, 1, 3);
+        text(btnUp, "\xE2\x96\xB2", FontSmall, Color::Black, TextAlign::Center);
+        f.hit(btnUp, 1001, 0);  // ActionPagePrev -> BTN_UP
+        frameRect(btnDown, Color::Black, 1, 3);
+        text(btnDown, "\xE2\x96\xBC", FontSmall, Color::Black, TextAlign::Center);
+        f.hit(btnDown, 1002, 0);  // ActionPageNext -> BTN_DOWN
+        inner.width = (int16_t)(inner.width - 2 * btnSize - 12);
+    }
     if (h1) text(takeTop(inner, h1), line1, FontSmall, Color::Black, TextAlign::Left, 2);
     if (h2) text(takeTop(inner, h2), line2, FontSmall, Color::Black, TextAlign::Left, 2);
     return area;

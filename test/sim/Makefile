@@ -25,6 +25,15 @@ DEVFLAGS := -DFREEINK_DEVICE_X4PRO=1 -DFREEINK_CAP_TOUCH=1 -DFREEINK_CAP_USB_MSC
 else ifeq ($(DEVICE),x3)
 BUILD ?= test/sim/build-x3
 DEVFLAGS := -DFREEINK_DEVICE_X3=1
+else ifeq ($(DEVICE),ws397)
+BUILD ?= test/sim/build-ws397
+DEVFLAGS := -DFREEINK_DEVICE_WS397=1 -DFREEINK_CAP_USB_MSC=1 -DSIM_KEYS_NO_LEFT_RIGHT=1
+else ifeq ($(DEVICE),papers3)
+BUILD ?= test/sim/build-papers3
+DEVFLAGS := -DFREEINK_DEVICE_PAPERS3=1 -DFREEINK_CAP_TOUCH=1 -DSIM_KEYS_TOUCH_ONLY=1
+else ifeq ($(DEVICE),papermono)
+BUILD ?= test/sim/build-papermono
+DEVFLAGS := -DFREEINK_DEVICE_PAPERMONO=1 -DFREEINK_CAP_TOUCH=1 -DSIM_KEYS_TWO_BUTTON=1
 else
 BUILD ?= test/sim/build-x4
 DEVFLAGS :=
@@ -108,6 +117,14 @@ x4pro-test:
 x4c-test:
 	$(MAKE) -f test/sim/Makefile DEVICE=x4c all
 	X4C_HEADLESS=test/sim/build-x4c/x4_headless python3 test/sim/run_x4c_walkthrough.py
+
+ws397-test:
+	$(MAKE) -f test/sim/Makefile DEVICE=ws397 all
+	WS397_HEADLESS=test/sim/build-ws397/x4_headless python3 test/sim/run_ws397_walkthrough.py
+
+papers3-test:
+	$(MAKE) -f test/sim/Makefile DEVICE=papers3 all
+	PAPERS3_HEADLESS=test/sim/build-papers3/x4_headless python3 test/sim/run_papers3_walkthrough.py
 
 coverage:
 	test/coverage.sh

@@ -70,6 +70,7 @@ bool PowerService::takeRestartIntoBook() {
 }
 
 void PowerService::handleAccidentalWakeup() {
+    if (!Platform::kDevice.hasPowerButton) return;
     esp_sleep_wakeup_cause_t wakeupCause = esp_sleep_get_wakeup_cause();
     // C3 wakes through the deep-sleep GPIO source, S3 through RTC ext1.
     if (wakeupCause == ESP_SLEEP_WAKEUP_GPIO || wakeupCause == ESP_SLEEP_WAKEUP_EXT1) {
@@ -288,13 +289,8 @@ void PowerService::enterDeepSleep(AppContext& ctx, bool syncAllowed) {
     // Turn off Wi-Fi
     BookOrbit.disconnectWiFi();
 
-    // Power down via FreeInk PowerManager
-    freeink::PowerManager::waitForPowerButtonRelease();
-    freeink::PowerManager::armPowerButtonWakeup();
-    Frontlight.prepareForSleep();
-    BoardImu.sleep();
-    freeink::PowerManager::powerDownRailsForSleep();
-    freeink::PowerManager::deepSleep();
+    // Power down via Platform
+    Platform::enterDeepSleep();
 
     // On hardware deepSleep() never returns (wake-up is a reset). In the desktop
     // simulator it does, so restart the idle timer to avoid re-entering sleep

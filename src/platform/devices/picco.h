@@ -11,6 +11,11 @@ inline constexpr DeviceProfile kPiccoProfile = {
         /*touchOnly*/ true,
         /*upDownTurnPages*/ true,
         /*okOpensBookMenu*/ true,
+        /*hasLeftRight*/ false,
+        /*hasUpDown*/ true,
+        /*hasPowerButton*/ true,
+        /*powerSharedWithBack*/ false,
+        /*powerSharedWithConfirm*/ false,
         /*keyCentres*/ {96, 178, 279, 370},   // unused: no key hint tabs on a touch-only board
         /*autoRotateByDefault*/ false,
         /*usbMassStorage*/ false,
