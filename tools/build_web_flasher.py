@@ -53,6 +53,72 @@ TARGETS = {
         "device": "BOOX Picco / Tiles",
         "desc": "ESP32-S3 (8MB PSRAM), TMA525C touch + I2C frontlight",
     },
+    "delink": {
+        "chip": "esp32s3",
+        "name": "Book Orbit for de-link",
+        "device": "de-link",
+        "desc": "ESP32-S3, 800x480 E-Ink, 7 buttons, single-channel PWM frontlight",
+    },
+    "papermono": {
+        "chip": "esp32s3",
+        "name": "Book Orbit for M5Stack Paper Mono",
+        "device": "M5Stack Paper Mono",
+        "desc": "ESP32-S3, 800x480 SSD1677, FT6336 touch, AW9967 frontlight, PM1 PMIC",
+    },
+    "sticky": {
+        "chip": "esp32s3",
+        "name": "Book Orbit for Seeed reTerminal Sticky",
+        "device": "reTerminal Sticky",
+        "desc": "ESP32-S3, 800x480 E-Ink, GT911 touch, 3 physical keys, RTC & IMU",
+    },
+    "ws397": {
+        "chip": "esp32s3",
+        "name": "Book Orbit for Waveshare 3.97",
+        "device": "Waveshare 3.97",
+        "desc": "ESP32-S3, 800x480 SSD1677, 4 physical buttons, AXP2101 PMIC, RTC & IMU",
+    },
+    "metalio_eink4": {
+        "chip": "esp32s3",
+        "name": "Book Orbit for Metalio E-Ink 4",
+        "device": "Metalio E-Ink 4",
+        "desc": "ESP32-S3, 800x480 SSD1677, CST816S touch with Home key, TCA9555 buttons",
+    },
+    "murphy_m4": {
+        "chip": "esp32s3",
+        "name": "Book Orbit for Murphy M4",
+        "device": "Murphy M4",
+        "desc": "ESP32-S3, 800x480 SSD1677, FT6336U touch, dual PWM frontlight, 3 physical keys",
+    },
+    "onepage": {
+        "chip": "esp32c61",
+        "name": "Book Orbit for OnePage",
+        "device": "OnePage",
+        "desc": "ESP32-C61 (2MB PSRAM), 800x480 SSD1677, 7 buttons (ADC ladder + 3 side keys)",
+    },
+    "eego_a4": {
+        "chip": "esp32s3",
+        "name": "Book Orbit for EEGO Reader A4",
+        "device": "EEGO Reader A4",
+        "desc": "ESP32-S3, 768x552 UC8279C panel, GSLX680 touch, PCF8563 RTC, 3 physical keys",
+    },
+    "lilygo_t5s3": {
+        "chip": "esp32s3",
+        "name": "Book Orbit for LilyGo T5 S3",
+        "device": "LilyGo T5 S3",
+        "desc": "ESP32-S3, 960x540 16-gray EPD, GT911 touch, PWM backlight, BOOT button",
+    },
+    "m5paper_v11": {
+        "chip": "esp32",
+        "name": "Book Orbit for M5Paper v1.1",
+        "device": "M5Paper v1.1",
+        "desc": "ESP32, 960x540 IT8951, GT911 touch, 3-way rotary wheel",
+    },
+    "papers3": {
+        "chip": "esp32s3",
+        "name": "Book Orbit for M5Stack PaperS3",
+        "device": "M5Stack PaperS3",
+        "desc": "ESP32-S3, 960x540 EPD, GT911 touch, 0 buttons (PMS150G power latch)",
+    },
 }
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -158,7 +224,13 @@ def generate_manifests(targets):
 
     for env in targets:
         info = TARGETS[env]
-        chip_family = "ESP32-C3" if info["chip"] == "esp32c3" else "ESP32-S3"
+        chip_map = {
+            "esp32": "ESP32",
+            "esp32c3": "ESP32-C3",
+            "esp32s3": "ESP32-S3",
+            "esp32c61": "ESP32-C61",
+        }
+        chip_family = chip_map.get(info["chip"], "ESP32-S3")
         manifest_data = {
             "name": info["name"],
             "version": "latest",
