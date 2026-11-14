@@ -285,15 +285,15 @@ bool readIndex(PalmDb& db, uint32_t idx, IndexTable& t, uint32_t maxEntries = 20
     const uint32_t count = be32(&h[24]), ncncx = be32(&h[52]);
     if (count > 20000 || ncncx > 1000) return false;
     uint32_t tagx = be32(&h[180]);
-    if (tagx == 0 || tagx > h.size() || 12 > h.size() - tagx) tagx = be32(&h[4]);
-    if (tagx > h.size() || 12 > h.size() - tagx || memcmp(&h[tagx], "TAGX", 4) != 0) return false;
+    if (tagx == 0 || tagx + 12 > h.size()) tagx = be32(&h[4]);
+    if (tagx + 12 > h.size() || memcmp(&h[tagx], "TAGX", 4) != 0) return false;
     const uint32_t first = be32(&h[tagx + 4]), cbc = be32(&h[tagx + 8]);
     if (cbc > 128) return false;
     struct TagX {
         uint8_t tag, values, mask, eof;
     };
     std::vector<TagX> tags;
-    for (uint32_t i = tagx + 12; i + 4 <= tagx + first && i <= h.size() && 4 <= h.size() - i; i += 4)
+    for (uint32_t i = tagx + 12; i + 4 <= tagx + first && i + 4 <= h.size(); i += 4)
         tags.push_back({h[i], h[i + 1], h[i + 2], h[i + 3]});
     if (loadCncx) {
         for (uint32_t c = 0; c < ncncx && idx + count + 1 + c < db.count(); c++) {
