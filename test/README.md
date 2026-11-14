@@ -54,3 +54,44 @@ check memory pressure, especially on the X4. Window scaling and SDK structure
 layouts remain unchanged; do not enable the experiment by adding a define to a
 normal environment. Return to the normal build with `pio run -e picco -t upload`
 (or `-e x4`). No speed improvement is assumed until measured on hardware.
+
+Measured on Picco on 2026-11-14, same 2,870,166-byte EPUB: the previous build
+transferred the body in 33.194 s; the experimental 32768-byte window / 25-slot
+mailbox transferred it in 5.340 s (~6.2x faster), with RSSI -60 dBm versus -49 dBm
+previously. HTTP-header waiting and post-download progress/cover requests remain
+separate latency sources. This validates the transfer-speed experiment on Picco.
+
+X4 hardware run on the same date, 16384-byte window / 14-slot mailbox: the same
+EPUB body transferred in 11.163 s (SD writes 1.714 s), after 17.353 s waiting for
+HTTP headers. All 35 catalog books were fetched, but minimum free heap fell below
+1 KB during sync. After the download the reader could not allocate its buffers
+with 85 KB free / 35 KB largest block and invoked its existing restart-to-book
+recovery path. A subsequent stock-window (5760-byte) X4 run transferred the same
+file in 37.366 s (SD writes 1.907 s), versus 11.163 s for the larger window
+(~3.35x faster). The stock run also failed to index the book after download:
+88 KB free / 57 KB largest block were insufficient for simultaneous contiguous
+48 KB and 24 KB buffers. Its restart-to-book recovery then opened the book
+successfully. Thus the observed restart is not specific to the enlarged TCP
+window; the larger window's lower transient heap reserve still needs attention.
+The stock run skipped the preceding full catalog sync, so it does not provide
+an equivalent comparison of peak catalog memory pressure.
+
+The subsequent X4 reader-memory fix releases library lists before opening a
+book and restores them on return. Index construction and foreground chapter
+parsing borrow the display buffer exclusively; foreground layout adapts its
+arena to the largest available heap block. Image rendering can release the page
+record and font caches after painting text, keeping only image placements for
+decoding. Background layout never borrows display storage.
+
+With this fix installed, the X4 opened the downloaded book and rendered chapter
+text and PNG headers without restarting; page turns also succeeded. The user
+confirmed that both text and images were visible. Device logs show image decode
+times of approximately 100–109 ms and no allocation failures in that reading run.
+This validates reader opening, not the catalog's transient heap reserve.
+
+Simulator comparison of all 1187 pages of the same EPUB produced identical
+framebuffer hashes with normal rendering and forced low-memory image rendering
+(61 detached image passes). The existing one percent-position mismatch and two
+CFI round-trip mismatches were unchanged between normal and constrained runs.
+Three library-release/rebuild/failure-recovery scenarios also passed. Both
+`x4_tcp_window` and `picco_tcp_window` builds succeeded.

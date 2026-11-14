@@ -121,13 +121,23 @@ void executeMenuAction(AppContext& ctx, int index) {
 
 namespace ReaderScreen {
 
-bool openBook(AppContext& ctx, const String& path, const String& title, const String& author, const String& coverPath,
-              float progress, int page, const String& xpath, const String& docId, int fileId) {
+bool openBook(AppContext& ctx, String path, String title, String author, String coverPath, float progress, int page,
+              String xpath, String docId, int fileId) {
     auto& lib = LibraryManager::getInstance();
     auto& store = ProgressStore::instance();
     Buttons.clearEvents();
     Serial.printf("[Reader] Opening book: %s (file %d)\n", path.c_str(), fileId);
     WifiSession::giveMemoryToReader();   // B9: no upload or radio while the index is built (small tier)
+    // The arguments own their strings: releasing a selected BookItem must not
+    // leave dangling references to its path, title, format or saved position.
+    int bookId = 0;
+    for (const auto& b : lib.masterBooks) {
+        if (!b.filePath.equalsIgnoreCase(path)) continue;
+        if (fileId <= 0 && b.fileId > 0) fileId = b.fileId;
+        bookId = b.bookId;
+        break;
+    }
+    if (lib.releaseListsForReader()) MemStats::log("reader: library lists released");
     bool opened = Reader.openBook(path);
     if (!opened && Reader.lastFailedForMemory() && Platform::kMemory.restartWhenOutOfMemory) {
         // P2: right after a download the radio's memory comes back a moment after
@@ -139,6 +149,7 @@ bool openBook(AppContext& ctx, const String& path, const String& title, const St
     if (!opened) {
         const auto why = (convert::ConvertProblem)Reader.lastConvertProblem();
         if (why == convert::ConvertProblem::Drm || why == convert::ConvertProblem::Unsupported) {
+            lib.ensureScanned();   // the failed open returns to the original library/home screen
             Modal.showMessage(tr(MsgId::READER_OPEN_ERR_TITLE), tr(MsgId::READER_OPEN_ERR_L1),
                               tr(why == convert::ConvertProblem::Drm ? MsgId::READER_OPEN_DRM
                                                                      : MsgId::READER_OPEN_VARIANT),
@@ -161,9 +172,11 @@ bool openBook(AppContext& ctx, const String& path, const String& title, const St
             lib.lastBook.totalPages = 1;
             lib.saveLastBook();
             PowerService::restartIntoLastBook();
+            lib.ensureScanned();   // restart unavailable (e.g. simulator): restore the screen's data
             Modal.showMessage(tr(MsgId::COMMON_ERROR), tr(MsgId::READER_OPEN_ERR_L1), tr(MsgId::READER_OPEN_ERR_MEMORY),
                               "", "", 4000, false, tr(MsgId::READER_OPEN_ERR_FOOTER));
         } else {
+            lib.ensureScanned();
             Modal.showMessage(tr(MsgId::READER_OPEN_ERR_TITLE), tr(MsgId::READER_OPEN_ERR_L1),
                               tr(MsgId::READER_OPEN_ERR_L2), "", "", 3500, false, tr(MsgId::READER_OPEN_ERR_FOOTER));
         }
@@ -198,12 +211,8 @@ bool openBook(AppContext& ctx, const String& path, const String& title, const St
     lib.lastBook.coverPath = LibraryManager::resolveCoverPath(path, title, coverPath, true);
     lib.lastBook.fileId = fileId;
     lib.lastBook.docId = docId;   // KOReader document hash: kept for a future KOSync, not computed now
-    for (const auto& b : lib.masterBooks) {   // server ids from the library list (exact match)
-        if (lib.lastBook.fileId <= 0 && b.filePath.equalsIgnoreCase(path) && b.fileId > 0)
-            lib.lastBook.fileId = b.fileId;
-    }
-
-    BookProgressRecord& rec = lib.currentRecord();
+    // Keep the server book id captured before lending the lists to the reader.
+    BookProgressRecord& rec = store.getOrCreate(fileId, bookId, path, title);
     if (!known) {
         // First time on this device: start from where the reader is now (not a user move).
         rec.state.local.percent = ProgressSync::hasProgress(progress) ? progress : Reader.getProgress();

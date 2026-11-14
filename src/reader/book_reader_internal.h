@@ -93,22 +93,56 @@ inline void giveTransient(uint8_t*& p, size_t size) {
 struct Buffer {
     uint8_t* p = nullptr;
     size_t n = 0;
-    explicit Buffer(size_t size) : p(takeTransient(size)), n(p ? size : 0) {}
-    ~Buffer() { giveTransient(p, n); }
+    explicit Buffer(size_t size) : p(size ? takeTransient(size) : nullptr), n(p ? size : 0) {}
+    ~Buffer() { reset(); }
+    void reset() {
+        giveTransient(p, n);
+        n = 0;
+    }
     Buffer(const Buffer&) = delete;
     Buffer& operator=(const Buffer&) = delete;
 };
 
+// Main-thread build phases may borrow the framebuffer while rendering is idle.
+// Background jobs must never hold this lease: the reader can draw between slices.
+struct DisplayBuildScratch {
+    uint8_t* data = nullptr;
+    uint32_t bytes = 0;
+    explicit DisplayBuildScratch(bool enabled) {
+        if (enabled && Platform::kMemory.wifiTakesReaderMemory) data = Display.lendBuildStorage(&bytes);
+    }
+    ~DisplayBuildScratch() {
+        if (data) Display.returnBuildStorage();
+    }
+    DisplayBuildScratch(const DisplayBuildScratch&) = delete;
+    DisplayBuildScratch& operator=(const DisplayBuildScratch&) = delete;
+};
+
 // One-time container index (ZIP directory, package, TOC, CSS) on the card.
-inline bool buildContainerIndex(SdBookSource& src, SdCacheStorage& cache, bool& noMemory) {
+inline bool buildContainerIndex(SdBookSource& src, SdCacheStorage& cache, bool& noMemory, bool lendDisplay = false) {
     Platform::feedWatchdog();
     const uint32_t t0 = millis();
     BookStatus st = BookStatus::OutOfMemory;
+    // The panel retains its last image while a container index is built. Borrow
+    // its existing storage for the index arena: otherwise a fragmented C3 heap
+    // needs both a 48 KB inflate block and a separate 24 KB index block.
+    // BookCatalog::build performs storage I/O only, with no drawing callbacks.
+    // Only the reader's exclusive open phase opts in; cover extraction may be
+    // called during a UI render and must retain the normal heap-only path.
+    DisplayBuildScratch frame(lendDisplay);
+    if (frame.data) Serial.printf("[Reader] Index uses %u bytes of display storage\n", (unsigned)frame.bytes);
     // Record tables grow with the book (~70 KB for a 1,700-chapter omnibus): retried larger.
     for (size_t cap = kIndexScratchBytes; st == BookStatus::OutOfMemory && cap <= Platform::kMemory.indexScratchMax;
          cap *= 2) {
-        Buffer parse(kInflateBytes), scratch(cap);
-        if (!scratch.p || !parse.p) {
+        // The complete framebuffer is available on the first attempt. Skip a
+        // repeated attempt at a smaller size, then retain the old heap growth
+        // path for books whose index needs more than a framebuffer.
+        if (frame.data && cap > kIndexScratchBytes && cap <= frame.bytes) continue;
+        const bool useFrame = frame.data && cap <= frame.bytes;
+        const size_t scratchBytes = useFrame ? frame.bytes : cap;
+        Buffer parse(kInflateBytes), scratch(useFrame ? 0 : cap);
+        uint8_t* scratchData = useFrame ? frame.data : scratch.p;
+        if (!scratchData || !parse.p) {
             const MemStats::Snapshot m = MemStats::now();
             Serial.printf("[Reader] Not enough memory to index the book (%u + %u KB; free %u KB, largest %u KB)\n",
                           (unsigned)(kInflateBytes / 1024), (unsigned)(cap / 1024), (unsigned)(m.freeBytes / 1024),
@@ -116,11 +150,12 @@ inline bool buildContainerIndex(SdBookSource& src, SdCacheStorage& cache, bool& 
             noMemory = true;
             return false;
         }
-        Arena a(scratch.p, cap), b(parse.p, kInflateBytes);
+        Arena a(scratchData, scratchBytes), b(parse.p, kInflateBytes);
         st = BookCatalog::build(src, cache, a, &b);
         Platform::feedWatchdog();
         Serial.printf("[Reader] Book index built: %s in %lu ms (scratch %u B of %u, parse %u B)\n", bookStatusName(st),
-                      (unsigned long)(millis() - t0), (unsigned)a.highWater(), (unsigned)cap, (unsigned)b.highWater());
+                      (unsigned long)(millis() - t0), (unsigned)a.highWater(), (unsigned)scratchBytes,
+                      (unsigned)b.highWater());
     }
     return st == BookStatus::Ok;
 }

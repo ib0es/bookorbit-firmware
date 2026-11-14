@@ -311,7 +311,7 @@ void BookReader::renderCurrentPage() {
             // baseline JPEG needs ~30 KB of arena, a wide one up to kImageBytes.
             auto drawLadder = [&](size_t limit) {
                 BookStatus r = BookStatus::OutOfMemory;
-                for (size_t size : {(size_t)12 * 1024, (size_t)32 * 1024, kImageBytes}) {
+                for (size_t size : {(size_t)8 * 1024, (size_t)12 * 1024, (size_t)32 * 1024, kImageBytes}) {
                     if (size > limit) break;
                     r = drawImages(size);
                     if (r != BookStatus::OutOfMemory) break;
@@ -327,12 +327,48 @@ void BookReader::renderCurrentPage() {
                 ist = drawLadder(room);
                 if (ist == BookStatus::OutOfMemory) makeRoom();   // the page record is in our buffer: still valid
             }
-            if (ist == BookStatus::OutOfMemory) ist = drawLadder(kImageBytes);
+            const bool tightHeap =
+                    Platform::kMemory.wifiTakesReaderMemory && MemStats::now().largestBlock < kImageBytes;
+            if (ist == BookStatus::OutOfMemory && !tightHeap) ist = drawLadder(kImageBytes);
             if (ist == BookStatus::OutOfMemory) {
+                // Text is already in the framebuffer. Preserve only image
+                // placements/paths before returning the full page record and
+                // glyph caches to the heap. PNG's decoder alone needs ~44 KB.
+                size_t bytes = sizeof(PageImage) * page.imageCount;
+                for (uint16_t i = 0; i < page.imageCount; ++i) bytes += strlen(page.images[i].href) + 1;
+                // The usual one-image chapter header fits on the stack. Avoid
+                // placing a new tiny heap block between the page record and
+                // the large region that releasing it is meant to coalesce.
+                alignas(PageImage) uint8_t inlineImageRecord[512];
+                Buffer imageRecord(bytes > sizeof(inlineImageRecord) ? bytes : 0);
+                uint8_t* imageData = bytes <= sizeof(inlineImageRecord) ? inlineImageRecord : imageRecord.p;
+                if (imageData) {
+                    auto* images = reinterpret_cast<PageImage*>(imageData);
+                    char* paths = reinterpret_cast<char*>(images + page.imageCount);
+                    for (uint16_t i = 0; i < page.imageCount; ++i) {
+                        images[i] = page.images[i];
+                        const size_t len = strlen(page.images[i].href) + 1;
+                        memcpy(paths, page.images[i].href, len);
+                        images[i].href = paths;
+                        paths += len;
+                    }
+                    const uint16_t count = page.imageCount;
+                    mem.reset();
+                    _ttf.release();
+                    page = Page{};
+                    page.images = images;
+                    page.imageCount = count;
+                    MemStats::log("reader: detached image pass");
+                    ist = drawLadder(kImageBytes);
+                }
+            }
+            if (ist == BookStatus::OutOfMemory) {
+                _renderFailures++;
                 const MemStats::Snapshot m = MemStats::now();
                 Serial.printf("[Reader] No memory for the page's images (free %u KB, largest block %u KB)\n",
                               (unsigned)(m.freeBytes / 1024), (unsigned)(m.largestBlock / 1024));
             } else if (ist != BookStatus::Ok) {
+                _renderFailures++;
                 Serial.printf("[Reader] Page's images not drawn: %s\n", bookStatusName(ist));
             }
         }

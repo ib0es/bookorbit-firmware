@@ -122,6 +122,10 @@ public:
     // (re)built when empty or forced (after a sync); otherwise only the
     // positions are refreshed from progress.json.
     void scanLocalBooks(bool forceMasterScan = false);
+    // Small-memory devices lend the cached lists to the reader. All BookItem
+    // references become invalid; the caller must own the book metadata first.
+    // ensureScanned() restores the same list/filter when the reader is left.
+    bool releaseListsForReader();
     // The first scan, if none was made yet (a wake-up straight into a book skips it).
     void ensureScanned() {
         if (!_scanned) scanLocalBooks();
@@ -253,6 +257,7 @@ private:
     bool _cardMayHaveChanged = true;
     LibraryManager() = default;
     bool _scanned = false;
+    String _releasedFormatStem;   // restores the formats owner after rebuilding released lists
     bool _countsDirty = true;
     uint32_t _gen = 1;
     int _unsavedMoves = 0;

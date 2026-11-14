@@ -39,8 +39,9 @@ void handleStatusBarEvent(AppContext& ctx, const ButtonEvent& event);
 // Opens a book, restores the position (xpath > progress > page), records it as
 // lastBook and switches to STATE_READING. On failure shows a message and
 // returns false (the current screen is redrawn when the message closes).
-bool openBook(AppContext& ctx, const String& path, const String& title, const String& author, const String& coverPath,
-              float progress, int page, const String& xpath, const String& docId, int fileId = 0);
+// Owns its strings: small-tier opening releases the source BookItem lists.
+bool openBook(AppContext& ctx, String path, String title, String author, String coverPath, float progress, int page,
+              String xpath, String docId, int fileId = 0);
 
 // Wake-from-sleep fast path: reopens lastBook at its saved position.
 bool resumeLastBook(AppContext& ctx);

@@ -209,9 +209,25 @@ int main(int argc, char** argv) {
         int failP = 0, failX = 0, failC = 0, checked = 0, shared = 0;
         // Every page must draw (its record fits the render buffer, the chapter is readable).
         const int drawFailsBefore = Reader.renderFailures();
+        const char* drawLimit = std::getenv("SIM_DRAW_LARGEST_HEAP_BLOCK");
+        const char* oldLimit = std::getenv("SIM_LARGEST_HEAP_BLOCK");
+        const std::string savedLimit = oldLimit ? oldLimit : "";
+        if (drawLimit) setenv("SIM_LARGEST_HEAP_BLOCK", drawLimit, 1);
         for (int p = 1; p <= n; p++) {
             Reader.setPage(p);
             Reader.renderCurrentPage();
+            if (std::getenv("SIM_READER_FRAME_HASHES")) {
+                uint64_t hash = 14695981039346656037ULL;
+                const uint8_t* frame = Display.getBuffer();
+                for (size_t i = 0; i < EPD_BUFFER_SIZE; ++i) hash = (hash ^ frame[i]) * 1099511628211ULL;
+                printf("[FrameHash] %d %016llx\n", p, (unsigned long long)hash);
+            }
+        }
+        if (drawLimit) {
+            if (savedLimit.empty())
+                unsetenv("SIM_LARGEST_HEAP_BLOCK");
+            else
+                setenv("SIM_LARGEST_HEAP_BLOCK", savedLimit.c_str(), 1);
         }
         const int failD = Reader.renderFailures() - drawFailsBefore;
         const bool epub = String(argv[a]).endsWith(".epub");

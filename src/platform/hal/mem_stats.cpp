@@ -31,7 +31,8 @@ Snapshot now() {
     s.largestBlock = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
     s.minFreeEver = heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT);
 #else
-    s.freeBytes = s.largestBlock = s.minFreeEver = ESP.getFreeHeap();
+    s.freeBytes = s.minFreeEver = ESP.getFreeHeap();
+    s.largestBlock = ESP.getMaxAllocHeap();
 #endif
     return s;
 }
