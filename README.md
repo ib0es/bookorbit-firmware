@@ -16,12 +16,13 @@
 
 > [!NOTE]
 > **Release Status**:
-> * **Beta**: **Xteink X4** and **Picco** (hardware-tested, stable reading and sync features).
-> * **Alpha**: **Xteink X3**, **Xteink X4 Classic**, and **Xteink X4 Pro** (experimental builds; feedback and hardware testing are welcome).
+> * **Beta**: **Xteink X4** and **BOOX Picco** (hardware-tested, stable reading and sync features).
+> * **Alpha**: **Xteink X3**, **Xteink X4 Classic**, and **Xteink X4 Pro**.
+> * **Experimental (Supported profiles)**: **de-link**, **M5Stack Paper Mono**, **Seeed reTerminal Sticky**, **Waveshare 3.97**, **Metalio E-Ink 4**, **Murphy M4**, **OnePage**, **EEGO Reader A4**, **LilyGo T5 S3**, **M5Paper v1.1**, **M5Stack PaperS3**.
 >
 > Feedback, bug reports, and pull requests are warmly welcome!
 
-An open-source, lightweight, custom firmware engineered from scratch for compact E-Ink readers including the **XTEINK** series (X4, X3, X4 Classic, X4 Pro) and **Picco**.
+An open-source, lightweight, custom firmware engineered from scratch for compact E-Ink readers including the **XTEINK** series, **BOOX Picco**, **M5Stack Paper**, **reTerminal Sticky**, **Waveshare**, **EEGO**, and **LilyGo** devices.
 
 The firmware natively integrates with your self-hosted **[Book Orbit](https://github.com/ib0es/book-orbit)** library:
 * **OPDS Catalog** (`/api/v1/opds`): browse libraries, authors, series, and download books directly to the MicroSD card.
@@ -37,10 +38,21 @@ The firmware natively integrates with your self-hosted **[Book Orbit](https://gi
 | Device | Status | PlatformIO Environment | MCU / Display | Input & Frontlight |
 |---|---|---|---|---|
 | **Xteink X4** | **Beta** | `x4` (default) | ESP32-C3 / 4.3" 480×800 E-Ink | Physical buttons (ADC divider) |
-| **Picco** | **Beta** | `picco` | ESP32-S3 / 3.97" 800×480 E-Ink (portrait) | Touchscreen + UP / DOWN / POWER keys, frontlight with a side switch |
-| **Xteink X3** | **Alpha** | `x3` | ESP32-C3 / 3.7" 528×792 E-Ink | Physical buttons |
-| **Xteink X4 Classic** | **Alpha** | `x4c` | ESP32-S3 / 4.3" 480×800 E-Ink | Physical buttons |
-| **Xteink X4 Pro** | **Alpha** | `x4pro` | ESP32-S3 / 4.3" 480×800 E-Ink | Capacitive touch, frontlight |
+| **BOOX Picco** | **Beta** | `picco` | ESP32-S3 / 3.97" 800×480 E-Ink (portrait) | Touchscreen + UP / DOWN / POWER keys, frontlight with a side switch |
+| **Xteink X3** | **Alpha** | `x3` | ESP32-C3 / 3.7" 528×792 E-Ink | Physical buttons, RTC & IMU |
+| **Xteink X4 Classic** | **Alpha** | `x4c` | ESP32-S3 / 4.3" 480×800 E-Ink | 8 physical buttons, USB-MSC, RTC & IMU |
+| **Xteink X4 Pro** | **Alpha** | `x4pro` | ESP32-S3 / 4.3" 480×800 E-Ink | Capacitive touch, dual frontlight, USB-MSC |
+| **de-link** | **Experimental** | `delink` | ESP32-S3 / 4.3" 480×800 E-Ink | 7 physical buttons, single-channel PWM frontlight |
+| **M5Stack Paper Mono** | **Experimental** | `papermono` | ESP32-S3 / 4.7" 480×800 E-Ink | FT6336 touch, 2 buttons, AW9967 frontlight, PM1 PMIC |
+| **Seeed reTerminal Sticky** | **Experimental** | `sticky` | ESP32-S3 / 3.97" 480×800 E-Ink | GT911 touch, 3 physical keys, RTC & IMU |
+| **Waveshare 3.97** | **Experimental** | `ws397` | ESP32-S3 / 3.97" 480×800 E-Ink | 4 physical buttons (no touch, no LEFT/RIGHT), AXP2101 PMIC |
+| **Metalio E-Ink 4** | **Experimental** | `metalio_eink4` | ESP32-S3 / 3.97" 480×800 E-Ink | CST816S touch + Home key, TCA9555 buttons |
+| **Murphy M4** | **Experimental** | `murphy_m4` | ESP32-S3 / 4.26" 480×800 E-Ink | FT6336U touch, 3 buttons, dual PWM frontlight |
+| **OnePage** | **Experimental** | `onepage` | ESP32-C61 / 4.3" 480×800 E-Ink | 7 buttons (ADC ladder + 3 side keys) |
+| **EEGO Reader A4** | **Experimental** | `eego_a4` | ESP32-S3 / 768×552 UC8279C E-Ink | GSLX680 touch + Home key, 3 physical keys |
+| **LilyGo T5 S3** | **Experimental** | `lilygo_t5s3` | ESP32-S3 / 4.7" 540×960 E-Ink | GT911 touch, BOOT button only, PWM backlight |
+| **M5Paper v1.1** | **Experimental** | `m5paper_v11` | ESP32 / 4.7" 540×960 IT8951 E-Ink | GT911 touch, 3-position rotary wheel |
+| **M5Stack PaperS3** | **Experimental** | `papers3` | ESP32-S3 / 4.7" 540×960 E-Ink | GT911 touch, 0 physical buttons (PMS150G power latch) |
 
 ---
 
@@ -67,6 +79,17 @@ Ready-to-flash monolithic binaries (containing bootloader, partition table, otad
 | **Xteink X4 Classic** | ESP32-S3 | [bookorbit-x4c.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-x4c.bin) | [bookorbit-x4c.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-x4c.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
 | **Xteink X4 Pro** | ESP32-S3 | [bookorbit-x4pro.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-x4pro.bin) | [bookorbit-x4pro.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-x4pro.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
 | **BOOX Picco** | ESP32-S3 | [bookorbit-picco.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-picco.bin) | [bookorbit-picco.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-picco.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
+| **de-link** | ESP32-S3 | [bookorbit-delink.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-delink.bin) | [bookorbit-delink.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-delink.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
+| **M5Stack Paper Mono** | ESP32-S3 | [bookorbit-papermono.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-papermono.bin) | [bookorbit-papermono.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-papermono.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
+| **Seeed reTerminal Sticky** | ESP32-S3 | [bookorbit-sticky.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-sticky.bin) | [bookorbit-sticky.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-sticky.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
+| **Waveshare 3.97** | ESP32-S3 | [bookorbit-ws397.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-ws397.bin) | [bookorbit-ws397.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-ws397.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
+| **Metalio E-Ink 4** | ESP32-S3 | [bookorbit-metalio_eink4.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-metalio_eink4.bin) | [bookorbit-metalio_eink4.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-metalio_eink4.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
+| **Murphy M4** | ESP32-S3 | [bookorbit-murphy_m4.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-murphy_m4.bin) | [bookorbit-murphy_m4.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-murphy_m4.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
+| **OnePage** | ESP32-C61 | [bookorbit-onepage.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-onepage.bin) | [bookorbit-onepage.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-onepage.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
+| **EEGO Reader A4** | ESP32-S3 | [bookorbit-eego_a4.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-eego_a4.bin) | [bookorbit-eego_a4.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-eego_a4.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
+| **LilyGo T5 S3** | ESP32-S3 | [bookorbit-lilygo_t5s3.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-lilygo_t5s3.bin) | [bookorbit-lilygo_t5s3.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-lilygo_t5s3.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
+| **M5Paper v1.1** | ESP32 | [bookorbit-m5paper_v11.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-m5paper_v11.bin) | [bookorbit-m5paper_v11.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-m5paper_v11.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
+| **M5Stack PaperS3** | ESP32-S3 | [bookorbit-papers3.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-papers3.bin) | [bookorbit-papers3.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-papers3.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
 
 ### Flashing via `esptool.py`:
 Each binary is an all-in-one image and is flashed at offset `0x0`:
@@ -150,10 +173,14 @@ git submodule update --init --recursive
 pio run -e x4 --target upload
 
 # For other supported devices:
-pio run -e x3 --target upload      # Xteink X3
-pio run -e x4c --target upload     # Xteink X4 Classic
-pio run -e x4pro --target upload   # Xteink X4 Pro
-pio run -e picco --target upload   # Picco
+pio run -e x3 --target upload          # Xteink X3
+pio run -e x4c --target upload         # Xteink X4 Classic
+pio run -e x4pro --target upload       # Xteink X4 Pro
+pio run -e picco --target upload       # BOOX Picco
+pio run -e ws397 --target upload       # Waveshare 3.97
+pio run -e papermono --target upload   # M5Stack Paper Mono
+pio run -e papers3 --target upload     # M5Stack PaperS3
+# (and all other targets: delink, sticky, metalio_eink4, murphy_m4, onepage, eego_a4, lilygo_t5s3, m5paper_v11)
 
 # Open serial debug monitor:
 pio device monitor -b 115200
@@ -225,9 +252,13 @@ Pure-logic unit tests without requiring hardware or Arduino emulation (OPDS pars
 ### Headless Simulator Tests
 The firmware runs in a headless simulator against a fake Book Orbit server, driven by scripted button presses and touches:
 ```bash
-make -f test/sim/Makefile test                     # sync scenarios + reader position round-trips (X4)
-make -f test/sim/Makefile DEVICE=x3 test           # the same on the X3 layout
-make -f test/sim/Makefile DEVICE=picco picco-test  # Picco walkthrough: touch + UP / DOWN / POWER only
+make -f test/sim/Makefile test                       # sync scenarios + reader position round-trips (X4)
+make -f test/sim/Makefile DEVICE=x3 test             # the same on the X3 layout
+make -f test/sim/Makefile DEVICE=picco picco-test    # Picco walkthrough: touch + UP / DOWN / POWER only
+make -f test/sim/Makefile DEVICE=x4c x4c-test        # X4 Classic walkthrough: 8 physical buttons
+make -f test/sim/Makefile DEVICE=x4pro x4pro-test    # X4 Pro walkthrough: touch + Home key
+make -f test/sim/Makefile DEVICE=ws397 ws397-test    # WS397 walkthrough: 4 buttons without LEFT/RIGHT
+make -f test/sim/Makefile DEVICE=papers3 papers3-test # PaperS3 walkthrough: 0 buttons, pure touch
 ```
 
 ### Lint and Format
