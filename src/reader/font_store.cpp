@@ -424,6 +424,9 @@ bool install(const Family& family, ProgressFn progress, void* user) {
         f.close();
     }
     if (!FontPartition::write(base, &h, sizeof(h)) || !FontPartition::finish()) return false;
+    // Verify written font header
+    Header writtenH{};
+    if (!FontPartition::read(base, &writtenH, sizeof(writtenH)) || memcmp(&writtenH, &h, sizeof(h)) != 0) return false;
     const uint32_t index = previous < 0 ? state.directory.count++ : (uint32_t)previous;
     state.directory.records[index] = {base, span};
     if (!commit(state)) return false;
