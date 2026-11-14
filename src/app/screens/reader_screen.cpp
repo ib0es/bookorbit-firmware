@@ -455,6 +455,7 @@ void handleTypefaceMenuEvent(AppContext& ctx, const ButtonEvent& event) {
             drawAppearanceScreen(ctx, false);
             break;
         }
+        case Action::Prev:   // the left key is "Delete" in the key hints of this list
         case Action::Delete:
             if (!sources && sel >= 0 && sel < n) {
                 const String name = fams[sel].name;
@@ -482,7 +483,6 @@ void handleTypefaceMenuEvent(AppContext& ctx, const ButtonEvent& event) {
                         nullptr, tr(MsgId::KEY_DELETE));
             }
             break;
-        case Action::Prev:
         case Action::Back:
             if (!sources) {
                 sel = ctx.typefaceStorage;
