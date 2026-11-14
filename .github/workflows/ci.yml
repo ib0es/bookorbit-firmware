@@ -174,13 +174,18 @@ jobs:
           restore-keys: |
             pio-${{ runner.os }}-
 
-      - name: Install PlatformIO dependencies for tests
-        run: |
-          python -m pip install --upgrade pip
+      - name: Set up Node (the web portal page test)
+        uses: actions/setup-node@v4
+          with:
+          node-version: 22
+
+        - name: Install PlatformIO dependencies for tests
+          run: |
+            python -m pip install --upgrade pip
           pip install --upgrade platformio
           pio pkg install -e x4
 
-      - name: Run host unit tests
+        - name: Run host unit tests
         run: ./test/host/run.sh
 
   sim-tests:
