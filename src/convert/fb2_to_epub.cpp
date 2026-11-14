@@ -55,14 +55,16 @@ const char* attr(const char** atts, const char* local) {
     return nullptr;
 }
 
-// Appends with whitespace collapsed, up to `cap` bytes.
+// Appends with whitespace collapsed, up to `cap` bytes without cutting UTF-8 codepoints.
 void appendCollapsed(std::string& out, const char* s, int len, size_t cap) {
-    for (int i = 0; i < len && out.size() < cap; i++) {
+    for (int i = 0; i < len; i++) {
         const char c = s[i];
         const bool ws = c == ' ' || c == '\t' || c == '\n' || c == '\r';
         if (ws) {
+            if (out.size() >= cap) break;
             if (!out.empty() && out.back() != ' ') out += ' ';
         } else {
+            if ((static_cast<unsigned char>(c) & 0xC0) != 0x80 && out.size() >= cap) break;
             out += c;
         }
     }

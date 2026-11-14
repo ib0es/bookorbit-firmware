@@ -725,7 +725,9 @@ void TxtConverter::writePiece(const Piece& p) {
     std::string& l = _fileLabels[_file - 1];
     if (l.size() < 96) {
         if (!l.empty()) l += ' ';
-        l += p.text.substr(0, 120);
+        size_t cut = std::min<size_t>(p.text.size(), 120);
+        while (cut > 0 && (static_cast<unsigned char>(p.text[cut]) & 0xC0) == 0x80) cut--;
+        l += p.text.substr(0, cut);
     }
 }
 
