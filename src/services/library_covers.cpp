@@ -60,9 +60,12 @@ bool LibraryManager::isValidCoverFile(const String& path) {
     bool isBmp = (magic[0] == 'B' && magic[1] == 'M');
     if ((!isJpeg && !isBmp) || (isJpeg && isProgressiveJpeg(path))) {
         // Not something the cover renderer can draw (PNG, WebP, an error page,
-        // a progressive JPEG): drop it so a usable cover is fetched / extracted.
-        Serial.printf("[Library] Unusable cover removed: %s\n", path.c_str());
-        Storage.remove(path.c_str());
+        // a progressive JPEG): drop only generated cache covers under /covers/,
+        // never user-supplied images next to the book file.
+        if (path.startsWith("/covers/")) {
+            Serial.printf("[Library] Unusable cover removed: %s\n", path.c_str());
+            Storage.remove(path.c_str());
+        }
         return false;
     }
     return true;
