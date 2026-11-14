@@ -121,7 +121,8 @@ private:
             q.method = r["method"] | "GET";
             q.uri = r["uri"] | "/";
             for (JsonPair kv : r["form"].as<JsonObject>()) q.form[kv.key().c_str()] = kv.value().as<std::string>();
-            for (JsonPair kv : r["headers"].as<JsonObject>()) q.headers[kv.key().c_str()] = kv.value().as<std::string>();
+            for (JsonPair kv : r["headers"].as<JsonObject>())
+                q.headers[kv.key().c_str()] = kv.value().as<std::string>();
             for (JsonObject file : r["files"].as<JsonArray>()) {
                 File up;
                 up.name = file["name"] | "";
@@ -192,7 +193,9 @@ private:
                 if (amp == std::string::npos) amp = query.size();
                 const std::string pair = query.substr(at, amp - at);
                 const size_t eq = pair.find('=');
-                if (!pair.empty()) _args[urlDecode(pair.substr(0, eq))] = eq == std::string::npos ? "" : urlDecode(pair.substr(eq + 1));
+                if (!pair.empty())
+                    _args[urlDecode(pair.substr(0, eq))] =
+                            eq == std::string::npos ? "" : urlDecode(pair.substr(eq + 1));
                 at = amp + 1;
             }
         }

@@ -224,7 +224,8 @@ String LibraryManager::resolveCoverPath(const String& filePath, const String& ti
                 extracted = convert::extractDirectCover(filePath, cPath);
                 if (extracted && !isValidCoverFile(cPath)) {
                     // PNG or progressive JPEG extracted from FB2/MOBI: convert into gray BMP
-                    const String bmpPath = cPath.endsWith(".jpg") ? (cPath.substring(0, cPath.length() - 4) + ".bmp") : (cPath + ".bmp");
+                    const String bmpPath = cPath.endsWith(".jpg") ? (cPath.substring(0, cPath.length() - 4) + ".bmp")
+                                                                  : (cPath + ".bmp");
                     if (BookReader::convertCoverImage(cPath, bmpPath, &noMemory)) {
                         Storage.remove(cPath.c_str());
                         cPath = bmpPath;

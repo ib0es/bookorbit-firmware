@@ -195,9 +195,8 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
         if (PowerService::pollModalEvent(event)) {
             // Touch: ◀ in the title or a swipe from the left edge leaves without saving
             // (Picco has no BACK key).
-            if (event.action == ACTION_CLICK &&
-                ((event.id == BTN_TAP && uikit::backTapped(event.x, event.y)) ||
-                 (event.id == BTN_SWIPE_RIGHT && event.x <= 80))) {
+            if (event.action == ACTION_CLICK && ((event.id == BTN_TAP && uikit::backTapped(event.x, event.y)) ||
+                                                 (event.id == BTN_SWIPE_RIGHT && event.x <= 80))) {
                 return false;
             }
             if (event.action == ACTION_CLICK && event.id == BTN_TAP) {
