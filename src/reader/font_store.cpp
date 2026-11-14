@@ -396,6 +396,7 @@ bool install(const Family& family, ProgressFn progress, void* user) {
     for (uint32_t at = 0; at < span; at += kHeaderBytes) {
         if (!FontPartition::eraseRange(base + at, kHeaderBytes)) return false;
         Platform::feedWatchdog();
+        if (progress) progress(user, (int)(300ull * (at + kHeaderBytes) / span));
     }
     uint8_t buf[2048];
     uint32_t done = 0;
