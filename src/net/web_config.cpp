@@ -1221,7 +1221,7 @@ struct PortalUploadState {
     PortalUploadState& operator=(const PortalUploadState&) = delete;
 
     ~PortalUploadState() {
-        if (targetFile && partPath.length() > 0) dropPart();   // the portal closed mid-upload
+        dropPart();   // the portal closed mid-upload or connection dropped
         free(buf);
     }
 
