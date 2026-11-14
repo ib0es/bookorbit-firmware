@@ -194,6 +194,9 @@ uint32_t LibraryManager::nextCodepoint(const char*& p) {
 
 uint32_t LibraryManager::foldCodepoint(uint32_t cp) {
     if (cp >= 'A' && cp <= 'Z') return cp + 32;
+    // Latin-1 Supplement accented characters (Spanish á, é, í, ó, ú, ñ...)
+    if (cp >= 0xC0 && cp <= 0xD6) return cp + 32;   // À..Ö -> à..ö
+    if (cp >= 0xD8 && cp <= 0xDE) return cp + 32;   // Ø..Þ -> ø..þ
     if (cp >= 0x410 && cp <= 0x42F) return cp + 0x20;   // А..Я -> а..я
     if (cp >= 0x400 && cp <= 0x40F) return cp + 0x50;   // Ѐ..Џ (Ё) -> ѐ..џ (ё)
     return cp;
