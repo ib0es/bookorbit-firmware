@@ -429,7 +429,7 @@ bool JpegViewer::drawBmp(const char* filePath, int x, int y, int maxW, int maxH,
     int32_t imgH = (int32_t)(header[22] | (header[23] << 8) | (header[24] << 16) | (header[25] << 24));
     uint16_t bpp = header[28] | (header[29] << 8);
 
-    if (imgW <= 0 || imgH == 0 || (bpp != 1 && bpp != 8 && bpp != 24 && bpp != 32)) {
+    if (imgW <= 0 || imgH == 0 || imgW > 4096 || (imgH < 0 ? -imgH : imgH) > 4096 || (bpp != 1 && bpp != 8 && bpp != 24 && bpp != 32)) {
         f.close();
         return false;
     }
