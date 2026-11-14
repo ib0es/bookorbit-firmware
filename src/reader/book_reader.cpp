@@ -293,11 +293,13 @@ void BookReader::loadSpineTable() {
     if (_cache.fileSize(name) != (int64_t)(8 + 8 * n)) return;
     uint32_t head[2];
     if (_cache.readAt(name, 0, head, 8) != 8 || head[0] != kSpineFileMagic || head[1] != n) return;
-    for (uint32_t i = 0; i < n; i++) {
-        int32_t rec[2];
-        if (_cache.readAt(name, 8 + 8 * i, rec, 8) != 8) return;
-        _spines[i].pages = rec[0];
-        _spines[i].chars = (uint32_t)rec[1];
+    const size_t recBytes = n * 8;
+    std::vector<int32_t> buf(n * 2);
+    if (_cache.readAt(name, 8, buf.data(), (uint32_t)recBytes) == (int32_t)recBytes) {
+        for (uint32_t i = 0; i < n; i++) {
+            _spines[i].pages = buf[i * 2];
+            _spines[i].chars = (uint32_t)buf[i * 2 + 1];
+        }
     }
 }
 
