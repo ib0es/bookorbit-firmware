@@ -1435,7 +1435,7 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
         }
         bool removed = false;
         // Rescan to include duplicate faces in /fonts and its family subdirectories.
-        for (;;) {
+        for (int attempts = 0; attempts < 32; attempts++) {
             const auto available = FontStore::scanCard();
             const auto found = std::find_if(available.begin(), available.end(), [&](const FontStore::Family& f) {
                 return FontStore::sameFamilyName(f.name, name);
