@@ -67,8 +67,16 @@ p.desc { font-size: 13px; color: #666; margin: 0 0 12px; line-height: 1.4; }
 .b-skip { background: #fef3c7; color: #92400e; }
 progress { width: 100%; height: 10px; margin: 8px 0; }
 .blist { max-height: 280px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 4px 10px; }
-.bdel { width: auto; padding: 5px 10px; font-size: 12px; background: #dc2626; margin: 0; border-radius: 6px; }
-.toast { display: none; padding: 10px 12px; border-radius: 8px; margin-bottom: 10px; font-size: 13px; font-weight: 600; }
+.loading { display: flex; align-items: center; gap: 10px; padding: 12px 2px; font-size: 13px; color: #666; }
+.loading progress { width: 90px; height: 8px; margin: 0; flex-shrink: 0; }
+.dlg-back { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.45); align-items: center; justify-content: center; padding: 16px; z-index: 20; }
+.dlg-back.open { display: flex; }
+.dlg { background: #fff; border-radius: 12px; padding: 20px; width: 100%; max-width: 360px; box-shadow: 0 8px 28px rgba(0,0,0,0.25); }
+.dlg h3 { font-size: 16px; margin: 0 0 8px; color: #111; }
+.dlg .dlg-name { font-size: 15px; font-weight: 600; color: #111; margin: 0 0 6px; word-break: break-word; }
+.dlg-actions { display: flex; gap: 10px; margin-top: 16px; }
+.dlg-actions .btn { margin: 0; flex: 1; }
+.toast { display: none; position: sticky; top: 8px; z-index: 10; padding: 10px 12px; border-radius: 8px; margin-bottom: 10px; font-size: 13px; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
 .toast.ok { display: block; background: #dcfce7; color: #166534; }
 .toast.err { display: block; background: #fee2e2; color: #991b1b; }
 details { border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; background: #fafafa; }
@@ -86,7 +94,10 @@ label.chk { display: flex; align-items: center; font-size: 14px; font-weight: 40
 label.chk input { width: 18px; height: 18px; margin: 0 10px 0 0; flex-shrink: 0; }
 button.btn { width: 100%; background: #000; color: #fff; border: none; padding: 13px; font-size: 15px; font-weight: 600; border-radius: 8px; cursor: pointer; margin-top: 6px; }
 button.btn:disabled { opacity: 0.45; cursor: default; }
+/* One set of buttons on every tab: black = the main action, grey = the other choice, red = anything that deletes. */
 button.btn-sec { background: #4b5563; margin-top: 10px; }
+button.btn-danger { background: #b91c1c; }
+button.btn-sm { width: auto; padding: 7px 12px; font-size: 13px; margin: 0; border-radius: 6px; flex-shrink: 0; }
 .footer { text-align: center; font-size: 12px; color: #888; margin-top: 14px; }
 </style>
 </head>
@@ -114,7 +125,7 @@ button.btn-sec { background: #4b5563; margin-top: 10px; }
 </div>
 <div id='queue'></div>
 <h2>%BOOKS_LIST_TITLE% (<span id='book-cnt'>0</span>)</h2>
-<div id='blist' class='blist'></div>
+<div id='blist' class='blist'><div class='loading'><progress></progress><span>%LOADING%</span></div></div>
 </div>
 <div id='tab-fonts' class='panel'>
 <h2>%FONT_SD_TITLE%</h2>
@@ -124,11 +135,11 @@ button.btn-sec { background: #4b5563; margin-top: 10px; }
 <button type='button' id='font-up' class='btn' onclick='uploadFonts()' disabled>%FONT_SD_UPLOAD%</button>
 <progress id='font-progress' value='0' max='100' style='display:none'></progress>
 <div id='font-result' class='desc' role='status'></div>
-<div id='font-list' class='blist'></div>
+<div id='font-list' class='blist'><div class='loading'><progress></progress><span>%LOADING%</span></div></div>
 <h2>%FONT_FLASH_TITLE%</h2>
 <p class='desc'>%FONT_FLASH_HINT%</p>
-<p id='font-flash-capacity' class='desc'></p>
-<select id='font-flash-family' onchange='updateFontAction()'></select>
+<div id='font-flash-capacity' class='sd-bar'>...</div>
+<select id='font-flash-family' onchange='updateFontAction()' disabled></select>
 <button type='button' id='font-flash-install' class='btn' onclick='runFontAction()' disabled>%FONT_FLASH_INSTALL%</button>
 </div>
 <div id='tab-settings' class='panel'>
@@ -141,20 +152,70 @@ const char HTML_TAIL[] PROGMEM = R"rawliteral(<button type='submit' id='btn-save
 <button type='button' id='btn-close' class='btn btn-sec' onclick='closePortal()'>%BTN_CLOSE%</button>
 <div class='footer'>%HTML_FOOTER%</div>
 </div>
+<div id='dlg' class='dlg-back' role='dialog' aria-modal='true' aria-labelledby='dlg-title'>
+<div class='dlg'>
+<h3 id='dlg-title'></h3>
+<p id='dlg-name' class='dlg-name'></p>
+<p class='desc'>%CONFIRM_NOTE%</p>
+<div class='dlg-actions'>
+<button type='button' id='dlg-no' class='btn btn-sec'>%BTN_NO%</button>
+<button type='button' id='dlg-yes' class='btn btn-danger'>%BTN_YES%</button>
+</div>
+</div>
+</div>
 <script>
-var T={noBooks:'%JS_NO_BOOKS%',del:'%JS_DELETE%',saved:'%JS_SAVED%',err:'%JS_ERR%',closed:'%JS_CLOSED%',freeLbl:'%JS_FREE%'};
+var T={noBooks:'%JS_NO_BOOKS%',del:'%JS_DELETE%',saved:'%JS_SAVED%',err:'%JS_ERR%',closed:'%JS_CLOSED%',freeLbl:'%JS_FREE%',loading:'%JS_LOADING%',retry:'%JS_RETRY%',sdDel:'%JS_FONT_SD_DELETE%',flashDel:'%JS_FLASH_DELETE%'};
 var pin=(new URLSearchParams(window.location.search)).get('pin')||'';
 var upQueue=[],uploading=false;
 function $(id){return document.getElementById(id);}
 function toast(msg,ok){var t=$('toast');t.textContent=msg;t.className='toast '+(ok?'ok':'err');}
-// A native confirm() is swallowed by the browsers phones open for an access point
-// (the captive-portal window answers "no" without showing anything), so a delete is
-// asked on the button itself: the first press turns it into "Delete?", a second one
-// within 4 s does it.
-function twice(btn,run){
-  if(btn.armed){clearTimeout(btn.armTimer);btn.armed=false;btn.textContent=btn.armLabel;btn.style.outline='';run();return;}
-  btn.armed=true;btn.armLabel=btn.textContent;btn.textContent=T.del+'?';btn.style.outline='3px solid #000';
-  btn.armTimer=setTimeout(function(){btn.armed=false;btn.textContent=btn.armLabel;btn.style.outline='';},4000);
+// A native confirm() is swallowed by the browsers phones open for an access point (the
+// captive-portal window answers "no" without showing anything): the question is a dialog
+// of the page itself. Resolves true on Yes, false on No, Escape or a tap outside; the
+// focus starts on No, the safe answer.
+function askConfirm(title,name){
+  return new Promise(function(resolve){
+    var back=$('dlg'),yes=$('dlg-yes'),no=$('dlg-no');
+    $('dlg-title').textContent=title;$('dlg-name').textContent=name;
+    back.classList.add('open');
+    function done(answer){
+      back.classList.remove('open');yes.onclick=null;no.onclick=null;back.onclick=null;document.onkeydown=null;
+      resolve(answer);
+    }
+    yes.onclick=function(){done(true);};
+    no.onclick=function(){done(false);};
+    back.onclick=function(e){if(e.target===back)done(false);};
+    document.onkeydown=function(e){if(e.key==='Escape')done(false);};
+    no.focus();
+  });
+}
+// While the device answers (it reads its card), a list shows a progress bar; a list it
+// could not read says so and offers to try again.
+function showLoading(el){
+  el.textContent='';
+  var row=document.createElement('div');row.className='loading';
+  var bar=document.createElement('progress');
+  var label=document.createElement('span');label.textContent=T.loading;
+  row.appendChild(bar);row.appendChild(label);el.appendChild(row);
+}
+function showFailed(el,retry){
+  el.textContent='';
+  var row=document.createElement('div');row.className='loading';
+  var label=document.createElement('span');label.textContent=T.err;
+  var again=document.createElement('button');again.type='button';again.className='btn btn-sm';again.textContent=T.retry;
+  again.onclick=retry;
+  row.appendChild(label);row.appendChild(again);el.appendChild(row);
+}
+// A button that deletes: the same look wherever it is.
+function deleteButton(label,run){
+  var b=document.createElement('button');b.type='button';b.className='btn btn-danger btn-sm';b.textContent=label;
+  b.onclick=run;return b;
+}
+// A row of a list: the name, and what can be done with it.
+function listRow(text,action){
+  var row=document.createElement('div');row.className='qitem';
+  var nm=document.createElement('span');nm.className='qname';nm.textContent=text;
+  row.appendChild(nm);if(action)row.appendChild(action);return row;
 }
 function fmtSz(b){if(b>=1073741824)return(b/1073741824).toFixed(2)+' GB';if(b>=1048576)return(b/1048576).toFixed(1)+' MB';if(b>=1024)return Math.round(b/1024)+' KB';return b+' B';}
 function showTab(id,btn){
@@ -167,20 +228,20 @@ var booksLoading=false;
 function loadBooks(){
   if(booksLoading)return;
   booksLoading=true;
-  fetch('/api/books?pin='+encodeURIComponent(pin)).then(function(r){return r.json();}).then(function(d){
+  $('sd-info').textContent='...';showLoading($('blist'));
+    fetch('/api/books?pin='+encodeURIComponent(pin)).then(function(r){if(!r.ok)throw Error(T.err);return r.json();}).then(function(d){
     booksLoading=false;
     $('sd-info').textContent=(d.free?fmtSz(d.free):'?')+' / '+(d.total?fmtSz(d.total):'?');
-    var list=$('blist');list.innerHTML='';
+    var list=$('blist');list.textContent='';
     var books=d.books||[];$('book-cnt').textContent=books.length;
-    if(!books.length){list.innerHTML='<div class="qitem"><span>'+T.noBooks+'</span></div>';return;}
-    books.forEach(function(b){
-      var row=document.createElement('div');row.className='qitem';
-      var nm=document.createElement('span');nm.className='qname';nm.textContent=b.name+' ('+fmtSz(b.size)+')';
-      var btn=document.createElement('button');btn.type='button';btn.className='bdel';btn.textContent=T.del;
-      btn.onclick=function(){twice(btn,function(){delBook(b.name);});};
-      row.appendChild(nm);row.appendChild(btn);list.appendChild(row);
+    if(!books.length){list.appendChild(listRow(T.noBooks));return;}
+      books.forEach(function(b){
+      var del=deleteButton(T.del,function(){
+          askConfirm(T.del,b.name).then(function(yes){if(yes)delBook(b.name);});
+      });
+      list.appendChild(listRow(b.name+' ('+fmtSz(b.size)+')',del));
     });
-  }).catch(function(){booksLoading=false;});
+  }).catch(function(){booksLoading=false;showFailed($('blist'),loadBooks);});
 }
 function delBook(name){
   fetch('/api/books/delete?pin='+encodeURIComponent(pin),{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(name)})
@@ -263,15 +324,19 @@ var flashChoices=Object.create(null);
 function updateFontAction(){
   var choice=flashChoices[fontFamilyKey($('font-flash-family').value)],button=$('font-flash-install');
   button.textContent=choice&&choice.builtin?'%JS_FLASH_BUILTIN%':(choice&&choice.installed?'%JS_FLASH_DELETE%':'%JS_FLASH_INSTALL%');
-  button.style.background=choice&&choice.installed?'#b91c1c':'#000';
+  if(choice&&choice.installed)button.classList.add('btn-danger');else button.classList.remove('btn-danger');
   button.disabled=fontUploading||!choice||choice.builtin||(!choice.installed&&!choice.fits);
 }
 function runFontAction(){
   var choice=flashChoices[fontFamilyKey($('font-flash-family').value)];
   if(!choice||choice.builtin||fontUploading||uploading)return;
-  return choice.installed?twice($('font-flash-install'),deletePortalFont):installPortalFont();
+  if(!choice.installed)return installPortalFont();
+  return askConfirm(T.flashDel,choice.name).then(function(yes){if(yes)return deletePortalFont();});
 }
 function loadFonts(){
+  showLoading($('font-list'));
+  $('font-flash-capacity').textContent='...';
+  $('font-flash-family').disabled=true;$('font-flash-install').disabled=true;
   return fetch('/api/fonts?pin='+encodeURIComponent(pin)).then(function(r){if(!r.ok)throw Error(T.err);return r.json();}).then(function(d){
     var list=$('font-list');list.textContent='';
     var select=$('cfg-form').elements.namedItem('font_family'),current=select.value;
@@ -283,9 +348,11 @@ function loadFonts(){
     var names=[];
     (d.families||[]).forEach(function(f){
       names.push(f.name);flashChoices[fontFamilyKey(f.name)]=f;
-      var row=document.createElement('div');row.className='qitem';row.textContent=f.name+' ('+fmtSz(f.bytes)+')';
-      var remove=document.createElement('button');remove.type='button';remove.className='btn';remove.textContent='%JS_FONT_SD_DELETE%';
-      remove.disabled=fontUploading||uploading;remove.onclick=function(){twice(remove,function(){deletePortalCardFont(f.name);});};row.appendChild(remove);list.appendChild(row);
+      var remove=deleteButton(T.del,function(){
+        askConfirm(T.sdDel,f.name).then(function(yes){if(yes)deletePortalCardFont(f.name);});
+      });
+      remove.disabled=fontUploading||uploading;
+      list.appendChild(listRow(f.name+' ('+fmtSz(f.bytes)+')',remove));
     });
     installed.forEach(function(f){
       flashChoices[fontFamilyKey(f.name)]={name:f.name,bytes:f.bytes,installed:true,fits:true};
@@ -299,12 +366,13 @@ function loadFonts(){
       option.disabled=!!f.builtin||(!f.installed&&!f.fits);flashSelect.add(option);
     });
     var previousChoice=flashChoices[fontFamilyKey(previous)];flashSelect.value=previousChoice?previousChoice.name:'';
+    flashSelect.disabled=false;
     updateFontAction();
     names.forEach(function(name){select.add(new Option(name,name));});
     if(current&&names.indexOf(current)<0)select.add(new Option(current,current));
     select.value=current;
-    if(!(d.families||[]).length)list.textContent='%JS_FONTS_EMPTY%';
-  }).catch(function(){toast(T.err,false);});
+    if(!(d.families||[]).length)list.appendChild(listRow('%JS_FONTS_EMPTY%'));
+  }).catch(function(){toast(T.err,false);showFailed($('font-list'),loadFonts);});
 }
 // ZIP is expanded in the browser: the reader receives ordinary font uploads.
 function fontZipError(){return Error('%JS_ZIP_ERROR%');}
@@ -690,17 +758,23 @@ const PortalToken kHeadTokens[] = {
         {"%OVERWRITE_LBL%", MsgId::WEB_HTML_OVERWRITE, false},
         {"%KEEP_PROGRESS_LBL%", MsgId::WEB_HTML_KEEP_PROGRESS, false},
         {"%BTN_UPLOAD%", MsgId::WEB_HTML_BTN_UPLOAD, false},
+        {"%LOADING%", MsgId::WEB_HTML_LOADING, false},
         {"%BOOKS_LIST_TITLE%", MsgId::WEB_HTML_BOOKS_LIST_TITLE, false},
 };
 const PortalToken kTailTokens[] = {
         {"%BTN_SAVE%", MsgId::WEB_HTML_BTN_SAVE, false},
         {"%BTN_CLOSE%", MsgId::WEB_HTML_BTN_CLOSE_PORTAL, false},
         {"%HTML_FOOTER%", MsgId::WEB_HTML_FOOTER, false},
+        {"%CONFIRM_NOTE%", MsgId::WEB_HTML_CONFIRM_NOTE, false},
+        {"%BTN_YES%", MsgId::WEB_HTML_YES, false},
+        {"%BTN_NO%", MsgId::WEB_HTML_NO, false},
         {"%JS_NO_BOOKS%", MsgId::WEB_HTML_NO_BOOKS, true},
         {"%JS_DELETE%", MsgId::WEB_HTML_BTN_DELETE, true},
         {"%JS_SAVED%", MsgId::WEB_HTML_STATUS_SAVED, true},
         {"%JS_ERR%", MsgId::WEB_HTML_STATUS_ERROR, true},
         {"%JS_CLOSED%", MsgId::WEB_HTML_PORTAL_CLOSED, true},
+        {"%JS_LOADING%", MsgId::WEB_HTML_LOADING, true},
+        {"%JS_RETRY%", MsgId::WEB_HTML_RETRY, true},
         {"%JS_FLASH_BUILTIN%", MsgId::TYPEFACE_BUILTIN, true},
         {"%JS_FLASH_DELETE%", MsgId::WEB_HTML_FONT_FLASH_DELETE, true},
         {"%JS_FLASH_INSTALL%", MsgId::WEB_HTML_FONT_FLASH_INSTALL, true},
