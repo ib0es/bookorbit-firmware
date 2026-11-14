@@ -118,15 +118,6 @@ export const DEVICES: Record<DeviceKey, DeviceInfo> = {
     desc_ru: 'LilyGo T5 S3: ESP32-S3, экран 960x540 16 градаций серого, тач GT911, подсветка, кнопка BOOT',
     merged: 'builds/lilygo_t5s3/bookorbit-lilygo_t5s3.bin',
   },
-  m5paper_v11: {
-    usbMassStorage: false,
-    name: 'M5Paper v1.1',
-    chip: 'ESP32',
-    chipSubtitle: 'ESP32 Touch',
-    desc_en: 'M5Stack Paper v1.1: classic ESP32, 960x540 IT8951, GT911 touch, 3-way rotary wheel',
-    desc_ru: 'M5Stack Paper v1.1: чип ESP32, экран 960x540 IT8951, тач GT911, 3-позиционное колесо',
-    merged: 'builds/m5paper_v11/bookorbit-m5paper_v11.bin',
-  },
   papers3: {
     usbMassStorage: false,
     name: 'M5Paper S3',

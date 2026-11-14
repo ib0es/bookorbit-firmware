@@ -18,7 +18,7 @@
 > **Release Status**:
 > * **Beta**: **Xteink X4** and **BOOX Picco** (hardware-tested, stable reading and sync features).
 > * **Alpha**: **Xteink X3**, **Xteink X4 Classic**, and **Xteink X4 Pro**.
-> * **Experimental (Supported profiles)**: **de-link**, **M5Stack Paper Mono**, **Seeed reTerminal Sticky**, **Waveshare 3.97**, **Metalio E-Ink 4**, **Murphy M4**, **EEGO Reader A4**, **LilyGo T5 S3**, **M5Paper v1.1**, **M5Stack PaperS3**.
+> * **Experimental (Supported profiles)**: **de-link**, **M5Stack Paper Mono**, **Seeed reTerminal Sticky**, **Waveshare 3.97**, **Metalio E-Ink 4**, **Murphy M4**, **EEGO Reader A4**, **LilyGo T5 S3**, **M5Stack PaperS3**.
 >
 > Feedback, bug reports, and pull requests are warmly welcome!
 
@@ -50,7 +50,6 @@ The firmware natively integrates with your self-hosted **[Book Orbit](https://gi
 | **Murphy M4** | **Experimental** | `murphy_m4` | ESP32-S3 / 4.26" 480×800 E-Ink | FT6336U touch, 3 buttons, dual PWM frontlight |
 | **EEGO Reader A4** | **Experimental** | `eego_a4` | ESP32-S3 / 768×552 UC8279C E-Ink | GSLX680 touch + Home key, 3 physical keys |
 | **LilyGo T5 S3** | **Experimental** | `lilygo_t5s3` | ESP32-S3 / 4.7" 540×960 E-Ink | GT911 touch, BOOT button only, PWM backlight |
-| **M5Paper v1.1** | **Experimental** | `m5paper_v11` | ESP32 / 4.7" 540×960 IT8951 E-Ink | GT911 touch, 3-position rotary wheel |
 | **M5Stack PaperS3** | **Experimental** | `papers3` | ESP32-S3 / 4.7" 540×960 E-Ink | GT911 touch, 0 physical buttons (PMS150G power latch) |
 
 ---
@@ -86,7 +85,6 @@ Ready-to-flash monolithic binaries (containing bootloader, partition table, otad
 | **Murphy M4** | ESP32-S3 | [bookorbit-murphy_m4.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-murphy_m4.bin) | [bookorbit-murphy_m4.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-murphy_m4.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
 | **EEGO Reader A4** | ESP32-S3 | [bookorbit-eego_a4.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-eego_a4.bin) | [bookorbit-eego_a4.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-eego_a4.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
 | **LilyGo T5 S3** | ESP32-S3 | [bookorbit-lilygo_t5s3.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-lilygo_t5s3.bin) | [bookorbit-lilygo_t5s3.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-lilygo_t5s3.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
-| **M5Paper v1.1** | ESP32 | [bookorbit-m5paper_v11.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-m5paper_v11.bin) | [bookorbit-m5paper_v11.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-m5paper_v11.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
 | **M5Stack PaperS3** | ESP32-S3 | [bookorbit-papers3.bin](https://github.com/ib0es/bookorbit-firmware/releases/latest/download/bookorbit-papers3.bin) | [bookorbit-papers3.bin](https://github.com/ib0es/bookorbit-firmware/releases/download/latest/bookorbit-papers3.bin) | [Flash Online](https://ib0es.github.io/bookorbit-firmware/) |
 
 ### Flashing via `esptool.py`:

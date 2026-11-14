@@ -41,11 +41,6 @@ inline constexpr const DeviceProfile& kDevice = kMetalioEInk4Profile;
 namespace Platform {
 inline constexpr const DeviceProfile& kDevice = kMurphyM4Profile;
 }
-#elif defined(FREEINK_DEVICE_ONEPAGE) && FREEINK_DEVICE_ONEPAGE
-#include "devices/onepage.h"
-namespace Platform {
-inline constexpr const DeviceProfile& kDevice = kOnePageProfile;
-}
 #elif defined(FREEINK_DEVICE_EEGO_A4) && FREEINK_DEVICE_EEGO_A4
 #include "devices/eego_a4.h"
 namespace Platform {
@@ -55,11 +50,6 @@ inline constexpr const DeviceProfile& kDevice = kEegoA4Profile;
 #include "devices/lilygo_t5s3.h"
 namespace Platform {
 inline constexpr const DeviceProfile& kDevice = kLilyGoProfile;
-}
-#elif defined(FREEINK_DEVICE_M5PAPER) && FREEINK_DEVICE_M5PAPER
-#include "devices/m5paper_v11.h"
-namespace Platform {
-inline constexpr const DeviceProfile& kDevice = kM5PaperV11Profile;
 }
 #elif defined(FREEINK_DEVICE_PAPERS3) && FREEINK_DEVICE_PAPERS3
 #include "devices/papers3.h"
