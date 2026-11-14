@@ -27,6 +27,7 @@
 #include "../reader/reader.h"
 #include "services/library_manager.h"
 #include "services/power_service.h"
+#include "services/sync_service.h"
 #include "services/wifi_session.h"
 #include "ui/font.h"
 #include "ui/i18n.h"
@@ -1308,6 +1309,7 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
     const char* screenSsid = "BookOrbit-Config";
     char apPass[9] = {};
     String portalUrl;
+    String validPin;
     IPAddress hostIp;
     DNSServer dnsServer;
     bool dnsStarted = false;
@@ -1342,6 +1344,10 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
                       hostIp.toString().c_str());
     } else {
         if (cfg.wifiSsid.length() == 0) return false;
+        char staPin[7] = {};
+        for (int i = 0; i < 6; i++) staPin[i] = (char)('0' + esp_random() % 10);
+        staPin[6] = '\0';
+        validPin = staPin;
         screenSsid = cfg.wifiSsid.c_str();
         Ui::status(tr(MsgId::WEB_STA_TITLE), tr(MsgId::WEB_WIFI_CONNECTING), screenSsid, nullptr, nullptr,
                    tr(MsgId::COMMON_CANCEL));
@@ -1351,9 +1357,6 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
                         2500);
             return false;
         }
-        char staPin[7] = {};
-        for (int i = 0; i < 6; i++) staPin[i] = (char)('0' + esp_random() % 10);
-        staPin[6] = '\0';
         WiFi.setSleep(false);   // modem sleep halves the upload rate
         hostIp = WiFi.localIP();
         portalUrl = String("http://") + hostIp.toString() + "/?pin=" + String(staPin);
@@ -1369,7 +1372,6 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
     bool closeRequested = false;
     bool booksChanged = false;   // the Offline list is scanned again when the portal closes
 
-    String validPin = apMode ? "" : String(staPin);
     auto checkAuth = [&]() -> bool {
         if (apMode) return true;
         if (server.hasArg("pin") && server.arg("pin") == validPin) return true;
