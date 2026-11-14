@@ -147,6 +147,15 @@ var pin=(new URLSearchParams(window.location.search)).get('pin')||'';
 var upQueue=[],uploading=false;
 function $(id){return document.getElementById(id);}
 function toast(msg,ok){var t=$('toast');t.textContent=msg;t.className='toast '+(ok?'ok':'err');}
+// A native confirm() is swallowed by the browsers phones open for an access point
+// (the captive-portal window answers "no" without showing anything), so a delete is
+// asked on the button itself: the first press turns it into "Delete?", a second one
+// within 4 s does it.
+function twice(btn,run){
+  if(btn.armed){clearTimeout(btn.armTimer);btn.armed=false;btn.textContent=btn.armLabel;btn.style.outline='';run();return;}
+  btn.armed=true;btn.armLabel=btn.textContent;btn.textContent=T.del+'?';btn.style.outline='3px solid #000';
+  btn.armTimer=setTimeout(function(){btn.armed=false;btn.textContent=btn.armLabel;btn.style.outline='';},4000);
+}
 function fmtSz(b){if(b>=1073741824)return(b/1073741824).toFixed(2)+' GB';if(b>=1048576)return(b/1048576).toFixed(1)+' MB';if(b>=1024)return Math.round(b/1024)+' KB';return b+' B';}
 function showTab(id,btn){
   document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
@@ -168,13 +177,12 @@ function loadBooks(){
       var row=document.createElement('div');row.className='qitem';
       var nm=document.createElement('span');nm.className='qname';nm.textContent=b.name+' ('+fmtSz(b.size)+')';
       var btn=document.createElement('button');btn.type='button';btn.className='bdel';btn.textContent=T.del;
-      btn.onclick=function(){delBook(b.name);};
+      btn.onclick=function(){twice(btn,function(){delBook(b.name);});};
       row.appendChild(nm);row.appendChild(btn);list.appendChild(row);
     });
   }).catch(function(){booksLoading=false;});
 }
 function delBook(name){
-  if(!confirm(name+': '+T.del+'?'))return;
   fetch('/api/books/delete?pin='+encodeURIComponent(pin),{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(name)})
   .then(function(r){return r.json();}).then(function(d){if(d.ok)loadBooks();else toast(d.error||T.err,false);})
   .catch(function(){toast(T.err,false);});
@@ -261,7 +269,7 @@ function updateFontAction(){
 function runFontAction(){
   var choice=flashChoices[fontFamilyKey($('font-flash-family').value)];
   if(!choice||choice.builtin||fontUploading||uploading)return;
-  return choice.installed?deletePortalFont():installPortalFont();
+  return choice.installed?twice($('font-flash-install'),deletePortalFont):installPortalFont();
 }
 function loadFonts(){
   return fetch('/api/fonts').then(function(r){if(!r.ok)throw Error(T.err);return r.json();}).then(function(d){
@@ -277,7 +285,7 @@ function loadFonts(){
       names.push(f.name);flashChoices[fontFamilyKey(f.name)]=f;
       var row=document.createElement('div');row.className='qitem';row.textContent=f.name+' ('+fmtSz(f.bytes)+')';
       var remove=document.createElement('button');remove.type='button';remove.className='btn';remove.textContent='%JS_FONT_SD_DELETE%';
-      remove.disabled=fontUploading||uploading;remove.onclick=function(){deletePortalCardFont(f.name);};row.appendChild(remove);list.appendChild(row);
+      remove.disabled=fontUploading||uploading;remove.onclick=function(){twice(remove,function(){deletePortalCardFont(f.name);});};row.appendChild(remove);list.appendChild(row);
     });
     installed.forEach(function(f){
       flashChoices[fontFamilyKey(f.name)]={name:f.name,bytes:f.bytes,installed:true,fits:true};
@@ -374,7 +382,6 @@ function fontFamilyKey(name){return name.toLowerCase().replace(/[ _-]/g,'');}
 function fontFamilyFromFile(name){return name.replace(/\.(ttf|otf)$/i,'').replace(/[- ](regular|book|roman|normal|bolditalic|boldoblique|bold|italic|oblique|bi|it)$/i,'');}
 async function deletePortalCardFont(name){
   if(fontUploading||uploading)return;
-  if(!confirm(name+': '+T.del+'?'))return;
   fontUploading=true;$('font-up').disabled=true;$('font-flash-install').disabled=true;
   $('btn-save').disabled=true;$('btn-close').disabled=true;
   try{
@@ -392,7 +399,7 @@ async function deletePortalCardFont(name){
 async function deletePortalFont(){
   if(fontUploading||uploading)return;
   var name=$('font-flash-family').value;
-  if(!name||!confirm(name+': '+T.del+'?'))return;
+  if(!name)return;
   fontUploading=true;$('font-flash-install').disabled=true;$('btn-save').disabled=true;$('btn-close').disabled=true;
   try{
     var response=await fetch('/api/fonts/flash/delete?pin='+encodeURIComponent(pin),{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(name)}),result=await response.json();
