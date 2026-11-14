@@ -729,6 +729,27 @@ bool JpegViewer::drawJpeg(const char* filePath, int x, int y, int maxW, int maxH
     bool isThumbnail = (maxW <= MAX_CACHE_W && maxH <= MAX_CACHE_H);
     uint8_t* cacheBuf = nullptr;
     CoverSlot* slot = nullptr;
+
+    JpegContext ctx;
+    ctx.file = &f;
+    ctx.boxX = x;
+    ctx.boxY = y;
+    ctx.maxW = maxW;
+    ctx.maxH = maxH;
+    ctx.cacheBuf = nullptr;
+    ctx.cacheW = maxW;
+    ctx.cacheH = maxH;
+
+    JDEC jd;
+    JRESULT res = jd_prepare(&jd, tjpgdInput, pool, poolSize, &ctx);
+    if (res != JDR_OK) {
+        Serial.printf("[JPEG] jd_prepare error: %d for file %s (size %u bytes)\n", res, filePath,
+                      (unsigned int)f.size());
+        free(pool);
+        f.close();
+        return false;
+    }
+
     if (isThumbnail) {
         slot = takeSlot();
         cacheBuf = slot->bits;
@@ -739,27 +760,7 @@ bool JpegViewer::drawJpeg(const char* filePath, int x, int y, int maxW, int maxH
             cacheBuf = (uint8_t*)calloc(1, sleepBufSize);
         }
     }
-
-    JpegContext ctx;
-    ctx.file = &f;
-    ctx.boxX = x;
-    ctx.boxY = y;
-    ctx.maxW = maxW;
-    ctx.maxH = maxH;
     ctx.cacheBuf = cacheBuf;
-    ctx.cacheW = maxW;
-    ctx.cacheH = maxH;
-
-    JDEC jd;
-    JRESULT res = jd_prepare(&jd, tjpgdInput, pool, poolSize, &ctx);
-    if (res != JDR_OK) {
-        Serial.printf("[JPEG] jd_prepare error: %d for file %s (size %u bytes)\n", res, filePath,
-                      (unsigned int)f.size());
-        if (!isThumbnail && cacheBuf) free(cacheBuf);
-        free(pool);
-        f.close();
-        return false;
-    }
 
     // Calculate final scaled dimensions preserving aspect ratio
     float s = (fit == COVER_FIT_CROP) ? ((float)maxW / jd.width > (float)maxH / jd.height ? (float)maxW / jd.width
