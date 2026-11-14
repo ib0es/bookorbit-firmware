@@ -54,7 +54,9 @@ else
 CXXFLAGS += -Itest/sim/stubs_linux
 endif
 
-NET_CXX  := src/net/bookorbit_client.cpp src/core/bookorbit_protocol.cpp src/core/opds_stream_parser.cpp test/sim/fake_bookorbit.cpp
+# web_config.cpp is the REAL portal (every handler), served through the WebServer stub
+# (stubs_net/WebServer.h) that plays the requests of <card>/portal_requests.json.
+NET_CXX  := src/net/bookorbit_client.cpp src/net/web_config.cpp src/core/bookorbit_protocol.cpp src/core/opds_stream_parser.cpp test/sim/fake_bookorbit.cpp
 APP_OBJS := $(patsubst %.cpp,$(BUILD)/%.o,$(SIM_CXX) $(NET_CXX)) $(patsubst %.c,$(BUILD)/%.o,$(SIM_C))
 
 all: $(BUILD)/x4_headless $(BUILD)/reader_roundtrip $(BUILD)/engine_shots
@@ -88,6 +90,7 @@ $(BUILD)/%.o: %.c
 test: all
 	X4_HEADLESS=$(BUILD)/x4_headless python3 test/sim/run_sync_scenarios.py
 	X4_HEADLESS=$(BUILD)/x4_headless python3 test/sim/run_x4_walkthrough.py
+	X4_HEADLESS=$(BUILD)/x4_headless python3 test/sim/run_portal_server.py
 	@tmp=$$(mktemp -d) && cp -R simulator/sdcard/. $$tmp/ && cp test/sim/config.json $$tmp/config.json && \
 	  $(BUILD)/reader_roundtrip $$tmp  "/books/Alice in Wonderland.epub" "/books/01. Frankenstein (1818).epub" "/books/Тестовая книга.txt" "/books/Pride and Prejudice.epub" | grep -v '^\['; \
 	  rc=$${PIPESTATUS[0]}; rm -rf $$tmp; exit $$rc

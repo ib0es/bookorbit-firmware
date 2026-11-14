@@ -41,29 +41,8 @@
 #include <fstream>
 #include <sstream>
 
-WebConfigManager WebConfig;
-WebConfigManager::WebConfigManager() {}
-bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
-    const bool apMode = (mode == WebPortalMode::AccessPoint);
-    const char* ssid = apMode ? "BookOrbit-Config" : cfg.wifiSsid.c_str();
-    const char* pass = apMode ? "12345678" : "";
-    const char* url = apMode ? "http://192.168.4.1/" : "http://192.168.1.42/";
-    int page = apMode ? 0 : -1;
-    Buttons.clearEvents();
-    Ui::portalScreen(ssid, pass, url, page, true);
-    Buttons.clearEvents();
-    ButtonEvent event;
-    while (true) {
-        if (PowerService::pollModalEvent(event)) {
-            const PortalAction act = Ui::portalEvent(event.id, event.action, event.x, event.y, page);
-            if (act == PortalAction::Close) break;
-            if (act == PortalAction::Redraw) {
-                Ui::portalScreen(ssid, pass, url, page, false);
-            }
-        }
-    }
-    return false;
-}
+// The web portal is the real one now (src/net/web_config.cpp), served through the
+// WebServer stub: see stubs_net/WebServer.h and test/sim/run_portal_server.py.
 
 // ArduinoJson may be built without std::string support: go through a buffer.
 static std::string toStdString(const JsonDocument& doc) {

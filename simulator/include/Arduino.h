@@ -22,6 +22,7 @@ typedef bool boolean;
 #define INPUT_PULLDOWN 3
 
 #define PROGMEM
+#define FPSTR(p) (p)
 #define pgm_read_byte(addr) (*(const uint8_t*)(addr))
 #define pgm_read_word(addr) (*(const uint16_t*)(addr))
 #define pgm_read_dword(addr) (*(const uint32_t*)(addr))
@@ -94,6 +95,8 @@ public:
     String(unsigned int val) : _s(std::to_string(val)) {}
     String(long val) : _s(std::to_string(val)) {}
     String(unsigned long val) : _s(std::to_string(val)) {}
+    String(long long val) : _s(std::to_string(val)) {}
+    String(unsigned long long val) : _s(std::to_string(val)) {}
     String(float val, int decimals = 2) {
         char buf[32];
         snprintf(buf, sizeof(buf), "%.*f", decimals, val);

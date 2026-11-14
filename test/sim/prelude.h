@@ -38,3 +38,6 @@
 
 // FreeRTOS yield used by the network client.
 #define taskYIELD() ((void)0)
+
+// The ESP-IDF version macro the portal code tests (ESP_IDF_VERSION itself is not defined here).
+#define ESP_IDF_VERSION_VAL(major, minor, patch) (((major) << 16) | ((minor) << 8) | (patch))
