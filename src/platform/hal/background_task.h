@@ -49,10 +49,11 @@ public:
         if (!_started) return;
         while (!finished()) delay(10);
 #if defined(ESP_PLATFORM)
+        // The worker parks itself after publishing completion; deleting it from
+        // here is well defined. (Polling a self-deleted task's handle is not: the
+        // idle task frees its TCB, and reading it afterwards is use-after-free.)
         if (_task) {
-            while (eTaskGetState(static_cast<TaskHandle_t>(_task)) != eDeleted) {
-                delay(5);
-            }
+            vTaskDelete(_task);
             _task = nullptr;
         }
 #else
@@ -69,7 +70,8 @@ private:
         // may return as soon as it observes completion.
         task->_done.store(true, std::memory_order_release);
 #if defined(ESP_PLATFORM)
-        vTaskDelete(nullptr);
+        // Never returns: join() deletes this task. No access to `task` from here on.
+        for (;;) vTaskSuspend(nullptr);
 #endif
     }
 
