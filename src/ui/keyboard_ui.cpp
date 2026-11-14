@@ -140,7 +140,11 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
             keys[i].label = keyText[i];
             keys[i].value = (int16_t)i;
         }
-        const int16_t keyH = 54, gapY = 8;
+        // Dynamic key height based on remaining screen height
+        const int16_t gapY = area.height < 300 ? 4 : 8;
+        int16_t keyH = (area.height - 4 * gapY) / 5;
+        if (keyH > 54) keyH = 54;
+        if (keyH < 32) keyH = 32;
         fi::KeyGridProps kp;
         kp.keys = keys;
         kp.rows = 4;
