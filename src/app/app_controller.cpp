@@ -212,7 +212,9 @@ void AppController::setup() {
     drawHomeScreen(_ctx, true); // Full refresh on boot
     // Leftovers of deleted books (cold boot only: keeps wake fast), once the screen is up.
     if (!isWakeFromSleep) lib.cleanOrphanFiles();
-    if (sdWipeOutcome == SdWipeOutcome::NoCard) {
+    if (sdWipeOutcome == SdWipeOutcome::Ok) {
+        Modal.showMessage(tr(MsgId::SD_WIPE_TITLE), tr(MsgId::SETTINGS_MODAL_SD_SAVE_OK_L1), "", "", "", 2500);
+    } else if (sdWipeOutcome == SdWipeOutcome::NoCard) {
         Modal.showMessage(tr(MsgId::SD_WIPE_TITLE), tr(MsgId::SD_WIPE_NO_CARD), "", "", "", 3000);
     } else if (sdWipeOutcome == SdWipeOutcome::Partial) {
         Modal.showMessage(tr(MsgId::SD_WIPE_TITLE), tr(MsgId::SD_WIPE_PARTIAL), "", "", "", 3000);
