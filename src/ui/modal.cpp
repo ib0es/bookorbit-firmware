@@ -44,6 +44,9 @@ void ModalManager::showConfirm(const String& title, const String& line1, const S
     _active = true;
     _kind = Kind::Confirm;
     _openedAt = millis();
+    // What is asked, and what the button says: the tests (test/sim) check the dialogs by this line.
+    Serial.printf("[Modal] confirm: %s | %s | %s | %s | ok=%s\n", title.c_str(), line1.c_str(), line2.c_str(),
+                  line3.c_str(), okLabel.length() ? okLabel.c_str() : tr(MsgId::MODAL_BTN_OK));
     drawConfirmModal(title.c_str(), line1.c_str(), orNull(line2), orNull(line3), orNull(footer),
                      okLabel.length() ? okLabel.c_str() : tr(MsgId::MODAL_BTN_OK), tr(MsgId::MODAL_BTN_CANCEL));
 }
