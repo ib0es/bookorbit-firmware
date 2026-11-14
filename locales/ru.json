@@ -725,5 +725,6 @@
   "TYPEFACE_SD_TITLE": "Шрифты на SD-карте",
   "TYPEFACE_STORAGE_EMPTY": "В этом хранилище нет шрифтов.",
   "TYPEFACE_DELETE_CONFIRM": "Удалить гарнитуру из этого хранилища?",
-  "TYPEFACE_DELETE_FAILED": "Не удалось удалить гарнитуру."
+  "TYPEFACE_DELETE_FAILED": "Не удалось удалить гарнитуру.",
+  "WEB_HTML_KEEP_PROGRESS": "Сохранять прогресс чтения при перезаписи"
 }

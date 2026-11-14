@@ -739,7 +739,8 @@ enum class MsgId : uint16_t {
     TYPEFACE_STORAGE_EMPTY = 724,
     TYPEFACE_DELETE_CONFIRM = 725,
     TYPEFACE_DELETE_FAILED = 726,
-    COUNT = 727
+    WEB_HTML_KEEP_PROGRESS = 727,
+    COUNT = 728
 };
 
 // Language: English (en)
@@ -1471,6 +1472,7 @@ static const char* const STRINGS_EN[(size_t)MsgId::COUNT] PROGMEM = {
     /* TYPEFACE_STORAGE_EMPTY */ "No fonts in this storage.",
     /* TYPEFACE_DELETE_CONFIRM */ "Delete this family from this storage?",
     /* TYPEFACE_DELETE_FAILED */ "Could not delete the family.",
+    /* WEB_HTML_KEEP_PROGRESS */ "Keep reading progress on overwrite",
 };
 
 // Language: Russian (ru)
@@ -2202,6 +2204,7 @@ static const char* const STRINGS_RU[(size_t)MsgId::COUNT] PROGMEM = {
     /* TYPEFACE_STORAGE_EMPTY */ "В этом хранилище нет шрифтов.",
     /* TYPEFACE_DELETE_CONFIRM */ "Удалить гарнитуру из этого хранилища?",
     /* TYPEFACE_DELETE_FAILED */ "Не удалось удалить гарнитуру.",
+    /* WEB_HTML_KEEP_PROGRESS */ "Сохранять прогресс чтения при перезаписи",
 };
 
 // Language: Spanish (es)
@@ -2933,6 +2936,7 @@ static const char* const STRINGS_ES[(size_t)MsgId::COUNT] PROGMEM = {
     /* TYPEFACE_STORAGE_EMPTY */ "No hay fuentes en este almacenamiento.",
     /* TYPEFACE_DELETE_CONFIRM */ "¿Eliminar la familia de este almacenamiento?",
     /* TYPEFACE_DELETE_FAILED */ "No se pudo eliminar la familia.",
+    /* WEB_HTML_KEEP_PROGRESS */ "Conservar el progreso de lectura al sobrescribir",
 };
 
 static const char* const* const I18N_ALL_TABLES[(size_t)AppLanguage::COUNT] = {

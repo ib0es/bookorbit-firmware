@@ -725,5 +725,6 @@
   "TYPEFACE_SD_TITLE": "Fonts on SD card",
   "TYPEFACE_STORAGE_EMPTY": "No fonts in this storage.",
   "TYPEFACE_DELETE_CONFIRM": "Delete this family from this storage?",
-  "TYPEFACE_DELETE_FAILED": "Could not delete the family."
+  "TYPEFACE_DELETE_FAILED": "Could not delete the family.",
+  "WEB_HTML_KEEP_PROGRESS": "Keep reading progress on overwrite"
 }
