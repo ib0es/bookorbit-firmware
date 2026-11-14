@@ -346,12 +346,20 @@ def main():
     boot_app0 = find_boot_app0()
     print(f"Found boot_app0: {boot_app0}")
 
-    for target in args.targets:
+    import configparser
+
+    cfg = configparser.ConfigParser(interpolation=None)
+    cfg.read(REPO_ROOT / "platformio.ini")
+    active_envs = {s[4:] for s in cfg.sections() if s.startswith("env:")}
+
+    buildable_targets = [t for t in args.targets if t in active_envs]
+
+    for target in buildable_targets:
         if not args.skip_build:
             build_env(target)
         merge_firmware(target, TARGETS[target]["chip"], boot_app0)
 
-    generate_manifests(args.targets)
+    generate_manifests(buildable_targets)
     print("\n✓ Web Flasher packaging complete!")
 
 
