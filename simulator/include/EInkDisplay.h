@@ -11,7 +11,24 @@ class FreeInkDisplay {
 public:
     enum RefreshMode { FULL_REFRESH = 0, FAST_REFRESH = 1 };
 
-    FreeInkDisplay(int, int, int, int, int, int) { memset(_fb, 0xFF, sizeof(_fb)); }
+    FreeInkDisplay(int, int, int, int, int, int) {
+#if defined(FREEINK_DEVICE_X3) && FREEINK_DEVICE_X3
+        _w = 792;
+        _h = 528;
+#elif defined(FREEINK_DEVICE_EEGO_A4) && FREEINK_DEVICE_EEGO_A4
+        _w = 768;
+        _h = 552;
+#elif (defined(FREEINK_DEVICE_LILYGO) && FREEINK_DEVICE_LILYGO) || \
+      (defined(FREEINK_DEVICE_M5PAPER) && FREEINK_DEVICE_M5PAPER) || \
+      (defined(FREEINK_DEVICE_PAPERS3) && FREEINK_DEVICE_PAPERS3)
+        _w = 960;
+        _h = 540;
+#else
+        _w = 800;
+        _h = 480;
+#endif
+        memset(_fb, 0xFF, sizeof(_fb));
+    }
     ~FreeInkDisplay() = default;
 
     void begin() {}
@@ -62,7 +79,7 @@ public:
 private:
     bool _buildLent = false;
     uint16_t _w = 800, _h = 480;
-    uint8_t _fb[52272]; // large enough for X3 (792 * 528 / 8); X4 uses 48000
+    uint8_t _fb[65536]; // large enough for all simulated panels (960 * 540 / 8 = 64800)
 };
 
 } // namespace freeink
