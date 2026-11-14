@@ -134,6 +134,10 @@ bool BookReader::layoutChapter(int spine) {
                   (unsigned)layoutUsed, (unsigned)parseUsed);
     if (!ok) return false;
     commitLaidOut(spine, pages, chars);
+    // Remove temporary uncompressed x<spine>.xhtml to save SD space after page cache is built
+    char unpackedName[24];
+    snprintf(unpackedName, sizeof(unpackedName), "x%d.xhtml", spine);
+    _cache.remove(unpackedName);
     return true;
 }
 
