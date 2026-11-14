@@ -166,7 +166,7 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
             x = (int16_t)(x + w + 2);
             const char* label = actionBtns[b].label;
             if (b == 0)
-                label = shift ? "a/A" : "A/a";
+                label = layout == kSymbolLayout ? "—" : (shift ? "a/A" : "A/a");
             else if (b == 1)
                 label = kLayouts[(layout + 1) % kLayoutCount].label;   // the one it switches to
             const bool sel = (selRow == 4 && selCol == b);
@@ -303,9 +303,6 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
                     if (currentText.length() > 0) {
                         eraseLast(currentText);
                         renderKeyboard();
-                    } else {
-                        // Empty string + back = cancel
-                        return false;
                     }
                 }
             }
