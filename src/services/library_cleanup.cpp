@@ -161,6 +161,15 @@ void LibraryManager::cleanOrphanFiles() {
         removeIfExists("/cache/" + n);
         removed++;
     }
+    // Leftovers of interrupted uploads (.part)
+    for (const char* dir : {"/books", "/offline", "/fonts"}) {
+        for (const String& n : Storage.listFileNames(dir)) {
+            if (n.endsWith(".part")) {
+                removeIfExists(String(dir) + "/" + n);
+                removed++;
+            }
+        }
+    }
     // "<cache key>.fib": the layout cache of a book that is no longer on the card.
     for (const String& d : Storage.listSubdirs("/cache")) {
         if (!d.endsWith(".fib")) continue;
