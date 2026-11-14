@@ -79,7 +79,7 @@ bool BookReader::layoutChapter(int spine) {
                 // The engine reports OutOfMemory if this arena is too small;
                 // do not reject a usable 53 KB block merely because the usual
                 // first allocation is 54 KB. Keep a small allocator margin.
-                layoutCapacity = largest - 256;
+                layoutCapacity = largest > 256 ? largest - 256 : largest;
                 Serial.printf("[Reader] Chapter %d uses available layout arena: %u bytes\n", spine,
                               (unsigned)layoutCapacity);
             }
