@@ -142,6 +142,7 @@ const char HTML_TAIL[] PROGMEM = R"rawliteral(<button type='submit' id='btn-save
 </div>
 <script>
 var T={noBooks:'%JS_NO_BOOKS%',del:'%JS_DELETE%',saved:'%JS_SAVED%',err:'%JS_ERR%',closed:'%JS_CLOSED%',freeLbl:'%JS_FREE%'};
+var pin=(new URLSearchParams(window.location.search)).get('pin')||'';
 var upQueue=[],uploading=false;
 function $(id){return document.getElementById(id);}
 function toast(msg,ok){var t=$('toast');t.textContent=msg;t.className='toast '+(ok?'ok':'err');}
@@ -173,7 +174,7 @@ function loadBooks(){
 }
 function delBook(name){
   if(!confirm(name+': '+T.del+'?'))return;
-  fetch('/api/books/delete',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(name)})
+  fetch('/api/books/delete?pin='+encodeURIComponent(pin),{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(name)})
   .then(function(r){return r.json();}).then(function(d){if(d.ok)loadBooks();else toast(d.error||T.err,false);})
   .catch(function(){toast(T.err,false);});
 }
@@ -220,7 +221,7 @@ function startUpload(){
   var cur=-1;
   var xhr=new XMLHttpRequest();
   xhr.timeout=0;
-  xhr.open('POST','/api/upload?overwrite='+ow+'&keep_progress='+keepProg+'&sizes='+sizes.join(','),true);
+  xhr.open('POST','/api/upload?pin='+encodeURIComponent(pin)+'&overwrite='+ow+'&keep_progress='+keepProg+'&sizes='+sizes.join(','),true);
   xhr.upload.onprogress=function(e){
     if(!e.lengthComputable||e.total<=0)return;
     var sent=e.loaded*total/e.total;
@@ -376,7 +377,7 @@ async function deletePortalCardFont(name){
   fontUploading=true;$('font-up').disabled=true;$('font-flash-install').disabled=true;
   $('btn-save').disabled=true;$('btn-close').disabled=true;
   try{
-    var response=await fetch('/api/fonts/card/delete',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(name)}),result=await response.json();
+    var response=await fetch('/api/fonts/card/delete?pin='+encodeURIComponent(pin),{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(name)}),result=await response.json();
     if(!response.ok||!result.ok)throw Error(result.error||T.err);
     var select=$('cfg-form').elements.namedItem('font_family');
     if(!result.inFlash&&fontFamilyKey(select.value)===fontFamilyKey(name))select.value='';
@@ -392,7 +393,7 @@ async function deletePortalFont(){
   var name=$('font-flash-family').value;
   if(!name||!confirm(name+': '+T.del+'?'))return;
   fontUploading=true;$('font-flash-install').disabled=true;$('btn-save').disabled=true;$('btn-close').disabled=true;
-    var response=await fetch('/api/fonts/flash/delete',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(name)}),result=await response.json();
+    var response=await fetch('/api/fonts/flash/delete?pin='+encodeURIComponent(pin),{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(name)}),result=await response.json();
     if(!response.ok||!result.ok)throw Error(result.error||T.err);
     var familySelect=$('cfg-form').elements.namedItem('font_family');if(familySelect.value===name)familySelect.value='';toast('%JS_FONT_DELETED%',true);
   }catch(e){toast(e.message,false);}
@@ -404,7 +405,7 @@ async function installPortalFont(){
   fontUploading=true;$('font-flash-install').disabled=true;$('font-up').disabled=true;
   $('btn-save').disabled=true;$('btn-close').disabled=true;
   try{
-    var response=await fetch('/api/fonts/install',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(name)});
+    var response=await fetch('/api/fonts/install?pin='+encodeURIComponent(pin),{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(name)});
     var result=await response.json();if(!response.ok||!result.ok)throw Error(result.error||T.err);
     $('cfg-form').elements.namedItem('font_family').value=name;
     toast('%JS_FONT_FLASH_DONE%',true);
@@ -437,7 +438,7 @@ async function uploadFonts(){
       await new Promise(function(resolve,reject){
         var fd=new FormData();fd.append('file',file,file.name);
         var xhr=new XMLHttpRequest();
-        xhr.open('POST','/api/upload?kind=font&overwrite='+(overwrite?'1':'0')+'&sizes='+file.size,true);
+        xhr.open('POST','/api/upload?kind=font&pin='+encodeURIComponent(pin)+'&overwrite='+(overwrite?'1':'0')+'&sizes='+file.size,true);
         xhr.upload.onprogress=function(e){if(e.lengthComputable)$('font-progress').value=(i+e.loaded/e.total)*100/files.length;};
         xhr.onload=function(){
           try{var d=JSON.parse(xhr.responseText),r=(d.files||[])[0];
@@ -462,12 +463,12 @@ async function uploadFonts(){
 $('cfg-form').addEventListener('submit',function(ev){
   ev.preventDefault();
   var body=new URLSearchParams(new FormData(this)).toString();
-  fetch('/save?ajax=1',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
+  fetch('/save?ajax=1&pin='+encodeURIComponent(pin),{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
   .then(function(r){return r.json();}).then(function(d){toast(d.ok?T.saved:(d.error||T.err),!!d.ok);})
   .catch(function(){toast(T.err,false);});
 });
 function closePortal(){
-  fetch('/api/close',{method:'POST'}).then(function(){toast(T.closed,true);}).catch(function(){toast(T.closed,true);});
+  fetch('/api/close?pin='+encodeURIComponent(pin),{method:'POST'}).then(function(){toast(T.closed,true);}).catch(function(){toast(T.closed,true);});
 }
 loadBooks();
 </script>
@@ -1350,10 +1351,13 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
                         2500);
             return false;
         }
+        char staPin[7] = {};
+        for (int i = 0; i < 6; i++) staPin[i] = (char)('0' + esp_random() % 10);
+        staPin[6] = '\0';
         WiFi.setSleep(false);   // modem sleep halves the upload rate
         hostIp = WiFi.localIP();
-        portalUrl = String("http://") + hostIp.toString() + "/";
-        Serial.printf("[WebConfig] Home Wi-Fi '%s' IP: %s\n", screenSsid, hostIp.toString().c_str());
+        portalUrl = String("http://") + hostIp.toString() + "/?pin=" + String(staPin);
+        Serial.printf("[WebConfig] Home Wi-Fi '%s' IP: %s (PIN: %s)\n", screenSsid, hostIp.toString().c_str(), staPin);
     }
 
     Storage.ensureDirectories();
@@ -1364,6 +1368,15 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
     bool fontsChanged = false;
     bool closeRequested = false;
     bool booksChanged = false;   // the Offline list is scanned again when the portal closes
+
+    String validPin = apMode ? "" : String(staPin);
+    auto checkAuth = [&]() -> bool {
+        if (apMode) return true;
+        if (server.hasArg("pin") && server.arg("pin") == validPin) return true;
+        if (server.hasHeader("X-PIN") && server.header("X-PIN") == validPin) return true;
+        server.send(401, "application/json; charset=utf-8", "{\"ok\":false,\"error\":\"PIN required\"}");
+        return false;
+    };
 
     auto sendNoCache = [&]() {
         server.sendHeader("Cache-Control", "no-store, no-cache, must-revalidate", true);
@@ -1434,6 +1447,7 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
     server.on("/api/fonts/card/delete", HTTP_POST, [&]() {
         PowerService::noteActivity();
         sendNoCache();
+        if (!checkAuth()) return;
         const String name = server.arg("name");
         if (FontStore::sameFamilyName(name, BookReader::builtinFontName())) {
             server.send(409, "application/json", "{\"ok\":false,\"error\":\"Built-in font cannot be modified\"}");
@@ -1481,6 +1495,7 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
     server.on("/api/fonts/flash/delete", HTTP_POST, [&]() {
         PowerService::noteActivity();
         sendNoCache();
+        if (!checkAuth()) return;
         const String name = server.arg("name");
         if (FontStore::sameFamilyName(name, BookReader::builtinFontName())) {
             server.send(409, "application/json", "{\"ok\":false,\"error\":\"Built-in font cannot be modified\"}");
@@ -1507,6 +1522,7 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
     server.on("/api/fonts/install", HTTP_POST, [&]() {
         PowerService::noteActivity();
         sendNoCache();
+        if (!checkAuth()) return;
         const String name = server.arg("name");
         if (FontStore::sameFamilyName(name, BookReader::builtinFontName())) {
             server.send(409, "application/json", "{\"ok\":false,\"error\":\"Built-in font cannot be modified\"}");
@@ -1555,6 +1571,7 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
             [&]() {
                 PowerService::noteActivity();
                 sendNoCache();
+                if (!checkAuth()) return;
                 String json = "{\"ok\":";
                 json += up.okCount > 0 ? "true" : "false";
                 json += ",\"files\":[";
@@ -1710,6 +1727,7 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
     server.on("/api/books/delete", HTTP_POST, [&]() {
         PowerService::noteActivity();
         sendNoCache();
+        if (!checkAuth()) return;
         String cleanName;
         if (!sanitizeUploadFilename(server.arg("name"), cleanName)) {
             server.send(400, "application/json; charset=utf-8", "{\"ok\":false,\"error\":\"Invalid filename\"}");
@@ -1739,6 +1757,7 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
 
     server.on("/save", HTTP_POST, [&]() {
         PowerService::noteActivity();
+        if (!checkAuth()) return;
         applySubmittedConfig(server, cfg, fontsChanged);
         fontsChanged = false;
         cfg.save();
