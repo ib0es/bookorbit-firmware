@@ -176,7 +176,7 @@ pio run -e picco --target upload       # BOOX Picco
 pio run -e ws397 --target upload       # Waveshare 3.97
 pio run -e papermono --target upload   # M5Stack Paper Mono
 pio run -e papers3 --target upload     # M5Stack PaperS3
-# (and all other targets: delink, sticky, metalio_eink4, murphy_m4, onepage, eego_a4, lilygo_t5s3, m5paper_v11)
+# (and all other targets: delink, sticky, metalio_eink4, murphy_m4, eego_a4, lilygo_t5s3)
 
 # Open serial debug monitor:
 pio device monitor -b 115200
