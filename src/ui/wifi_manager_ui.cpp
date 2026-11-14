@@ -78,6 +78,13 @@ static void drawNetworkList(const std::vector<ScannedNet>& list, int selectedInd
             frameRect(row, Color::Black);
         f.hit(row, 1, (int16_t)i);
 
+        if (i == (int)list.size() - 1 && net.rssi == 0 && net.ssid.startsWith("[")) {
+            text(Rect{(int16_t)(row.x + 10), (int16_t)(row.y + (row.height - lineHeight(FontBody)) / 2),
+                      (int16_t)(row.width - 20), lineHeight(FontBody)},
+                 net.ssid.c_str(), FontBody, ink, TextAlign::Center);
+            continue;
+        }
+
         // RSSI: -30 (best) .. -90 (weak)
         int bars = 1;
         if (net.rssi >= -60)
@@ -160,7 +167,15 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
             }
         }
 
-        if (list.empty()) {
+        // Add a dedicated Rescan item so devices without LEFT/swipe can rescan
+        ScannedNet rescanItem;
+        rescanItem.ssid = String("[ ") + tr(MsgId::KEY_RESCAN) + " ]";
+        rescanItem.rssi = 0;
+        rescanItem.isOpen = true;
+        rescanItem.authMode = WIFI_AUTH_OPEN;
+        list.push_back(rescanItem);
+
+        if (list.size() <= 1) {
             // C9: on a touch board a tap closes the dialog and a swipe down searches again.
             const bool touchHints = uikit::touchOnly() && !uikit::touchMissing();
             const char* emptyTitle = n < 0 ? tr(MsgId::COMMON_ERROR) : tr(MsgId::WIFI_SCAN_NONE_TITLE);
@@ -218,6 +233,10 @@ bool WifiManagerUI::runScanAndConnect(String& outSsid, String& outPass) {
                     BookOrbit.disconnectWiFi();
                     return false;
                 } else if (key == Action::Select || key == Action::Next) {
+                    if (selectedIndex == (int)list.size() - 1 && list[selectedIndex].ssid.startsWith("[")) {
+                        rescan = true;
+                        break;
+                    }
                     // Selected network
                     ScannedNet chosen = list[selectedIndex];
 

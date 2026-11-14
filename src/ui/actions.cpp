@@ -5,7 +5,11 @@
 namespace Actions {
 
 Action of(const ButtonEvent& e) {
-    if (e.action == ACTION_LONG_PRESS) return e.id == BTN_BACK ? Action::Menu : Action::None;
+    if (e.action == ACTION_LONG_PRESS) {
+        if (e.id == BTN_BACK) return Action::Menu;
+        if (e.id == BTN_CONFIRM) return Action::Delete;
+        return Action::None;
+    }
     if (e.action != ACTION_CLICK) return Action::None;
     switch (e.id) {
         case BTN_UP:

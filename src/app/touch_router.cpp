@@ -49,6 +49,20 @@ bool translate(AppContext& ctx, const ButtonEvent& tap, ButtonEvent& out) {
     int16_t value = 0;
     if (!uikit::hitTest(tap.x, tap.y, action, value)) return false;
 
+    // Common touch controls: page up/down and sleep
+    if (action == 1001) {  // ActionPagePrev
+        out = make(BTN_UP);
+        return true;
+    }
+    if (action == 1002) {  // ActionPageNext
+        out = make(BTN_DOWN);
+        return true;
+    }
+    if (action == 1003) {  // ActionSleep
+        out = make(BTN_POWER);
+        return true;
+    }
+
     // Value rows' "-" / "+" (C5) and a bookmark's "delete" (C1): the row is
     // selected and stepped down / up, or deleted, as LEFT / RIGHT would.
     if (ctx.currentState == STATE_APPEARANCE_MENU) {

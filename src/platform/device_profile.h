@@ -17,6 +17,11 @@ struct DeviceProfile {
     bool touchOnly;              // no BACK / OK / LEFT / RIGHT keys: touch plus UP / DOWN
     bool upDownTurnPages;        // reading: UP / DOWN always turn pages (no chapter keys)
     bool okOpensBookMenu;        // library: OK on a book opens its menu (no LEFT key for it)
+    bool hasLeftRight;           // physical LEFT / RIGHT keys (false -> snake keyboard navigation)
+    bool hasUpDown;              // physical UP / DOWN keys (false -> touch paging buttons ▲ / ▼)
+    bool hasPowerButton;         // physical POWER key (false -> Sleep button on Home / in Settings)
+    bool powerSharedWithBack;    // BOOT/GPIO serves both BACK (click) and POWER (hold)
+    bool powerSharedWithConfirm; // GPIO serves both CONFIRM (click) and POWER (hold)
     // Centres of BACK, OK, LEFT, RIGHT along the bottom edge of a 480 px wide
     // portrait screen (the key hint tabs stand at them; scaled to wider panels).
     int16_t keyCentres[4];

@@ -50,6 +50,10 @@ jobs:
               sim_targets.append("x4c")
           if re.search(r"^x4pro-test:", mk, re.M):
               sim_targets.append("x4pro")
+          if re.search(r"^ws397-test:", mk, re.M):
+              sim_targets.append("ws397")
+          if re.search(r"^papers3-test:", mk, re.M):
+              sim_targets.append("papers3")
 
           out_path = os.environ["GITHUB_OUTPUT"]
           with open(out_path, "a", encoding="utf-8") as f:
@@ -238,6 +242,12 @@ jobs:
               ;;
             x4pro)
               make -j"$(nproc)" -f test/sim/Makefile x4pro-test
+              ;;
+              ws397)
+              make -j"$(nproc)" -f test/sim/Makefile ws397-test
+              ;;
+              papers3)
+              make -j"$(nproc)" -f test/sim/Makefile papers3-test
               ;;
             *)
               echo "Unknown simulator test target: ${{ matrix.device }}"

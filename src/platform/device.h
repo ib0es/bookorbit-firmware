@@ -11,6 +11,61 @@
 namespace Platform {
 inline constexpr const DeviceProfile& kDevice = kPiccoProfile;
 }
+#elif defined(FREEINK_DEVICE_DELINK) && FREEINK_DEVICE_DELINK
+#include "devices/delink.h"
+namespace Platform {
+inline constexpr const DeviceProfile& kDevice = kDeLinkProfile;
+}
+#elif defined(FREEINK_DEVICE_PAPERMONO) && FREEINK_DEVICE_PAPERMONO
+#include "devices/papermono.h"
+namespace Platform {
+inline constexpr const DeviceProfile& kDevice = kPaperMonoProfile;
+}
+#elif defined(FREEINK_DEVICE_STICKY) && FREEINK_DEVICE_STICKY
+#include "devices/sticky.h"
+namespace Platform {
+inline constexpr const DeviceProfile& kDevice = kStickyProfile;
+}
+#elif defined(FREEINK_DEVICE_WS397) && FREEINK_DEVICE_WS397
+#include "devices/ws397.h"
+namespace Platform {
+inline constexpr const DeviceProfile& kDevice = kWs397Profile;
+}
+#elif defined(FREEINK_DEVICE_METALIO_EINK4) && FREEINK_DEVICE_METALIO_EINK4
+#include "devices/metalio_eink4.h"
+namespace Platform {
+inline constexpr const DeviceProfile& kDevice = kMetalioEInk4Profile;
+}
+#elif defined(FREEINK_DEVICE_MURPHY_M4) && FREEINK_DEVICE_MURPHY_M4
+#include "devices/murphy_m4.h"
+namespace Platform {
+inline constexpr const DeviceProfile& kDevice = kMurphyM4Profile;
+}
+#elif defined(FREEINK_DEVICE_ONEPAGE) && FREEINK_DEVICE_ONEPAGE
+#include "devices/onepage.h"
+namespace Platform {
+inline constexpr const DeviceProfile& kDevice = kOnePageProfile;
+}
+#elif defined(FREEINK_DEVICE_EEGO_A4) && FREEINK_DEVICE_EEGO_A4
+#include "devices/eego_a4.h"
+namespace Platform {
+inline constexpr const DeviceProfile& kDevice = kEegoA4Profile;
+}
+#elif defined(FREEINK_DEVICE_LILYGO) && FREEINK_DEVICE_LILYGO
+#include "devices/lilygo_t5s3.h"
+namespace Platform {
+inline constexpr const DeviceProfile& kDevice = kLilyGoProfile;
+}
+#elif defined(FREEINK_DEVICE_M5PAPER) && FREEINK_DEVICE_M5PAPER
+#include "devices/m5paper_v11.h"
+namespace Platform {
+inline constexpr const DeviceProfile& kDevice = kM5PaperV11Profile;
+}
+#elif defined(FREEINK_DEVICE_PAPERS3) && FREEINK_DEVICE_PAPERS3
+#include "devices/papers3.h"
+namespace Platform {
+inline constexpr const DeviceProfile& kDevice = kPaperS3Profile;
+}
 #elif defined(FREEINK_DEVICE_X4PRO) && FREEINK_DEVICE_X4PRO
 #include "devices/x4pro.h"
 namespace Platform {

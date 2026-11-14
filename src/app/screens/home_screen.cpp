@@ -106,8 +106,15 @@ void activateItem(AppContext& ctx, int index) {
 namespace HomeScreen {
 
 void handleEvent(AppContext& ctx, const ButtonEvent& event) {
-    if (event.action != ACTION_CLICK) return;
+    if (event.action != ACTION_CLICK && event.action != ACTION_LONG_PRESS) return;
     const int sel = ctx.selectedHomeIndex;
+
+    if (event.action == ACTION_LONG_PRESS && event.id == BTN_CONFIRM) {
+        if (sel == HOME_RECENT_BOOK) {
+            cycleRecentBook(ctx, +1);
+            return;
+        }
+    }
 
     switch (Actions::of(event)) {
         case Action::Down:
