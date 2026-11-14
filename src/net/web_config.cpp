@@ -105,6 +105,7 @@ button.btn-sec { background: #4b5563; margin-top: 10px; }
 <p class='desc'>%UPLOAD_DESC%</p>
 <div class='drop'><input type='file' id='file-input' multiple accept='.epub,.fb2,.mobi,.azw3,.azw,.txt' title='%PICK_FILES%'></div>
 <label class='chk'><input type='checkbox' id='overwrite'>%OVERWRITE_LBL%</label>
+<label class='chk' id='lbl-keep-prog' style='display:none'><input type='checkbox' id='keep-progress' checked>%KEEP_PROGRESS_LBL%</label>
 <button type='button' id='btn-up' class='btn' onclick='startUpload()' disabled>%BTN_UPLOAD%</button>
 <div id='prog-wrap' style='display:none'>
 <progress id='p-batch' value='0' max='100'></progress>
@@ -195,10 +196,16 @@ function renderQueue(states){
     row.appendChild(nm);row.appendChild(st);q.appendChild(row);
   });
 }
+function updateOverwriteUi(){
+  var ow=$('overwrite');
+  $('lbl-keep-prog').style.display=ow.checked?'flex':'none';
+}
+$('overwrite').addEventListener('change',updateOverwriteUi);
 function startUpload(){
   if(uploading||fontUploading||!upQueue.length)return;
   uploading=true;$('btn-up').disabled=true;$('file-input').disabled=true;$('prog-wrap').style.display='block';
   var ow=$('overwrite').checked?'1':'0';
+  var keepProg=$('keep-progress').checked?'1':'0';
   var files=upQueue.slice(),total=0,ends=[],sizes=[];
   // Every file in one request: one connection for the whole batch.
   var fd=new FormData();
@@ -213,7 +220,7 @@ function startUpload(){
   var cur=-1;
   var xhr=new XMLHttpRequest();
   xhr.timeout=0;
-  xhr.open('POST','/api/upload?overwrite='+ow+'&sizes='+sizes.join(','),true);
+  xhr.open('POST','/api/upload?overwrite='+ow+'&keep_progress='+keepProg+'&sizes='+sizes.join(','),true);
   xhr.upload.onprogress=function(e){
     if(!e.lengthComputable||e.total<=0)return;
     var sent=e.loaded*total/e.total;
@@ -671,6 +678,7 @@ const PortalToken kHeadTokens[] = {
         {"%UPLOAD_DESC%", MsgId::WEB_HTML_UPLOAD_DESC, false},
         {"%PICK_FILES%", MsgId::WEB_HTML_PICK_FILES, false},
         {"%OVERWRITE_LBL%", MsgId::WEB_HTML_OVERWRITE, false},
+        {"%KEEP_PROGRESS_LBL%", MsgId::WEB_HTML_KEEP_PROGRESS, false},
         {"%BTN_UPLOAD%", MsgId::WEB_HTML_BTN_UPLOAD, false},
         {"%BOOKS_LIST_TITLE%", MsgId::WEB_HTML_BOOKS_LIST_TITLE, false},
 };
@@ -1653,11 +1661,19 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
                             if (!ok) up.reject("Invalid TTF/OTF font");
                         }
                         if (ok && !fontUpload && Storage.exists(up.targetPath.c_str())) {
-                            // Replaced by a new copy: its page cache, cover and position go with the old one.
-                            BookItem old;
-                            old.filePath = up.targetPath;
-                            LibraryManager::deleteBookArtifacts(old, true);
-                            LibraryManager::getInstance().updateLastBookAfterDeletion(up.targetPath);
+                            const String kpArg = server.arg("keep_progress");
+                            const bool keepProg = (kpArg == "1" || kpArg == "true");
+                            if (!keepProg) {
+                                // Replaced by a new copy: its page cache, cover and position go with the old one.
+                                BookItem old;
+                                old.filePath = up.targetPath;
+                                LibraryManager::deleteBookArtifacts(old, true);
+                                LibraryManager::getInstance().updateLastBookAfterDeletion(up.targetPath);
+                            } else {
+                                // Keep reading progress: only wipe layout caches so the new text is rendered cleanly
+                                const String fib = BookReader::cacheDirFor(up.targetPath);
+                                if (Storage.exists(fib.c_str())) Storage.removeDir(fib.c_str());
+                            }
                         }
                         ok = ok && Storage.replaceFile(up.partPath.c_str(), up.targetPath.c_str());
                         if (ok) {

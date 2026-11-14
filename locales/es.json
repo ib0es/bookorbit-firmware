@@ -725,5 +725,6 @@
   "TYPEFACE_SD_TITLE": "Fuentes en la tarjeta SD",
   "TYPEFACE_STORAGE_EMPTY": "No hay fuentes en este almacenamiento.",
   "TYPEFACE_DELETE_CONFIRM": "¿Eliminar la familia de este almacenamiento?",
-  "TYPEFACE_DELETE_FAILED": "No se pudo eliminar la familia."
+  "TYPEFACE_DELETE_FAILED": "No se pudo eliminar la familia.",
+  "WEB_HTML_KEEP_PROGRESS": "Conservar el progreso de lectura al sobrescribir"
 }
