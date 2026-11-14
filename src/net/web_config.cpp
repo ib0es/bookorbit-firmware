@@ -171,6 +171,7 @@ function loadBooks(){
   }).catch(function(){booksLoading=false;});
 }
 function delBook(name){
+  if(!confirm(name+': '+T.del+'?'))return;
   fetch('/api/books/delete',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(name)})
   .then(function(r){return r.json();}).then(function(d){if(d.ok)loadBooks();else toast(d.error||T.err,false);})
   .catch(function(){toast(T.err,false);});
@@ -364,6 +365,7 @@ function fontFamilyKey(name){return name.toLowerCase().replace(/[ _-]/g,'');}
 function fontFamilyFromFile(name){return name.replace(/\.(ttf|otf)$/i,'').replace(/[- ](regular|book|roman|normal|bolditalic|boldoblique|bold|italic|oblique|bi|it)$/i,'');}
 async function deletePortalCardFont(name){
   if(fontUploading||uploading)return;
+  if(!confirm(name+': '+T.del+'?'))return;
   fontUploading=true;$('font-up').disabled=true;$('font-flash-install').disabled=true;
   $('btn-save').disabled=true;$('btn-close').disabled=true;
   try{
@@ -380,9 +382,9 @@ async function deletePortalCardFont(name){
 }
 async function deletePortalFont(){
   if(fontUploading||uploading)return;
+  var name=$('font-flash-family').value;
+  if(!name||!confirm(name+': '+T.del+'?'))return;
   fontUploading=true;$('font-flash-install').disabled=true;$('btn-save').disabled=true;$('btn-close').disabled=true;
-  try{
-    var name=$('font-flash-family').value;
     var response=await fetch('/api/fonts/flash/delete',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(name)}),result=await response.json();
     if(!response.ok||!result.ok)throw Error(result.error||T.err);
     var familySelect=$('cfg-form').elements.namedItem('font_family');if(familySelect.value===name)familySelect.value='';toast('%JS_FONT_DELETED%',true);
