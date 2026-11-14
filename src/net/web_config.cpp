@@ -1515,6 +1515,9 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
             return;
         }
         if (FontStore::matchesInstalled(*found)) {
+            cfg.readerFont = name;
+            cfg.save();
+            saved = true;
             server.send(200, "application/json", "{\"ok\":true,\"alreadyInstalled\":true}");
             return;
         }
@@ -1526,6 +1529,7 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
                         PowerService::noteActivity();
                     },
                     nullptr)) {
+            saved = true;   // Reapply active reader font on failure
             server.send(500, "application/json", "{\"ok\":false,\"error\":\"Font installation failed\"}");
             return;
         }
