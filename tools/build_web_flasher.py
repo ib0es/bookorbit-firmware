@@ -89,12 +89,6 @@ TARGETS = {
         "device": "Murphy M4",
         "desc": "ESP32-S3, 800x480 SSD1677, FT6336U touch, dual PWM frontlight, 3 physical keys",
     },
-    "onepage": {
-        "chip": "esp32c61",
-        "name": "Book Orbit for OnePage",
-        "device": "OnePage",
-        "desc": "ESP32-C61 (2MB PSRAM), 800x480 SSD1677, 7 buttons (ADC ladder + 3 side keys)",
-    },
     "eego_a4": {
         "chip": "esp32s3",
         "name": "Book Orbit for EEGO Reader A4",
