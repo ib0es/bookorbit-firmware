@@ -156,7 +156,7 @@ CASES = [
     ),
     (
         "rtc: BM8563 clock and UTC+3 timezone configured with buttons and shown in status bar",
-        READING + "C" + "UU" + "C" + "D" + "RRRRRR" + "BBB" + "UUUU" + OPEN_BOOK,
+        READING + "C" + "C" + "UC" + "B" + "U" + "RRRRRR" + "BBB" + "UUUU" + OPEN_BOOK,
         lambda log, sd: (
             "[RTC] Ready" in log
             and "[Clock] Restored from RTC" in log
@@ -164,7 +164,7 @@ CASES = [
             and config(sd).get("utc_offset_min") == 180
             and "Page drawn" in after(log, ">>> BACK")
         ),
-        None,
+        {"sb_top_items": 256 | 512},  # Book title + battery; enable clock through the menu.
         {"SIM_RTC_UTC": "1794391200"},
     ),
     (

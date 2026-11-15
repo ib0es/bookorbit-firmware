@@ -560,6 +560,43 @@ def _():
     return r
 
 
+# ---- status bars
+@case("status bars: every portal checkbox round-trips independently")
+def _():
+    requests = []
+    for bit in (1 << i for i in range(11)):
+        requests.extend(
+            [post("/save?ajax=1", {"sb_top_items_present": "1", f"sbt_{bit}": "1", f"sbb_{bit}": "1"}), get("/")]
+        )
+    r = run(requests)
+    for i in range(11):
+        r.expect(r.code(i * 2) == 200, "saving a single status-bar item succeeds")
+        html = r.resp[i * 2 + 1]["body"]
+        for prefix in ("sbt", "sbb"):
+            for j in range(11):
+                tag = re.search(rf"<input[^>]*name='{prefix}_{1 << j}'[^>]*>", html)
+                r.expect(
+                    tag is not None and (" checked" in tag[0]) == (i == j),
+                    f"{prefix} bit {j}: checkbox follows mask {1 << i}",
+                )
+    c = cfg(r.sd)
+    r.expect(c.get("sb_top_items") == 1024 and c.get("sb_bottom_items") == 1024, "high bits survive persistence")
+    return r
+
+
+@case("status bars: clearing all portal checkboxes hides both bars")
+def _():
+    r = run(
+        [post("/save?ajax=1", {"sb_top_items_present": "1"}), get("/")],
+        config={"sb_top_items": 2047, "sb_bottom_items": 2047},
+    )
+    c = cfg(r.sd)
+    r.expect(c.get("sb_top_items") == 0 and c.get("sb_bottom_items") == 0, "all unchecked really means no items")
+    for tag in re.findall(r"<input[^>]*name='sb[tb]_\d+'[^>]*>", r.resp[1]["body"]):
+        r.expect(" checked" not in tag, "reloaded form keeps every checkbox off")
+    return r
+
+
 # ---- settings
 @case("settings: Save changes the settings and answers ok")
 def _():

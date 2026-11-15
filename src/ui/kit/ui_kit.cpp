@@ -15,6 +15,10 @@
 #include "ui_fonts.h"
 #include "ui_icons.h"
 
+#ifdef BOOKORBIT_UI_TRACE
+#include "ui_trace.h"
+#endif
+
 namespace uikit {
 
 namespace {
@@ -270,6 +274,9 @@ int16_t textWidth(fi::FontId font, const char* str) {
 }
 
 void text(Rect rect, const char* str, fi::FontId font, Color color, TextAlign align, uint8_t maxLines) {
+#ifdef BOOKORBIT_UI_TRACE
+    UiTrace::record("text", rect, str, maxLines, font);
+#endif
     if (!str || !*str || rect.empty()) return;
     target().text(rect, str, style(font, color, align, maxLines));
 }
@@ -304,6 +311,9 @@ void fill(Rect r, Color color, uint8_t radius) {
 }
 
 void frameRect(Rect r, Color color, uint8_t w, uint8_t radius) {
+#ifdef BOOKORBIT_UI_TRACE
+    UiTrace::record("frame", r);
+#endif
     if (radius == 0 && w > 0 && r.width > 2 * w && r.height > 2 * w &&
         (color == Color::Black || color == Color::White)) {
         // Four solid bands: the same pixels as stroke() with square corners.
@@ -336,6 +346,9 @@ int16_t batteryPercent() {
 void setClockOffset(int utcOffsetMin) { g_utcOffsetMin = utcOffsetMin; }
 
 void batteryGlyph(int16_t x, int16_t y, Color c) {
+#ifdef BOOKORBIT_UI_TRACE
+    UiTrace::record("battery", Rect{x, y, 26, 13});
+#endif
     // Body 23x13 with a 3x5 nub, the charge as a filled part inside.
     Rect body{x, y, 23, 13};
     frameRect(body, c, 2, 3);
@@ -702,6 +715,9 @@ void progress(Frame& f, Rect r, int32_t permille) {
 }
 
 void chapterBar(Rect r, int done, int total) {
+#ifdef BOOKORBIT_UI_TRACE
+    if (total > 0) UiTrace::record("chapterBar", r);
+#endif
     // Solid, without notches (the book's bar has one at each chapter).
     if (total <= 0) return;
     if (done < 0) done = 0;
@@ -712,6 +728,9 @@ void chapterBar(Rect r, int done, int total) {
 }
 
 void bookBar(Rect r, int32_t permille, const uint16_t* ticks, int count) {
+#ifdef BOOKORBIT_UI_TRACE
+    UiTrace::record("bookBar", r);
+#endif
     if (permille < 0) permille = 0;
     if (permille > 1000) permille = 1000;
     const int16_t h = r.height;

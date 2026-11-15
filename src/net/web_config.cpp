@@ -1019,6 +1019,8 @@ void streamPortalPage(WebServer& server, const AppConfig& cfg, const std::vector
 
     // 5. Status bar
     beginSection(out, tr(MsgId::SB_TITLE), false);
+    // Distinguish an all-unchecked form from a legacy form without top item fields.
+    out += "<input type='hidden' name='sb_top_items_present' value='1'>";
     // The top line: its items, each a checkbox (sbt_<bit>).
     {
         static const struct {
@@ -1233,7 +1235,7 @@ void applySubmittedConfig(WebServer& server, AppConfig& cfg, bool refreshFont = 
                 anySbt = true;
             }
         }
-        if (anySbt) {
+        if (anySbt || server.hasArg("sb_top_items_present")) {
             cfg.sbTopItems = items;
         } else if (parseIntArg(server, "sb_top", v)) {
             int top = clampInt(v, 0, 2);
