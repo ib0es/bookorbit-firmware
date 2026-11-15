@@ -972,7 +972,7 @@ CASES = [
         "settings: a language takes effect without a 'Saved' dialog (U5)",
         None,
         {},
-        SETTINGS + "UUUUUC" + "D" + "C",  # Language: fifth from the end
+        SETTINGS + "UUUUC" + "D" + "C",  # Language: fourth from the end
         language_direct,
     ),
     (
@@ -1132,7 +1132,7 @@ CASES = [
         "web: Settings -> Web opens Web submenu and Web Config QR portal",
         None,
         {},
-        SETTINGS + "DDDDDDC" + "[RB]" + "C" + "wB",  # Web: the seventh row
+        SETTINGS + "DDDDDC" + "[RB]" + "C" + "wB",  # Web: the sixth row
         lambda log, sd: (
             "drawWebSettingsScreen" in log and "n_RIGHT" in log and "drawSettingsScreen" in after(log, ">>> BACK")
         ),

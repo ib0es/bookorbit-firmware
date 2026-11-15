@@ -78,7 +78,7 @@ void apply(AppConfig& cfg, int kind, int index) {
 }
 
 AppState parent(int kind) {
-    if (kind == SLEEP_HOLD || kind == WAKE_HOLD) return STATE_SETTINGS;
+    if (kind == SLEEP_HOLD || kind == WAKE_HOLD) return STATE_SLEEP_SETTINGS;
     return STATE_READING_SETTINGS;
 }
 

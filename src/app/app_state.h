@@ -21,6 +21,7 @@ enum AppState {
     STATE_BOOK_MENU,
     STATE_FONT_MENU,
     STATE_SYNC_SETTINGS,
+    STATE_SLEEP_SETTINGS,
     STATE_SLEEP_COVER_SETTINGS,
     STATE_TYPEFACE_MENU,
     STATE_APPEARANCE_MENU,
@@ -101,7 +102,6 @@ const int NUM_CATALOG_ITEMS =
 const int NUM_SETTINGS_ITEMS = 8;  // base count before optional Frontlight, USB-MSC, Touch Wake
 bool hasUsbMscSetting();
 bool hasTouchWakeSetting();
-bool hasPowerButtonSettings();
 int settingsItemCount();
 // The main settings as shown: grouped in sections (reading, connections, the
 // device), so a row's place differs from the item's index above.
@@ -114,14 +114,13 @@ int settingsSectionAt(int pos);
 int orientationSettingIndex();
 int usbMscSettingIndex();
 int touchWakeSettingIndex();
-int sleepHoldSettingIndex();
-int wakeHoldSettingIndex();
 int webSettingIndex();
 int readingSettingIndex();   // Settings -> Reading: just before screen orientation
 const int NUM_WIFI_SETTINGS_ITEMS = 5;
 const int NUM_WEB_SETTINGS_ITEMS = 2;
 const int NUM_SERVER_SETTINGS_ITEMS = 4;
 const int NUM_SYNC_SETTINGS_ITEMS = 4;
+const int NUM_SLEEP_SETTINGS_ITEMS = 3;
 const int NUM_SLEEP_COVER_ITEMS = 3;
 const int NUM_SD_SETTINGS_ITEMS = 2;   // reload / save /config.json
 const int NUM_USB_MSC_ITEMS = 2;       // connect / enable-disable toggle
@@ -152,6 +151,7 @@ struct AppContext {
     int selectedReadingSettingIndex = 0;
     int selectedBookmarkIndex = 0;   // 0 = add/remove this page's, then the bookmarks
     int selectedSyncSettingIndex = 0;
+    int selectedSleepSettingIndex = 0;
     int selectedSleepCoverIndex = 0;
     int selectedOrientationIndex = 0;
     int choiceKind = 0;            // which setting STATE_CHOICE lists (Choices::Kind)

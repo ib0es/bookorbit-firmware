@@ -55,6 +55,7 @@ void openWebSettings(AppContext& ctx, AppState returnState = STATE_SETTINGS);
 void handleServerSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleSyncSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleReadingSettingsEvent(AppContext& ctx, const ButtonEvent& event);
+void handleSleepSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleSleepCoverSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleOrientationSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 // A setting with a few values as a list (Choices); opened by openChoice().

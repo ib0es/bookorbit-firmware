@@ -26,6 +26,10 @@ void drawStatusBarScreen(AppContext& ctx, bool fullRefresh = false);
 void updateSyncSettingsSelection(AppContext& ctx, int prevIndex, int newIndex);
 void updateSyncSettingsItem(AppContext& ctx, int index);
 
+void drawSleepSettingsScreen(AppContext& ctx, bool fullRefresh = false);
+void updateSleepSettingsSelection(AppContext& ctx, int prevIndex, int newIndex);
+void updateSleepSettingsItem(AppContext& ctx, int index);
+
 void drawSleepCoverSettingsScreen(AppContext& ctx, bool fullRefresh = false);
 // Settings -> Screen orientation: Auto (with a motion sensor) and the four turns.
 void drawOrientationSettingsScreen(AppContext& ctx, bool fullRefresh = false);

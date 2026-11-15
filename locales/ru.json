@@ -59,6 +59,8 @@
     "SETTINGS_ITEM_WIFI_NONE": "Беспроводная сеть не настроена",
     "SETTINGS_ITEM_SERVER": "Сервер Book Orbit",
     "SETTINGS_ITEM_SERVER_NONE": "Параметры сервера не заданы",
+    "SETTINGS_ITEM_SLEEP": "Режим сна",
+    "SLEEP_SETTINGS_TITLE": "Режим сна",
     "SETTINGS_ITEM_SLEEP_COVER": "Обложка в режиме сна",
     "SLEEP_COVER_TITLE": "Обложка в режиме сна",
     "SLEEP_COVER_MODE_FIT": "Сохранять пропорции",

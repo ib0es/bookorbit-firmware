@@ -181,16 +181,6 @@ SettingItemDef getSettingItemDef(const AppContext& ctx, int index) {
     if (index == touchWakeSettingIndex()) {
         return switchRow(tr(MsgId::SETTINGS_ITEM_TOUCH_WAKE), ctx.config.touchWakeEnabled);
     }
-    if (index == sleepHoldSettingIndex()) {
-        char buf[32];
-        Choices::label(Choices::SLEEP_HOLD, Choices::active(ctx.config, Choices::SLEEP_HOLD), buf, sizeof(buf));
-        return valueRow(tr(MsgId::SETTINGS_ITEM_SLEEP_HOLD), String(buf));
-    }
-    if (index == wakeHoldSettingIndex()) {
-        char buf[32];
-        Choices::label(Choices::WAKE_HOLD, Choices::active(ctx.config, Choices::WAKE_HOLD), buf, sizeof(buf));
-        return valueRow(tr(MsgId::SETTINGS_ITEM_WAKE_HOLD), String(buf));
-    }
     if (index == webSettingIndex()) {
         return valueRow(tr(MsgId::SETTINGS_ITEM_WEB), "");
     }
@@ -221,13 +211,8 @@ SettingItemDef getSettingItemDef(const AppContext& ctx, int index) {
             if (sep >= 0) host = host.substring(sep + 3);
             return valueRow(tr(MsgId::SETTINGS_ITEM_SERVER), host.length() ? host : String(tr(MsgId::SETTINGS_OFF)));
         }
-        case 3: {
-            String sleepVal = !ctx.config.coverOnSleep
-                                      ? String(tr(MsgId::SLEEP_COVER_MODE_OFF))
-                                      : (ctx.config.sleepCoverFitMode == 0 ? String(tr(MsgId::SLEEP_COVER_MODE_FIT))
-                                                                           : String(tr(MsgId::SLEEP_COVER_MODE_FILL)));
-            return valueRow(tr(MsgId::SETTINGS_ITEM_SLEEP_COVER), sleepVal);
-        }
+        case 3:
+            return valueRow(tr(MsgId::SETTINGS_ITEM_SLEEP), "");
         case 4:   // reload / save: a submenu (service actions, not settings of their own)
             return valueRow(tr(MsgId::SETTINGS_ITEM_SD_FILE), "");
         case 6: {   // Synchronization submenu: how many of the moments are on
@@ -366,6 +351,29 @@ SettingItemDef getStatusBarItemDef(const AppContext& ctx, int index) {
     const bool list = index == StatusBarMenu::TOP || index == StatusBarMenu::BOTTOM;   // own screens
     return valueRow(StatusBarMenu::label(index), String(StatusBarMenu::value(ctx.config, index, buf, sizeof(buf))),
                     list);
+}
+
+SettingItemDef getSleepSettingItemDef(const AppContext& ctx, int index) {
+    switch (index) {
+        case 0: {
+            String sleepVal = !ctx.config.coverOnSleep
+                                      ? String(tr(MsgId::SLEEP_COVER_MODE_OFF))
+                                      : (ctx.config.sleepCoverFitMode == 0 ? String(tr(MsgId::SLEEP_COVER_MODE_FIT))
+                                                                           : String(tr(MsgId::SLEEP_COVER_MODE_FILL)));
+            return valueRow(tr(MsgId::SETTINGS_ITEM_SLEEP_COVER), sleepVal);
+        }
+        case 1: {
+            char buf[32];
+            Choices::label(Choices::SLEEP_HOLD, Choices::active(ctx.config, Choices::SLEEP_HOLD), buf, sizeof(buf));
+            return valueRow(tr(MsgId::SETTINGS_ITEM_SLEEP_HOLD), String(buf));
+        }
+        case 2:
+        default: {
+            char buf[32];
+            Choices::label(Choices::WAKE_HOLD, Choices::active(ctx.config, Choices::WAKE_HOLD), buf, sizeof(buf));
+            return valueRow(tr(MsgId::SETTINGS_ITEM_WAKE_HOLD), String(buf));
+        }
+    }
 }
 
 SettingItemDef getSleepCoverSettingItemDef(const AppContext& ctx, int index) {
@@ -761,6 +769,17 @@ void drawChoiceScreen(AppContext& ctx, bool fullRefresh) {
 void updateChoiceSelection(AppContext& ctx, int prevIndex, int newIndex) {
     if (prevIndex != newIndex) drawChoiceScreen(ctx, false);
 }
+
+void drawSleepSettingsScreen(AppContext& ctx, bool fullRefresh) {
+    drawListScreen(ctx, tr(MsgId::SLEEP_SETTINGS_TITLE), getSleepSettingItemDef, NUM_SLEEP_SETTINGS_ITEMS,
+                   ctx.selectedSleepSettingIndex, nullptr, fullRefresh, "drawSleepSettingsScreen");
+}
+
+void updateSleepSettingsSelection(AppContext& ctx, int prevIndex, int newIndex) {
+    if (prevIndex != newIndex) drawSleepSettingsScreen(ctx, false);
+}
+
+void updateSleepSettingsItem(AppContext& ctx, int) { drawSleepSettingsScreen(ctx, false); }
 
 void drawSleepCoverSettingsScreen(AppContext& ctx, bool fullRefresh) {
     drawListScreen(ctx, tr(MsgId::SLEEP_COVER_TITLE), getSleepCoverSettingItemDef, NUM_SLEEP_COVER_ITEMS,

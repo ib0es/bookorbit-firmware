@@ -49,9 +49,9 @@ CHOICE_1, CHOICE_3, CHOICE_5 = "T240,127;", "T240,245;", "T240,363;"  # rows of 
 # screen, Frontlight), Connections (Wi-Fi, Server, Sync, Web), Device (Language,
 # Settings file, then on the second page, a swipe up, Device information).
 SET_PAGE2 = "W240,600,240,200;"
-SET_READING, SET_ORIENTATION, SET_SLEEP, SET_LIGHT = "T240,165;", "T240,224;", "T240,283;", "T240,342;"
-SET_WIFI, SET_SERVER, SET_SYNC = "T240,439;", "T240,498;", "T240,557;"
-SET_LANG, SET_INFO = "T240,697;", SET_PAGE2 + "T240,111;"
+SET_READING, SET_ORIENTATION, SET_LIGHT = "T240,145;", "T240,205;", "T240,265;"
+SET_WIFI, SET_SERVER, SET_SYNC = "T240,360;", "T240,420;", "T240,480;"
+SET_LANG, SET_SLEEP, SET_INFO = "T240,635;", "T240,695;", SET_PAGE2 + "T240,111;"
 WIFI_SCAN, WIFI_SSID = "T240,135;", "T240,202;"  # rows of the Wi-Fi screen
 FL_BRIGHT_PLUS, FL_ONOFF, FL_OUTSIDE = "T424,138;", "T240,329;", "T240,600;"  # the frontlight panel (top edge swipe)
 READING_STATUS_BAR = "T240,135;"  # its first row
@@ -198,7 +198,7 @@ CASES = [
     ),
     (
         "settings: sleep cover submenu, tap 'Crop to fill'",
-        HOME_SETTINGS + SET_SLEEP + "T240,210;",
+        HOME_SETTINGS + SET_SLEEP + "T240,145;" + "T240,210;",
         lambda log, sd: "Config saved" in log.split("TAP_240_210", 1)[-1],
     ),
     (
@@ -468,7 +468,9 @@ def run(script, config=None, srv=None, env=None, setup=None):
 
 def main():
     failed = 0
-    for case in CASES:
+    filter_arg = sys.argv[1].lower() if len(sys.argv) > 1 else None
+    cases = [c for c in CASES if filter_arg in c[0].lower()] if filter_arg else CASES
+    for case in cases:
         name, script, check = case[:3]
         code, log, sd = run(script, *[case[i] if len(case) > i else None for i in (3, 4, 5, 6)])
         problems = []
@@ -491,7 +493,7 @@ def main():
             if os.environ.get("VERBOSE"):
                 print(log[-3000:])
         shutil.rmtree(sd, ignore_errors=True)
-    print(f"{'OK' if not failed else 'FAILED'}: {len(CASES) - failed}/{len(CASES)} Picco cases passed")
+    print(f"{'OK' if not failed else 'FAILED'}: {len(cases) - failed}/{len(cases)} Picco cases passed")
     return 1 if failed else 0
 
 

@@ -992,7 +992,7 @@ void streamPortalPage(WebServer& server, const AppConfig& cfg, const std::vector
     if (hasTouchWakeSetting()) {
         addCheckbox(out, "touch_wake", tr(MsgId::SETTINGS_ITEM_TOUCH_WAKE), cfg.touchWakeEnabled);
     }
-    if (hasPowerButtonSettings()) {
+    if (Platform::kDevice.hasPowerButton) {
         static constexpr int kHold[] = {5, 3, 2, 1, 0};
         auto buildHoldText = [](int val) -> String {
             if (val <= 0) return tr(MsgId::POWER_HOLD_IMMEDIATE);
@@ -1230,7 +1230,7 @@ void applySubmittedConfig(WebServer& server, AppConfig& cfg, bool refreshFont = 
     if (hasTouchWakeSetting()) cfg.touchWakeEnabled = server.hasArg("touch_wake");
     if (hasUsbMscSetting()) cfg.usbMscEnabled = server.hasArg("usb_msc");
     cfg.hideCompleted = server.hasArg("hide_completed");
-    if (hasPowerButtonSettings()) {
+    if (Platform::kDevice.hasPowerButton) {
         if (parseIntArg(server, "sleep_hold_sec", v)) cfg.sleepHoldSec = clampInt(v, 0, 5);
         if (parseIntArg(server, "wake_hold_sec", v)) cfg.wakeHoldSec = clampInt(v, 0, 5);
     }
