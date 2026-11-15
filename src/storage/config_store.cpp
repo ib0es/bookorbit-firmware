@@ -94,8 +94,34 @@ bool ConfigStore::load(AppConfig& cfg) {
                 intIn("imu_rot", cfg.imuRot, 0, 3);
                 boolIn("imu_flip_x", cfg.imuFlipX);
                 boolIn("imu_flip_y", cfg.imuFlipY);
-                intIn("sb_top", cfg.sbTop, 0, 2);
-                intIn("sb_pages", cfg.sbPages, 0, 2);
+                // Status bar: top line items (sb_top_items) or migration from older fields
+                if (doc["sb_top_items"].is<int>()) {
+                    intIn("sb_top_items", cfg.sbTopItems, 0, SB_TOP_ALL);
+                } else if (doc["sb_top"].is<int>() || doc["sb_pages"].is<int>() || doc["sb_percent"].is<bool>() ||
+                           doc["sb_battery"].is<bool>() || doc["sb_clock"].is<bool>()) {
+                    int items = 0;
+                    int sbTop = 0, sbPages = 0;
+                    intIn("sb_top", sbTop, 0, 2);
+                    intIn("sb_pages", sbPages, 0, 2);
+                    if (sbTop == 0)
+                        items |= SB_TOP_BOOK_TITLE;
+                    else if (sbTop == 1)
+                        items |= SB_TOP_CH_TITLE;
+                    if (sbPages == 0)
+                        items |= SB_TOP_BOOK_PAGES;
+                    else if (sbPages == 1)
+                        items |= SB_TOP_CH_PAGES;
+                    bool b = false;
+                    boolIn("sb_percent", b);
+                    if (b) items |= SB_TOP_BOOK_PERCENT;
+                    b = true;
+                    boolIn("sb_battery", b);
+                    if (b) items |= SB_TOP_BATTERY;
+                    b = false;
+                    boolIn("sb_clock", b);
+                    if (b) items |= SB_TOP_CLOCK;
+                    cfg.sbTopItems = items;
+                }
                 // The bottom line: the items (sb_bottom_items) or, from an older
                 // config, the preset it was (0 chapter and bar, 1 the bar, 2 nothing).
                 if (doc["sb_bottom_items"].is<int>()) {
@@ -103,11 +129,8 @@ bool ConfigStore::load(AppConfig& cfg) {
                 } else if (doc["sb_bottom"].is<int>()) {
                     int old = 0;
                     intIn("sb_bottom", old, 0, 2);
-                    cfg.sbBottomItems = old == 0 ? SB_BOTTOM_DEFAULT : old == 1 ? SB_BOTTOM_BOOK_BAR : 0;
+                    cfg.sbBottomItems = old == 0 ? SB_BOTTOM_LEGACY_FULL : old == 1 ? SB_BOTTOM_BOOK_BAR : 0;
                 }
-                boolIn("sb_percent", cfg.sbPercent);
-                boolIn("sb_battery", cfg.sbBattery);
-                boolIn("sb_clock", cfg.sbClock);
                 intIn("utc_offset_min", cfg.utcOffsetMin, -720, 840);
                 boolIn("usb_msc", cfg.usbMscEnabled);
                 boolIn("touch_wake", cfg.touchWakeEnabled);
@@ -212,14 +235,15 @@ bool ConfigStore::save(const AppConfig& cfg) {
     doc["imu_rot"] = cfg.imuRot;
     doc["imu_flip_x"] = cfg.imuFlipX;
     doc["imu_flip_y"] = cfg.imuFlipY;
-    doc["sb_top"] = cfg.sbTop;
-    doc["sb_pages"] = cfg.sbPages;
+    doc["sb_top_items"] = cfg.sbTopItems;
     doc["sb_bottom_items"] = cfg.sbBottomItems;
-    // The old preset as well, the nearest one (older firmware reads it).
+    // Older fields as well (older firmware and tests read them).
+    doc["sb_top"] = (cfg.sbTopItems & SB_TOP_BOOK_TITLE) ? 0 : (cfg.sbTopItems & SB_TOP_CH_TITLE) ? 1 : 2;
+    doc["sb_pages"] = (cfg.sbTopItems & SB_TOP_BOOK_PAGES) ? 0 : (cfg.sbTopItems & SB_TOP_CH_PAGES) ? 1 : 2;
+    doc["sb_percent"] = (cfg.sbTopItems & (SB_TOP_BOOK_PERCENT | SB_TOP_CH_PERCENT)) != 0;
+    doc["sb_battery"] = (cfg.sbTopItems & SB_TOP_BATTERY) != 0;
+    doc["sb_clock"] = (cfg.sbTopItems & SB_TOP_CLOCK) != 0;
     doc["sb_bottom"] = (cfg.sbBottomItems & ~SB_BOTTOM_BARS) ? 0 : cfg.sbBottomItems ? 1 : 2;
-    doc["sb_percent"] = cfg.sbPercent;
-    doc["sb_battery"] = cfg.sbBattery;
-    doc["sb_clock"] = cfg.sbClock;
     doc["utc_offset_min"] = cfg.utcOffsetMin;
     doc["usb_msc"] = cfg.usbMscEnabled;
     doc["touch_wake"] = cfg.touchWakeEnabled;

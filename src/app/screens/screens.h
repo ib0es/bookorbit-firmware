@@ -60,7 +60,8 @@ void handleOrientationSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 // A setting with a few values as a list (Choices); opened by openChoice().
 void handleChoiceEvent(AppContext& ctx, const ButtonEvent& event);
 void openChoice(AppContext& ctx, int kind);
-// Status bar -> Bottom: its items as switches (OK flips one), a preview below.
+// Status bar -> Top / Bottom: items as switches (OK flips one), a preview below.
+void handleSbTopEvent(AppContext& ctx, const ButtonEvent& event);
 void handleSbBottomEvent(AppContext& ctx, const ButtonEvent& event);
 void handleLanguageSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleSdSettingsEvent(AppContext& ctx, const ButtonEvent& event);

@@ -42,7 +42,12 @@ void ButtonManager::update() {
     // A held arrow key repeats: after 0.5 s, then every 0.25 s. The single event
     // slot throttles it to the screen's pace: a click repeated while the panel
     // refreshes waits for the next update().
-    if (_heldKey != BTN_NONE && !isPressed(_heldKey)) _heldKey = BTN_NONE;
+    if (_heldKey != BTN_NONE && !isPressed(_heldKey)) {
+        _heldKey = BTN_NONE;
+        // A repeat queued during a blocking refresh expires with the hold.
+        // Preserve real presses: they must still be delivered after release.
+        if (_hasPendingEvent && _pendingEvent.repeat > 0) _hasPendingEvent = false;
+    }
     if (_hasPendingEvent) return; // Keep pending until consumed
 
     // Hold fallback (no touch panel): UP / DOWN pressed are timed here.
@@ -89,7 +94,10 @@ void ButtonManager::update() {
         }
     }
 
-    if (_heldKey != BTN_NONE) {
+    const bool freshArrow =
+            _freeinkInput.wasPressed(InputManager::BTN_UP) || _freeinkInput.wasPressed(InputManager::BTN_DOWN) ||
+            _freeinkInput.wasPressed(InputManager::BTN_LEFT) || _freeinkInput.wasPressed(InputManager::BTN_RIGHT);
+    if (_heldKey != BTN_NONE && !freshArrow && !_freeinkInput.isDebouncePending()) {
         const uint32_t now = millis();
         if (now - _heldSince >= 500 && now - _lastRepeat >= 250) {
             _lastRepeat = now;

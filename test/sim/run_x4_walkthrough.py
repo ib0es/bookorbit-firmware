@@ -1098,7 +1098,7 @@ CASES = [
         "status bar: clock and UTC+3 saved and active from RTC",
         None,
         {"SIM_RTC_UTC": "1794391200"},
-        READING + "C" + "UU" + "C" + "D" + "RRRRRR" + "BBB" + "UUUU" + OPEN_BOOK,
+        READING + "C" + "C" + "UC" + "B" + "U" + "RRRRRR" + "BBB" + "UUUU" + OPEN_BOOK,
         lambda log, sd: (
             "[RTC] Ready" in log
             and "[Clock] Restored from RTC" in log

@@ -668,6 +668,11 @@ void handleChoiceEvent(AppContext& ctx, const ButtonEvent& event) {
 }
 
 namespace {
+void flipSbTopItem(AppContext& ctx, int index) {
+    ctx.config.sbTopItems ^= sbTopItemAt(index);
+    ctx.config.save();
+    drawSbTopScreen(ctx, false);
+}
 void flipSbBottomItem(AppContext& ctx, int index) {
     ctx.config.sbBottomItems ^= sbBottomItemAt(index);
     ctx.config.save();
@@ -678,6 +683,31 @@ void backToStatusBar(AppContext& ctx) {
     drawStatusBarScreen(ctx, false);
 }
 }  // namespace
+
+void handleSbTopEvent(AppContext& ctx, const ButtonEvent& event) {
+    if (event.action != ACTION_CLICK) return;
+    int& sel = ctx.selectedSbTopIndex;
+    switch (Actions::of(event)) {
+        case Action::Down:
+            sel = (sel + 1) % NUM_SB_TOP_ITEMS;
+            drawSbTopScreen(ctx, false);
+            break;
+        case Action::Up:
+            sel = (sel - 1 + NUM_SB_TOP_ITEMS) % NUM_SB_TOP_ITEMS;
+            drawSbTopScreen(ctx, false);
+            break;
+        case Action::Select:
+        case Action::Next:
+            flipSbTopItem(ctx, sel);
+            break;
+        case Action::Back:
+        case Action::Prev:
+            backToStatusBar(ctx);
+            break;
+        default:
+            break;
+    }
+}
 
 void handleSbBottomEvent(AppContext& ctx, const ButtonEvent& event) {
     if (event.action != ACTION_CLICK) return;

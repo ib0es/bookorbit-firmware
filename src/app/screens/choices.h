@@ -12,8 +12,6 @@ namespace Choices {
 
 enum Kind : int {
     FULL_REFRESH,   // Settings -> Reading: a full refresh every N pages, or never
-    SB_TOP,         // status bar: top left (book title, chapter, nothing)
-    SB_PAGES,       // status bar: page number (in the book, in the chapter, none)
     COUNT
 };
 

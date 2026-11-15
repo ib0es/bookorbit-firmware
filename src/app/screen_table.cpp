@@ -41,6 +41,7 @@ const ScreenEntry kScreens[] = {
         {STATE_ORIENTATION_SETTINGS, SettingsScreen::handleOrientationSettingsEvent, drawOrientationSettingsScreen,
          &C::selectedOrientationIndex, true},
         {STATE_CHOICE, SettingsScreen::handleChoiceEvent, drawChoiceScreen, &C::selectedChoiceIndex, true},
+        {STATE_SB_TOP, SettingsScreen::handleSbTopEvent, drawSbTopScreen, &C::selectedSbTopIndex, true},
         {STATE_SB_BOTTOM, SettingsScreen::handleSbBottomEvent, drawSbBottomScreen, &C::selectedSbBottomIndex, true},
         {STATE_TYPEFACE_MENU, ReaderScreen::handleTypefaceMenuEvent, drawTypefaceMenuScreen, &C::selectedTypefaceIndex,
          true},

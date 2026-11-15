@@ -573,9 +573,12 @@ void handleStatusBarEvent(AppContext& ctx, const ButtonEvent& event) {
         case Action::Less:
         case Action::More:
         case Action::Select:
-            if (key == Action::Select && (sel == StatusBarMenu::TOP || sel == StatusBarMenu::PAGES)) {
-                // A list of its own (LEFT / RIGHT still step it here).
-                SettingsScreen::openChoice(ctx, sel == StatusBarMenu::TOP ? Choices::SB_TOP : Choices::SB_PAGES);
+            if (sel == StatusBarMenu::TOP) {   // its items: a screen of switches
+                if (key != Action::Less) {
+                    ctx.selectedSbTopIndex = 0;
+                    ctx.currentState = STATE_SB_TOP;
+                    drawSbTopScreen(ctx, false);
+                }
                 break;
             }
             if (sel == StatusBarMenu::BOTTOM) {   // its items: a screen of switches

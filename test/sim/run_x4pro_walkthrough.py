@@ -42,7 +42,7 @@ RMENU_SYNC, RMENU_RESUME, RMENU_CLOSE = "T240,485;", "T240,555;", "T240,625;"
 MARKS_THIS_PAGE = "T240,143;"
 APPEAR_TYPEFACE, APPEAR_SIZE = "T240,127;", "T240,184;"
 APPEAR_ORIENTATION = "T100,412;"  # on the label: the middle of a value row is its "-" (C5)
-SB_BOTTOM = "T240,363;"  # the "Bottom" row
+SB_TOP, SB_BOTTOM = "T240,127;", "T240,184;"  # "Top" and "Bottom" rows
 
 # Settings rows (13 on X4 Pro), in sections: Reading & screen (Reading, Screen
 # orientation, Sleep screen, Frontlight), Connections (Wi-Fi, Server, Sync, Web,

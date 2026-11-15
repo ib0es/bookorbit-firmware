@@ -34,8 +34,15 @@ def main():
         print(f"[i18n] Error: Base locale file not found: {en_path}", file=sys.stderr)
         sys.exit(1)
 
-    with open(en_path, encoding="utf-8") as f:
-        en_data = json.load(f)
+    def load_json_relaxed(path):
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+        import re
+
+        text = re.sub(r',\s*([}\]])', r'\1', text)
+        return json.loads(text)
+
+    en_data = load_json_relaxed(en_path)
 
     keys = list(en_data.keys())
 
@@ -46,8 +53,7 @@ def main():
             print(f"[i18n] Warning: Locale file {code}.json not found. Using English fallback.", file=sys.stderr)
             lang_data = dict(en_data)
         else:
-            with open(lang_path, encoding="utf-8") as f:
-                lang_data = json.load(f)
+            lang_data = load_json_relaxed(lang_path)
 
             missing = [k for k in keys if k not in lang_data]
             if missing:

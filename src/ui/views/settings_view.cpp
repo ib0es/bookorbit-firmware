@@ -117,13 +117,16 @@ void drawListScreen(const AppContext& ctx, const char* title, ItemDefFn def, int
     auto caption = [&](int i) { return sectionOf ? sectionCaption(sectionOf(i)) : nullptr; };
     auto entryH = [&](int i) { return (int16_t)(heights[i] + gap + (caption(i) ? sectionHeight() : 0)); };
 
+    const int16_t belowH = below ? (int16_t)std::min<int>(270, std::max<int>(150, area.height * 2 / 5)) : 0;
+    const int16_t listH = (int16_t)(area.height - belowH);
+
     // Pages: as many rows as fit, from the first; the page the selection is on.
     int first = 0, perPage = count;
     {
         int start = 0;
         while (start < count) {
             int end = start, used = 0;
-            while (end < count && (end == start || used + entryH(end) <= area.height)) used += entryH(end++);
+            while (end < count && (end == start || used + entryH(end) <= listH)) used += entryH(end++);
             if (selected < end || end >= count) {
                 first = start;
                 perPage = end - start;
@@ -134,8 +137,7 @@ void drawListScreen(const AppContext& ctx, const char* title, ItemDefFn def, int
     }
     const bool paged = perPage < count;
     if (paged) setListPager(count, perPage);
-    Rect list = area;
-    if (paged) list.width = (int16_t)(list.width - 14);
+    Rect list = Rect{area.x, area.y, (int16_t)(area.width - (paged ? 14 : 0)), listH};
     const int16_t listTop = list.y;
     for (int i = first; i < first + perPage; i++) {
         if (const char* cap = caption(i)) section(takeTop(list, sectionHeight()), cap);
@@ -153,7 +155,7 @@ void drawListScreen(const AppContext& ctx, const char* title, ItemDefFn def, int
     }
     if (paged)
         scrollbar(Rect{(int16_t)(area.right() - 6), listTop, 8, (int16_t)(list.y - listTop)}, first, perPage, count);
-    if (below && !paged) below(f, ctx, Rect{area.x, list.y, area.width, (int16_t)(area.bottom() - list.y)});
+    if (below) below(f, ctx, Rect{area.x, (int16_t)(area.bottom() - belowH), area.width, belowH});
     present(fullRefresh);
     Serial.printf("[UI] %s finished in %lu ms.\n", logName, millis() - t0);
 }
@@ -338,8 +340,7 @@ SettingItemDef getStatusBarItemDef(const AppContext& ctx, int index) {
     const int on = StatusBarMenu::toggleState(ctx.config, index);
     if (on >= 0) return switchRow(StatusBarMenu::label(index), on > 0);
     char buf[64];
-    const bool list = index == StatusBarMenu::TOP || index == StatusBarMenu::PAGES ||
-                      index == StatusBarMenu::BOTTOM;   // own screens
+    const bool list = index == StatusBarMenu::TOP || index == StatusBarMenu::BOTTOM;   // own screens
     return valueRow(StatusBarMenu::label(index), String(StatusBarMenu::value(ctx.config, index, buf, sizeof(buf))),
                     list);
 }
@@ -565,37 +566,56 @@ void statusBarPreview(Frame& f, const AppContext& ctx, Rect area) {
     if (ctx.currentState == STATE_CHOICE) Choices::apply(cfg, ctx.choiceKind, ctx.selectedChoiceIndex);
     const char* chapter = tr(MsgId::SB_PREVIEW_CHAPTER);
 
-    // Top line: title or chapter on the left; pages, percent, clock, battery on the right.
-    const bool topShown =
-            !compact && (cfg.sbTop != 2 || cfg.sbPages != 2 || cfg.sbPercent || cfg.sbClock || cfg.sbBattery);
-    if (topShown) {
-        Rect top = takeTop(in, lineHeight(FontSmall));
-        String r;
-        auto add = [&](const char* part) { r = r.length() ? r + "  |  " + part : String(part); };
-        if (cfg.sbPages == 0) add("12/340");
-        if (cfg.sbPages == 1) add("3/18");
-        if (cfg.sbPercent) add("4%");
-        if (cfg.sbClock) add("12:00");
-        int16_t rw = 0;
-        if (cfg.sbBattery) {
-            batteryGlyph((int16_t)(top.right() - 27), (int16_t)(top.y + (top.height - 13) / 2), Color::Black);
-            rw = (int16_t)(27 + (r.length() ? 10 : 0));
+    // Top line: progress bars, then sides and wrapped center line.
+    const int topItems = cfg.sbTopItems;
+    bool anyTop = false;
+    if (topItems & SB_BOOK_BAR) {
+        static const uint16_t kTicks[] = {30, 95, 170, 260, 330, 420, 510, 590, 680, 760, 850, 930};
+        bookBar(takeTop(in, 4), 40, kTicks, (int)(sizeof(kTicks) / sizeof(kTicks[0])));
+        takeTop(in, 6);
+        anyTop = true;
+    }
+    if (topItems & SB_CH_BAR) {
+        chapterBar(takeTop(in, 4), 3, 18);
+        takeTop(in, 6);
+        anyTop = true;
+    }
+    if (StatusLine::textLines(topItems)) {
+        Rect row = takeTop(in, lineHeight(FontSmall));
+        const StatusLine::Where w{2, 12, 3, 18, 12, 340, 17, 4};
+        char clk[8] = "";
+        if (topItems & SB_CLOCK) {
+            snprintf(clk, sizeof(clk), "12:00");
         }
-        if (r.length()) {
-            const int16_t tw = (int16_t)(textWidth(FontSmall, r.c_str()) + 4);
-            text(Rect{(int16_t)(top.right() - rw - tw), top.y, tw, top.height}, r.c_str(), FontSmall, Color::Black,
+        char l[48], r[48], c[160];
+        StatusLine::sides(topItems, w, clk, l, sizeof(l), r, sizeof(r));
+        const char* bookTitle = tr(MsgId::SB_PREVIEW_TITLE);
+        StatusLine::center(topItems, w, bookTitle, chapter, c, sizeof(c));
+        const int16_t lw = *l ? (int16_t)(textWidth(FontSmall, l) + 8) : 0;
+        int16_t rw = 0;
+        if (topItems & SB_BATTERY) {
+            batteryGlyph((int16_t)(row.right() - 27), (int16_t)(row.y + (row.height - 13) / 2), Color::Black);
+            rw = (int16_t)(27 + (*r ? 10 : 0));
+        }
+        if (*r) {
+            const int16_t tw = (int16_t)(textWidth(FontSmall, r) + 4);
+            text(Rect{(int16_t)(row.right() - rw - tw), row.y, tw, row.height}, r, FontSmall, Color::Black,
                  TextAlign::Right);
             rw = (int16_t)(rw + tw);
         }
-        const char* l = cfg.sbTop == 0 ? tr(MsgId::SB_PREVIEW_TITLE) : cfg.sbTop == 1 ? chapter : "";
-        if (*l) {
-            if (rw == 0)
-                text(top, l, FontTitle, Color::Black, TextAlign::Center);
-            else
-                text(Rect{top.x, top.y, (int16_t)(top.width - rw - 10), top.height}, l, FontSmall);
+        if (*l) text(Rect{row.x, row.y, lw, row.height}, l, FontSmall);
+        if (*c) {
+            Rect mid;
+            if (StatusLine::centerAbove(topItems)) {
+                mid = takeTop(in, lineHeight(FontSmall));
+            } else {
+                mid = Rect{(int16_t)(row.x + lw), row.y, (int16_t)(row.width - lw - rw), row.height};
+            }
+            if (mid.width > 20) text(mid, c, FontSmall, Color::Black, TextAlign::Center);
         }
-        takeTop(in, 8);
+        anyTop = true;
     }
+    if (anyTop) takeTop(in, 6);
     // Bottom: page in the chapter, chapter, percent and a thin line; the line
     // alone; nothing.
     const int items = cfg.sbBottomItems;
@@ -615,24 +635,33 @@ void statusBarPreview(Frame& f, const AppContext& ctx, Rect area) {
         // The same parts as on a page (core/status_line.h), with sample numbers.
         Rect row = takeBottom(in, lineHeight(FontSmall));
         const StatusLine::Where w{2, 12, 3, 18, 12, 340, 17, 4};
-        char l[48], r[48], c[96];
-        StatusLine::sides(items, w, l, sizeof(l), r, sizeof(r));
-        StatusLine::center(items, w, chapter, c, sizeof(c));
+        char clk[8] = "";
+        if (items & SB_BOTTOM_CLOCK) {
+            snprintf(clk, sizeof(clk), "12:00");
+        }
+        char l[48], r[48], c[160];
+        StatusLine::sides(items, w, clk, l, sizeof(l), r, sizeof(r));
+        const char* bookTitle = tr(MsgId::SB_PREVIEW_TITLE);
+        StatusLine::center(items, w, bookTitle, chapter, c, sizeof(c));
         const int16_t lw = *l ? (int16_t)(textWidth(FontSmall, l) + 8) : 0;
-        const int16_t rw = *r ? (int16_t)(textWidth(FontSmall, r) + 8) : 0;
-        if (*l) text(Rect{row.x, row.y, lw, row.height}, l, FontSmall);
-        if (*r)
-            text(Rect{(int16_t)(row.right() - rw), row.y, rw, row.height}, r, FontSmall, Color::Black,
+        int16_t rw = 0;
+        if (items & SB_BOTTOM_BATTERY) {
+            batteryGlyph((int16_t)(row.right() - 27), (int16_t)(row.y + (row.height - 13) / 2), Color::Black);
+            rw = (int16_t)(27 + (*r ? 10 : 0));
+        }
+        if (*r) {
+            const int16_t tw = (int16_t)(textWidth(FontSmall, r) + 4);
+            text(Rect{(int16_t)(row.right() - rw - tw), row.y, tw, row.height}, r, FontSmall, Color::Black,
                  TextAlign::Right);
+            rw = (int16_t)(rw + tw);
+        }
+        if (*l) text(Rect{row.x, row.y, lw, row.height}, l, FontSmall);
         if (*c) {
             Rect mid;
             if (StatusLine::centerAbove(items)) {
                 mid = takeBottom(in, lineHeight(FontSmall));
             } else {
-                const int16_t side = std::max(lw, rw);
-                mid = Rect{(int16_t)(row.x + side), row.y, (int16_t)(row.width - 2 * side), row.height};
-                if (mid.width < row.width / 3)
-                    mid = Rect{(int16_t)(row.x + lw), row.y, (int16_t)(row.width - lw - rw), row.height};
+                mid = Rect{(int16_t)(row.x + lw), row.y, (int16_t)(row.width - lw - rw), row.height};
             }
             if (mid.width > 20) text(mid, c, FontSmall, Color::Black, TextAlign::Center);
         }
@@ -640,30 +669,54 @@ void statusBarPreview(Frame& f, const AppContext& ctx, Rect area) {
     }
     if (any) takeBottom(in, 6);
     if (compact) return;
-    // The text between them, as many lines as the room leaves.
+    // The text between them, as many lines as the room leaves (never overlapping the bottom bar).
     const int16_t lh = lineHeight(FontSmall);
-    const uint8_t lines = (uint8_t)std::max(1, in.height / lh);
-    text(Rect{in.x, in.y, in.width, (int16_t)(lines * lh)}, tr(MsgId::APPEAR_SAMPLE), FontSmall, Color::Black,
-         TextAlign::Left, lines);
+    const int16_t fitLines = (int16_t)(in.height / lh);
+    if (fitLines > 0) {
+        const uint8_t lines = (uint8_t)std::min<int>(fitLines, 10);
+        text(Rect{in.x, in.y, in.width, (int16_t)(lines * lh)}, tr(MsgId::APPEAR_SAMPLE), FontSmall, Color::Black,
+             TextAlign::Left, lines);
+    }
 }
 
 }  // namespace
 
-int sbBottomItemAt(int index) {
-    // Grouped: the chapter's (page, percent, bar), the book's, then the chapter's title and number.
-    static const int kItems[NUM_SB_BOTTOM_ITEMS] = {SB_BOTTOM_CH_PAGES,   SB_BOTTOM_CH_PERCENT,   SB_BOTTOM_CH_BAR,
-                                                    SB_BOTTOM_BOOK_PAGES, SB_BOTTOM_BOOK_PERCENT, SB_BOTTOM_BOOK_BAR,
-                                                    SB_BOTTOM_CH_TITLE,   SB_BOTTOM_CH_NUMBER};
-    return index >= 0 && index < NUM_SB_BOTTOM_ITEMS ? kItems[index] : 0;
+int sbItemAt(int index) {
+    static const int kItems[NUM_SB_ITEMS] = {SB_CH_PAGES,     SB_CH_PERCENT, SB_CH_BAR,   SB_BOOK_PAGES,
+                                             SB_BOOK_PERCENT, SB_BOOK_BAR,   SB_CH_TITLE, SB_CH_NUMBER,
+                                             SB_BOOK_TITLE,   SB_BATTERY,    SB_CLOCK};
+    return index >= 0 && index < NUM_SB_ITEMS ? kItems[index] : 0;
+}
+
+int sbTopItemAt(int index) { return sbItemAt(index); }
+int sbBottomItemAt(int index) { return sbItemAt(index); }
+
+namespace {
+SettingItemDef getSbTopItemDef(const AppContext& ctx, int index) {
+    static const MsgId kLabels[NUM_SB_ITEMS] = {MsgId::SBB_CH_PAGES,   MsgId::SBB_CH_PERCENT,   MsgId::SBB_CH_BAR,
+                                                MsgId::SBB_BOOK_PAGES, MsgId::SBB_BOOK_PERCENT, MsgId::SBB_BOOK_BAR,
+                                                MsgId::SBB_CH_TITLE,   MsgId::SBB_CH_NUMBER,    MsgId::SB_TOP_BOOK,
+                                                MsgId::SB_BATTERY,     MsgId::SB_CLOCK};
+    return switchRow(tr(kLabels[index]), (ctx.config.sbTopItems & sbItemAt(index)) != 0);
+}
+}  // namespace
+
+void drawSbTopScreen(AppContext& ctx, bool fullRefresh) {
+    drawListScreen(ctx, StatusBarMenu::label(StatusBarMenu::TOP), getSbTopItemDef, NUM_SB_TOP_ITEMS,
+                   ctx.selectedSbTopIndex, nullptr, fullRefresh, "drawSbTopScreen", statusBarPreview);
+}
+
+void updateSbTopSelection(AppContext& ctx, int prevIndex, int newIndex) {
+    if (prevIndex != newIndex) drawSbTopScreen(ctx, false);
 }
 
 namespace {
 SettingItemDef getSbBottomItemDef(const AppContext& ctx, int index) {
-    static const MsgId kLabels[NUM_SB_BOTTOM_ITEMS] = {MsgId::SBB_CH_PAGES,     MsgId::SBB_CH_PERCENT,
-                                                       MsgId::SBB_CH_BAR,       MsgId::SBB_BOOK_PAGES,
-                                                       MsgId::SBB_BOOK_PERCENT, MsgId::SBB_BOOK_BAR,
-                                                       MsgId::SBB_CH_TITLE,     MsgId::SBB_CH_NUMBER};
-    return switchRow(tr(kLabels[index]), (ctx.config.sbBottomItems & sbBottomItemAt(index)) != 0);
+    static const MsgId kLabels[NUM_SB_ITEMS] = {MsgId::SBB_CH_PAGES,   MsgId::SBB_CH_PERCENT,   MsgId::SBB_CH_BAR,
+                                                MsgId::SBB_BOOK_PAGES, MsgId::SBB_BOOK_PERCENT, MsgId::SBB_BOOK_BAR,
+                                                MsgId::SBB_CH_TITLE,   MsgId::SBB_CH_NUMBER,    MsgId::SB_TOP_BOOK,
+                                                MsgId::SB_BATTERY,     MsgId::SB_CLOCK};
+    return switchRow(tr(kLabels[index]), (ctx.config.sbBottomItems & sbItemAt(index)) != 0);
 }
 }  // namespace
 
@@ -678,9 +731,8 @@ void updateSbBottomSelection(AppContext& ctx, int prevIndex, int newIndex) {
 
 void drawChoiceScreen(AppContext& ctx, bool fullRefresh) {
     const int kind = ctx.choiceKind;
-    const bool statusBar = kind == Choices::SB_TOP || kind == Choices::SB_PAGES;
     drawListScreen(ctx, Choices::title(kind), getChoiceItemDef, Choices::count(kind), ctx.selectedChoiceIndex, nullptr,
-                   fullRefresh, "drawChoiceScreen", statusBar ? statusBarPreview : nullptr);
+                   fullRefresh, "drawChoiceScreen", nullptr);
 }
 
 void updateChoiceSelection(AppContext& ctx, int prevIndex, int newIndex) {

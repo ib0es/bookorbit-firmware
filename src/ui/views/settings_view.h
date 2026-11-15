@@ -33,7 +33,10 @@ void updateOrientationSettingsSelection(AppContext& ctx, int prevIndex, int newI
 // A setting with a few values as a list, the one in use checked (Choices, ctx.choiceKind).
 void drawChoiceScreen(AppContext& ctx, bool fullRefresh = false);
 void updateChoiceSelection(AppContext& ctx, int prevIndex, int newIndex);
-// Status bar -> Bottom: the items of the line under the text, as switches, a preview below.
+// Status bar -> Top / Bottom: the items of the line, as switches, a preview below.
+void drawSbTopScreen(AppContext& ctx, bool fullRefresh = false);
+void updateSbTopSelection(AppContext& ctx, int prevIndex, int newIndex);
+int sbTopItemAt(int index);
 void drawSbBottomScreen(AppContext& ctx, bool fullRefresh = false);
 void updateSbBottomSelection(AppContext& ctx, int prevIndex, int newIndex);
 // The SbBottomItem bit of row `index` of that screen.

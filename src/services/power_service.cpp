@@ -163,7 +163,9 @@ void PowerService::idleWaitOrLightSleep(AppContext& ctx) {
         wt.waitingPrelayout = true;
         wt.msToPrelayout = 2500 - idleMs;
     }
-    if (ctx.currentState == STATE_READING && ctx.config.sbClock && !Ui::modalActive()) {
+    if (ctx.currentState == STATE_READING &&
+        ((ctx.config.sbTopItems & SB_TOP_CLOCK) || (ctx.config.sbBottomItems & SB_BOTTOM_CLOCK)) &&
+        !Ui::modalActive()) {
         wt.readingClockActive = true;
         const time_t nowSec = Platform::systemTime();
         if (nowSec > 1600000000L) {
