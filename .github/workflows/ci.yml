@@ -14,6 +14,40 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  commitlint:
+    name: Conventional Commits
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install commitlint
+        run: npm ci
+
+      - name: Check new commit messages
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BASE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            npm run commitlint -- --from "$PR_BASE" --to HEAD --verbose
+          elif [ "$EVENT_NAME" = "push" ] && [ -n "$PUSH_BASE" ] && [ "$PUSH_BASE" != "0000000000000000000000000000000000000000" ]; then
+            npm run commitlint -- --from "$PUSH_BASE" --to HEAD --verbose
+          else
+            git log -1 --format=%B | npm run commitlint -- --verbose
+          fi
+
   discover:
     name: Discover Targets
     runs-on: ubuntu-latest
@@ -258,12 +292,13 @@ jobs:
   ci-pass:
     name: All Platform Builds & Tests
     if: always()
-    needs: [discover, firmware, web-flasher, layers, lint, host-tests, sim-tests]
+    needs: [commitlint, discover, firmware, web-flasher, layers, lint, host-tests, sim-tests]
     runs-on: ubuntu-latest
     steps:
       - name: Verify all required checks passed
         run: |
           declare -A results=(
+            ["commitlint"]="${{ needs.commitlint.result }}"
             ["discover"]="${{ needs.discover.result }}"
             ["firmware"]="${{ needs.firmware.result }}"
             ["web-flasher"]="${{ needs.web-flasher.result }}"
@@ -274,7 +309,7 @@ jobs:
           )
 
           failed=0
-          for job in discover firmware web-flasher layers lint host-tests sim-tests; do
+          for job in commitlint discover firmware web-flasher layers lint host-tests sim-tests; do
             res="${results[$job]}"
             echo "${job}: ${res}"
             if [ "$res" != "success" ]; then
