@@ -52,7 +52,8 @@ const jsEscape = (s) =>
 function readLocale(lang) {
   const file = path.join(ROOT, 'locales', lang + '.json');
   try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
+    const text = fs.readFileSync(file, 'utf8').replace(/,\s*([}\]])/g, '$1');
+    return JSON.parse(text);
   } catch (e) {
     check(false, `locales/${lang}.json is not valid JSON: ${e.message}`);
     return null;

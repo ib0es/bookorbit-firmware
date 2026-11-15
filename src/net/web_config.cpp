@@ -1019,20 +1019,30 @@ void streamPortalPage(WebServer& server, const AppConfig& cfg, const std::vector
 
     // 5. Status bar
     beginSection(out, tr(MsgId::SB_TITLE), false);
-    beginSelect(out, "sb_top", tr(MsgId::SB_TOP));
-    addOption(out, "0", tr(MsgId::SB_TOP_BOOK), cfg.sbTop == 0);
-    addOption(out, "1", tr(MsgId::SB_TOP_CHAPTER), cfg.sbTop == 1);
-    addOption(out, "2", tr(MsgId::SB_NONE), cfg.sbTop == 2);
-    endSelect(out);
-
-    beginSelect(out, "sb_pages", tr(MsgId::SB_PAGES));
-    addOption(out, "0", tr(MsgId::SB_PAGES_BOOK), cfg.sbPages == 0);
-    addOption(out, "1", tr(MsgId::SB_PAGES_CHAPTER), cfg.sbPages == 1);
-    addOption(out, "2", tr(MsgId::SB_NONE), cfg.sbPages == 2);
-    endSelect(out);
-
-    addCheckbox(out, "sb_percent", tr(MsgId::SB_PERCENT), cfg.sbPercent);
-    addCheckbox(out, "sb_battery", tr(MsgId::SB_BATTERY), cfg.sbBattery);
+    // The top line: its items, each a checkbox (sbt_<bit>).
+    {
+        static const struct {
+            int bit;
+            MsgId label;
+        } kTop[] = {{SB_CH_PAGES, MsgId::SBB_CH_PAGES},
+                    {SB_CH_PERCENT, MsgId::SBB_CH_PERCENT},
+                    {SB_CH_BAR, MsgId::SBB_CH_BAR},
+                    {SB_BOOK_PAGES, MsgId::SBB_BOOK_PAGES},
+                    {SB_BOOK_PERCENT, MsgId::SBB_BOOK_PERCENT},
+                    {SB_BOOK_BAR, MsgId::SBB_BOOK_BAR},
+                    {SB_CH_TITLE, MsgId::SBB_CH_TITLE},
+                    {SB_CH_NUMBER, MsgId::SBB_CH_NUMBER},
+                    {SB_BOOK_TITLE, MsgId::SB_TOP_BOOK},
+                    {SB_BATTERY, MsgId::SB_BATTERY},
+                    {SB_CLOCK, MsgId::SB_CLOCK}};
+        for (const auto& b : kTop) {
+            char name[12];
+            snprintf(name, sizeof(name), "sbt_%d", b.bit);
+            char label[96];
+            snprintf(label, sizeof(label), "%s: %s", tr(MsgId::SB_TOP), tr(b.label));
+            addCheckbox(out, name, label, (cfg.sbTopItems & b.bit) != 0);
+        }
+    }
 
     // The bottom line: its items, each a checkbox (sbb_<bit>).
     {
@@ -1046,7 +1056,10 @@ void streamPortalPage(WebServer& server, const AppConfig& cfg, const std::vector
                        {SB_BOTTOM_BOOK_PERCENT, MsgId::SBB_BOOK_PERCENT},
                        {SB_BOTTOM_BOOK_BAR, MsgId::SBB_BOOK_BAR},
                        {SB_BOTTOM_CH_TITLE, MsgId::SBB_CH_TITLE},
-                       {SB_BOTTOM_CH_NUMBER, MsgId::SBB_CH_NUMBER}};
+                       {SB_BOTTOM_CH_NUMBER, MsgId::SBB_CH_NUMBER},
+                       {SB_BOTTOM_BOOK_TITLE, MsgId::SB_TOP_BOOK},
+                       {SB_BOTTOM_BATTERY, MsgId::SB_BATTERY},
+                       {SB_BOTTOM_CLOCK, MsgId::SB_CLOCK}};
         for (const auto& b : kBottom) {
             char name[12];
             snprintf(name, sizeof(name), "sbb_%d", b.bit);
@@ -1055,8 +1068,6 @@ void streamPortalPage(WebServer& server, const AppConfig& cfg, const std::vector
             addCheckbox(out, name, label, (cfg.sbBottomItems & b.bit) != 0);
         }
     }
-
-    addCheckbox(out, "sb_clock", tr(MsgId::SB_CLOCK), cfg.sbClock);
 
     std::vector<int> tzOffsets;
     tzOffsets.reserve(54);
@@ -1211,10 +1222,38 @@ void applySubmittedConfig(WebServer& server, AppConfig& cfg, bool refreshFont = 
         cfg.upDownTurnPages = (v != 0);
     }
 
-    if (parseIntArg(server, "sb_top", v)) cfg.sbTop = clampInt(v, 0, 2);
-    if (parseIntArg(server, "sb_pages", v)) cfg.sbPages = clampInt(v, 0, 2);
-    cfg.sbPercent = server.hasArg("sb_percent");
-    cfg.sbBattery = server.hasArg("sb_battery");
+    {   // the top line's checkboxes (sent only when checked); legacy fallback
+        int items = 0;
+        bool anySbt = false;
+        for (int bit = 1; bit <= SB_TOP_ALL; bit <<= 1) {
+            char name[12];
+            snprintf(name, sizeof(name), "sbt_%d", bit);
+            if (server.hasArg(name)) {
+                items |= bit;
+                anySbt = true;
+            }
+        }
+        if (anySbt) {
+            cfg.sbTopItems = items;
+        } else if (parseIntArg(server, "sb_top", v)) {
+            int top = clampInt(v, 0, 2);
+            int pages = 0;
+            parseIntArg(server, "sb_pages", pages);
+            items = 0;
+            if (top == 0)
+                items |= SB_TOP_BOOK_TITLE;
+            else if (top == 1)
+                items |= SB_TOP_CH_TITLE;
+            if (pages == 0)
+                items |= SB_TOP_BOOK_PAGES;
+            else if (pages == 1)
+                items |= SB_TOP_CH_PAGES;
+            if (server.hasArg("sb_percent")) items |= SB_TOP_BOOK_PERCENT;
+            if (server.hasArg("sb_battery")) items |= SB_TOP_BATTERY;
+            if (server.hasArg("sb_clock")) items |= SB_TOP_CLOCK;
+            cfg.sbTopItems = items;
+        }
+    }
     {   // the bottom line's checkboxes (sent only when checked); an older form's preset
         int items = 0;
         for (int bit = 1; bit <= SB_BOTTOM_ALL; bit <<= 1) {
@@ -1222,10 +1261,10 @@ void applySubmittedConfig(WebServer& server, AppConfig& cfg, bool refreshFont = 
             snprintf(name, sizeof(name), "sbb_%d", bit);
             if (server.hasArg(name)) items |= bit;
         }
-        if (parseIntArg(server, "sb_bottom", v)) items = v == 0 ? SB_BOTTOM_DEFAULT : v == 1 ? SB_BOTTOM_BOOK_BAR : 0;
+        if (parseIntArg(server, "sb_bottom", v))
+            items = v == 0 ? SB_BOTTOM_LEGACY_FULL : v == 1 ? SB_BOTTOM_BOOK_BAR : 0;
         cfg.sbBottomItems = items;
     }
-    cfg.sbClock = server.hasArg("sb_clock");
     if (parseIntArg(server, "utc_offset", v)) cfg.utcOffsetMin = TimeUtils::clampUtcOffset(v);
 
     if (server.hasArg("font_family")) {

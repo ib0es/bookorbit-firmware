@@ -557,7 +557,7 @@
     "APPEAR_ORIENT_LANDSCAPE_FLIPPED": "Альбомная, перевёрнутая",
     "APPEAR_STATUS_BAR": "Строка состояния",
     "SB_TITLE": "Строка состояния",
-    "SB_TOP": "Слева вверху",
+    "SB_TOP": "Вверху",
     "SB_TOP_BOOK": "Название книги",
     "SB_TOP_CHAPTER": "Глава",
     "SB_NONE": "Нет",
@@ -755,5 +755,5 @@
     "SBB_CH_PERCENT": "Процент главы",
     "SBB_BOOK_PERCENT": "Процент книги",
     "SBB_CH_NUMBER": "Номер главы (2/12)",
-    "SBB_BOOK_PAGES": "Страница книги (12/340)"
+    "SBB_BOOK_PAGES": "Страница книги (12/340)",
 }

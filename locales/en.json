@@ -557,7 +557,7 @@
     "APPEAR_ORIENT_LANDSCAPE_FLIPPED": "Landscape, upside down",
     "APPEAR_STATUS_BAR": "Status bar",
     "SB_TITLE": "Status bar",
-    "SB_TOP": "Top left",
+    "SB_TOP": "Top",
     "SB_TOP_BOOK": "Book title",
     "SB_TOP_CHAPTER": "Chapter",
     "SB_NONE": "None",
@@ -755,5 +755,5 @@
     "SBB_CH_PERCENT": "Chapter percent",
     "SBB_BOOK_PERCENT": "Book percent",
     "SBB_CH_NUMBER": "Chapter number (2/12)",
-    "SBB_BOOK_PAGES": "Book page (12/340)"
+    "SBB_BOOK_PAGES": "Book page (12/340)",
 }

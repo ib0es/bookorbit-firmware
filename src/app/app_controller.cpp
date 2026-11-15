@@ -352,8 +352,9 @@ void AppController::loop() {
     }
 
     // Refresh reader status bar on minute boundaries when the clock is enabled.
-    if (_ctx.currentState == STATE_READING && _ctx.config.sbClock && !Modal.isActive() &&
-        !SyncService::backgroundActive()) {
+    if (_ctx.currentState == STATE_READING &&
+        ((_ctx.config.sbTopItems & SB_TOP_CLOCK) || (_ctx.config.sbBottomItems & SB_BOTTOM_CLOCK)) &&
+        !Modal.isActive() && !SyncService::backgroundActive()) {
         const uint32_t nowMs = millis();
         if (nowMs - _lastClockCheckMs >= 1000) {
             _lastClockCheckMs = nowMs;

@@ -142,25 +142,14 @@ public:
     // What the status bar shows (above and below the text). Hiding a line gives
     // its room to the text (the book is laid out again). False when nothing changed.
     struct StatusBar {
-        uint8_t top = 0;       // top left: 0 book title, 1 chapter title, 2 nothing
-        uint8_t pages = 0;     // 0 page in the book, 1 page in the chapter, 2 none
-        bool percent = false;  // how much of the book is read
-        bool battery = true;
-        bool clock = false;
+        uint16_t topItems = SB_TOP_DEFAULT;
+        uint16_t bottomItems = SB_BOTTOM_DEFAULT;
         int16_t utcOffsetMin = 0;
-        // The bottom line: SbBottomItem bits (page in the chapter, chapter and book
-        // progress lines, chapter title, chapter and book percent).
-        uint8_t bottomItems = SB_BOTTOM_DEFAULT;
-        bool topShown() const { return top != 2 || pages != 2 || percent || clock || battery; }
-        // What the bottom line needs room for: 3 two lines of text, 2 one (and
-        // the progress lines), 1 progress lines only, 0 nothing.
-        int bottomRoom() const {
-            const int lines = StatusLine::textLines(bottomItems);
-            return lines == 2 ? 3 : lines == 1 ? 2 : (bottomItems & SB_BOTTOM_BARS) ? 1 : 0;
-        }
+        bool topShown() const { return topRoom() > 0; }
+        int topRoom() const { return StatusLine::room(topItems); }
+        int bottomRoom() const { return StatusLine::room(bottomItems); }
         bool operator==(const StatusBar& o) const {
-            return top == o.top && pages == o.pages && percent == o.percent && clock == o.clock &&
-                   utcOffsetMin == o.utcOffsetMin && battery == o.battery && bottomItems == o.bottomItems;
+            return topItems == o.topItems && bottomItems == o.bottomItems && utcOffsetMin == o.utcOffsetMin;
         }
     };
     bool setStatusBar(const StatusBar& bar);

@@ -860,7 +860,8 @@ void bitmapIcon(Rect b, const icons::IconSize* set, Color c) {
         if (set[i].size <= std::min(b.width, b.height)) pick = &set[i];
     const int16_t s = pick->size;
     target().bitmap(Rect{(int16_t)(b.x + (b.width - s) / 2), (int16_t)(b.y + (b.height - s) / 2), s, s},
-                    fi::BitmapRef{pick->bits, s, s, fi::BitmapFormat::BW1}, fi::BitmapMode::Center, solid(c));
+                    fi::BitmapRef{pick->bits, (uint16_t)s, (uint16_t)s, fi::BitmapFormat::BW1}, fi::BitmapMode::Center,
+                    solid(c));
 }
 
 void folderLarge(Rect b, Color c) {

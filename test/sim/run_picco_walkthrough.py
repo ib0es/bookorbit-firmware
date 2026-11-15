@@ -43,7 +43,7 @@ APPEAR_TYPEFACE, APPEAR_SIZE = "T240,127;", "T240,184;"  # rows of the Appearanc
 APPEAR_ORIENTATION = "T100,412;"
 APPEAR_MORE = "T240,469;"  # the last row: the second page (paragraph spacing, hyphenation...)
 MORE_HYPHENATION = "T240,184;"  # its second row, a switch  # on the label: the middle of a value row is its "-" (C5)
-SB_BOTTOM = "T240,363;"  # the "Bottom" row of the status bar menu (opens its list)
+SB_TOP, SB_BOTTOM = "T240,127;", "T240,184;"  # "Top" and "Bottom" rows of the status bar menu
 CHOICE_1, CHOICE_3, CHOICE_5 = "T240,127;", "T240,245;", "T240,363;"  # rows of a list of values
 # Settings rows, in sections: Reading & screen (Reading, Screen orientation, Sleep
 # screen, Frontlight), Connections (Wi-Fi, Server, Sync, Web), Device (Language,

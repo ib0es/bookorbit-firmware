@@ -9,3 +9,4 @@ src/reader/engine/stb_truetype_small.h
 src/reader/engine/hyph_ru.h
 freeink-sdk/*
 simulator/lib_*/*
+locales/*
