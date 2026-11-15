@@ -30,8 +30,14 @@ enum AppState {
     STATE_USB_MSC_SETTINGS,
     STATE_USB_MSC,
     STATE_READING_SETTINGS,
-    STATE_WEB_SETTINGS
+    STATE_WEB_SETTINGS,
+    STATE_ORIENTATION_SETTINGS,
+    STATE_CHOICE,   // a setting with a few values, as a list (Choices::Kind in choiceKind)
+    STATE_SB_BOTTOM   // status bar: the bottom line's items, as switches
 };
+
+// Status bar, bottom line: what it shows (AppConfig::sbBottomItems, SbBottomItem bits).
+#include "../core/status_line.h"
 
 struct AppConfig {
     String wifiSsid = DEFAULT_WIFI_SSID;
@@ -71,7 +77,10 @@ struct AppConfig {
     bool imuFlipY = false;
     // Status bar: top left 0 book title, 1 chapter, 2 none; page number 0 in the
     // book, 1 in the chapter, 2 none; bottom 0 chapter and progress bar, 1 bar, 2 none.
-    int sbTop = 0, sbPages = 0, sbBottom = 0;
+    int sbTop = 0, sbPages = 0;
+    // The bottom line of a page: any of SB_BOTTOM_* (bits). The default is the
+    // old "chapter and bar": page in the chapter, chapter title, book percent, book bar.
+    int sbBottomItems = SB_BOTTOM_DEFAULT;
     bool sbPercent = false, sbBattery = true;
     bool sbClock = false;
     int utcOffsetMin = 0;        // -720..+840 (-12:00..+14:00), shown when sbClock is on
@@ -87,13 +96,19 @@ struct AppConfig {
     bool save();
 };
 
-const int NUM_HOME_ITEMS = 5;      // 0=Recent, 1=Catalog, 2=Offline, 3=Settings, 4=Sync
+const int NUM_HOME_ITEMS = 5;      // 0=Recent, 1=Catalog, 2=Offline, 3=Sync, 4=Settings
 const int NUM_CATALOG_ITEMS =
         9;   // Search, All, Libraries, Authors, Series, Folders, Downloaded, Completed, Toggle Hide Completed
 const int NUM_SETTINGS_ITEMS = 8;  // base count before optional Frontlight, USB-MSC, Touch Wake
 bool hasUsbMscSetting();
 bool hasTouchWakeSetting();
 int settingsItemCount();
+// The main settings as shown: grouped in sections (reading, connections, the
+// device), so a row's place differs from the item's index above.
+// selectedSettingIndex is the place; settingsItemAt() gives the item there,
+// settingsSectionAt() the section that starts at that place (-1: none).
+int settingsItemAt(int pos);
+int settingsSectionAt(int pos);
 // The page orientation row keeps indices 0..8 identical across boards; board
 // capabilities (USB-MSC, Touch Wake) follow after it.
 int orientationSettingIndex();
@@ -130,11 +145,16 @@ struct AppContext {
     int selectedTypefaceIndex = 0;
     int typefaceStorage = 0; // 0 = sources, 1 = Flash, 2 = SD
     int selectedAppearanceIndex = 0;
+    int appearancePage = 0;   // 0 Appearance, 1 its "More" page (Appearance::count)
     int selectedStatusBarIndex = 0;
     int selectedReadingSettingIndex = 0;
     int selectedBookmarkIndex = 0;   // 0 = add/remove this page's, then the bookmarks
     int selectedSyncSettingIndex = 0;
     int selectedSleepCoverIndex = 0;
+    int selectedOrientationIndex = 0;
+    int choiceKind = 0;            // which setting STATE_CHOICE lists (Choices::Kind)
+    int selectedChoiceIndex = 0;
+    int selectedSbBottomIndex = 0;   // Settings -> Screen orientation (orientationChoiceCount)
     int selectedSdSettingIndex = 0;
     int selectedUsbMscIndex = 0;
     uint32_t lastActivityTime = 0;

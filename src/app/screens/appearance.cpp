@@ -8,15 +8,19 @@
 namespace Appearance {
 
 namespace {
-const int kBookRows[] = {TYPEFACE,    SIZE,       LINE_SPACING, PARAGRAPH_SPACING, MARGINS,    ALIGNMENT,
-                         HYPHENATION, KEEP_LINES, BOOK_STYLES,  FOCUS_READING,     ORIENTATION};
+const int kBookRows[] = {TYPEFACE, SIZE, LINE_SPACING, MARGINS, ALIGNMENT, ORIENTATION, MORE};
 const int kBookCount = sizeof(kBookRows) / sizeof(kBookRows[0]);
+const int kMoreRows[] = {PARAGRAPH_SPACING, HYPHENATION, KEEP_LINES, BOOK_STYLES, FOCUS_READING};
+const int kMoreCount = sizeof(kMoreRows) / sizeof(kMoreRows[0]);
 // UP / DOWN: not on boards whose keys always turn pages.
 const int kReadingRows[] = {STATUS_BAR, FULL_REFRESH, IMAGES, UPDOWN_KEYS};
 }  // namespace
 
-int count() { return kBookCount; }
-int rowAt(int index) { return index >= 0 && index < kBookCount ? kBookRows[index] : -1; }
+int count(int page) { return page == 1 ? kMoreCount : kBookCount; }
+int rowAt(int index, int page) {
+    if (index < 0 || index >= count(page)) return -1;
+    return page == 1 ? kMoreRows[index] : kBookRows[index];
+}
 
 namespace Reading {
 int count() { return Platform::kDevice.upDownTurnPages ? 3 : 4; }
@@ -84,6 +88,8 @@ const char* label(int row) {
             return tr(MsgId::APPEAR_STATUS_BAR);
         case AUTO_ROTATE:
             return tr(MsgId::APPEAR_AUTO_ROTATE);
+        case MORE:
+            return tr(MsgId::APPEAR_MORE);
     }
     return "";
 }
@@ -151,6 +157,23 @@ const char* value(const AppConfig& cfg, int row, char* buf, size_t len) {
             buf[0] = 0;
     }
     return buf;
+}
+
+int toggleState(const AppConfig& cfg, int row) {
+    switch (row) {
+        case HYPHENATION:
+            return cfg.hyphenation ? 1 : 0;
+        case KEEP_LINES:
+            return cfg.keepLines ? 1 : 0;
+        case BOOK_STYLES:
+            return cfg.bookStyles ? 1 : 0;
+        case FOCUS_READING:
+            return cfg.focusReading ? 1 : 0;
+        case AUTO_ROTATE:
+            return cfg.autoRotate ? 1 : 0;
+        default:
+            return -1;
+    }
 }
 
 bool step(AppConfig& cfg, int row, int dir) {

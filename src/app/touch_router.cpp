@@ -85,7 +85,7 @@ bool translate(AppContext& ctx, const ButtonEvent& tap, ButtonEvent& out) {
 
     switch (ctx.currentState) {
         case STATE_HOME:
-            // home_view: 1 = continue-reading card, 2 = category (1=catalog, 2=offline, 3=settings), 3 = sync row
+            // home_view: 1 = continue-reading card, 2 = a tile (its home index: 1 catalog, 2 offline, 3 sync, 4 settings)
             ctx.selectedHomeIndex = (action == 1) ? 0 : (action == 3 ? 4 : value);
             break;
         case STATE_LIBRARY: {

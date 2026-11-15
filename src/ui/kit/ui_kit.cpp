@@ -8,9 +8,12 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <WiFi.h>
 #include "../../platform/hal/battery.h"
 #include "../../platform/hal/display.h"
+#include "../../services/sync_clock.h"
 #include "ui_fonts.h"
+#include "ui_icons.h"
 
 namespace uikit {
 
@@ -226,6 +229,17 @@ bool g_touchMissing = false;
 void setTouchMissing(bool missing) { g_touchMissing = missing; }
 bool touchMissing() { return g_touchMissing; }
 
+size_t hitCount() { return g_hits.count(); }
+
+bool hitAt(size_t i, Rect& rect, fi::ActionId& action, int16_t& value) {
+    if (i >= g_hits.count()) return false;
+    const fi::Interaction& it = g_hits.data()[i];
+    rect = it.rect;
+    action = it.action;
+    value = it.value;
+    return true;
+}
+
 bool hitTest(int16_t x, int16_t y, fi::ActionId& action, int16_t& value) {
     const fi::Interaction* items = g_hits.data();
     for (size_t i = g_hits.count(); i-- > 0;) {  // last registered = drawn on top
@@ -311,22 +325,60 @@ void vline(int16_t x, int16_t y0, int16_t y1, Color color, uint8_t w) {
 }
 
 // ---------------------------------------------------------------------------
+namespace {
+int g_utcOffsetMin = 0;
+int16_t batteryPercent() {
+    const int p = Battery.getPercentage();
+    return (int16_t)(p < 0 ? 0 : (p > 100 ? 100 : p));
+}
+}  // namespace
+
+void setClockOffset(int utcOffsetMin) { g_utcOffsetMin = utcOffsetMin; }
+
+void batteryGlyph(int16_t x, int16_t y, Color c) {
+    // Body 23x13 with a 3x5 nub, the charge as a filled part inside.
+    Rect body{x, y, 23, 13};
+    frameRect(body, c, 2, 3);
+    fill(Rect{(int16_t)(x + 23), (int16_t)(y + 4), 3, 5}, c, 1);
+    const int16_t inner = 23 - 8;
+    const int16_t w = (int16_t)((inner * batteryPercent() + 50) / 100);
+    if (w > 0) fill(Rect{(int16_t)(x + 4), (int16_t)(y + 4), w, 5}, c);
+    if (Battery.isCharging()) {
+        // A small bolt over the body (in the paper colour on the filled part).
+        const Color bolt = inverse(c);
+        const int16_t bx = (int16_t)(x + 9), by = (int16_t)(y + 2);
+        target().triangle(fi::Point{(int16_t)(bx + 4), by}, fi::Point{bx, (int16_t)(by + 5)},
+                          fi::Point{(int16_t)(bx + 4), (int16_t)(by + 5)}, solid(bolt));
+        target().triangle(fi::Point{(int16_t)(bx + 1), (int16_t)(by + 4)},
+                          fi::Point{(int16_t)(bx + 5), (int16_t)(by + 4)},
+                          fi::Point{(int16_t)(bx + 1), (int16_t)(by + 9)}, solid(bolt));
+    }
+}
+
 void battery(Frame& f, Rect r, Color color) {
+    (void)f;
     char label[12];
-    snprintf(label, sizeof(label), "%d%%%s", Battery.getPercentage(), Battery.isCharging() ? "+" : "");
-    fi::BatteryIndicatorProps b;
-    b.percent =
-            (uint8_t)(Battery.getPercentage() < 0 ? 0
-                                                  : (Battery.getPercentage() > 100 ? 100 : Battery.getPercentage()));
-    b.charging = Battery.isCharging();
-    b.color = color;
-    b.glyphWidth = 24;
-    b.glyphHeight = 12;
-    const int16_t glyphW = 24 + 2;
-    Rect glyph{(int16_t)(r.right() - glyphW), r.y, glyphW, r.height};
-    fi::batteryIndicator(f, glyph, b);
+    snprintf(label, sizeof(label), "%d%%", (int)batteryPercent());
+    const int16_t glyphW = 27;
+    batteryGlyph((int16_t)(r.right() - glyphW), (int16_t)(r.y + (r.height - 13) / 2), color);
     Rect lbl{r.x, r.y, (int16_t)(r.width - glyphW - 6), r.height};
     text(lbl, label, FontSmall, color, TextAlign::Right);
+}
+
+int16_t statusBarHeight() { return (int16_t)(lineHeight(FontSmall) + 6); }
+
+void statusBar(Frame& f, Rect bar) {
+    (void)f;
+    Rect inner = insetX(bar, (int16_t)(kMargin + 6));
+    char clk[8];
+    if (SyncClock::isSet() && SyncClock::formatLocalTime(g_utcOffsetMin, clk, sizeof(clk)))
+        text(Rect{inner.x, inner.y, 80, inner.height}, clk, FontSmall);
+    int16_t x = (int16_t)(inner.right() - 27);
+    batteryGlyph(x, (int16_t)(inner.y + (inner.height - 13) / 2), Color::Black);
+    if (WiFi.getMode() != WIFI_OFF && WiFi.status() == WL_CONNECTED) {
+        x = (int16_t)(x - 22 - 12);
+        icon::wifi(x, (int16_t)(inner.y + (inner.height - 16) / 2), Color::Black);
+    }
 }
 
 namespace {
@@ -358,71 +410,73 @@ bool keysReversed() { return !touchOnly() && keyEdge() == 1; }
 
 Rect topBar(Frame& f, const char* title) {
     Rect area = screenUnderKeys();
-    const int16_t h = (int16_t)(lineHeight(FontTitle) + 18);
-    Rect bar = takeTop(area, h);
-    fill(bar, Color::Black);
-    Rect inner = insetX(bar, kMargin);
-    const int16_t batW = 92;
-    battery(f, Rect{(int16_t)(inner.right() - batW), inner.y, batW, inner.height}, Color::White);
-    Rect titleR{inner.x, inner.y, (int16_t)(inner.width - batW - kGap), inner.height};
+    Rect sb = takeTop(area, statusBarHeight());
+    statusBar(f, sb);
+    Rect band = takeTop(area, (int16_t)(lineHeight(FontTitle) + 10));
+    // The title centred, with the same room kept on both sides.
+    const int16_t side = (int16_t)(kMargin + 30);
+    Rect titleR{(int16_t)(band.x + side), band.y, (int16_t)(band.width - 2 * side), (int16_t)(band.height - 4)};
     if (Platform::kDevice.touch) {
         // Touch boards: the bar is the BACK control, so show it.
-        text(Rect{titleR.x, titleR.y, 22, titleR.height}, "\xE2\x97\x80", FontBody, Color::White);  // U+25C0
-        titleR.x = (int16_t)(titleR.x + 26);
-        titleR.width = (int16_t)(titleR.width - 26);
+        text(Rect{(int16_t)(band.x + kMargin), titleR.y, 28, titleR.height}, "\xE2\x80\xB9", FontLarge);  // U+2039
     }
-    text(titleR, title, FontTitle, Color::White);
-    g_backBand = bar;
+    text(titleR, title, FontTitle, Color::Black, TextAlign::Center);
+    hline(0, width(), (int16_t)(band.bottom() - 2), Color::Black, 2);
+    g_backBand = Rect{sb.x, sb.y, sb.width, (int16_t)(band.bottom() - sb.y)};
+    takeTop(area, 6);
     return area;
 }
 
 Rect appHeader(Frame& f) {
     Rect area = screenUnderKeys();
-    const int16_t h = (int16_t)(lineHeight(FontTitle) + 16);
-    Rect bar = takeTop(area, h);
-    Rect inner = insetX(bar, kMargin + 4);
-    icon::book(inner.x, (int16_t)(inner.y + (inner.height - 20) / 2), Color::Black);
-    int16_t rightSpace = 92;
-    battery(f, Rect{(int16_t)(inner.right() - rightSpace), inner.y, rightSpace, inner.height}, Color::Black);
+    Rect bar = takeTop(area, statusBarHeight());
+    statusBar(f, bar);
     if (!Platform::kDevice.hasPowerButton && Platform::kDevice.touch) {
-        const int16_t pwrW = 32;
-        Rect pwrBtn{(int16_t)(inner.right() - rightSpace - pwrW - 8), (int16_t)(inner.y + (inner.height - 22) / 2),
-                    pwrW, 22};
-        frameRect(pwrBtn, Color::Black, 1, 3);
+        // No POWER key: a sleep button in the middle of the status line.
+        const int16_t pwrW = 40, pwrH = (int16_t)(bar.height - 10);
+        Rect pwrBtn{(int16_t)((bar.width - pwrW) / 2), (int16_t)(bar.y + 5), pwrW, pwrH};
+        frameRect(pwrBtn, Color::Black, 1, kRadiusSmall);
         text(pwrBtn, "Zz", FontSmall, Color::Black, TextAlign::Center);
         f.hit(pwrBtn, 1003, 0);  // ActionSleep -> BTN_POWER
-        rightSpace = (int16_t)(rightSpace + pwrW + 12);
     }
-    text(Rect{(int16_t)(inner.x + 28), inner.y, (int16_t)(inner.width - 28 - rightSpace), inner.height}, "book orbit",
-         FontTitle);
-    hline(0, width(), (int16_t)(bar.bottom() - 1));
+    takeTop(area, 4);
     return area;
 }
 
 Rect footerHints(Frame& f, Rect area, const char* line1, const char* line2, const char* touchLine) {
+    // Touch boards without UP / DOWN keys get them on screen, in the footer.
+    const bool keyButtons = !Platform::kDevice.hasUpDown && Platform::kDevice.touch && !g_touchMissing;
     if (touchOnly() && ((line1 && *line1) || (line2 && *line2))) {
-        // The screens' hints name LEFT / RIGHT / OK / BACK, which this board lacks;
-        // with the touch panel silent, the held keys stand in for them (C4).
-        line1 = tr(g_touchMissing ? MsgId::TOUCH_FALLBACK_L1 : MsgId::TOUCH_HINT_L1);
-        line2 = tr(g_touchMissing ? MsgId::TOUCH_FALLBACK_L2 : MsgId::TOUCH_HINT_L2);
-        if (touchLine && !g_touchMissing) line2 = touchLine;   // the screen's own gesture (C9)
+        // The screens' hints name LEFT / RIGHT / OK / BACK, which this board lacks.
+        // With the touch panel silent, the held keys stand in for them (C4): said
+        // in full. With touch, the general gestures go without saying (the "‹" in
+        // the title shows the way back); only a screen's own gesture (C9) is said,
+        // in one line.
+        if (g_touchMissing) {
+            line1 = tr(MsgId::TOUCH_FALLBACK_L1);
+            line2 = tr(MsgId::TOUCH_FALLBACK_L2);
+        } else {
+            line1 = touchLine;
+            line2 = nullptr;
+            if ((!line1 || !*line1) && !keyButtons) return area;
+        }
     }
     const int16_t innerW = (int16_t)(width() - 2 * (kMargin + 4));
     const int16_t h1 = (line1 && *line1) ? (int16_t)(wrappedHeight(line1, FontSmall, innerW, 2) + 4) : 0;
     const int16_t h2 = (line2 && *line2) ? (int16_t)(wrappedHeight(line2, FontSmall, innerW, 2) + 4) : 0;
-    if (h1 + h2 == 0) return area;
-    Rect foot = takeBottom(area, (int16_t)(h1 + h2 + 14));
+    if (h1 + h2 == 0 && !keyButtons) return area;
+    Rect foot = takeBottom(area, (int16_t)std::max<int>(h1 + h2 + 14, keyButtons ? 28 + 16 : 0));
     hline(0, width(), foot.y);
     Rect inner = insetXY(foot, kMargin + 4, 8);
-    if (!Platform::kDevice.hasUpDown && Platform::kDevice.touch && !g_touchMissing) {
+    if (keyButtons) {
         const int16_t btnSize = 28;
         Rect btnDown{(int16_t)(inner.right() - btnSize), (int16_t)(inner.y + (inner.height - btnSize) / 2), btnSize,
                      btnSize};
         Rect btnUp{(int16_t)(btnDown.x - btnSize - 6), btnDown.y, btnSize, btnSize};
-        frameRect(btnUp, Color::Black, 1, 3);
+        frameRect(btnUp, Color::Black, 1, kRadiusSmall);
         text(btnUp, "\xE2\x96\xB2", FontSmall, Color::Black, TextAlign::Center);
         f.hit(btnUp, 1001, 0);  // ActionPagePrev -> BTN_UP
-        frameRect(btnDown, Color::Black, 1, 3);
+        frameRect(btnDown, Color::Black, 1, kRadiusSmall);
         text(btnDown, "\xE2\x96\xBC", FontSmall, Color::Black, TextAlign::Center);
         f.hit(btnDown, 1002, 0);  // ActionPageNext -> BTN_DOWN
         inner.width = (int16_t)(inner.width - 2 * btnSize - 12);
@@ -455,20 +509,28 @@ Rect keyHints(Frame& f, Rect area, const KeyLabels& keys, const char* info) {
              FontSmall, Color::Black, TextAlign::Left, 2);
     }
     auto drawTab = [&](Rect tab, Rect label, const char* s) {
-        fill(tab, Color::White, 5);
-        frameRect(tab, Color::Black, 1, 5);
+        fill(tab, Color::White, kRadius);
+        frameRect(tab, Color::Black, 1, kRadius);
         if (s && *s) text(label, s, FontSmall, Color::Black, TextAlign::Center, 2);
     };
     if (edge <= 1) {
         const int16_t panelW = W;   // portrait: the keys run along the width
-        const int16_t tabW = (int16_t)(Platform::kDevice.keyHintWidth * panelW / 480);
+        int16_t tabW = (int16_t)(Platform::kDevice.keyHintWidth * panelW / 480);
+        // A label wider than the tab widens all four, as far as the keys' spacing allows.
+        int16_t spacing = 32767;
+        for (int i = 1; i < 4; i++)
+            spacing = std::min<int16_t>(spacing, (int16_t)((kCentre[i] - kCentre[i - 1]) * panelW / 480));
+        int16_t need = 0;
+        for (const char* l : labels)
+            if (l && *l) need = std::max<int16_t>(need, (int16_t)(textWidth(FontSmall, l) + 10));
+        if (need > tabW) tabW = std::min<int16_t>(need, (int16_t)(spacing - 4));
         for (int i = 0; i < 4; i++) {
             int16_t cx = (int16_t)(kCentre[i] * panelW / 480);
             if (edge == 1) cx = (int16_t)(panelW - cx);
             // Open at the edge: the tab runs off the screen, towards its key.
             Rect tab = edge == 0 ? Rect{(int16_t)(cx - tabW / 2), (int16_t)(H - tabH), tabW, (int16_t)(tabH + 6)}
                                  : Rect{(int16_t)(cx - tabW / 2), (int16_t)-6, tabW, (int16_t)(tabH + 6)};
-            Rect label{(int16_t)(tab.x + 2), edge == 0 ? tab.y : (int16_t)0, (int16_t)(tab.width - 4), tabH};
+            Rect label{(int16_t)(tab.x + 1), edge == 0 ? tab.y : (int16_t)0, (int16_t)(tab.width - 2), tabH};
             drawTab(tab, label, labels[i]);
         }
         return area;
@@ -503,21 +565,114 @@ void pill(Rect r, const char* label, bool dark, bool onInverted) {
     const Color ink = onInverted ? Color::White : Color::Black;
     const Color paper = inverse(ink);
     if (dark) {
-        fill(r, ink, 4);
+        fill(r, ink, kRadiusSmall);
         text(r, label, FontSmall, paper, TextAlign::Center);
     } else {
-        frameRect(r, ink, 1, 4);
+        frameRect(r, ink, 1, kRadiusSmall);
         text(r, label, FontSmall, ink, TextAlign::Center);
     }
 }
 
-int16_t cardMinHeight() { return (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 8); }
+int16_t cardMinHeight() { return (int16_t)(lineHeight(FontBody) + lineHeight(FontSmall) + 6); }
+
+int16_t rowHeight(bool twoLines) {
+    return twoLines ? (int16_t)(lineHeight(FontBody) + lineHeight(FontSmall) + 14)
+                    : (int16_t)(lineHeight(FontBody) + 24);
+}
+
+int16_t sectionHeight() { return (int16_t)(lineHeight(FontSmall) + 12); }
+
+void section(Rect r, const char* caption) {
+    if (!caption || !*caption) return;
+    text(Rect{(int16_t)(r.x + 14), (int16_t)(r.y + 6), (int16_t)(r.width - 28), (int16_t)(r.height - 6)}, caption,
+         FontSmall);
+}
+
+void selectionFrame(Rect r) { frameRect(r, Color::Black, 3, kRadius); }
+
+void toggle(Rect r, bool on) {
+    const int16_t w = 46, h = 26;
+    Rect sw{(int16_t)(r.x + (r.width - w) / 2), (int16_t)(r.y + (r.height - h) / 2), w, h};
+    const int16_t knob = (int16_t)(h - 10);
+    if (on) {
+        fill(sw, Color::Black, (uint8_t)(h / 2));
+        fill(Rect{(int16_t)(sw.right() - 5 - knob), (int16_t)(sw.y + 5), knob, knob}, Color::White,
+             (uint8_t)(knob / 2));
+    } else {
+        frameRect(sw, Color::Black, 2, (uint8_t)(h / 2));
+        fill(Rect{(int16_t)(sw.x + 5), (int16_t)(sw.y + 5), knob, knob}, Color::Black, (uint8_t)(knob / 2));
+    }
+}
+
+void scrollbar(Rect track, int first, int perPage, int count) {
+    if (count <= perPage || count <= 0 || track.height < 8) return;
+    vline((int16_t)(track.x + track.width / 2), track.y, track.bottom(), Color::Black, 1);
+    int32_t thumbH = (int32_t)track.height * perPage / count;
+    if (thumbH < 16) thumbH = 16;
+    const int32_t maxFirst = count - perPage;
+    const int32_t y = track.y + (int32_t)(track.height - thumbH) * (first > maxFirst ? maxFirst : first) / maxFirst;
+    fill(Rect{(int16_t)(track.x + track.width / 2 - 2), (int16_t)y, 5, (int16_t)thumbH}, Color::Black, 2);
+}
+
+void row(Frame& f, Rect r, const char* title, const char* subtitle, const RowOpts& o, bool selected,
+         fi::ActionId action, int16_t value) {
+    fill(r, Color::White);
+    if (selected) selectionFrame(r);
+    if (action != fi::NO_ACTION) f.hit(r, action, value);
+    Rect in = insetXY(r, 16, 3);
+    const int16_t lb = lineHeight(FontBody), ls = lineHeight(FontSmall);
+
+    // Right side, from the edge inwards: chevron, switch / check, badge, value.
+    int16_t right = in.right();
+    if (o.chevron) {
+        const int16_t cw = 14;
+        text(Rect{(int16_t)(right - cw), r.y, cw, r.height}, "\xE2\x80\xBA", FontBody, Color::Black,
+             TextAlign::Right);  // U+203A
+        right = (int16_t)(right - cw - 8);
+    }
+    if (o.toggle >= 0) {
+        toggle(Rect{(int16_t)(right - 46), r.y, 46, r.height}, o.toggle > 0);
+        right = (int16_t)(right - 46 - 10);
+    } else if (o.checked) {
+        icon::check((int16_t)(right - 14), (int16_t)(r.y + (r.height - 10) / 2), Color::Black);
+        right = (int16_t)(right - 14 - 12);
+    }
+    if (o.badge && *o.badge) {
+        const int16_t bw = pillWidth(o.badge), bh = (int16_t)(ls + 4);
+        pill(Rect{(int16_t)(right - bw), (int16_t)(r.y + (r.height - bh) / 2), bw, bh}, o.badge, false, false);
+        right = (int16_t)(right - bw - 8);
+    }
+    if (o.value && *o.value) {
+        // The title keeps its room; the value takes what is left, at least 30 %
+        // and at most 55 % of the row (cut with an ellipsis beyond that).
+        const int16_t avail = (int16_t)(right - in.x);
+        const int16_t titleW = textWidth(FontBody, title);
+        int16_t maxW = (int16_t)(avail - titleW - 16);
+        if (maxW < avail * 30 / 100) maxW = (int16_t)(avail * 30 / 100);
+        if (maxW > avail * 55 / 100) maxW = (int16_t)(avail * 55 / 100);
+        int16_t vw = (int16_t)(textWidth(FontSmall, o.value) + 2);
+        if (vw > maxW) vw = maxW;
+        text(Rect{(int16_t)(right - vw), r.y, vw, r.height}, o.value, FontSmall, Color::Black, TextAlign::Right);
+        right = (int16_t)(right - vw - 12);
+    }
+
+    Rect left{in.x, in.y, (int16_t)(right - in.x), in.height};
+    const bool sub = subtitle && *subtitle && left.height >= lb + ls - 2;
+    if (!sub) {
+        text(left, title, FontBody);
+        return;
+    }
+    const int16_t top = (int16_t)(left.y + (left.height - lb - ls + 2) / 2);
+    text(Rect{left.x, top, left.width, lb}, title, FontBody);
+    text(Rect{left.x, (int16_t)(top + lb - 2), left.width, ls}, subtitle, FontSmall);
+}
 
 CardList cardList(Rect area, int count, int selected, int16_t roomyH, int16_t roomyGap) {
     CardList l{roomyH, roomyGap, 0, count};
     if (count > 0 && count * (roomyH + roomyGap) > area.height) {
-        l.gap = 4;
+        l.gap = 2;
         l.cardH = (int16_t)std::max<int>(cardMinHeight(), area.height / count - l.gap);
+        if (l.cardH > roomyH) l.cardH = roomyH;
     }
     l.perPage = std::max(1, (int)((area.height + l.gap) / (l.cardH + l.gap)));
     if (count > l.perPage) {
@@ -530,48 +685,48 @@ CardList cardList(Rect area, int count, int selected, int16_t roomyH, int16_t ro
 
 void card(Frame& f, Rect r, const char* title, const char* subtitle, const char* tag, bool selected,
           fi::ActionId action, int16_t value) {
-    const Color ink = selected ? Color::White : Color::Black;
-    if (selected) {
-        fill(r, Color::Black);
-    } else {
-        fill(r, Color::White);
-        frameRect(r, Color::Black, 1);
-    }
-    const int16_t th = lineHeight(FontTitle);
-    const int16_t sh = lineHeight(FontSmall);
-    const bool hasSub = subtitle && *subtitle;
-    // Roomy cards keep 8 px above the title; a tight one (a long list, a
-    // landscape screen) shares what is left so the second line stays inside.
-    const int16_t need = (int16_t)(th + (hasSub ? 4 + sh : 0));
-    const int16_t padY = (int16_t)std::max(1, std::min(8, (r.height - need) / 2));
-    Rect inner{(int16_t)(r.x + 12), (int16_t)(r.y + padY), (int16_t)(r.width - 24), (int16_t)(r.height - 2 * padY)};
-    int16_t tagW = 0;
-    if (tag && *tag) {
-        tagW = pillWidth(tag);
-        const int16_t ph = (int16_t)std::min<int>(sh + 6, inner.height);
-        pill(Rect{(int16_t)(inner.right() - tagW), inner.y, tagW, ph}, tag, true, selected);
-    }
-    Rect titleR{inner.x, inner.y, (int16_t)(inner.width - tagW - (tagW ? kGap : 0)), th};
-    text(titleR, title, FontTitle, ink);
-    if (hasSub) {
-        const int16_t sy = (int16_t)(inner.y + th + (r.height >= need + 16 ? 4 : 2));
-        Rect sub{inner.x, sy, inner.width, (int16_t)std::max<int>(sh, inner.bottom() - sy)};
-        text(sub, subtitle, FontSmall, ink, TextAlign::Left, 1);
-    }
-    if (action != fi::NO_ACTION) f.hit(r, action, value);
+    (void)tag;
+    row(f, r, title, subtitle, RowOpts{}, selected, action, value);
 }
 
 void progress(Frame& f, Rect r, int32_t permille) {
-    fi::ProgressBarProps p;
-    p.value = permille < 0 ? 0 : (permille > 1000 ? 1000 : permille);
-    p.max = 1000;
-    p.border = solid(Color::Black);
-    p.borderWidth = 1;
-    fi::progressBar(f, r, p);
-    // Inner fill inset by 2px so the outline stays visible.
-    if (p.value > 0 && r.width > 4 && r.height > 4) {
-        Rect in = insetXY(r, 2, 2);
-        fill(Rect{in.x, in.y, (int16_t)((int32_t)in.width * p.value / 1000), in.height}, Color::Black);
+    (void)f;
+    if (permille < 0) permille = 0;
+    if (permille > 1000) permille = 1000;
+    // A thin rule with the part read drawn thick over it.
+    const int16_t barH = (int16_t)std::min<int>(5, r.height);
+    const int16_t y = (int16_t)(r.y + (r.height - barH) / 2);
+    hline(r.x, r.right(), (int16_t)(y + barH / 2), Color::Black, 1);
+    const int16_t w = (int16_t)((int32_t)r.width * permille / 1000);
+    if (w > 0) fill(Rect{r.x, y, w, barH}, Color::Black);
+}
+
+void chapterBar(Rect r, int done, int total) {
+    // Solid, without notches (the book's bar has one at each chapter).
+    if (total <= 0) return;
+    if (done < 0) done = 0;
+    if (done > total) done = total;
+    hline(r.x, r.right(), (int16_t)(r.y + r.height / 2), Color::Black, 1);
+    const int16_t w = (int16_t)((int32_t)r.width * done / total);
+    if (w > 0) fill(Rect{r.x, r.y, w, r.height}, Color::Black);
+}
+
+void bookBar(Rect r, int32_t permille, const uint16_t* ticks, int count) {
+    if (permille < 0) permille = 0;
+    if (permille > 1000) permille = 1000;
+    const int16_t h = r.height;
+    const int16_t midY = (int16_t)(r.y + h / 2);
+    hline(r.x, r.right(), midY, Color::Black, 1);
+    const int16_t w = (int16_t)((int32_t)r.width * permille / 1000);
+    if (w > 0) fill(Rect{r.x, r.y, w, h}, Color::Black);
+    // Chapter starts: a white cut in the part read, a notch above and below the line elsewhere.
+    for (int i = 0; i < count; i++) {
+        if (ticks[i] == 0 || ticks[i] >= 1000) continue;
+        const int16_t x = (int16_t)(r.x + (int32_t)r.width * ticks[i] / 1000);
+        if (x < r.x + w)
+            vline(x, r.y, (int16_t)(r.y + h), Color::White, 1);
+        else
+            vline(x, (int16_t)(r.y - 1), (int16_t)(r.y + h + 1), Color::Black, 1);
     }
 }
 
@@ -579,14 +734,15 @@ Rect modalPanel(const char* title, int16_t w, int16_t h) {
     if (w > width() - 2 * kMargin) w = (int16_t)(width() - 2 * kMargin);
     if (h > height() - 2 * kMargin) h = (int16_t)(height() - 2 * kMargin);
     Rect box{(int16_t)((width() - w) / 2), (int16_t)((height() - h) / 2), w, h};
-    fill(Rect{(int16_t)(box.x + 6), (int16_t)(box.y + 6), w, h}, Color::Black);  // drop shadow
-    fill(box, Color::White);
-    frameRect(box, Color::Black, 2);
+    // A white margin round the panel keeps it apart from the screen under it.
+    fill(insetXY(box, -6, -6), Color::White, (uint8_t)(kRadius + 6));
+    fill(box, Color::White, kRadius);
+    frameRect(box, Color::Black, 2, kRadius);
     Rect area = box.inset(fi::Insets{2, 2, 2, 2});
     const int16_t bandH = (int16_t)(lineHeight(FontTitle) + 14);
     Rect band = takeTop(area, bandH);
-    fill(band, Color::Black);
-    text(insetX(band, 14), title, FontTitle, Color::White);
+    text(insetX(band, 18), title, FontTitle, Color::Black, TextAlign::Center);
+    hline((int16_t)(box.x + 16), (int16_t)(box.right() - 16), (int16_t)(band.bottom() - 1));
     return insetXY(area, 18, 10);
 }
 
@@ -664,6 +820,86 @@ void signal(int16_t x, int16_t y, int bars, Color c) {
         else
             frameRect(r, c);
     }
+}
+
+void wifi(int16_t x, int16_t y, Color c) {
+    // A quarter fan: two arcs and a dot, cut to 90 degrees.
+    fi::DisplayTarget& t = target();
+    const Rect oldClip = t.clipRect();
+    const int16_t cx = (int16_t)(x + 11), cy = (int16_t)(y + 16);
+    t.setClipRect(Rect{x, y, 22, (int16_t)(16 - 1)});
+    t.stroke(Rect{(int16_t)(cx - 15), (int16_t)(cy - 15), 30, 30}, solid(c), 2, 15);
+    t.stroke(Rect{(int16_t)(cx - 9), (int16_t)(cy - 9), 18, 18}, solid(c), 2, 9);
+    t.setClipRect(oldClip);
+    const Color paper = inverse(c);
+    t.triangle(fi::Point{cx, cy}, fi::Point{(int16_t)(cx - 17), (int16_t)(cy - 17)},
+               fi::Point{(int16_t)(cx - 17), (int16_t)(cy + 1)}, solid(paper));
+    t.triangle(fi::Point{cx, cy}, fi::Point{(int16_t)(cx + 17), (int16_t)(cy - 17)},
+               fi::Point{(int16_t)(cx + 17), (int16_t)(cy + 1)}, solid(paper));
+    fill(Rect{(int16_t)(cx - 2), (int16_t)(cy - 4), 5, 5}, c, 2);
+}
+
+namespace {
+// Scale v (in a 48-unit design grid) to the box.
+inline int16_t sc(Rect b, int v) { return (int16_t)(v * std::min(b.width, b.height) / 48); }
+inline fi::Point pt(Rect b, int x, int y) {
+    const int16_t s = (int16_t)std::min(b.width, b.height);
+    const int16_t ox = (int16_t)(b.x + (b.width - s) / 2), oy = (int16_t)(b.y + (b.height - s) / 2);
+    return fi::Point{(int16_t)(ox + x * s / 48), (int16_t)(oy + y * s / 48)};
+}
+inline Rect rc(Rect b, int x, int y, int w, int h) {
+    const fi::Point p = pt(b, x, y);
+    return Rect{p.x, p.y, sc(b, w), sc(b, h)};
+}
+}  // namespace
+
+// A Material Symbols icon (ui_icons.h): the largest of its sizes that fits, centred.
+void bitmapIcon(Rect b, const icons::IconSize* set, Color c) {
+    const icons::IconSize* pick = &set[0];
+    for (int i = 0; i < icons::kIconSizeCount; i++)
+        if (set[i].size <= std::min(b.width, b.height)) pick = &set[i];
+    const int16_t s = pick->size;
+    target().bitmap(Rect{(int16_t)(b.x + (b.width - s) / 2), (int16_t)(b.y + (b.height - s) / 2), s, s},
+                    fi::BitmapRef{pick->bits, s, s, fi::BitmapFormat::BW1}, fi::BitmapMode::Center, solid(c));
+}
+
+void folderLarge(Rect b, Color c) {
+    const uint8_t w = (uint8_t)std::max<int>(2, sc(b, 3));
+    // Tab, then the body.
+    frameRect(rc(b, 4, 10, 18, 10), c, w, (uint8_t)sc(b, 3));
+    fill(rc(b, 5, 16, 38, 8), inverse(c));
+    frameRect(rc(b, 4, 15, 40, 26), c, w, (uint8_t)sc(b, 4));
+}
+
+void syncLarge(Rect b, Color c) { bitmapIcon(b, icons::kSync, c); }
+
+void menuBook(Rect b, Color c) { bitmapIcon(b, icons::kMenuBook, c); }
+
+void cloudOutline(Rect b, Color c) { bitmapIcon(b, icons::kCloud, c); }
+
+void settings(Rect b, Color c) { bitmapIcon(b, icons::kSettings, c); }
+
+void cloudLarge(Rect b, Color c) {
+    // Two bumps over a flat base, outlined.
+    const uint8_t w = (uint8_t)std::max<int>(2, sc(b, 3));
+    fill(rc(b, 12, 12, 20, 20), c, (uint8_t)sc(b, 10));
+    fill(rc(b, 24, 18, 16, 16), c, (uint8_t)sc(b, 8));
+    fill(rc(b, 6, 22, 38, 16), c, (uint8_t)sc(b, 8));
+    const int16_t k = w;
+    Rect a1 = rc(b, 12, 12, 20, 20), a2 = rc(b, 24, 18, 16, 16), a3 = rc(b, 6, 22, 38, 16);
+    fill(insetXY(a1, k, k), inverse(c), (uint8_t)std::max(0, sc(b, 10) - k));
+    fill(insetXY(a2, k, k), inverse(c), (uint8_t)std::max(0, sc(b, 8) - k));
+    fill(insetXY(a3, k, k), inverse(c), (uint8_t)std::max(0, sc(b, 8) - k));
+}
+
+void bookOutline(Rect b, Color c) {
+    // A book seen from the front: cover, the page block below, a letter on it.
+    const uint8_t w = 2;
+    frameRect(rc(b, 10, 4, 28, 34), c, w, 2);
+    frameRect(rc(b, 10, 36, 28, 8), c, w, 2);
+    target().line(pt(b, 17, 28), pt(b, 24, 11), w, solid(c));
+    target().line(pt(b, 24, 11), pt(b, 31, 28), w, solid(c));
+    target().line(pt(b, 20, 22), pt(b, 28, 22), w, solid(c));
 }
 
 }  // namespace icon

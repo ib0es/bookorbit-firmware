@@ -335,6 +335,22 @@ void AppController::loop() {
         _autoRotate.reset();
     }
 
+    // The status line of the screens shows the time in the configured zone; the
+    // home screen (where the device idles) is redrawn when the minute turns.
+    uikit::setClockOffset(_ctx.config.utcOffsetMin);
+    if (_ctx.currentState == STATE_HOME && !Modal.isActive() && !SyncService::backgroundActive() &&
+        SyncClock::isSet()) {
+        const uint32_t nowMs = millis();
+        if (nowMs - _lastHomeClockCheckMs >= 1000) {
+            _lastHomeClockCheckMs = nowMs;
+            const int32_t curMin = SyncClock::currentLocalMinute(_ctx.config.utcOffsetMin);
+            if (_lastHomeClockMinute >= 0 && curMin >= 0 && curMin != _lastHomeClockMinute) redrawCurrentScreen(false);
+            _lastHomeClockMinute = curMin;
+        }
+    } else {
+        _lastHomeClockMinute = -1;
+    }
+
     // Refresh reader status bar on minute boundaries when the clock is enabled.
     if (_ctx.currentState == STATE_READING && _ctx.config.sbClock && !Modal.isActive() &&
         !SyncService::backgroundActive()) {

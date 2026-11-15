@@ -49,7 +49,7 @@ void drawSleepScreen(const SleepScreen& s) {
 
     if (!drewCover) {
         Rect box{30, (int16_t)(H / 2 - 160), (int16_t)(W - 60), 320};
-        frameRect(box, Color::Black, 2);
+        frameRect(box, Color::Black, 2, kRadius);
         Rect in = insetXY(box, 20, 30);
         text(takeTop(in, (int16_t)(lineHeight(FontLarge) + 8)), deviceDisplayName(), FontLarge, Color::Black,
              TextAlign::Center);

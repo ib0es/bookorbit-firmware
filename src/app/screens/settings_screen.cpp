@@ -28,6 +28,7 @@
 #include "../../ui/i18n.h"
 #include "../../services/usb_msc_session.h"
 #include "../../ui/actions.h"
+#include "choices.h"
 #include "../../core/bookorbit_protocol.h"
 #include "../../ui/text_utils.h"
 #include "../../ui/wifi_messages.h"
@@ -123,25 +124,10 @@ void executeSetting(AppContext& ctx, int index) {
         drawReadingSettingsScreen(ctx, false);
         return;
     }
-    if (index == orientationSettingIndex()) {
-        // Cycle: (when IMU present) Auto -> Portrait -> Landscape -> Portrait flipped -> Landscape flipped -> Auto
-        if (BoardImu.present()) {
-            if (ctx.config.autoRotate) {
-                ctx.config.autoRotate = false;
-                ctx.config.uiOrientation = 0;
-            } else if ((ctx.config.uiOrientation & 3) == 3) {
-                ctx.config.autoRotate = true;
-            } else {
-                ctx.config.uiOrientation = (ctx.config.uiOrientation + 1) & 3;
-            }
-            BoardImu.setActive(ctx.config.autoRotate);
-            AppController::getInstance().resetAutoRotate();
-        } else {
-            ctx.config.uiOrientation = (ctx.config.uiOrientation + 1) & 3;
-        }
-        ctx.config.save();
-        applyOrientation(ctx.config.uiOrientation, ctx.config.orientation);   // the book's pages turn with it
-        drawSettingsScreen(ctx, true);
+    if (index == orientationSettingIndex()) {   // a list of its own, the one in use selected
+        ctx.selectedOrientationIndex = orientationChoiceActive(ctx.config);
+        ctx.currentState = STATE_ORIENTATION_SETTINGS;
+        drawOrientationSettingsScreen(ctx, false);
         return;
     }
     switch (index) {
@@ -472,6 +458,26 @@ void executeSleepCoverSetting(AppContext& ctx, int index) {
     updateSleepCoverSettingsItem(ctx, index);
 }
 
+// ---------------------------------------------------------------- screen orientation
+// Choices: (with a motion sensor) Auto, then Portrait, Landscape, Portrait
+// flipped, Landscape flipped. The screen turns at once, the list stays open.
+void executeOrientationSetting(AppContext& ctx, int index) {
+    const bool imu = BoardImu.present();
+    if (imu && index == 0) {
+        ctx.config.autoRotate = true;
+    } else {
+        ctx.config.autoRotate = false;
+        ctx.config.uiOrientation = (index - (imu ? 1 : 0)) & 3;
+    }
+    if (imu) {
+        BoardImu.setActive(ctx.config.autoRotate);
+        AppController::getInstance().resetAutoRotate();
+    }
+    ctx.config.save();
+    applyOrientation(ctx.config.uiOrientation, ctx.config.orientation);   // the book's pages turn with it
+    drawOrientationSettingsScreen(ctx, true);
+}
+
 // ---------------------------------------------------------------- USB MSC settings
 void executeUsbMscSetting(AppContext& ctx, int index) {
     if (index == 0) {
@@ -495,6 +501,9 @@ void executeUsbMscSetting(AppContext& ctx, int index) {
     }
 }
 
+// The rows are grouped in sections: a place in the list -> the item there.
+void executeSettingAt(AppContext& ctx, int pos) { executeSetting(ctx, settingsItemAt(pos)); }
+
 void exitUsbMscScreen(AppContext& ctx) {
     UsbMscSession::exit(ctx);
     if (ctx.currentState == STATE_USB_MSC) {
@@ -508,7 +517,7 @@ void exitUsbMscScreen(AppContext& ctx) {
 namespace SettingsScreen {
 
 void handleSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
-    handleMenu(ctx, event, ctx.selectedSettingIndex, settingsItemCount(), updateSettingsSelection, executeSetting,
+    handleMenu(ctx, event, ctx.selectedSettingIndex, settingsItemCount(), updateSettingsSelection, executeSettingAt,
                STATE_HOME, drawHomeScreen, false);
 }
 
@@ -598,6 +607,8 @@ void handleReadingSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
                 ctx.selectedStatusBarIndex = 0;
                 ctx.currentState = STATE_STATUSBAR_MENU;
                 drawStatusBarScreen(ctx, false);
+            } else if (row == Appearance::FULL_REFRESH && key == Action::Select) {
+                SettingsScreen::openChoice(ctx, Choices::FULL_REFRESH);   // LEFT / RIGHT still step it
             } else if (Appearance::step(ctx.config, row, key == Action::Less ? -1 : 1)) {
                 drawReadingSettingsScreen(ctx, false);
             }
@@ -613,6 +624,89 @@ void handleReadingSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
         default:
             break;
     }
+}
+
+void openChoice(AppContext& ctx, int kind) {
+    ctx.choiceKind = kind;
+    ctx.selectedChoiceIndex = Choices::active(ctx.config, kind);
+    ctx.currentState = STATE_CHOICE;
+    drawChoiceScreen(ctx, false);
+}
+
+// The list stays open with the check moved; BACK returns to where it was opened.
+void handleChoiceEvent(AppContext& ctx, const ButtonEvent& event) {
+    if (event.action != ACTION_CLICK) return;
+    const int kind = ctx.choiceKind;
+    const int n = Choices::count(kind);
+    int& sel = ctx.selectedChoiceIndex;
+    switch (Actions::of(event)) {
+        case Action::Down:
+            sel = (sel + 1) % n;
+            drawChoiceScreen(ctx, false);
+            break;
+        case Action::Up:
+            sel = (sel - 1 + n) % n;
+            drawChoiceScreen(ctx, false);
+            break;
+        case Action::Select:
+        case Action::Next:
+            Choices::apply(ctx.config, kind, sel);
+            ctx.config.save();
+            drawChoiceScreen(ctx, false);
+            break;
+        case Action::Back:
+        case Action::Prev:
+            ctx.currentState = Choices::parent(kind);
+            if (ctx.currentState == STATE_READING_SETTINGS)
+                drawReadingSettingsScreen(ctx, false);
+            else
+                drawStatusBarScreen(ctx, false);
+            break;
+        default:
+            break;
+    }
+}
+
+namespace {
+void flipSbBottomItem(AppContext& ctx, int index) {
+    ctx.config.sbBottomItems ^= sbBottomItemAt(index);
+    ctx.config.save();
+    drawSbBottomScreen(ctx, false);
+}
+void backToStatusBar(AppContext& ctx) {
+    ctx.currentState = STATE_STATUSBAR_MENU;
+    drawStatusBarScreen(ctx, false);
+}
+}  // namespace
+
+void handleSbBottomEvent(AppContext& ctx, const ButtonEvent& event) {
+    if (event.action != ACTION_CLICK) return;
+    int& sel = ctx.selectedSbBottomIndex;
+    switch (Actions::of(event)) {
+        case Action::Down:
+            sel = (sel + 1) % NUM_SB_BOTTOM_ITEMS;
+            drawSbBottomScreen(ctx, false);
+            break;
+        case Action::Up:
+            sel = (sel - 1 + NUM_SB_BOTTOM_ITEMS) % NUM_SB_BOTTOM_ITEMS;
+            drawSbBottomScreen(ctx, false);
+            break;
+        case Action::Select:
+        case Action::Next:
+            flipSbBottomItem(ctx, sel);
+            break;
+        case Action::Back:
+        case Action::Prev:
+            backToStatusBar(ctx);
+            break;
+        default:
+            break;
+    }
+}
+
+void handleOrientationSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
+    handleMenu(ctx, event, ctx.selectedOrientationIndex, orientationChoiceCount(), updateOrientationSettingsSelection,
+               executeOrientationSetting, STATE_SETTINGS, drawSettingsScreen, false);
 }
 
 void handleSleepCoverSettingsEvent(AppContext& ctx, const ButtonEvent& event) {

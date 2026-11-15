@@ -56,6 +56,12 @@ void handleServerSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleSyncSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleReadingSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleSleepCoverSettingsEvent(AppContext& ctx, const ButtonEvent& event);
+void handleOrientationSettingsEvent(AppContext& ctx, const ButtonEvent& event);
+// A setting with a few values as a list (Choices); opened by openChoice().
+void handleChoiceEvent(AppContext& ctx, const ButtonEvent& event);
+void openChoice(AppContext& ctx, int kind);
+// Status bar -> Bottom: its items as switches (OK flips one), a preview below.
+void handleSbBottomEvent(AppContext& ctx, const ButtonEvent& event);
 void handleLanguageSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleSdSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleUsbMscSettingsEvent(AppContext& ctx, const ButtonEvent& event);

@@ -69,7 +69,7 @@ void drawHeaderBand(Rect& area, int stepNo, TextAlign titleAlign, const char* ti
         snprintf(badge, sizeof(badge), tr(MsgId::WEB_STEP_BADGE_FMT), stepNo);
         const int16_t bw = std::min<int16_t>((int16_t)(row.width * 2 / 3), (int16_t)(textWidth(FontSmall, badge) + 20));
         Rect pillRect{row.x, row.y, bw, row.height};
-        fill(pillRect, Color::Black, 4);
+        fill(pillRect, Color::Black, kRadiusSmall);
         text(pillRect, badge, FontSmall, Color::White, TextAlign::Center);
 
         char counter[12];
@@ -91,7 +91,7 @@ void drawHeaderBand(Rect& area, int stepNo, TextAlign titleAlign, const char* ti
 }
 
 void drawNavButton(Frame& f, Rect btn, const char* label, int targetPage) {
-    fill(btn, Color::Black, 4);
+    fill(btn, Color::Black, kRadius);
     text(btn, label, FontBody, Color::White, TextAlign::Center);
     f.hit(btn, kActionNav, (int16_t)targetPage);
 }
@@ -183,7 +183,7 @@ void drawPortalScreen(const char* apSsid, const char* apPass, const char* url, i
     area = keyHints(f, area, keys);
 
     area = insetXY(area, kMargin, 10);
-    frameRect(area, Color::Black, 2);
+    frameRect(area, Color::Black, 2, kRadius);
     Rect in = insetXY(area, 14, 12);
 
     const char* ssid = (apSsid && *apSsid) ? apSsid : "BookOrbit-Config";

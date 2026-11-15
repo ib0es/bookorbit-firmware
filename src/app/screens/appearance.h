@@ -29,6 +29,7 @@ enum Row : int {
     UPDOWN_KEYS,    // UP / DOWN while reading: chapters or pages
     STATUS_BAR,     // opens the status bar menu
     AUTO_ROTATE,    // boards with a motion sensor only: the last row (U3)
+    MORE,           // "More": opens the second page of the book's Appearance
     COUNT
 };
 
@@ -36,8 +37,10 @@ enum Row : int {
 // orientation). The device-wide ones (status bar, full refresh, pictures,
 // UP/DOWN keys) live in Settings -> Reading; auto-rotate in Settings ->
 // Screen orientation.
-int count();
-int rowAt(int index);   // the Row shown at `index`
+// Two pages: 0 the settings changed most (typeface, size, line spacing,
+// margins, alignment, orientation, "More"), 1 the rest (AppContext::appearancePage).
+int count(int page = 0);
+int rowAt(int index, int page = 0);   // the Row shown at `index`
 
 // Settings -> Reading: the reading rows that are not about one book's page.
 namespace Reading {
@@ -48,6 +51,8 @@ int rowAt(int index);
 const char* label(int row);
 // The value as shown (in `buf`).
 const char* value(const AppConfig& cfg, int row, char* buf, size_t len);
+// An on / off row: 0 or 1 (drawn as a switch); -1 for the rows with other values.
+int toggleState(const AppConfig& cfg, int row);
 // One step up (dir > 0) or down; false for rows that open a list instead.
 bool step(AppConfig& cfg, int row, int dir);
 

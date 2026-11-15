@@ -11,23 +11,24 @@ using namespace uikit;
 
 namespace {
 
-enum HomeAction : fi::ActionId { ActionContinue = 1, ActionCategory, ActionSync };
+enum HomeAction : fi::ActionId { ActionContinue = 1, ActionCategory };
 
-// Featured "continue reading" card: cover on the left, title, author, progress.
+// Featured "continue reading" card: cover on the left; on the right what it is
+// (and which of the recent books), title, author, and at the foot the pages
+// read and the progress line.
 void drawFeatured(Frame& f, Rect card, AppContext& ctx, const RecentBookInfo& book, int index, int total) {
     const bool selected = (ctx.selectedHomeIndex == 0);
-    if (selected) {
-        frameRect(insetXY(card, -4, -4), Color::Black, 2);
-    }
+    if (selected)
+        selectionFrame(card);
+    else
+        frameRect(card, Color::Black, 1, kRadius);
     f.hit(card, ActionContinue);
 
-    const int16_t indicatorH = (int16_t)(lineHeight(FontSmall) + 8);
-    const int16_t coverH = (int16_t)(card.height - indicatorH);
-    // At most half the card: in landscape the card is narrow and tall, and the
-    // text column beside the cover had no room left (the cover is cropped to fit).
-    const int16_t coverW = (int16_t)std::min<int>(coverH * 2 / 3 + 4, card.width / 2);
-    Rect cover{card.x, card.y, coverW, coverH};
-    frameRect(cover, Color::Black);
+    Rect in = insetXY(card, 16, 16);
+    // At most 40 % of the card: in landscape the card is narrow and tall, and the
+    // text column beside the cover would have no room (the cover is cropped to fit).
+    const int16_t coverW = (int16_t)std::min<int>(in.height * 2 / 3, in.width * 2 / 5);
+    Rect cover{in.x, in.y, coverW, in.height};
 
     bool coverDrawn = false;
     // P4: book.coverPath is LibraryManager::recentCover()'s answer, kept until the
@@ -35,54 +36,84 @@ void drawFeatured(Frame& f, Rect card, AppContext& ctx, const RecentBookInfo& bo
     // again (about 12 file checks) at every key press.
     const String& covPath = book.coverPath;
     if (covPath.length() > 0) {
-        coverDrawn = JpegViewer::drawCover(covPath.c_str(), cover.x + 1, cover.y + 1, cover.width - 2, cover.height - 2,
-                                           COVER_FIT_CROP);
+        coverDrawn =
+                JpegViewer::drawCover(covPath.c_str(), cover.x, cover.y, cover.width, cover.height, COVER_FIT_CROP);
     }
     if (!coverDrawn) {
-        JpegViewer::drawCoverPlaceholder(book.title.c_str(), book.author.c_str(), cover.x + 1, cover.y + 1,
-                                         cover.width - 2, cover.height - 2);
+        JpegViewer::drawCoverPlaceholder(book.title.c_str(), book.author.c_str(), cover.x, cover.y, cover.width,
+                                         cover.height);
     }
 
-    char carBuf[32];
-    if (total > 0)
-        snprintf(carBuf, sizeof(carBuf), tr(MsgId::HOME_CAROUSEL_FMT), index + 1, total);
-    else
-        snprintf(carBuf, sizeof(carBuf), "%s", tr(MsgId::HOME_CAROUSEL_EMPTY));
-    text(Rect{cover.x, (int16_t)(cover.bottom() + 4), cover.width, (int16_t)(indicatorH - 4)}, carBuf, FontSmall,
-         Color::Black, TextAlign::Center);
-
-    // Text column.
-    Rect info{(int16_t)(cover.right() + 18), card.y, (int16_t)(card.right() - cover.right() - 18), card.height};
+    Rect info{(int16_t)(cover.right() + 18), in.y, (int16_t)(in.right() - cover.right() - 18), in.height};
     const int16_t smallH = lineHeight(FontSmall);
-    Rect top = takeTop(info, (int16_t)(smallH + 10));
-    const char* readLabel = tr(MsgId::HOME_READ_BTN);
-    const int16_t btnW = (int16_t)(pillWidth(readLabel) + 16);
-    if (selected) {
-        Rect btn{(int16_t)(top.right() - btnW), top.y, btnW, (int16_t)(smallH + 8)};
-        fill(btn, Color::Black, 4);
-        text(btn, readLabel, FontSmall, Color::White, TextAlign::Center);
+    Rect top = takeTop(info, smallH);
+    if (total > 1) {
+        // Which of the recent books (LEFT / RIGHT step through them).
+        char car[24];
+        snprintf(car, sizeof(car), "%d/%d", index + 1, total);
+        const int16_t cw = (int16_t)(textWidth(FontSmall, car) + 4);
+        text(Rect{(int16_t)(top.right() - cw), top.y, cw, top.height}, car, FontSmall, Color::Black, TextAlign::Right);
+        top.width = (int16_t)(top.width - cw - kGap);
     }
-    text(Rect{top.x, top.y, (int16_t)(top.width - btnW - kGap), top.height}, tr(MsgId::HOME_READING_NOW), FontSmall);
+    text(top, tr(total > 0 ? MsgId::HOME_CONTINUE : MsgId::HOME_READING_NOW), FontSmall);
 
-    takeTop(info, 4);
+    takeTop(info, 8);
     const int16_t titleH = wrappedHeight(book.title.c_str(), FontTitle, info.width, 3);
     text(takeTop(info, titleH), book.title.c_str(), FontTitle, Color::Black, TextAlign::Left, 3);
     if (book.author.length() > 0) {
-        takeTop(info, 6);
-        const int16_t authorH = wrappedHeight(book.author.c_str(), FontBody, info.width, 2);
-        text(takeTop(info, authorH), book.author.c_str(), FontBody, Color::Black, TextAlign::Left, 2);
+        takeTop(info, 4);
+        const int16_t authorH = wrappedHeight(book.author.c_str(), FontSmall, info.width, 2);
+        text(takeTop(info, authorH), book.author.c_str(), FontSmall, Color::Black, TextAlign::Left, 2);
     }
 
-    // Progress bar + percentage at the bottom of the text column.
-    const int16_t barH = 14;
+    if (total == 0) return;
+    // Foot: "Read p / n" and the percentage, the progress line under them.
+    Rect bar = takeBottom(info, 6);
+    takeBottom(info, 6);
+    Rect foot = takeBottom(info, smallH);
     char pct[16];
     snprintf(pct, sizeof(pct), "%d%%", (int)roundf(book.progress * 100.0f));
-    const int16_t pctW = (int16_t)(textWidth(FontBody, "100%") + 6);
-    Rect barRow{info.x, (int16_t)(card.bottom() - indicatorH - barH - 6), info.width, (int16_t)(barH + 6)};
-    progress(f, Rect{barRow.x, (int16_t)(barRow.y + 3), (int16_t)(barRow.width - pctW - kGap), barH},
-             (int32_t)(book.progress * 1000.0f));
-    text(Rect{(int16_t)(barRow.right() - pctW), barRow.y, pctW, barRow.height}, pct, FontBody, Color::Black,
+    const int16_t pctW = (int16_t)(textWidth(FontSmall, pct) + 4);
+    text(Rect{(int16_t)(foot.right() - pctW), foot.y, pctW, foot.height}, pct, FontSmall, Color::Black,
          TextAlign::Right);
+    if (book.totalPages > 1) {
+        char pages[48];
+        snprintf(pages, sizeof(pages), tr(MsgId::HOME_PAGES_FMT), book.page, book.totalPages);
+        text(Rect{foot.x, foot.y, (int16_t)(foot.width - pctW - kGap), foot.height}, pages, FontSmall);
+    }
+    progress(f, bar, (int32_t)(book.progress * 1000.0f));
+}
+
+struct Tile {
+    int index;   // home index
+    MsgId label;
+    void (*draw)(Rect, Color);
+    int count;   // shown in the corner; < 0: none
+};
+
+// A tile: a rounded square with the icon, the label under it.
+void drawTile(Frame& f, Rect cell, const Tile& t, bool selected) {
+    const int16_t lb = lineHeight(FontBody);
+    const int16_t side = (int16_t)std::min<int>(cell.width, cell.height - lb - 8);
+    Rect box{(int16_t)(cell.x + (cell.width - side) / 2), cell.y, side, side};
+    if (selected)
+        selectionFrame(box);
+    else
+        frameRect(box, Color::Black, 1, kRadius);
+    const int16_t is = (int16_t)(side * 46 / 100);
+    t.draw(Rect{(int16_t)(box.x + (side - is) / 2), (int16_t)(box.y + (side - is) / 2), is, is}, Color::Black);
+    if (t.count >= 0) {
+        char n[12];
+        snprintf(n, sizeof(n), "%d", t.count);
+        text(Rect{(int16_t)(box.x + 8), (int16_t)(box.y + 6), (int16_t)(side - 16), lineHeight(FontSmall)}, n,
+             FontSmall, Color::Black, TextAlign::Right);
+    }
+    const char* label = tr(t.label);
+    Rect lr{(int16_t)(cell.x - 6), (int16_t)(box.bottom() + 6), (int16_t)(cell.width + 12), lb};
+    // A long label (Russian, Spanish) in the small font rather than cut.
+    const fi::FontId font = textWidth(FontBody, label) <= lr.width ? FontBody : FontSmall;
+    text(lr, label, font, Color::Black, TextAlign::Center);
+    f.hit(Rect{cell.x, cell.y, cell.width, (int16_t)(lr.bottom() - cell.y)}, ActionCategory, (int16_t)t.index);
 }
 
 }  // namespace
@@ -105,14 +136,8 @@ void drawHomeScreen(AppContext& ctx, bool fullRefresh) {
         keys.right = sel == 0 ? "\xE2\x96\xB6" : tr(MsgId::KEY_OPEN);
         area = keyHints(f, area, keys);
     }
-    area = insetX(area, kMargin);
+    area = insetXY(area, kMargin + 6, 6);
 
-    // Breadcrumb.
-    takeTop(area, 4);
-    text(takeTop(area, (int16_t)(lineHeight(FontSmall) + 6)), tr(MsgId::HOME_SUBHEADER_ALL), FontSmall);
-    takeTop(area, 8);
-
-    // Featured card.
     auto& lib = LibraryManager::getInstance();
     std::vector<RecentBookInfo> rBooks = lib.getRecentBooks();
     if (lib.recentBookIndex >= (int)rBooks.size()) lib.recentBookIndex = 0;
@@ -124,76 +149,42 @@ void drawHomeScreen(AppContext& ctx, bool fullRefresh) {
         curBook.author = tr(MsgId::HOME_EMPTY_HINT);
         curBook.progress = 0.0f;
     }
-    // Portrait: the book card on top, the rows under it. Landscape (the screen
-    // turned): the card on the left, the rows on the right; stacked, the rows
-    // fell off the bottom of the screen and could not be reached.
+
+    const Tile tiles[4] = {
+            {1, MsgId::HOME_TILE_CATALOG, icon::cloudOutline, lib.getCounts().total},
+            {2, MsgId::HOME_TILE_OFFLINE, icon::menuBook, lib.offlineCount()},
+            {3, MsgId::HOME_TILE_SYNC, icon::syncLarge, -1},
+            {4, MsgId::HOME_CAT_SETTINGS, icon::settings, -1},
+    };
+
+    // Portrait: the book card on top, three tiles a row under it. Landscape (the
+    // screen turned): the card on the left, the tiles two a row on the right.
     const bool landscape = width() > height();
+    Rect grid;
+    int cols;
     if (landscape) {
-        const int16_t cardW = (int16_t)(area.width * 56 / 100);
-        Rect cardArea{area.x, area.y, cardW, (int16_t)(area.height - 8)};
-        drawFeatured(f, cardArea, ctx, curBook, lib.recentBookIndex, (int)rBooks.size());
-        const int16_t gap = 18;
-        vline((int16_t)(area.x + cardW + gap / 2), area.y, (int16_t)(area.bottom() - 8));
-        area = Rect{(int16_t)(area.x + cardW + gap), area.y, (int16_t)(area.width - cardW - gap), area.height};
+        const int16_t cardW = (int16_t)(area.width * 55 / 100);
+        drawFeatured(f, Rect{area.x, area.y, cardW, area.height}, ctx, curBook, lib.recentBookIndex,
+                     (int)rBooks.size());
+        grid = Rect{(int16_t)(area.x + cardW + 24), area.y, (int16_t)(area.width - cardW - 24), area.height};
+        cols = 2;
     } else {
-        const int16_t cardH = (int16_t)(230 + lineHeight(FontSmall) + 8);
+        const int16_t cardH = (int16_t)std::min<int>(area.height * 42 / 100, 300);
         drawFeatured(f, takeTop(area, cardH), ctx, curBook, lib.recentBookIndex, (int)rBooks.size());
-        takeTop(area, 10);
+        takeTop(area, 22);
+        grid = area;
+        cols = 3;
     }
-    hline(area.x, area.right(), area.y);
-    takeTop(area, 6);
-
-    // Categories: Catalog, Offline Library, Settings
-    fi::ListItem items[3];
-    char bookCountBuf[16];
-    snprintf(bookCountBuf, sizeof(bookCountBuf), "%d", lib.getCounts().total);
-    char offlineCountBuf[16];
-    snprintf(offlineCountBuf, sizeof(offlineCountBuf), "%d", lib.offlineCount());
-
-    items[0].label = tr(MsgId::HOME_CAT_CATALOG);
-    items[0].value = bookCountBuf;
-    items[0].actionValue = 1;
-
-    items[1].label = tr(MsgId::HOME_CAT_OFFLINE);
-    items[1].value = offlineCountBuf;
-    items[1].actionValue = 2;
-
-    items[2].label = tr(MsgId::HOME_CAT_SETTINGS);
-    items[2].value = tr(MsgId::HOME_CAT_SETTINGS_SUB);
-    items[2].actionValue = 3;
-
-    int16_t rowH = (int16_t)((area.height - 20 - 4 * 4) / 4);
-    const int16_t minRow = (int16_t)(lineHeight(FontBody) + 14), maxRow = (int16_t)(lineHeight(FontBody) + 34);
-    if (rowH < minRow) rowH = minRow;
-    if (rowH > maxRow) rowH = maxRow;
-
-    fi::ListProps lp;
-    lp.items = items;
-    lp.count = 3;
-    lp.selectedIndex = (ctx.selectedHomeIndex >= 1 && ctx.selectedHomeIndex <= 3) ? ctx.selectedHomeIndex - 1 : -1;
-    lp.action = ActionCategory;
-    lp.rowHeight = rowH;
-    lp.rowGap = 4;
-    lp.sidePadding = 12;
-    lp.labelText = style(FontBody);
-    lp.valueText = style(FontBody, Color::Black, TextAlign::Right);
-    lp.scrollIndicator = false;
-    fi::list(f, takeTop(area, (int16_t)(3 * (rowH + 4))), lp);
-
-    takeTop(area, 4);
-    hline(area.x, area.right(), area.y);
-    takeTop(area, 6);
-
-    // Sync row.
-    Rect sync = takeTop(area, rowH);
-    const bool syncSel = (ctx.selectedHomeIndex == 4);
-    const Color ink = syncSel ? Color::White : Color::Black;
-    if (syncSel) fill(sync, Color::Black);
-    text(insetX(sync, 12), tr(MsgId::HOME_SYNC_NOW), FontBody, ink);
-    icon::sync((int16_t)(sync.right() - 12 - 20), (int16_t)(sync.y + (sync.height - 20) / 2), ink);
-    f.hit(sync, ActionSync);
-    takeTop(area, 6);
-    hline(area.x, area.right(), area.y);
+    const int16_t gap = 18;
+    const int16_t cellW = (int16_t)((grid.width - (cols - 1) * gap) / cols);
+    const int rows = (4 + cols - 1) / cols;
+    const int16_t cellH =
+            (int16_t)std::min<int>(cellW + lineHeight(FontBody) + 8, (grid.height - (rows - 1) * gap) / rows);
+    for (int i = 0; i < 4; i++) {
+        const int r = i / cols, c = i % cols;
+        Rect cell{(int16_t)(grid.x + c * (cellW + gap)), (int16_t)(grid.y + r * (cellH + gap)), cellW, cellH};
+        drawTile(f, cell, tiles[i], ctx.selectedHomeIndex == tiles[i].index);
+    }
 
     present(fullRefresh);
     Serial.printf("[UI] drawHomeScreen finished in %lu ms.\n", millis() - t0);

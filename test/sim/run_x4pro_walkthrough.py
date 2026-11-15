@@ -26,45 +26,45 @@ BACK = "W100,300,400,300;"  # swipe right = back
 TITLE = "T240,20;"  # title bar back hit area
 HOME_KEY_TAP = "k"  # GT911 Home Key short tap -> BTN_BACK click
 HOME_KEY_LONG = "K"  # GT911 Home Key long press -> Reader menu (only in reading)
-HOME_CARD = "T200,200;"
-HOME_CATALOG = "T200,385;"
-CATALOG_ALL_BOOKS = "T200,145;"
+HOME_CARD = "T240,180;"
+HOME_CATALOG = "T90,400;"  # the home tiles: Catalog, Offline, Sync; Settings below
+CATALOG_ALL_BOOKS = "T200,186;"
 HOME_ALL_BOOKS = HOME_CATALOG + CATALOG_ALL_BOOKS
-LIB_FRANKENSTEIN = "T200,225;"  # 3rd row (two-line rows, U1)
-HOME_OFFLINE = "T200,445;"
-HOME_SETTINGS = "T200,505;"
-HOME_SYNC = "T200,565;"
+LIB_FRANKENSTEIN = "T200,295;"  # 3rd row (two-line rows, U1)
+HOME_OFFLINE = "T240,400;"
+HOME_SETTINGS = "T90,580;"
+HOME_SYNC = "T390,400;"
 READ_MIDDLE = "T240,400;"
 READ_RIGHT = "T400,400;"
 READ_LEFT = "T80,400;"
-RMENU_TOC, RMENU_FONT, RMENU_MARKS = "T240,200;", "T240,278;", "T240,354;"
-RMENU_SYNC, RMENU_RESUME, RMENU_CLOSE = "T240,430;", "T240,506;", "T240,582;"
-MARKS_THIS_PAGE = "T240,90;"
-APPEAR_TYPEFACE, APPEAR_SIZE = "T240,67;", "T240,103;"
-APPEAR_ORIENTATION = "T100,427;"  # on the label: the middle of a value row is its "-" (C5)
-SB_BOTTOM = "T240,393;"  # the "Bottom" card
+RMENU_TOC, RMENU_FONT, RMENU_MARKS = "T240,275;", "T240,345;", "T240,415;"
+RMENU_SYNC, RMENU_RESUME, RMENU_CLOSE = "T240,485;", "T240,555;", "T240,625;"
+MARKS_THIS_PAGE = "T240,143;"
+APPEAR_TYPEFACE, APPEAR_SIZE = "T240,127;", "T240,184;"
+APPEAR_ORIENTATION = "T100,412;"  # on the label: the middle of a value row is its "-" (C5)
+SB_BOTTOM = "T240,363;"  # the "Bottom" row
 
-# Settings rows (12 rows on X4 Pro: 0..9 shared + 10 USB-MSC + 11 Touch Wake on the second page)
-SET_LANG = "T240,80;"
-SET_WIFI = "T240,140;"
-SET_SERVER = "T240,195;"
-SET_SLEEP = "T240,250;"
-SET_INFO = "T240,370;"
-SET_SYNC = "T240,428;"
-SET_LIGHT = "T240,486;"
-SET_READING = "T240,544;"  # Settings -> Reading: status bar, full refresh, pictures
-READING_STATUS_BAR = "T240,67;"
-SET_ORIENTATION = "T240,602;"
-SET_USB_MSC = "T240,660;"
-SET_TOUCH_WAKE = "W240,600,240,200;T240,80;"  # the next page of the list, its first row
-SET_ORIENTATION_LANDSCAPE = "T224,400;"
+# Settings rows (13 on X4 Pro), in sections: Reading & screen (Reading, Screen
+# orientation, Sleep screen, Frontlight), Connections (Wi-Fi, Server, Sync, Web,
+# USB drive), Device (Language; on the second page Touch wake, Settings file,
+# Device information).
+SET_PAGE2 = "W240,600,240,200;"
+SET_READING, SET_ORIENTATION, SET_SLEEP, SET_LIGHT = "T240,165;", "T240,224;", "T240,283;", "T240,342;"
+SET_WIFI, SET_SERVER, SET_SYNC = "T240,439;", "T240,498;", "T240,557;"
+SET_USB_MSC = "T240,659;"
+SET_LANG = "T240,756;"
+SET_TOUCH_WAKE = SET_PAGE2 + "T240,111;"
+SET_INFO = SET_PAGE2 + "T240,229;"
+READING_STATUS_BAR = "T240,135;"
+ORIENT_PORTRAIT_FLIPPED = "T240,245;"  # Settings -> Screen orientation: its third row
+WIFI_SSID = "T240,202;"  # second row of the Wi-Fi screen
 
-FL_BRIGHT_PLUS = "T442,124;"
-FL_WARM_PLUS = "T442,240;"
-FL_QUICK_ONOFF = "T240,320;"
-USB_MSC_CONNECT = "T240,90;"
-USB_MSC_TOGGLE = "T240,165;"
-USB_MSC_EXIT_BTN = "T240,690;"
+FL_BRIGHT_PLUS = "T424,188;"
+FL_WARM_PLUS = "T424,308;"
+FL_QUICK_ONOFF = "T240,379;"
+USB_MSC_CONNECT = "T240,135;"
+USB_MSC_TOGGLE = "T240,202;"
+USB_MSC_EXIT_BTN = "T240,755;"
 
 
 def pages(log):
@@ -122,9 +122,9 @@ CASES = [
     ),
     (
         "reader menu: appearance, font size list, tap 20 pt, back lays the book out",
-        HOME_CARD + "w" + HOME_KEY_LONG + RMENU_FONT + APPEAR_SIZE + "T240,236;" + HOME_KEY_TAP,
+        HOME_CARD + "w" + HOME_KEY_LONG + RMENU_FONT + APPEAR_SIZE + "T240,288;" + HOME_KEY_TAP,
         lambda log, sd: (
-            re.search(r"Chapter \d+( laid out|: first page)", log.split("TAP_240_236", 1)[1])
+            re.search(r"Chapter \d+( laid out|: first page)", log.split("TAP_240_288", 1)[1])
             and config(sd)["font_pt"] == 20
         ),
     ),
@@ -146,13 +146,18 @@ CASES = [
         + SET_READING
         + READING_STATUS_BAR
         + SB_BOTTOM
-        + SB_BOTTOM
+        + "T240,127;T240,363;T240,422;T240,481;"  # its switches: the four that are on, off
+        + TITLE
         + TITLE
         + TITLE
         + TITLE
         + HOME_CARD
         + "w",
-        lambda log, sd: config(sd)["sb_bottom"] == 2 and "[Reader] Page" in log.split("TAP_240_393")[-1],
+        lambda log, sd: (
+            config(sd)["sb_bottom_items"] == 0
+            and config(sd)["sb_bottom"] == 2
+            and "[Reader] Page" in log.split("TAP_240_481")[-1]
+        ),
     ),
     (
         "reader menu: bookmarks, tap 'this page' adds bookmark",
@@ -161,7 +166,7 @@ CASES = [
     ),
     (
         "library: delete modal OK removes book; Cancel keeps it",
-        HOME_ALL_BOOKS + LIB_FRANKENSTEIN + "T240,256;" + "T340,475;",
+        HOME_ALL_BOOKS + LIB_FRANKENSTEIN + "T240,321;" + "T340,487;",
         lambda log, sd: (
             "Deleting downloaded book file: /books/Frankenstein.epub" in log
             and not os.path.exists(os.path.join(sd, "books/Frankenstein.epub"))
@@ -169,7 +174,7 @@ CASES = [
     ),
     (
         "settings: language by tap",
-        HOME_SETTINGS + SET_LANG + "T240,165;w",
+        HOME_SETTINGS + SET_LANG + "T240,210;w",
         lambda log, sd: config(sd)["language"] in ("ru", 1, "RU"),
     ),
     (
@@ -218,7 +223,7 @@ CASES = [
             and "MSC_e]" in log
             and "MSC_d]" in log
             and "MSC_i]" in log
-            and "drawSettingsScreen" in log.split("TAP_240_690", 1)[1]
+            and "drawSettingsScreen" in log.split("TAP_240_755", 1)[1]
             and pages(log)
         ),
     ),
@@ -251,12 +256,12 @@ CASES = [
     ),
     (
         "settings: screen orientation turns interface by tap",
-        HOME_SETTINGS + SET_ORIENTATION + SET_ORIENTATION_LANDSCAPE,
+        HOME_SETTINGS + SET_ORIENTATION + ORIENT_PORTRAIT_FLIPPED,
         lambda log, sd: config(sd)["ui_orientation"] == 2 and config(sd).get("orientation", 0) == 0,
     ),
     (
-        "home in landscape: Settings row opens cleanly",
-        "T250,620;",
+        "home in landscape: Settings tile opens cleanly",
+        "T163,701;",
         lambda log, sd: "drawSettingsScreen" in log,
         {"ui_orientation": 1},
     ),
@@ -267,7 +272,7 @@ CASES = [
     ),
     (
         "Wi-Fi: SSID typed on keyboard, Home Key tap cancels cleanly",
-        HOME_SETTINGS + SET_WIFI + "[T60,385;T430,448;]" + SET_WIFI + HOME_KEY_TAP,
+        HOME_SETTINGS + SET_WIFI + "[T65,460;T430,526;]" + WIFI_SSID + HOME_KEY_TAP,
         lambda log, sd: config(sd)["wifi_ssid"].endswith("x"),
     ),
     (

@@ -10,7 +10,7 @@ test/sim/config.json), after an optional setup of the card, and checks the log
 and the files the steps must have left. It covers what the sync scenarios
 (run_sync_scenarios.py) do not: the screens and keys, the power rules, the
 files on the card. Navigation (X4): home rows 0 book, 1 catalog, 2 offline,
-3 settings, 4 sync; reader menu 0 contents, 1 appearance, 2 bookmarks, 3 sync, 4 resume,
+3 sync, 4 settings; reader menu 0 contents, 1 appearance, 2 bookmarks, 3 sync, 4 resume,
 5 close; settings 0 language, 1 Wi-Fi, 2 server, 3 sleep cover, 4 settings
 file, 5 info, 6 sync, 7 orientation; catalog 0 search, 1 all books ...
 """
@@ -43,10 +43,10 @@ ALL_BOOKS = "DC" + "DC"  # home -> catalog -> "All books"
 OPEN_BOOK = "C"  # home: the book on the card
 READER_MENU = "C"  # reading: the book menu
 APPEARANCE = READER_MENU + "DC"  # reading -> menu -> Appearance
-SETTINGS = "DDDC"  # home -> settings
-SETTINGS_FILE = SETTINGS + "DDDDC"  # -> "Settings file" submenu
-READING = SETTINGS + "UUUC"  # -> Reading (above Screen orientation and Web)
-HOME_SYNC = "UCww"  # home: "Sync now"
+SETTINGS = "UC"  # home -> settings (the last tile)
+SETTINGS_FILE = SETTINGS + "UUC"  # -> "Settings file" submenu (above Device information)
+READING = SETTINGS + "C"  # -> Reading (the first row)
+HOME_SYNC = "DDDCww"  # home: the "Sync" tile
 SORTED = [
     "01. Frankenstein (1818)",
     "Alice in Wonderland",
@@ -972,7 +972,7 @@ CASES = [
         "settings: a language takes effect without a 'Saved' dialog (U5)",
         None,
         {},
-        SETTINGS + "C" + "D" + "C",
+        SETTINGS + "UUUC" + "D" + "C",  # Language: third from the end
         language_direct,
     ),
     (
@@ -987,14 +987,14 @@ CASES = [
         "keyboard: search typed in Cyrillic (U2)",
         russian,
         {},
-        "DC" + "[" + kb_tap(215, 385) + kb_tap(177, 265) + kb_tap(100, 385) + kb_tap(430, 448) + "]" + "C",
+        "DC" + "[" + kb_tap(215, 460) + kb_tap(177, 340) + kb_tap(100, 460) + kb_tap(430, 526) + "]" + "C",
         search_cyrillic,
     ),
     (
         "keyboard: backspace removes a whole Cyrillic letter (U2)",
         russian,
         {},
-        "DC" + "[" + kb_tap(215, 385) + kb_tap(177, 265) + kb_tap(278, 448) + kb_tap(430, 448) + "]" + "C",
+        "DC" + "[" + kb_tap(215, 460) + kb_tap(177, 340) + kb_tap(278, 526) + kb_tap(430, 526) + "]" + "C",
         search_backspace,
     ),
     # Upside down the front keys are turned for the keyboard's own input loop too
@@ -1098,7 +1098,7 @@ CASES = [
         "status bar: clock and UTC+3 saved and active from RTC",
         None,
         {"SIM_RTC_UTC": "1794391200"},
-        READING + "C" + "UU" + "C" + "D" + "RRRRRR" + "BBB" + "UUU" + OPEN_BOOK,
+        READING + "C" + "UU" + "C" + "D" + "RRRRRR" + "BBB" + "UUUU" + OPEN_BOOK,
         lambda log, sd: (
             "[RTC] Ready" in log
             and "[Clock] Restored from RTC" in log
@@ -1113,7 +1113,7 @@ CASES = [
         if (any(d in BIN for d in ("build-x3", "build-x4c")) or os.environ.get("DEVICE") in ("x3", "x4c"))
         else (lambda sd: merge_config(sd, auto_rotate=True)),
         {"SIM_IMU_PRESENT": "1"},
-        "A-1.0,0.0,0.0;w" + SETTINGS + ("UUUC" if ("build-x4c" in BIN or os.environ.get("DEVICE") == "x4c") else "UUC"),
+        "A-1.0,0.0,0.0;w" + SETTINGS + "DC" + "DC",  # Screen orientation (second row), then Portrait (below Auto)
         lambda log, sd: (
             "[IMU] Ready" in log
             and "[App] Auto-rotated UI 0 -> 1" in log
@@ -1125,7 +1125,7 @@ CASES = [
         "web: Settings -> Web opens Web submenu and Web Config QR portal",
         None,
         {},
-        SETTINGS + "UC" + "[RB]" + "C" + "wB",
+        SETTINGS + "DDDDDDC" + "[RB]" + "C" + "wB",  # Web: the seventh row
         lambda log, sd: (
             "drawWebSettingsScreen" in log and "n_RIGHT" in log and "drawSettingsScreen" in after(log, ">>> BACK")
         ),

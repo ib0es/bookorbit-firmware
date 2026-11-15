@@ -96,7 +96,15 @@ bool ConfigStore::load(AppConfig& cfg) {
                 boolIn("imu_flip_y", cfg.imuFlipY);
                 intIn("sb_top", cfg.sbTop, 0, 2);
                 intIn("sb_pages", cfg.sbPages, 0, 2);
-                intIn("sb_bottom", cfg.sbBottom, 0, 2);
+                // The bottom line: the items (sb_bottom_items) or, from an older
+                // config, the preset it was (0 chapter and bar, 1 the bar, 2 nothing).
+                if (doc["sb_bottom_items"].is<int>()) {
+                    intIn("sb_bottom_items", cfg.sbBottomItems, 0, SB_BOTTOM_ALL);
+                } else if (doc["sb_bottom"].is<int>()) {
+                    int old = 0;
+                    intIn("sb_bottom", old, 0, 2);
+                    cfg.sbBottomItems = old == 0 ? SB_BOTTOM_DEFAULT : old == 1 ? SB_BOTTOM_BOOK_BAR : 0;
+                }
                 boolIn("sb_percent", cfg.sbPercent);
                 boolIn("sb_battery", cfg.sbBattery);
                 boolIn("sb_clock", cfg.sbClock);
@@ -206,7 +214,9 @@ bool ConfigStore::save(const AppConfig& cfg) {
     doc["imu_flip_y"] = cfg.imuFlipY;
     doc["sb_top"] = cfg.sbTop;
     doc["sb_pages"] = cfg.sbPages;
-    doc["sb_bottom"] = cfg.sbBottom;
+    doc["sb_bottom_items"] = cfg.sbBottomItems;
+    // The old preset as well, the nearest one (older firmware reads it).
+    doc["sb_bottom"] = (cfg.sbBottomItems & ~SB_BOTTOM_BARS) ? 0 : cfg.sbBottomItems ? 1 : 2;
     doc["sb_percent"] = cfg.sbPercent;
     doc["sb_battery"] = cfg.sbBattery;
     doc["sb_clock"] = cfg.sbClock;

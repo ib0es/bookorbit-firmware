@@ -235,7 +235,8 @@ void BookReader::setupLayout() {
     // Room for the status bar: its top line, and below the chapter line and progress
     // bar (rule at height - 44), the bar alone, or nothing.
     p.marginTop = (int16_t)(_bar.topShown() ? geo.top : 16);
-    p.marginBottom = (int16_t)(_bar.bottom == 0 ? 56 : _bar.bottom == 1 ? 30 : 16);
+    static const int16_t kBottomMargin[4] = {16, 30, 56, 84};   // by StatusBar::bottomRoom()
+    p.marginBottom = kBottomMargin[_bar.bottomRoom()];
     p.baseSizePx = (uint16_t)FontEngine::sizePx(_fontSize);
     p.font = &_fonts;
     p.defaultAlign = _opts.justify ? freeink::book::TextAlign::Justify : freeink::book::TextAlign::Left;

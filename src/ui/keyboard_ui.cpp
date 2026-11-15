@@ -109,7 +109,7 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
 
         // 2. Text input box with a trailing cursor; long text keeps its tail visible.
         Rect box = takeTop(area, (int16_t)(lineHeight(FontBody) + 24));
-        frameRect(box, Color::Black, 2);
+        frameRect(box, Color::Black, 2, kRadius);
         const int16_t maxTextW = (int16_t)(box.width - 24);
         String visibleStr = currentText + "_";
         if (textWidth(FontBody, visibleStr.c_str()) > maxTextW) {
@@ -155,7 +155,7 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
         kp.labelText = style(FontBody, Color::Black, TextAlign::Center);
         kp.keyStyles = fi::defaultKeyStyles();
         kp.gap = 3;
-        kp.radius = 3;
+        kp.radius = kRadiusSmall;
         fi::keyGrid(f, takeTop(area, (int16_t)(4 * keyH + 3 * gapY)), kp);
         takeTop(area, gapY);
 
@@ -177,9 +177,9 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
             const bool sel = (selRow == 4 && selCol == b);
             const fi::FontId font = actionBtns[b].fontScale == 0 ? FontSmall : FontBody;
             if (sel)
-                fill(btn, Color::Black, 3);
+                fill(btn, Color::Black, kRadiusSmall);
             else
-                frameRect(btn, Color::Black, 1, 3);
+                frameRect(btn, Color::Black, 1, kRadiusSmall);
             text(btn, label, font, sel ? Color::White : Color::Black, TextAlign::Center);
             f.hit(btn, 2, (int16_t)b);
         }

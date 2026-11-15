@@ -23,8 +23,9 @@ BIN = os.environ.get("X4C_HEADLESS") or os.path.join(ROOT, "test/sim/build-x4c/x
 OPEN_BOOK = "C"
 READER_MENU = "C"
 
-SETTINGS = "DDDC"  # Home -> Settings (row 0 = Language; 11 items total: 0..10)
-READING = SETTINGS + "UUUUC"  # -> Reading (7: above Screen orientation 8, USB Drive 9, Web 10)
+SETTINGS = "UC"  # Home -> Settings (the last tile). Rows: 0 Reading, 1 Orientation, 2 Sleep
+# cover, 3 Wi-Fi, 4 Server, 5 Sync, 6 Web, 7 USB Drive, 8 Language, 9 Settings file, 10 Device info
+READING = SETTINGS + "C"  # -> Reading (row 0)
 
 
 def config(sd):
@@ -55,8 +56,8 @@ CASES = [
         {"SIM_RTC_UTC": "1735689600", "SIM_IMU_PRESENT": "1"},
     ),
     (
-        "settings: 11-row button layout (Reading=7, Orientation=8, USB Drive=9, Web=10, Device Info=5)",
-        SETTINGS + "DDDDDC" + "B",
+        "settings: 11 rows in sections (Reading=0, Orientation=1, USB Drive=7, Device Info=10)",
+        SETTINGS + "UC" + "B",
         lambda log, sd: (
             "device info" in log and "[RTC] Ready (UTC 1735689600)" in log and "[UI] drawSettingsScreen finished" in log
         ),
@@ -65,7 +66,7 @@ CASES = [
     ),
     (
         "imu: auto_rotate is ON by default on X4 Classic, rotates on gravity, sleeps when disabled",
-        "A-1.0,0.0,0.0;w" + SETTINGS + "UUUC",
+        "A-1.0,0.0,0.0;w" + SETTINGS + "DC" + "DC",  # Screen orientation -> Portrait (below Auto)
         lambda log, sd: (
             "[IMU] Ready" in log
             and "[App] Auto-rotated UI 0 -> 1" in log
@@ -78,7 +79,7 @@ CASES = [
     (
         "usb-msc: pure button workflow (disable guard, enable, host events, CONFIRM & BACK exits)",
         SETTINGS
-        + "UUC"  # Settings -> wrap up to USB Drive (index 9, above Web) -> submenu (0 = Connect)
+        + "UUUUC"  # Settings -> wrap up to USB Drive (row 7) -> submenu (0 = Connect)
         + "DC"  # Toggle USB Drive Mode OFF
         + "UC"  # Attempt Connect while disabled -> modal guard
         + "B"  # Close modal
@@ -90,7 +91,7 @@ CASES = [
         + "C"  # Re-enter USB Drive (cursor remembered at 0 = Connect) -> Connect
         + "B"  # Exit via physical BACK -> remounts SD -> Settings
         + "B"
-        + "UUU"
+        + "UUUU"
         + OPEN_BOOK
         + "w",
         lambda log, sd: (
@@ -119,7 +120,7 @@ CASES = [
     # (3 s in this case), the mode is left; the usual idle sleep follows.
     (
         "usb-msc: no computer for the idle timeout leaves the mode, then the device sleeps (B8)",
-        SETTINGS + "UUCC" + "www",
+        SETTINGS + "UUUUCC" + "www",
         lambda log, sd: (
             "Detaching filesystem" in log
             and "No computer for the idle timeout: leaving USB mass storage" in log
@@ -131,7 +132,7 @@ CASES = [
     ),
     (
         "usb-msc: POWER exits USB-MSC safely without sleeping, then POWER sleeps/wakes normally",
-        SETTINGS + "UUCC" + "P" + "B" + "PZ",
+        SETTINGS + "UUUUCC" + "P" + "B" + "PZ",
         lambda log, sd: (
             "Detaching filesystem" in log
             and log.count("Entering Deep Sleep") == 1
@@ -155,7 +156,7 @@ CASES = [
     ),
     (
         "rtc: BM8563 clock and UTC+3 timezone configured with buttons and shown in status bar",
-        READING + "C" + "UU" + "C" + "D" + "RRRRRR" + "BBB" + "UUU" + OPEN_BOOK,
+        READING + "C" + "UU" + "C" + "D" + "RRRRRR" + "BBB" + "UUUU" + OPEN_BOOK,
         lambda log, sd: (
             "[RTC] Ready" in log
             and "[Clock] Restored from RTC" in log
@@ -168,7 +169,7 @@ CASES = [
     ),
     (
         "orientation: 180-deg turn swaps LEFT/RIGHT keys (RIGHT acts as Back from Settings)",
-        SETTINGS + "UUU" + "CCC" + "R",
+        SETTINGS + "DC" + "DDDC" + "RR",  # -> Portrait flipped; then RIGHT twice: back, back
         lambda log, sd: (
             config(sd).get("auto_rotate") is False
             and config(sd).get("ui_orientation") == 2
