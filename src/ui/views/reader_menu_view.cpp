@@ -166,6 +166,7 @@ void drawReaderMenuScreen(AppContext& ctx, bool fullRefresh) {
             {tr(MsgId::READER_MENU_ITEM_APPEARANCE), fontVal, tr(MsgId::READER_MENU_TAG_FONT)},
             {tr(MsgId::READER_MENU_ITEM_BOOKMARKS), marksVal, tr(MsgId::READER_MENU_TAG_MARKS)},
             {tr(MsgId::READER_MENU_ITEM_SYNC), tr(MsgId::READER_MENU_SYNC_SUB), tr(MsgId::READER_MENU_TAG_WIFI)},
+            {tr(MsgId::SETTINGS_ITEM_READING), tr(MsgId::SETTINGS_READING_SUB), tr(MsgId::SETTINGS_TAG_READING)},
             {tr(MsgId::READER_MENU_ITEM_RESUME), tr(MsgId::READER_MENU_RESUME_SUB), tr(MsgId::READER_MENU_TAG_READ)},
             {tr(MsgId::READER_MENU_ITEM_CLOSE), tr(MsgId::READER_MENU_CLOSE_SUB), tr(MsgId::READER_MENU_TAG_EXIT)},
     };

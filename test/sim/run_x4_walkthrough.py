@@ -1085,6 +1085,16 @@ CASES = [
         OPEN_BOOK + READER_MENU + "DDDC" + "w",
         token_saved,
     ),
+    (
+        "reader menu: access to global Reading settings and back",
+        None,
+        {},
+        OPEN_BOOK + READER_MENU + "DDDDC" + "B",
+        lambda log, sd: (
+            "drawReadingSettingsScreen" in log
+            and "drawReaderMenuScreen" in log.split("drawReadingSettingsScreen", 1)[1]
+        ),
+    ),
     # B5: the clock's minute redraw is not a page. A full refresh every 2 pages;
     # the book opens (page 1) and the minute changes during the wait.
     (

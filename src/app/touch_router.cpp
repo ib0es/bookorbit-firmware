@@ -10,6 +10,8 @@
 #include "../ui/views/reader_menu_view.h"
 #include "../ui/font.h"
 #include "../ui/modal.h"
+#include "../ui/views/home_view.h"
+#include "../services/usb_msc_session.h"
 
 namespace TouchRouter {
 
@@ -145,6 +147,35 @@ int* pagedSelection(AppContext& ctx) {
     return screen && screen->pagedList && screen->selection ? &(ctx.*(screen->selection)) : nullptr;
 }
 
+constexpr int16_t kHomeEdgePx = 80;   // where a swipe from bottom edge must start to go home
+
+void goHomeWithSideEffects(AppContext& ctx) {
+    if (ctx.currentState == STATE_HOME) return;
+
+    if (Modal.isActive()) {
+        Modal.dismiss();
+    }
+
+    if (Reader.isOpened() || ctx.currentState == STATE_READING || ctx.currentState == STATE_READER_MENU ||
+        ctx.currentState == STATE_TOC || ctx.currentState == STATE_FONT_MENU ||
+        ctx.currentState == STATE_TYPEFACE_MENU || ctx.currentState == STATE_APPEARANCE_MENU ||
+        ctx.currentState == STATE_BOOKMARKS || ctx.currentState == STATE_STATUSBAR_MENU ||
+        (ctx.currentState == STATE_READING_SETTINGS && Reader.isOpened())) {
+        ReaderScreen::closeBookAndGoHome(ctx, false);
+        return;
+    }
+
+    if (ctx.currentState == STATE_USB_MSC) {
+        UsbMscSession::exit(ctx);
+        ctx.currentState = STATE_HOME;
+        drawHomeScreen(ctx, true);
+        return;
+    }
+
+    ctx.currentState = STATE_HOME;
+    drawHomeScreen(ctx, false);
+}
+
 }  // namespace
 
 bool translateSwipe(AppContext& ctx, const ButtonEvent& swipe, ButtonEvent& out) {
@@ -156,6 +187,14 @@ bool translateSwipe(AppContext& ctx, const ButtonEvent& swipe, ButtonEvent& out)
     // list or turn a page start lower.
     if (swipe.id == BTN_SWIPE_DOWN && swipe.y < kFrontlightEdgePx && SettingsScreen::openFrontlightFrom(ctx))
         return false;
+
+    // A swipe up from the bottom edge returns to the home screen with full exit side effects.
+    if (swipe.id == BTN_SWIPE_UP && swipe.y >= (uikit::height() - kHomeEdgePx)) {
+        if (ctx.currentState != STATE_HOME) {
+            goHomeWithSideEffects(ctx);
+        }
+        return false;
+    }
 
     if (ctx.currentState == STATE_READING) {
         // The swipe in the page's terms: a finger moving left turns to the next page.
