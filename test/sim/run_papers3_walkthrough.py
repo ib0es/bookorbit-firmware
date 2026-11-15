@@ -56,6 +56,13 @@ CASES: list[tuple[str, str, Callable[..., bool], Any, Any]] = [
         None,
         {},
     ),
+    (
+        "touch: swipe up from bottom edge exits reading to home and flushes position",
+        "T200,200;w" + "W270,900,270,400;",
+        lambda log, sd: "[Reader] Close: position saved" in log and "drawHomeScreen" in log.split("SWIPE_UP", 1)[1],
+        None,
+        {},
+    ),
 ]
 
 
