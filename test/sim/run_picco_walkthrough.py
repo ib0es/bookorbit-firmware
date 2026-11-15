@@ -37,7 +37,7 @@ READ_MIDDLE = "T240,400;"  # reading: middle third = book menu
 READ_RIGHT = "T400,400;"
 READ_LEFT = "T80,400;"
 RMENU_TOC, RMENU_FONT, RMENU_MARKS = "T240,275;", "T240,345;", "T240,415;"
-RMENU_SYNC, RMENU_RESUME, RMENU_CLOSE = "T240,485;", "T240,555;", "T240,625;"
+RMENU_SYNC, RMENU_READING, RMENU_RESUME, RMENU_CLOSE = "T240,485;", "T240,555;", "T240,625;", "T240,700;"
 MARKS_THIS_PAGE = "T240,143;"  # first row of the Bookmarks screen
 APPEAR_TYPEFACE, APPEAR_SIZE = "T240,127;", "T240,184;"  # rows of the Appearance screen
 APPEAR_ORIENTATION = "T100,412;"
@@ -153,7 +153,7 @@ CASES = [
     (
         "reader menu: back by title tap, close book returns home",
         HOME_CARD + "w" + READ_MIDDLE + TITLE + READ_MIDDLE + RMENU_CLOSE,
-        lambda log, sd: "drawHomeScreen" in log.split("TAP_240_625")[-1],
+        lambda log, sd: "drawHomeScreen" in log.split("TAP_240_700")[-1],
     ),
     (
         "library: tap a book opens its menu, Read opens it, back to library by swipe",
@@ -301,9 +301,20 @@ CASES = [
         {"ui_orientation": 1},
     ),
     (
-        "book menu in landscape: swipe up to the second page, Close book",
-        "T254,230;wT240,400;W129,400,329,400;T93,400;",
+        "book menu in landscape: swipe up to the third page, Close book",
+        "T254,230;wT240,400;W129,400,329,400;W129,400,329,400;T223,400;",
         lambda log, sd: "[Reader] Close" in log and log.rstrip().count("drawHomeScreen") >= 2,
+        {"ui_orientation": 1},
+    ),
+    (
+        "touch: swipe up from bottom edge exits reading to home",
+        HOME_CARD + "w" + "W240,760,240,400;",
+        lambda log, sd: "[Reader] Close: position saved" in log and "drawHomeScreen" in log.split("SWIPE_UP", 1)[1],
+    ),
+    (
+        "touch in landscape: swipe up from bottom edge exits reading to home",
+        "T254,230;w" + "W50,400,300,400;",
+        lambda log, sd: "[Reader] Close: position saved" in log and "drawHomeScreen" in log.split("SWIPE_UP", 1)[1],
         {"ui_orientation": 1},
     ),
     (

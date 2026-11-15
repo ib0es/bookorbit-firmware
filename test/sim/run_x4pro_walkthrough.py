@@ -291,6 +291,12 @@ CASES = [
         ),
     ),
     (
+        "touch in landscape: swipe up from bottom edge exits reading to home",
+        "W300,200,60,200;w" + "T254,230;w" + "W50,400,300,400;",
+        lambda log, sd: "[Reader] Close: position saved" in log and "drawHomeScreen" in log.split("SWIPE_UP", 1)[1],
+        {"ui_orientation": 1},
+    ),
+    (
         "reader menu: access to global Reading settings and back",
         HOME_CARD + "w" + HOME_KEY_LONG + "T240,550;" + HOME_KEY_TAP,
         lambda log, sd: (
