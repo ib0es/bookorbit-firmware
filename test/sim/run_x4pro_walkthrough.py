@@ -281,7 +281,29 @@ CASES = [
         "P" + "Z",
         lambda log, sd: "Entering Deep Sleep" in log and log.count("drawHomeScreen") >= 2,
     ),
+    (
+        "touch: swipe up from bottom edge exits reading to home and flushes position",
+        HOME_CARD + "w" + READ_RIGHT + READ_RIGHT + "W240,760,240,400;",
+        lambda log, sd: (
+            "drawHomeScreen" in log.split("SWIPE_UP", 1)[1]
+            and "[Reader] Close: position saved" in log
+            and last_book(sd).get("page") == 3
+        ),
+    ),
+    (
+        "reader menu: access to global Reading settings and back",
+        HOME_CARD + "w" + HOME_KEY_LONG + "T240,550;" + HOME_KEY_TAP,
+        lambda log, sd: (
+            "drawReadingSettingsScreen" in log
+            and "drawReaderMenuScreen" in log.split("drawReadingSettingsScreen", 1)[1]
+        ),
+    ),
 ]
+
+
+def last_book(sd):
+    p = os.path.join(sd, "books", "last_book.json")
+    return json.load(open(p)) if os.path.exists(p) else {}
 
 
 def run(script, cfg=None, env_extra=None):

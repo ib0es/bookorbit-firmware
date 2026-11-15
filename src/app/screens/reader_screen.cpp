@@ -110,10 +110,14 @@ void executeMenuAction(AppContext& ctx, int index) {
             commitFontSize(ctx);
             SyncService::syncWithBookOrbit(ctx);
             break;
-        case 4:  // Продолжить чтение
+        case 4:  // Настройки чтения (глобальные)
+            commitFontSize(ctx);
+            SettingsScreen::openReadingSettingsFromReader(ctx);
+            break;
+        case 5:  // Продолжить чтение
             returnToReading(ctx);
             break;
-        case 5:  // Закрыть книгу
+        case 6:  // Закрыть книгу
             closeBookAndGoHome(ctx, uikit::periodicFullRefresh());
             break;
     }
@@ -122,6 +126,8 @@ void executeMenuAction(AppContext& ctx, int index) {
 }  // namespace
 
 namespace ReaderScreen {
+
+void closeBookAndGoHome(AppContext& ctx, bool fullRefresh, bool draw) { ::closeBookAndGoHome(ctx, fullRefresh, draw); }
 
 bool openBook(AppContext& ctx, String path, String title, String author, String coverPath, float progress, int page,
               String xpath, String docId, int fileId) {

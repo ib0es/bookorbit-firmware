@@ -73,6 +73,11 @@ public:
     // Closes timed messages whose time is up. Call every loop iteration.
     void tick();
 
+    // Dismisses any open modal/panel (executes onClose callback without triggering redraw).
+    void dismiss() {
+        if (_active) close(_onClose);
+    }
+
 private:
     enum class Kind { Message, Confirm, Panel };
 

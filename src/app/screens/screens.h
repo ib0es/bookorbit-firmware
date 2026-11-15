@@ -45,9 +45,11 @@ bool openBook(AppContext& ctx, String path, String title, String author, String 
 
 // Wake-from-sleep fast path: reopens lastBook at its saved position.
 bool resumeLastBook(AppContext& ctx);
+void closeBookAndGoHome(AppContext& ctx, bool fullRefresh = false, bool draw = true);
 }  // namespace ReaderScreen
 
 namespace SettingsScreen {
+void openReadingSettingsFromReader(AppContext& ctx);
 void handleSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleWifiSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleWebSettingsEvent(AppContext& ctx, const ButtonEvent& event);

@@ -39,6 +39,7 @@
 #include "../../ui/views/library_view.h"
 
 namespace {
+static AppState s_readingSettingsReturnState = STATE_SETTINGS;
 
 static AppState s_webSettingsReturnState = STATE_SETTINGS;
 
@@ -120,6 +121,7 @@ void executeSetting(AppContext& ctx, int index) {
         return;
     }
     if (index == readingSettingIndex()) {
+        s_readingSettingsReturnState = STATE_SETTINGS;
         ctx.selectedReadingSettingIndex = 0;
         ctx.currentState = STATE_READING_SETTINGS;
         drawReadingSettingsScreen(ctx, false);
@@ -636,8 +638,11 @@ void handleReadingSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
             Reader.setFullRefreshEvery(ctx.config.fullRefreshEvery);
             Reader.setSharpImages(ctx.config.sharpImages);
             Reader.setStatusBar(StatusBarMenu::options(ctx.config));
-            ctx.currentState = STATE_SETTINGS;
-            drawSettingsScreen(ctx, false);
+            ctx.currentState = s_readingSettingsReturnState;
+            if (ctx.currentState == STATE_READER_MENU)
+                drawReaderMenuScreen(ctx, false);
+            else
+                drawSettingsScreen(ctx, false);
             break;
         default:
             break;
@@ -956,6 +961,13 @@ bool openFrontlightFrom(AppContext& ctx) {
                     [c](const ButtonEvent& e) { return frontlightPanelEvent(*c, e); },
                     [c]() { c->config.save(); });   // saved once, when it closes
     return true;
+}
+
+void openReadingSettingsFromReader(AppContext& ctx) {
+    s_readingSettingsReturnState = STATE_READER_MENU;
+    ctx.selectedReadingSettingIndex = 0;
+    ctx.currentState = STATE_READING_SETTINGS;
+    drawReadingSettingsScreen(ctx, false);
 }
 
 }  // namespace SettingsScreen
