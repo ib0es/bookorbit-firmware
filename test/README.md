@@ -28,6 +28,32 @@ from `include/secrets.h`) and prints every change, to see what the server really
 
 How progress sync works is described at the top of `src/core/progress_sync.h`.
 
+## Reader status bars
+
+Run `make -j8 -f test/sim/Makefile status-bar-test` for the focused suite;
+add `DEVICE=x3` (528x792), `DEVICE=picco` or another simulator profile.
+It also runs in `make -f test/sim/Makefile test` and the device walkthrough CI targets.
+
+- Host tests exhaust all 2048 item masks: exact strings, on/off semantics, wrapping,
+  reserved rows, defaults, missing metadata/time, and bounded output buffers.
+- Simulator tests use a generated EPUB (no private book fixtures), the real reader,
+  actual UI primitives/fonts and framebuffer pixels. They check every mask in both
+  bars and all four orientations, visibility of all eleven items, non-overlapping
+  bounds, long titles using the available width, and clearance from book text.
+- Preview tests cover all three languages, portrait/landscape and inverted turns,
+  both menus and first/last list pages, including all-off and all-on combinations.
+  They check preview/frame/list boundaries and sample-text clearance from both bars.
+- Configuration and interaction tests cover high-bit persistence, legacy migration,
+  defaults, timezone offsets, unset time, battery levels, minute redraws without a
+  page turn, pagination margins, keyboard navigation and real touch-hit routing.
+- Portal scenarios check all eleven checkbox bits and switching both bars fully off.
+
+The draw observer is compiled only into the dedicated test executable
+(`BOOKORBIT_UI_TRACE`); firmware and normal simulator builds have no observer.
+Tests inspect requested draw bounds and font line extents as well as actual black
+pixels. They do not simulate physical-panel ghosting, electrical button debounce,
+or verify every possible pair of different top/bottom masks on real hardware.
+
 ## Hardware TCP-window tuning
 
 All device environments rebuild the five lwIP objects that depend on

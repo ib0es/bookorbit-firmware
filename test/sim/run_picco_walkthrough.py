@@ -113,7 +113,7 @@ CASES = [
         + SET_READING
         + READING_STATUS_BAR
         + SB_BOTTOM
-        + "T240,127;T240,363;T240,422;T240,481;"  # its switches: the four that are on, off
+        + "T240,127;T240,186;T240,245;T240,481;"  # Chapter page, percent, progress and title.
         + TITLE
         + TITLE
         + TITLE

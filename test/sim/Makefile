@@ -83,6 +83,21 @@ $(BUILD)/engine_shots: $(filter-out $(BUILD)/src/main.o,$(APP_OBJS)) $(BUILD)/te
 $(BUILD)/cover_shots: $(filter-out $(BUILD)/src/main.o,$(APP_OBJS)) $(BUILD)/test/sim/cover_shots.o
 	$(CXX) $(LDEXTRA) $^ -o $@ -lpthread
 
+# Observe actual UI draw calls only in this executable; normal UI and firmware stay unchanged.
+$(BUILD)/test/sim/ui_kit_trace.o: src/ui/kit/ui_kit.cpp test/sim/ui_trace.h
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -DBOOKORBIT_UI_TRACE=1 -Itest/sim -c $< -o $@
+
+$(BUILD)/test/sim/status_bar_tests.o: test/sim/status_bar_tests.cpp test/sim/ui_trace.h
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -fno-access-control -Itest/sim -c $< -o $@
+
+$(BUILD)/status_bar_tests: $(filter-out $(BUILD)/src/main.o $(BUILD)/src/ui/kit/ui_kit.o,$(APP_OBJS)) $(BUILD)/test/sim/ui_kit_trace.o $(BUILD)/test/sim/status_bar_tests.o
+	$(CXX) $(LDEXTRA) $^ -o $@ -lpthread
+
+status-bar-test: $(BUILD)/status_bar_tests
+	python3 test/sim/run_status_bar_tests.py $(BUILD)/status_bar_tests
+
 # Cover decoder shares the pinned SDK ABI; CFLAGS has no -MMD.
 $(BUILD)/src/ui/vendor/cover_tjpgd.o: \
     freeink-sdk/libs/book/FreeInkBook/third_party/tjpgd/tjpgd.h \
@@ -96,7 +111,7 @@ $(BUILD)/%.o: %.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-test: all
+test: all status-bar-test
 	X4_HEADLESS=$(BUILD)/x4_headless python3 test/sim/run_sync_scenarios.py
 	X4_HEADLESS=$(BUILD)/x4_headless python3 test/sim/run_x4_walkthrough.py
 	X4_HEADLESS=$(BUILD)/x4_headless python3 test/sim/run_portal_server.py
@@ -109,22 +124,27 @@ test: all
 picco-test:
 	$(MAKE) -f test/sim/Makefile DEVICE=picco all
 	PICCO_HEADLESS=test/sim/build-picco/x4_headless python3 test/sim/run_picco_walkthrough.py
+	$(MAKE) -f test/sim/Makefile DEVICE=picco status-bar-test
 
 x4pro-test:
 	$(MAKE) -f test/sim/Makefile DEVICE=x4pro all
 	X4PRO_HEADLESS=test/sim/build-x4pro/x4_headless python3 test/sim/run_x4pro_walkthrough.py
+	$(MAKE) -f test/sim/Makefile DEVICE=x4pro status-bar-test
 
 x4c-test:
 	$(MAKE) -f test/sim/Makefile DEVICE=x4c all
 	X4C_HEADLESS=test/sim/build-x4c/x4_headless python3 test/sim/run_x4c_walkthrough.py
+	$(MAKE) -f test/sim/Makefile DEVICE=x4c status-bar-test
 
 ws397-test:
 	$(MAKE) -f test/sim/Makefile DEVICE=ws397 all
 	WS397_HEADLESS=test/sim/build-ws397/x4_headless python3 test/sim/run_ws397_walkthrough.py
+	$(MAKE) -f test/sim/Makefile DEVICE=ws397 status-bar-test
 
 papers3-test:
 	$(MAKE) -f test/sim/Makefile DEVICE=papers3 all
 	PAPERS3_HEADLESS=test/sim/build-papers3/x4_headless python3 test/sim/run_papers3_walkthrough.py
+	$(MAKE) -f test/sim/Makefile DEVICE=papers3 status-bar-test
 
 coverage:
 	test/coverage.sh
@@ -134,4 +154,4 @@ clean:
 
 -include $(shell find $(BUILD) -name '*.d' 2>/dev/null)
 
-.PHONY: all test picco-test x4pro-test x4c-test coverage clean
+.PHONY: all test status-bar-test picco-test x4pro-test x4c-test coverage clean

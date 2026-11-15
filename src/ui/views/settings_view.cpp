@@ -117,7 +117,20 @@ void drawListScreen(const AppContext& ctx, const char* title, ItemDefFn def, int
     auto caption = [&](int i) { return sectionOf ? sectionCaption(sectionOf(i)) : nullptr; };
     auto entryH = [&](int i) { return (int16_t)(heights[i] + gap + (caption(i) ? sectionHeight() : 0)); };
 
-    const int16_t belowH = below ? (int16_t)std::min<int>(270, std::max<int>(150, area.height * 2 / 5)) : 0;
+    int16_t belowH = 0;
+    if (below) {
+        // Keep both bars (including wrapped titles) and one sample line visible
+        // in landscape too, while leaving at least one complete settings row.
+        const int lh = lineHeight(FontSmall);
+        auto barHeight = [&](int mask) {
+            return StatusLine::textLines(mask) * lh + ((mask & SB_BOOK_BAR) ? 10 : 0) + ((mask & SB_CH_BAR) ? 10 : 0) +
+                   (mask ? 6 : 0);
+        };
+        const int required = 6 + sectionHeight() + 4 + 16 + barHeight(ctx.config.sbTopItems) +
+                             barHeight(ctx.config.sbBottomItems) + lh;
+        const int preferred = std::max(required, std::min(270, std::max(150, area.height * 2 / 5)));
+        belowH = (int16_t)std::min(preferred, std::max(0, area.height - rowHeight(false) - gap));
+    }
     const int16_t listH = (int16_t)(area.height - belowH);
 
     // Pages: as many rows as fit, from the first; the page the selection is on.
