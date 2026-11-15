@@ -25,8 +25,8 @@ public:
     // Full synchronization: Wi-Fi, OPDS catalog, progress of every book opened here, covers.
     static void syncWithBookOrbit(AppContext& ctx);
 
-    // Progress of the current book (lastBook) only.
-    static void syncCurrentBookProgress(AppContext& ctx, bool autoConnectWiFi = false);
+    // Progress of the current book (lastBook) only. Returns true on successful sync.
+    static bool syncCurrentBookProgress(AppContext& ctx, bool autoConnectWiFi = false);
 
     // Background sync of one book: Wi-Fi connects while the user goes on, and
     // tickBackground() (every loop) reconciles the book with the server once

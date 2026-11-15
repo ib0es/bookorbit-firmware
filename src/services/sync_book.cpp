@@ -120,29 +120,30 @@ bool SyncService::syncBookProgress(AppContext& ctx, BookProgressRecord& rec, Ser
 // ============================================================================
 // Current book only (closing the book, sleep, boot)
 // ============================================================================
-void SyncService::syncCurrentBookProgress(AppContext& ctx, bool autoConnectWiFi) {
+bool SyncService::syncCurrentBookProgress(AppContext& ctx, bool autoConnectWiFi) {
     auto& lib = LibraryManager::getInstance();
-    if (lib.lastBook.filePath.length() == 0 || LibraryManager::isOfflinePath(lib.lastBook.filePath)) return;
+    if (lib.lastBook.filePath.length() == 0 || LibraryManager::isOfflinePath(lib.lastBook.filePath)) return false;
     KeepToken keepToken(ctx);
     WifiSession::prepare();
     if (Reader.isOpened()) lib.flushReaderPosition();
 
     bool didConnectWiFi = false;
     if (!BookOrbit.isConnected()) {
-        if (!autoConnectWiFi) return;
-        if (ctx.config.wifiSsid.length() == 0 || ctx.config.serverHost.length() == 0) return;
+        if (!autoConnectWiFi) return false;
+        if (ctx.config.wifiSsid.length() == 0 || ctx.config.serverHost.length() == 0) return false;
         Serial.println("[Sync] Auto-connecting Wi-Fi for progress sync...");
         if (!BookOrbit.connectWiFi(ctx.config.wifiSsid.c_str(), ctx.config.wifiPass.c_str(), 8000)) {
             Serial.println("[Sync] Auto-connecting Wi-Fi failed; progress stays queued (dirty).");
-            return;
+            return false;
         }
         didConnectWiFi = true;
     }
 
     ensureToken(ctx);
-    syncBookProgress(ctx, lib.currentRecord());
+    const bool ok = syncBookProgress(ctx, lib.currentRecord());
 
     if (didConnectWiFi) BookOrbit.disconnectWiFi();
+    return ok;
 }
 
 SyncService::BookSyncResult SyncService::syncBookItem(AppContext& ctx, BookItem& book) {
