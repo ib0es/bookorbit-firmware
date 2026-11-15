@@ -45,9 +45,13 @@ const char* value(const AppConfig& cfg, int row, char* buf, size_t len) {
         case BATTERY:
             id = cfg.sbBattery ? MsgId::APPEAR_ON : MsgId::APPEAR_OFF;
             break;
-        case BOTTOM:
-            id = cfg.sbBottom == 0 ? MsgId::SB_BOTTOM_FULL : cfg.sbBottom == 1 ? MsgId::SB_BOTTOM_BAR : MsgId::SB_NONE;
-            break;
+        case BOTTOM: {   // how many of its items are on ("3/6"), or "None"
+            int on = 0;
+            for (int b = 0; b < NUM_SB_BOTTOM_ITEMS; b++) on += (cfg.sbBottomItems >> b) & 1;
+            if (on == 0) break;   // SB_NONE
+            snprintf(buf, len, "%d/%d", on, NUM_SB_BOTTOM_ITEMS);
+            return buf;
+        }
         case CLOCK:
             id = cfg.sbClock ? MsgId::APPEAR_ON : MsgId::APPEAR_OFF;
             break;
@@ -56,6 +60,19 @@ const char* value(const AppConfig& cfg, int row, char* buf, size_t len) {
     }
     snprintf(buf, len, "%s", tr(id));
     return buf;
+}
+
+int toggleState(const AppConfig& cfg, int row) {
+    switch (row) {
+        case PERCENT:
+            return cfg.sbPercent ? 1 : 0;
+        case BATTERY:
+            return cfg.sbBattery ? 1 : 0;
+        case CLOCK:
+            return cfg.sbClock ? 1 : 0;
+        default:
+            return -1;
+    }
 }
 
 void step(AppConfig& cfg, int row, int dir) {
@@ -73,8 +90,7 @@ void step(AppConfig& cfg, int row, int dir) {
         case BATTERY:
             cfg.sbBattery = !cfg.sbBattery;
             break;
-        case BOTTOM:
-            three(cfg.sbBottom);
+        case BOTTOM:   // a screen of its own (switches): nothing to step here
             break;
         case CLOCK:
             cfg.sbClock = !cfg.sbClock;
@@ -95,7 +111,7 @@ BookReader::StatusBar options(const AppConfig& cfg) {
     b.battery = cfg.sbBattery;
     b.clock = cfg.sbClock;
     b.utcOffsetMin = (int16_t)TimeUtils::clampUtcOffset(cfg.utcOffsetMin);
-    b.bottom = (uint8_t)cfg.sbBottom;
+    b.bottomItems = (uint8_t)(cfg.sbBottomItems & SB_BOTTOM_ALL);
     return b;
 }
 

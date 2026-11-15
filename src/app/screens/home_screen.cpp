@@ -15,8 +15,8 @@ enum HomeItem {
     HOME_RECENT_BOOK = 0,
     HOME_CATALOG,
     HOME_OFFLINE,
-    HOME_SETTINGS,
     HOME_SYNC_NOW,
+    HOME_SETTINGS,
 };
 
 void openLibrary(AppContext& ctx, LibraryFilter filter, bool rescan) {

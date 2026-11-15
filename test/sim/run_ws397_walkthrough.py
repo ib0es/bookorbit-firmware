@@ -59,7 +59,7 @@ CASES: list[tuple[str, str, Callable[..., bool], Any, Any]] = [
     ),
     (
         "settings: accessible via DOWN+CONFIRM",
-        "DDDC" + "B",  # Home -> Settings, then BACK to Home
+        "UC" + "B",  # Home -> Settings, then BACK to Home
         lambda log, sd: "[UI] drawSettingsScreen finished" in log and "[UI] drawHomeScreen finished" in log,
         None,
         {},

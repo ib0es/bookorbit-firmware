@@ -24,7 +24,7 @@ SD_TEMPLATE = os.path.join(ROOT, "simulator/sdcard")
 TEST_CONFIG = os.path.join(ROOT, "test/sim/config.json")  # replaces a local simulator/sdcard/config.json
 BOOK = "Alice in Wonderland"
 SYNC = "CDDDCw"  # in the reader: menu -> "Синхронизация" (4th) -> wait
-HOME_SYNC = "UCww"  # on the home screen: "Синхронизация сейчас" -> wait
+HOME_SYNC = "DDDCww"  # on the home screen: "Синхронизация сейчас" -> wait
 
 
 def srv(pct=None, upd="NOW-100", fail=False, **extra):

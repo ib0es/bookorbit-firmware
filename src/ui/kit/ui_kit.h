@@ -35,8 +35,13 @@ enum : fi::FontId {
     FontLarge = 3,  // bold: sleep screen, big numbers
 };
 
-constexpr int16_t kMargin = 16;   // outer side margin
+constexpr int16_t kMargin = 18;   // outer side margin
 constexpr int16_t kGap = 8;       // gap between stacked rows
+// Corner radii: one for everything framed (rows, the selection, cards, tiles,
+// buttons, key tabs, dialogs), a small one for small things (keyboard keys,
+// labels, the "-" / "+" buttons). A switch is rounded to half its height.
+constexpr uint8_t kRadius = 6;
+constexpr uint8_t kRadiusSmall = 3;
 constexpr size_t kMaxHits = 96;   // hit areas per render pass
 
 using Frame = fi::Frame<kMaxHits>;
@@ -87,6 +92,9 @@ private:
 // topmost area containing (x, y). Note: a modal drawn after a screen starts a
 // new pass, so while it is up the screen's areas are gone.
 bool hitTest(int16_t x, int16_t y, fi::ActionId& action, int16_t& value);
+// The hit areas of the last render pass, one by one (the simulator's tests list them).
+size_t hitCount();
+bool hitAt(size_t i, Rect& rect, fi::ActionId& action, int16_t& value);
 // True when (x, y) is on the title bar of the last screen drawn with topBar():
 // touch boards without a BACK key (Picco) go back by tapping it.
 bool backTapped(int16_t x, int16_t y);
@@ -124,9 +132,16 @@ void hline(int16_t x0, int16_t x1, int16_t y, Color color = Color::Black, uint8_
 void vline(int16_t x, int16_t y0, int16_t y1, Color color = Color::Black, uint8_t width = 1);
 
 // ---- Book Orbit chrome ---------------------------------------------------------
-// Black title band with the battery on the right. Returns the area below it.
+// The status line every screen starts with: the time on the left (once the
+// clock is known), Wi-Fi (when connected) and the battery on the right.
+int16_t statusBarHeight();
+void statusBar(Frame& f, Rect bar);
+// The UTC offset (minutes) the status line shows the time in (config.utcOffsetMin).
+void setClockOffset(int utcOffsetMin);
+// Status line, the screen title centred under it and a rule across the screen.
+// Returns the area below it.
 Rect topBar(Frame& f, const char* title);
-// Home header: logo, "book orbit", battery, divider. Returns the area below it.
+// Home header: only the status line. Returns the area below it.
 Rect appHeader(Frame& f);
 // Divider plus up to two hint lines at the bottom of `area`. Returns the area above.
 Rect footerHints(Frame& f, Rect area, const char* line1, const char* line2 = nullptr, const char* touchLine = nullptr);
@@ -149,7 +164,32 @@ Rect keyHints(Frame& f, Rect area, const KeyLabels& keys, const char* info = nul
 void pill(Rect r, const char* label, bool dark, bool onInverted);
 // Width a pill needs for `label`.
 int16_t pillWidth(const char* label);
-// A settings-style card: bold title, secondary line, optional tag pill.
+// A list row: the title, an optional second line under it, and on the right a
+// value, a switch, a check mark and/or a chevron. The selected row is framed
+// (a rounded outline); the others stand on the white page.
+struct RowOpts {
+    const char* value = nullptr;  // right-aligned, small (cut to under half the row)
+    int8_t toggle = -1;           // 0 / 1: an off / on switch on the right
+    bool checked = false;         // a check mark on the right (the active choice)
+    bool chevron = false;         // "›": opens a screen of its own
+    const char* badge = nullptr;  // a small outlined label on the right
+};
+void row(Frame& f, Rect r, const char* title, const char* subtitle, const RowOpts& opts, bool selected,
+         fi::ActionId action = fi::NO_ACTION, int16_t value = 0);
+// Height of a row with one line (title) or two (title and a second line).
+int16_t rowHeight(bool twoLines);
+// A small section caption above a group of rows ("Reading", "Display").
+int16_t sectionHeight();
+void section(Rect r, const char* caption);
+// The selection frame of rows, tiles and cards.
+void selectionFrame(Rect r);
+// An on / off switch (about 44x24) centred in r.
+void toggle(Rect r, bool on);
+// A thin scroll track with the visible part of a list thickened (count items,
+// perPage of them on screen from first).
+void scrollbar(Rect track, int first, int perPage, int count);
+// Kept for the older screens: a row with title and second line; the tag is
+// decorative and no longer drawn.
 void card(Frame& f, Rect r, const char* title, const char* subtitle, const char* tag, bool selected,
           fi::ActionId action = fi::NO_ACTION, int16_t value = 0);
 // The smallest card that still holds its title and secondary line.
@@ -177,8 +217,16 @@ void setListPager(int count, int perPage);
 ListPager listPager();
 // Battery glyph + percentage, right-aligned in rect.
 void battery(Frame& f, Rect r, Color color);
+// The battery glyph alone (about 26x13, the charge as a filled part).
+void batteryGlyph(int16_t x, int16_t y, Color color);
 // Progress bar with outline (value 0..1000).
 void progress(Frame& f, Rect r, int32_t permille);
+// The chapter's progress: a solid bar, `done` of `total` pages (no notches:
+// the book's bar has them, so the two are told apart).
+void chapterBar(Rect r, int done, int total);
+// The book's progress: a solid bar with a notch where each chapter starts
+// (ticks in 0..1000, `count` of them).
+void bookBar(Rect r, int32_t permille, const uint16_t* ticks, int count);
 // Modal panel centered on screen: shadow, double border, black title band.
 // Returns the body rect under the title band.
 Rect modalPanel(const char* title, int16_t w, int16_t h);
@@ -195,6 +243,15 @@ void check(int16_t x, int16_t y, Color c);        // 10x10
 void cloud(int16_t x, int16_t y, Color c);        // 14x10
 void sync(int16_t x, int16_t y, Color c);         // 20x20
 void signal(int16_t x, int16_t y, int bars, Color c);  // 22x20, bars 1..4
+void wifi(int16_t x, int16_t y, Color c);              // 22x16
+// Home tiles: drawn to fit a square box of side s (about 48..72).
+void folderLarge(Rect box, Color c);
+void cloudOutline(Rect box, Color c);                  // Material Symbols "cloud" (40 px and up)
+void menuBook(Rect box, Color c);                      // Material Symbols "menu_book"
+void syncLarge(Rect box, Color c);                     // Material Symbols "sync"
+void settings(Rect box, Color c);                      // Material Symbols "settings"
+void cloudLarge(Rect box, Color c);
+void bookOutline(Rect box, Color c);                   // a small book in the list rows
 }  // namespace icon
 
 }  // namespace uikit

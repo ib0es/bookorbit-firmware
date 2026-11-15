@@ -51,7 +51,7 @@ CASES: list[tuple[str, str, Callable[..., bool], Any, Any]] = [
     ),
     (
         "title bar: tap on title bar (◀) leaves settings/screens",
-        "T200,505;w" + "T20,20;w",  # Tap settings row, then tap title bar (◀)
+        "T100,675;w" + "T20,20;w",  # Tap the Settings tile, then tap title bar (◀)
         lambda log, sd: "[UI] drawSettingsScreen finished" in log and "[UI] drawHomeScreen finished" in log,
         None,
         {},

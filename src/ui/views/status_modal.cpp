@@ -80,9 +80,9 @@ void drawConfirmModal(const char* title, const char* line1, const char* line2, c
     const int16_t bw = (int16_t)((row.width - kGap * 2) / 2);
     Rect cancel{row.x, row.y, bw, btnH};
     Rect ok{(int16_t)(row.right() - bw), row.y, bw, btnH};
-    frameRect(cancel, Color::Black, 2);
+    frameRect(cancel, Color::Black, 2, kRadius);
     text(cancel, cancelLabel, FontBody, Color::Black, TextAlign::Center);
-    fill(ok, Color::Black, 4);
+    fill(ok, Color::Black, kRadius);
     text(ok, okLabel, FontBody, Color::White, TextAlign::Center);
     // Generous hit areas: the whole half of the footer row each.
     f.hit(Rect{foot.x, foot.y, (int16_t)(foot.width / 2), foot.height}, MODAL_HIT_CANCEL);

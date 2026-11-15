@@ -23,5 +23,5 @@ inline constexpr DeviceProfile kDeLinkProfile = {
         /*sdPowerPin*/ -1,
         /*imuMountRot*/ 0,
         /*imuMountFlipY*/ false,
-        /*keyHintWidth*/ 85,
+        /*keyHintWidth*/ 96,  // the keys are 100+ px apart: room for the longer labels
 };

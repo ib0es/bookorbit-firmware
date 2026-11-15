@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "book_reader_internal.h"
 #include "../ui/kit/ui_kit.h"   // the page-problem notice, turning the UI target (KNOWN_EXCEPTIONS)
 
@@ -76,8 +77,7 @@ bool BookReader::setOrientation(int orientation) {
 
 bool BookReader::setStatusBar(const StatusBar& bar) {
     if (bar == _bar) return false;
-    const bool relayout = bar.topShown() != _bar.topShown() || (bar.bottom == 0) != (_bar.bottom == 0) ||
-                          (bar.bottom == 2) != (_bar.bottom == 2);
+    const bool relayout = bar.topShown() != _bar.topShown() || bar.bottomRoom() != _bar.bottomRoom();
     _bar = bar;
     if (_opened && relayout) {
         const Position here = position();
@@ -135,12 +135,12 @@ void BookReader::drawStatusBar() {
             char clk[8];
             if (SyncClock::formatLocalTime(_bar.utcOffsetMin, clk, sizeof(clk))) add(String(clk));
         }
-        Rect topBand{left, 4, (int16_t)(right - left), 24};
+        Rect topBand{left, 6, (int16_t)(right - left), 28};
         int16_t rw = 0;
         if (_bar.battery) {   // the battery glyph with its percentage, at the right
             char pct[8];
-            snprintf(pct, sizeof(pct), "%d%%+", Battery.getPercentage());
-            const int16_t bw = (int16_t)(textWidth(FontSmall, pct) + 32);
+            snprintf(pct, sizeof(pct), "%d%%", Battery.getPercentage());
+            const int16_t bw = (int16_t)(textWidth(FontSmall, pct) + 36);
             battery(f, Rect{(int16_t)(right - bw), topBand.y, bw, topBand.height}, Color::Black);
             rw = (int16_t)(bw + (r.length() ? 14 : 0));
         }
@@ -151,9 +151,15 @@ void BookReader::drawStatusBar() {
             rw = (int16_t)(rw + tw);
         }
         const String l = _bar.top == 0 ? _title : _bar.top == 1 ? getCurrentChapterTitle() : String();
-        if (l.length())
-            text(Rect{left, topBand.y, (int16_t)(topBand.width - rw - 12), topBand.height}, l.c_str(), FontSmall);
-        hline(left, right, 30);
+        if (l.length()) {
+            if (rw == 0) {
+                // Only the title or chapter: centred, in the heading font.
+                text(Rect{(int16_t)(left + 20), 2, (int16_t)(right - left - 40), 38}, l.c_str(), FontTitle,
+                     Color::Black, uikit::TextAlign::Center);
+            } else {
+                text(Rect{left, topBand.y, (int16_t)(topBand.width - rw - 12), topBand.height}, l.c_str(), FontSmall);
+            }
+        }
         // A bookmarked page: a ribbon hanging from the top rule, left of the numbers.
         int bSpine;
         uint32_t bFrom, bTo;
@@ -175,18 +181,66 @@ void BookReader::drawStatusBar() {
         }
     }
     const int32_t permille = (int32_t)(getProgress() * 1000.0f);
-    if (_bar.bottom == 0) {
-        const int16_t bottomRule = (int16_t)(height() - 44);
-        hline(left, right, bottomRule);
-        String chTitle = getCurrentChapterTitle();
-        if (chTitle.length() > 0) {
-            text(Rect{left, (int16_t)(bottomRule + 2), (int16_t)(right - left), 20}, chTitle.c_str(), FontSmall);
-            progress(f, Rect{left, (int16_t)(height() - 18), (int16_t)(right - left), 8}, permille);
-        } else {
-            progress(f, Rect{left, (int16_t)(height() - 28), (int16_t)(right - left), 10}, permille);
+    // The bottom line (core/status_line.h): the chapter on the left ("3/18 (17%)"),
+    // its title in the middle, the book on the right ("2/12 (4%)"); under them the
+    // progress lines (the chapter's above the book's).
+    const uint8_t items = _bar.bottomItems;
+    const unsigned chPages = (unsigned)curCount();
+    const int32_t chPermille = chPages > 0 ? (int32_t)((uint32_t)(_page + 1) * 1000u / chPages) : 0;
+    int16_t y = (int16_t)(height() - 8);
+    const bool showChBar = items & SB_BOTTOM_CH_BAR, showBookBar = items & SB_BOTTOM_BOOK_BAR;
+    // Told apart by their look: the book's bar has a notch at each chapter,
+    // the chapter's has none.
+    if (showBookBar) {
+        uint16_t ticks[64];
+        int n = 0;
+        const int total = std::max(1, getTotalPages());
+        for (const auto& ch : getChapters()) {
+            if (n >= 64) break;
+            if (ch.page > 1) ticks[n++] = (uint16_t)std::min<int32_t>(999, (int32_t)(ch.page - 1) * 1000 / total);
         }
-    } else if (_bar.bottom == 1) {
-        progress(f, Rect{left, (int16_t)(height() - 18), (int16_t)(right - left), 8}, permille);
+        bookBar(Rect{left, (int16_t)(y - 4), (int16_t)(right - left), 4}, permille, ticks, n);
+        y = (int16_t)(y - 10);
+    }
+    if (showChBar) {
+        chapterBar(Rect{left, (int16_t)(y - 4), (int16_t)(right - left), 4}, (int)_page + 1, (int)chPages);
+        y = (int16_t)(y - 10);
+    }
+    if (_bar.bottomRoom() >= 2) {
+        Rect row{left, (int16_t)(height() - 46), (int16_t)(right - left), 28};
+        if (showChBar || showBookBar) row.y = (int16_t)(y - 26);
+        StatusLine::Where w{};
+        w.chapter = getCurrentChapterIndex() + 1;
+        w.chapters = getChapterCount();
+        w.chPage = (int)_page + 1;
+        w.chPages = (int)chPages;
+        w.page = getCurrentPage();
+        w.pages = getTotalPages();
+        w.chPercent = (int)(chPermille / 10);
+        w.percent = (int)(getProgress() * 100.0f);
+        char l[48], r[48], c[160];
+        StatusLine::sides(items, w, l, sizeof(l), r, sizeof(r));
+        const String chTitle = getCurrentChapterTitle();
+        StatusLine::center(items, w, chTitle.c_str(), c, sizeof(c));
+        const int16_t lw = *l ? (int16_t)(textWidth(FontSmall, l) + 8) : 0;
+        const int16_t rw = *r ? (int16_t)(textWidth(FontSmall, r) + 8) : 0;
+        if (*l) text(Rect{row.x, row.y, lw, row.height}, l, FontSmall);
+        if (*r)
+            text(Rect{(int16_t)(row.right() - rw), row.y, rw, row.height}, r, FontSmall, Color::Black,
+                 uikit::TextAlign::Right);
+        if (*c) {
+            Rect mid;
+            if (StatusLine::centerAbove(items)) {   // a line of its own, above the sides
+                mid = Rect{row.x, (int16_t)(row.y - 26), row.width, row.height};
+            } else {
+                // Centred on the page while the sides leave room, else between them.
+                const int16_t side = std::max(lw, rw);
+                mid = Rect{(int16_t)(row.x + side), row.y, (int16_t)(row.width - 2 * side), row.height};
+                if (mid.width < row.width / 3)
+                    mid = Rect{(int16_t)(row.x + lw), row.y, (int16_t)(row.width - lw - rw), row.height};
+            }
+            if (mid.width > 20) text(mid, c, FontSmall, Color::Black, uikit::TextAlign::Center);
+        }
     }
 }
 

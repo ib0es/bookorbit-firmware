@@ -31,6 +31,7 @@
 #include "chapter_item.h"
 #include "../core/epub_cfi.h"
 #include "../core/cfi_map.h"
+#include "../core/status_line.h"
 #include "engine/bitmap_book_font.h"
 #include "engine/ttf_book_font.h"
 #include "engine/sd_book_storage.h"
@@ -147,11 +148,19 @@ public:
         bool battery = true;
         bool clock = false;
         int16_t utcOffsetMin = 0;
-        uint8_t bottom = 0;    // 0 chapter title and progress bar, 1 the bar, 2 nothing
+        // The bottom line: SbBottomItem bits (page in the chapter, chapter and book
+        // progress lines, chapter title, chapter and book percent).
+        uint8_t bottomItems = SB_BOTTOM_DEFAULT;
         bool topShown() const { return top != 2 || pages != 2 || percent || clock || battery; }
+        // What the bottom line needs room for: 3 two lines of text, 2 one (and
+        // the progress lines), 1 progress lines only, 0 nothing.
+        int bottomRoom() const {
+            const int lines = StatusLine::textLines(bottomItems);
+            return lines == 2 ? 3 : lines == 1 ? 2 : (bottomItems & SB_BOTTOM_BARS) ? 1 : 0;
+        }
         bool operator==(const StatusBar& o) const {
             return top == o.top && pages == o.pages && percent == o.percent && clock == o.clock &&
-                   utcOffsetMin == o.utcOffsetMin && battery == o.battery && bottom == o.bottom;
+                   utcOffsetMin == o.utcOffsetMin && battery == o.battery && bottomItems == o.bottomItems;
         }
     };
     bool setStatusBar(const StatusBar& bar);

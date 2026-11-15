@@ -13,6 +13,9 @@
 using namespace uikit;
 
 static int s_tocRowsPerPage = 1;
+// What the footer took beyond the estimate the last time (the touch hints of a
+// touch-only board, a hint that wrapped): kept so the next pass gets it right.
+static int16_t s_tocFooterExtra = 0;
 int tocRowsPerPage() { return s_tocRowsPerPage; }
 
 namespace {}
@@ -38,11 +41,16 @@ void drawTocScreen(AppContext& ctx, bool fullRefresh) {
 
     // The footer shows "item x/y, page p/q": the page size depends on the
     // row height, so compute it before writing the hint.
-    const int16_t footerH = (int16_t)(lineHeight(FontSmall) + 4 + 14);
-    const int16_t rowH = (int16_t)(lineHeight(FontBody) + lineHeight(FontSmall) + 18);
-    const int16_t step = (int16_t)(rowH + 6);
-    const int16_t listH = (int16_t)(area.height - footerH - 20);
-    int perPage = (listH + 6) / step;
+    // The hint line may wrap (a long translation): measure it with the widest numbers.
+    char probe[160];
+    snprintf(probe, sizeof(probe), tr(MsgId::READER_TOC_NAV_HINT_FMT), total, total, total, total);
+    const int16_t footerH =
+            (int16_t)(wrappedHeight(probe, FontSmall, (int16_t)(width() - 2 * (kMargin + 4)), 2) + 6 + 8);
+    const int16_t rowH = rowHeight(true);
+    const int16_t step = (int16_t)(rowH + 4);
+    const int16_t tabsH = touchOnly() ? 0 : (int16_t)(lineHeight(FontSmall) + 10 + 8);
+    const int16_t listH = (int16_t)(area.height - footerH - tabsH - 20 - s_tocFooterExtra);
+    int perPage = (listH + 4) / step;
     if (perPage < 1) perPage = 1;
     s_tocRowsPerPage = perPage;
     const int windowStart = (ctx.selectedTocIndex / perPage) * perPage;
@@ -57,22 +65,25 @@ void drawTocScreen(AppContext& ctx, bool fullRefresh) {
                               "\xE2\x96\xB6\xE2\x96\xB6"},
                     navHints);
     area = insetXY(area, kMargin, 10);
+    if ((area.height + 4) / step < perPage) {
+        // The rows do not fit under the footer as drawn: draw again with its real height.
+        s_tocFooterExtra = (int16_t)(s_tocFooterExtra + listH - area.height);
+        drawTocScreen(ctx, fullRefresh);
+        return;
+    }
 
     const int currentChapterIdx = Reader.getCurrentChapterIndex();
     const int totalPages = max(1, Reader.getTotalPages());
     for (int i = windowStart; i < windowEnd; i++) {
         Rect row = takeTop(area, rowH);
-        takeTop(area, 6);
+        takeTop(area, 4);
         const bool selected = (i == ctx.selectedTocIndex);
         const bool current = (i == currentChapterIdx);
-        const Color ink = selected ? Color::White : Color::Black;
-        if (selected)
-            fill(row, Color::Black);
-        else
-            frameRect(row, Color::Black);
+        const Color ink = Color::Black;
+        if (selected) selectionFrame(row);
         f.hit(row, ActionChapter, (int16_t)i);
 
-        Rect inner = insetXY(row, 12, 8);
+        Rect inner = insetXY(row, 16, 8);
         char pageBuf[32];
         snprintf(pageBuf, sizeof(pageBuf), tr(MsgId::READER_TOC_PAGE_FMT), chapters[i].page);
         char progBuf[32];
@@ -112,8 +123,8 @@ void drawReaderMenuScreen(AppContext& ctx, bool fullRefresh) {
     {
         const int16_t th = lineHeight(FontTitle), sh = lineHeight(FontSmall);
         Rect st = takeTop(area, (int16_t)(th + 2 * (sh + 2) + 7 + 30));
-        frameRect(st, Color::Black);
-        Rect in = insetXY(st, 12, 8);
+        frameRect(st, Color::Black, 1, kRadius);
+        Rect in = insetXY(st, 16, 8);
         text(takeTop(in, th), Reader.getTitle().c_str(), FontTitle);
         takeTop(in, 2);
         char posBuf[80];
@@ -161,29 +172,13 @@ void drawReaderMenuScreen(AppContext& ctx, bool fullRefresh) {
     const int n = readerMenuItemCount();
     const int sel = ctx.selectedReaderMenuIndex;
     // A landscape screen: tighter cards, then a page at a time.
-    const CardList l = cardList(area, n, sel, (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 22));
+    const CardList l = cardList(area, n, sel, rowHeight(true), 2);
     const int16_t cardH = l.cardH, gap = l.gap;
     const int first = l.first, perPage = l.perPage;
     for (int i = first; i < n && i < first + perPage; i++) {
         card(f, takeTop(area, cardH), items[i].title, items[i].value, items[i].tag, i == sel, ActionMenuItem,
              (int16_t)i);
         takeTop(area, gap);
-    }
-
-    // Live preview of the book font (drawn with the reader's own font,
-    // so it shows exactly what the pages will look like).
-    if (area.height > 60) {
-        Rect box = area;
-        frameRect(box, Color::Black);
-        const int16_t bandH = (int16_t)(lineHeight(FontSmall) + 8);
-        Rect band = takeTop(box, bandH);
-        fill(band, Color::Black);
-        char previewTitle[64];
-        snprintf(previewTitle, sizeof(previewTitle), tr(MsgId::READER_MENU_PREVIEW_TITLE_FMT),
-                 BookReader::getFontSizeName(ctx.config.readerFontSize));
-        text(insetX(band, 8), previewTitle, FontSmall, Color::White);
-        Reader.drawSample(box.x + 8, box.y + 6, box.width - 16, box.height - 10, tr(MsgId::READER_MENU_SAMPLE_TEXT),
-                          (uint16_t)FontEngine::sizePx(ctx.config.readerFontSize));
     }
 
     present(fullRefresh);
@@ -231,22 +226,15 @@ void drawFontMenuScreen(AppContext& ctx, bool fullRefresh) {
         Rect row{area.x, y, area.width, h};
         const bool isSel = (i == sel);
         const bool cur = (i == ctx.config.readerFontSize);
-        if (isSel)
-            fill(row, Color::Black, 4);
-        else
-            frameRect(row, Color::Black, 1, 4);
+        if (isSel) selectionFrame(row);
         char label[16];
         snprintf(label, sizeof(label), cur ? "%s \xE2\x9C\x93" : "%s", BookReader::getFontSizeName(i));  // U+2713
-        text(Rect{(int16_t)(row.x + 10), row.y, labelW, row.height}, label, FontBody,
-             isSel ? Color::White : Color::Black);
+        text(Rect{(int16_t)(row.x + 14), row.y, labelW, row.height}, label, FontBody);
         // The sample in the book font itself, vertically centred (black on a white
         // inset, the selected row's frame staying black around it).
-        const int sx = row.x + 10 + labelW;
+        const int sx = row.x + 14 + labelW;
         const uint16_t px = (uint16_t)FontEngine::sizePx(i);
         const int lh = Reader.sampleLineHeight(px);
-        if (isSel)
-            fill(Rect{(int16_t)(sx - 4), (int16_t)(row.y + 3), (int16_t)(row.right() - sx), (int16_t)(h - 6)},
-                 Color::White, 3);
         Reader.drawSample(sx, row.y + (h - lh) / 2, row.right() - 8 - sx, lh, tr(MsgId::FONT_MENU_SAMPLE), px);
         f.hit(row, ActionFontSize, (int16_t)i);
         y = (int16_t)(y + h + gap);
@@ -288,7 +276,7 @@ void drawTypefaceMenuScreen(AppContext& ctx, bool fullRefresh) {
                   ctx.typefaceStorage, n, sel, hints.back, hints.ok, hints.left, hints.right);
     area = keyHints(f, area, hints);
     area = insetXY(area, kMargin, 8);
-    const int16_t rowH = (int16_t)(lineHeight(FontBody) + lineHeight(FontSmall) + 18);
+    const int16_t rowH = rowHeight(true);
     const int perPage = std::max(1, (int)(area.height / (rowH + 6)));
     const int first = (sel / perPage) * perPage;
     if (n > perPage) setListPager(n, perPage);
@@ -315,7 +303,7 @@ void drawTypefaceMenuScreen(AppContext& ctx, bool fullRefresh) {
             const int16_t dw = (int16_t)std::min<int>(rowH, 96);
             Rect del{(int16_t)(row.right() - dw), row.y, dw, row.height};
             row.width = (int16_t)(row.width - dw - kGap);
-            frameRect(del, Color::Black, 1, 4);
+            frameRect(del, Color::Black, 1, kRadius);
             text(del, tr(MsgId::KEY_DELETE), FontSmall, Color::Black, TextAlign::Center, 2);
             f.hit(del, ActionTypefaceDelete, (int16_t)i);
         }
@@ -336,18 +324,26 @@ namespace {
 // beside its value, so a value can go down by touch too (C5); a tap on the
 // rest of the row still selects it (and steps up).
 void valueRow(Frame& f, Rect row, const char* label, const char* val, bool isSel, bool stepping, fi::ActionId rowAction,
-              int16_t index) {
-    if (isSel) fill(row, Color::Black, 4);
-    const Color ink = isSel ? Color::White : Color::Black;
-    Rect in = insetX(row, 10);
+              int16_t index, int toggleOn = -1) {
+    if (isSel) selectionFrame(row);
+    const Color ink = Color::Black;
+    Rect in = insetX(row, 14);
+    if (toggleOn >= 0) {
+        // On / off: a switch; a tap anywhere on the row (or a step) flips it.
+        f.hit(row, rowAction, index);
+        toggle(Rect{(int16_t)(in.right() - 46), row.y, 46, row.height}, toggleOn > 0);
+        text(Rect{in.x, in.y, (int16_t)(in.width - 46 - 8), in.height}, label, FontBody, ink);
+        return;
+    }
     const int16_t vw = (int16_t)(textWidth(FontBody, val) + 4);
     f.hit(row, rowAction, index);
     if (stepping && touchUi()) {
-        const int16_t bw = (int16_t)std::min<int>(row.height + 8, 52);
-        Rect plus{(int16_t)(in.right() - bw), (int16_t)(row.y + 3), bw, (int16_t)(row.height - 6)};
-        Rect value{(int16_t)(plus.x - 8 - vw), in.y, vw, in.height};
-        Rect minus{(int16_t)(value.x - 8 - bw), plus.y, bw, plus.height};
-        for (const Rect& b : {minus, plus}) frameRect(b, ink, 1, 4);
+        // Finger-sized: as tall as the row allows, wider than tall.
+        const int16_t bw = (int16_t)std::min<int>(row.height, 52);
+        Rect plus{(int16_t)(in.right() - bw), (int16_t)(row.y + 4), bw, (int16_t)(row.height - 8)};
+        Rect value{(int16_t)(plus.x - 6 - vw), in.y, vw, in.height};
+        Rect minus{(int16_t)(value.x - 6 - bw), plus.y, bw, plus.height};
+        for (const Rect& b : {minus, plus}) frameRect(b, ink, 1, kRadiusSmall);
         text(minus, "-", FontLarge, ink, TextAlign::Center);
         text(plus, "+", FontLarge, ink, TextAlign::Center);
         text(value, val, FontBody, ink, TextAlign::Center);
@@ -358,7 +354,6 @@ void valueRow(Frame& f, Rect row, const char* label, const char* val, bool isSel
         text(Rect{(int16_t)(in.right() - vw), in.y, vw, in.height}, val, FontBody, ink, TextAlign::Right);
         text(Rect{in.x, in.y, (int16_t)(in.width - vw - 8), in.height}, label, FontBody, ink);
     }
-    if (!isSel) hline((int16_t)(row.x + 6), (int16_t)(row.right() - 6), (int16_t)(row.bottom() - 1));
 }
 }  // namespace
 
@@ -367,19 +362,21 @@ void drawAppearanceScreen(AppContext& ctx, bool fullRefresh) {
     Frame& f = pass.frame();
     clear();
     int& sel = ctx.selectedAppearanceIndex;
+    const int page = ctx.appearancePage;
     if (sel < 0) sel = 0;
-    const int rows = Appearance::count();
+    const int rows = Appearance::count(page);
     if (sel >= rows) sel = rows - 1;
-    Rect area = topBar(f, tr(MsgId::APPEAR_TITLE));
+    Rect area = topBar(f, tr(page == 1 ? MsgId::APPEAR_MORE : MsgId::APPEAR_TITLE));
     {
-        const int r = Appearance::rowAt(sel);
-        const bool list = r == Appearance::TYPEFACE || r == Appearance::SIZE;   // OK opens a list there
+        const int r = Appearance::rowAt(sel, page);
+        // OK opens a list (typeface, size) or the "More" page there
+        const bool list = r == Appearance::TYPEFACE || r == Appearance::SIZE || r == Appearance::MORE;
         area = keyHints(f, area,
                         KeyLabels{tr(MsgId::KEY_DONE), tr(list ? MsgId::KEY_OPEN : MsgId::KEY_CHANGE), "\xE2\x97\x80",
                                   "\xE2\x96\xB6"});
     }
-    area = insetXY(area, kMargin, 6);
-    const int16_t rowH = (int16_t)(lineHeight(FontBody) + 12);
+    area = insetXY(area, kMargin, 2);
+    const int16_t rowH = rowHeight(false);
     char val[64];
     // All the rows when they fit (with room for the preview below), else the
     // page of rows the selection is on (a landscape screen).
@@ -388,11 +385,21 @@ void drawAppearanceScreen(AppContext& ctx, bool fullRefresh) {
     if (rows > perPage) setListPager(rows, perPage);
     for (int i = first; i < rows && i < first + perPage; i++) {
         Rect row = takeTop(area, rowH);
-        const int r = Appearance::rowAt(i);
+        const int r = Appearance::rowAt(i, page);
+        if (r == Appearance::MORE) {   // opens the second page
+            RowOpts o;
+            o.chevron = true;
+            uikit::row(f, row, Appearance::label(r), nullptr, o, i == sel, ActionAppearance, (int16_t)i);
+            takeTop(area, 2);
+            continue;
+        }
         Appearance::value(ctx.config, r, val, sizeof(val));
-        // The typeface row opens a list; the others step.
-        const bool stepping = r != Appearance::TYPEFACE;
-        valueRow(f, row, Appearance::label(r), val, i == sel, stepping, ActionAppearance, (int16_t)i);
+        // "-" / "+" beside the numbers only; the typeface opens a list, the
+        // other rows (alignment, orientation) change with a tap on them.
+        const bool stepping = r == Appearance::SIZE || r == Appearance::LINE_SPACING ||
+                              r == Appearance::PARAGRAPH_SPACING || r == Appearance::MARGINS;
+        valueRow(f, row, Appearance::label(r), val, i == sel, stepping, ActionAppearance, (int16_t)i,
+                 Appearance::toggleState(ctx.config, r));
         takeTop(area, 2);
     }
     // The settings as they will look: size, typeface, line spacing, margins.
@@ -431,7 +438,7 @@ void drawBookmarksScreen(AppContext& ctx, bool fullRefresh) {
                    tr(sel == 0 ? (here >= 0 ? MsgId::KEY_REMOVE : MsgId::KEY_ADD) : MsgId::KEY_GO)};
     area = keyHints(f, area, keys);
     area = insetXY(area, kMargin, 10);
-    const int16_t rowH = (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 22);
+    const int16_t rowH = rowHeight(true);
     const int perPage = std::max(1, (int)(area.height / (rowH + kGap)));
     const int first = (sel / perPage) * perPage;
     if (n > perPage) setListPager(n, perPage);
@@ -453,7 +460,7 @@ void drawBookmarksScreen(AppContext& ctx, bool fullRefresh) {
                 const int16_t dw = (int16_t)std::min<int>(rowH, 96);
                 Rect del{(int16_t)(r.right() - dw), r.y, dw, r.height};
                 r.width = (int16_t)(r.width - dw - kGap);
-                frameRect(del, Color::Black, 1, 4);
+                frameRect(del, Color::Black, 1, kRadius);
                 text(del, tr(MsgId::KEY_DELETE), FontSmall, Color::Black, TextAlign::Center, 2);
                 f.hit(del, ActionBookmarkDelete, (int16_t)i);
             }

@@ -23,6 +23,7 @@
 #include "SDCardManager.h"
 #include "UsbMassStorage.h"
 #include "platform/hal/display.h"
+#include "ui/kit/ui_kit.h"
 #include "esp_sleep.h"
 
 void setup();
@@ -96,6 +97,16 @@ static void onUpdate(const uint8_t* fb, int mode) {
         }
     fclose(f);
     printf("    [frame %03d %s%s]\n", g_frame - 1, g_label.c_str(), mode == 0 ? " FULL" : "");
+    // SIM_DUMP_HITS=1: the touch areas of the frame (logical pixels), to place the taps of the tests.
+    if (getenv("SIM_DUMP_HITS")) {
+        for (size_t i = 0; i < uikit::hitCount(); i++) {
+            uikit::Rect r;
+            freeink::ui::ActionId a;
+            int16_t v;
+            if (uikit::hitAt(i, r, a, v))
+                printf("    [hit %d,%d %dx%d a=%d v=%d]\n", r.x, r.y, r.width, r.height, (int)a, (int)v);
+        }
+    }
 }
 
 static void run(int iters) {

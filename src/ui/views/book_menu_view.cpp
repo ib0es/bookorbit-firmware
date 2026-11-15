@@ -54,8 +54,8 @@ void drawBookMenuScreen(AppContext& ctx, bool fullRefresh) {
         const int16_t titleH = wrappedHeight(book->title.c_str(), FontTitle, (int16_t)(area.width - 24), 2);
         const bool hasAuthor = book->author.length() > 0;
         Rect st = takeTop(area, (int16_t)(titleH + (hasAuthor ? 2 : 1) * (sh + 2) + 7 + 30));
-        frameRect(st, Color::Black);
-        Rect in = insetXY(st, 12, 8);
+        frameRect(st, Color::Black, 1, kRadius);
+        Rect in = insetXY(st, 16, 8);
         text(takeTop(in, titleH), book->title.c_str(), FontTitle, Color::Black, TextAlign::Left, 2);
         takeTop(in, 2);
         if (hasAuthor) text(takeTop(in, (int16_t)(sh + 2)), book->author.c_str(), FontSmall);
@@ -82,8 +82,7 @@ void drawBookMenuScreen(AppContext& ctx, bool fullRefresh) {
     const int n = bookMenuItems(*book, items);
     if (ctx.selectedBookMenuIndex >= n) ctx.selectedBookMenuIndex = n - 1;
     // A landscape screen: tighter cards, then a page at a time.
-    const CardList l =
-            cardList(area, n, ctx.selectedBookMenuIndex, (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 22));
+    const CardList l = cardList(area, n, ctx.selectedBookMenuIndex, rowHeight(true), 2);
     for (int i = l.first; i < n && i < l.first + l.perPage; i++) {
         MsgId title, sub;
         switch (items[i]) {

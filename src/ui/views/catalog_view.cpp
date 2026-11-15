@@ -58,16 +58,28 @@ void drawCatalogScreen(AppContext& ctx, bool fullRefresh) {
     Rect area = topBar(f, tr(MsgId::CATALOG_TITLE));
     area = keyHints(f, area,
                     KeyLabels{tr(MsgId::KEY_BACK), tr(MsgId::KEY_OPEN), tr(MsgId::KEY_BACK), tr(MsgId::KEY_OPEN)});
-    area = insetXY(area, kMargin, 8);
+    area = insetXY(area, kMargin, 2);
+    auto& lib = LibraryManager::getInstance();
 
     const int count = NUM_CATALOG_ITEMS;
-    // Nine cards: tighter in portrait, a page at a time on a landscape screen.
-    const CardList l = cardList(area, count, ctx.selectedCatalogIndex,
-                                (int16_t)(lineHeight(FontTitle) + lineHeight(FontSmall) + 16), 4);
+    // Search (with its query under it), the lists with their counts, the
+    // "hide completed" switch. A landscape screen: a page at a time.
+    const int16_t rowH = rowHeight(false);
+    const CardList l = cardList(area, count, ctx.selectedCatalogIndex, rowH, 4);
     for (int i = l.first; i < count && i < l.first + l.perPage; i++) {
         CatalogItemDef item = getCatalogItemDef(ctx, i);
-        card(f, takeTop(area, l.cardH), item.title, item.value.c_str(), item.tag, i == ctx.selectedCatalogIndex, 1,
-             (int16_t)i);
+        RowOpts o;
+        const char* sub = nullptr;
+        if (i == 0) {
+            o.chevron = true;
+            if (lib.searchQuery.length() > 0) o.value = item.value.c_str();
+        } else if (i == 8) {
+            o.toggle = ctx.config.hideCompleted ? 1 : 0;
+        } else {
+            o.value = item.value.c_str();
+            o.chevron = true;
+        }
+        row(f, takeTop(area, l.cardH), item.title, sub, o, i == ctx.selectedCatalogIndex, 1, (int16_t)i);
         takeTop(area, l.gap);
     }
 

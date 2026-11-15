@@ -25,38 +25,37 @@ BIN = os.environ.get("PICCO_HEADLESS") or os.path.join(ROOT, "test/sim/build-pic
 
 BACK = "W100,300,400,300;"  # swipe right = back
 TITLE = "T240,20;"  # ◀ in the title bar = back
-HOME_CARD = "T200,200;"
-HOME_CATALOG = "T200,385;"
-CATALOG_ALL_BOOKS = "T200,145;"
+HOME_CARD = "T240,180;"
+HOME_CATALOG = "T90,400;"  # the home tiles: Catalog, Offline, Sync; Settings below
+CATALOG_ALL_BOOKS = "T200,186;"
 HOME_ALL_BOOKS = HOME_CATALOG + CATALOG_ALL_BOOKS
-LIB_FRANKENSTEIN = "T200,225;"  # 3rd row of All Books (sorted by title; two-line rows, U1)
-HOME_OFFLINE = "T200,445;"
-HOME_SETTINGS = "T200,505;"
-HOME_SYNC = "T200,565;"
+LIB_FRANKENSTEIN = "T200,295;"  # 3rd row of All Books (sorted by title; two-line rows, U1)
+HOME_OFFLINE = "T240,400;"
+HOME_SETTINGS = "T90,580;"
+HOME_SYNC = "T390,400;"
 READ_MIDDLE = "T240,400;"  # reading: middle third = book menu
 READ_RIGHT = "T400,400;"
 READ_LEFT = "T80,400;"
-RMENU_TOC, RMENU_FONT, RMENU_MARKS = "T240,200;", "T240,278;", "T240,354;"
-RMENU_SYNC, RMENU_RESUME, RMENU_CLOSE = "T240,430;", "T240,506;", "T240,582;"
-MARKS_THIS_PAGE = "T240,90;"  # first row of the Bookmarks screen
-APPEAR_TYPEFACE, APPEAR_SIZE = "T240,67;", "T240,103;"  # rows of the Appearance screen
-APPEAR_ORIENTATION = "T100,427;"  # on the label: the middle of a value row is its "-" (C5)
-SB_BOTTOM = "T240,393;"  # the "Bottom" card of the status bar menu
-# Settings rows (eleven of them with Frontlight, Reading, Screen orientation, and Web)
-SET_LANG, SET_WIFI, SET_SERVER, SET_SLEEP, SET_INFO, SET_LIGHT = (
-    "T240,85;",
-    "T240,140;",
-    "T240,200;",
-    "T240,260;",
-    "T240,380;",
-    "T240,500;",
-)
-SET_SYNC = "T240,440;"
-SET_READING = "T240,560;"  # Settings -> Reading: status bar, full refresh, pictures
-FL_BRIGHT_PLUS, FL_ONOFF, FL_OUTSIDE = "T425,122;", "T240,303;", "T240,600;"  # the frontlight panel (top edge swipe)
-READING_STATUS_BAR = "T240,67;"  # its first row
-SET_ORIENTATION = "T240,600;"
-SET_ORIENTATION_LANDSCAPE = "T224,400;"  # the same row once the screen is turned (eleven rows, two pages)
+RMENU_TOC, RMENU_FONT, RMENU_MARKS = "T240,275;", "T240,345;", "T240,415;"
+RMENU_SYNC, RMENU_RESUME, RMENU_CLOSE = "T240,485;", "T240,555;", "T240,625;"
+MARKS_THIS_PAGE = "T240,143;"  # first row of the Bookmarks screen
+APPEAR_TYPEFACE, APPEAR_SIZE = "T240,127;", "T240,184;"  # rows of the Appearance screen
+APPEAR_ORIENTATION = "T100,412;"
+APPEAR_MORE = "T240,469;"  # the last row: the second page (paragraph spacing, hyphenation...)
+MORE_HYPHENATION = "T240,184;"  # its second row, a switch  # on the label: the middle of a value row is its "-" (C5)
+SB_BOTTOM = "T240,363;"  # the "Bottom" row of the status bar menu (opens its list)
+CHOICE_1, CHOICE_3, CHOICE_5 = "T240,127;", "T240,245;", "T240,363;"  # rows of a list of values
+# Settings rows, in sections: Reading & screen (Reading, Screen orientation, Sleep
+# screen, Frontlight), Connections (Wi-Fi, Server, Sync, Web), Device (Language,
+# Settings file, then on the second page, a swipe up, Device information).
+SET_PAGE2 = "W240,600,240,200;"
+SET_READING, SET_ORIENTATION, SET_SLEEP, SET_LIGHT = "T240,165;", "T240,224;", "T240,283;", "T240,342;"
+SET_WIFI, SET_SERVER, SET_SYNC = "T240,439;", "T240,498;", "T240,557;"
+SET_LANG, SET_INFO = "T240,697;", SET_PAGE2 + "T240,111;"
+WIFI_SCAN, WIFI_SSID = "T240,135;", "T240,202;"  # rows of the Wi-Fi screen
+FL_BRIGHT_PLUS, FL_ONOFF, FL_OUTSIDE = "T424,138;", "T240,329;", "T240,600;"  # the frontlight panel (top edge swipe)
+READING_STATUS_BAR = "T240,135;"  # its first row
+ORIENT_PORTRAIT_FLIPPED = "T240,245;"  # Settings -> Screen orientation: its third row
 
 
 def pages(log):
@@ -92,16 +91,16 @@ CASES = [
     ),
     (
         "reader menu: appearance, font size list, tap 20 pt, back lays the book out",
-        HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + APPEAR_SIZE + "T240,236;" + TITLE,
+        HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + APPEAR_SIZE + "T240,288;" + TITLE,
         lambda log, sd: (
-            re.search(r"Chapter \d+( laid out|: first page)", log.split("TAP_240_236", 1)[1])
+            re.search(r"Chapter \d+( laid out|: first page)", log.split("TAP_240_288", 1)[1])
             and config(sd)["font_pt"] == 20
         ),
     ),
     (
         "reader menu: appearance, typeface list, tap the built-in one, back to the page",
-        HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + APPEAR_TYPEFACE + "T240,85;" + TITLE,
-        lambda log, sd: "[Reader] Page" in log.split("TAP_240_85", 1)[1] and config(sd).get("font_family", "") == "",
+        HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + APPEAR_TYPEFACE + "T240,141;" + TITLE,
+        lambda log, sd: "[Reader] Page" in log.split("TAP_240_141", 1)[1] and config(sd).get("font_family", "") == "",
     ),
     (
         "reader menu: landscape pages, the tap zones turn with them",
@@ -114,18 +113,23 @@ CASES = [
         + SET_READING
         + READING_STATUS_BAR
         + SB_BOTTOM
-        + SB_BOTTOM
+        + "T240,127;T240,363;T240,422;T240,481;"  # its switches: the four that are on, off
+        + TITLE
         + TITLE
         + TITLE
         + TITLE
         + HOME_CARD
         + "w",
-        lambda log, sd: config(sd)["sb_bottom"] == 2 and "[Reader] Page" in log.split("TAP_240_393")[-1],
+        lambda log, sd: (
+            config(sd)["sb_bottom_items"] == 0
+            and config(sd)["sb_bottom"] == 2
+            and "[Reader] Page" in log.split("TAP_240_481")[-1]
+        ),
     ),
     # Full refresh and pictures are in Settings -> Reading, no longer in the book's Appearance.
     (
         "settings: Reading -> full refresh and pictures stepped by a tap on their cards",
-        HOME_SETTINGS + SET_READING + "T240,165;" + "T240,240;" + TITLE,
+        HOME_SETTINGS + SET_READING + "T240,202;" + CHOICE_5 + TITLE + "T240,261;" + TITLE,  # every 8 pages
         lambda log, sd: (
             config(sd)["full_refresh_every"] == 8
             and config(sd)["sharp_images"] is True
@@ -149,16 +153,16 @@ CASES = [
     (
         "reader menu: back by title tap, close book returns home",
         HOME_CARD + "w" + READ_MIDDLE + TITLE + READ_MIDDLE + RMENU_CLOSE,
-        lambda log, sd: "drawHomeScreen" in log.split("TAP_240_582")[-1],
+        lambda log, sd: "drawHomeScreen" in log.split("TAP_240_625")[-1],
     ),
     (
         "library: tap a book opens its menu, Read opens it, back to library by swipe",
-        HOME_ALL_BOOKS + LIB_FRANKENSTEIN + "T240,180;w" + READ_MIDDLE + RMENU_CLOSE,
+        HOME_ALL_BOOKS + LIB_FRANKENSTEIN + "T240,248;w" + READ_MIDDLE + RMENU_CLOSE,
         lambda log, sd: "Opening book: /books/Frankenstein.epub" in log and pages(log),
     ),
     (
         "library: delete a book with the dialog's Delete button; its bookmarks go too (U7)",
-        HOME_ALL_BOOKS + LIB_FRANKENSTEIN + "T240,256;" + "T340,475;",
+        HOME_ALL_BOOKS + LIB_FRANKENSTEIN + "T240,321;" + "T340,487;",
         lambda log, sd: (
             "Deleting downloaded book file: /books/Frankenstein.epub" in log
             and not os.path.exists(os.path.join(sd, "books/Frankenstein.epub"))
@@ -171,14 +175,14 @@ CASES = [
     ),
     (
         "library: Cancel in the delete dialog keeps the book",
-        HOME_ALL_BOOKS + LIB_FRANKENSTEIN + "T240,256;" + "T140,475;",
+        HOME_ALL_BOOKS + LIB_FRANKENSTEIN + "T240,321;" + "T140,487;",
         lambda log, sd: "Deleting" not in log and os.path.exists(os.path.join(sd, "books/Frankenstein.epub")),
     ),
     (
         "catalog: a book's formats list, tap a format in the cloud downloads and opens it",
-        HOME_SYNC + "ww" + HOME_CATALOG + CATALOG_ALL_BOOKS + "T200,156;" + "T240,275;" + "T200,363;" + "w",
+        HOME_SYNC + "ww" + HOME_CATALOG + CATALOG_ALL_BOOKS + "T200,219;" + "T240,321;" + "T200,447;" + "w",
         lambda log, sd: (
-            "Alice in Wonderland [1].fb2 downloaded successfully" in log.split(">>> TAP_200_363", 1)[1]
+            "Alice in Wonderland [1].fb2 downloaded successfully" in log.split(">>> TAP_200_447", 1)[1]
             and "Opening book: /books/Alice in Wonderland [1].fb2" in log
         ),
     ),
@@ -189,13 +193,13 @@ CASES = [
     ),
     (
         "settings: language by tap",
-        HOME_SETTINGS + SET_LANG + "T240,165;w",
+        HOME_SETTINGS + SET_LANG + "T240,210;w",
         lambda log, sd: config(sd)["language"] in ("ru", 1, "RU"),
     ),
     (
         "settings: sleep cover submenu, tap 'Crop to fill'",
-        HOME_SETTINGS + SET_SLEEP + "T240,165;",
-        lambda log, sd: "Config saved" in log.split("TAP_240_165", 1)[-1],
+        HOME_SETTINGS + SET_SLEEP + "T240,210;",
+        lambda log, sd: "Config saved" in log.split("TAP_240_210", 1)[-1],
     ),
     (
         "settings: device info opens and a tap closes it",
@@ -204,7 +208,7 @@ CASES = [
     ),
     (
         "settings: synchronization submenu, toggles by tap",
-        HOME_SETTINGS + SET_SYNC + "T240,90;" + "T240,240;" + BACK,
+        HOME_SETTINGS + SET_SYNC + "T240,127;" + "T240,245;" + BACK,
         lambda log, sd: (
             config(sd)["sync_on_close"] is False
             and config(sd)["sync_on_wake"] is True
@@ -213,36 +217,36 @@ CASES = [
     ),
     (
         "power: after sleep, the book syncs in the background",
-        HOME_SETTINGS + SET_SYNC + "T240,240;" + BACK + BACK + "P" + "Z" + "ww",
+        HOME_SETTINGS + SET_SYNC + "T240,245;" + BACK + BACK + "P" + "Z" + "ww",
         lambda log, sd: "Background sync queued" in log and re.search(r"Background sync (done|failed) in", log),
     ),
     (
         "settings: screen orientation turns the whole interface, a quarter turn a tap",
-        HOME_SETTINGS + SET_ORIENTATION + SET_ORIENTATION_LANDSCAPE,
+        HOME_SETTINGS + SET_ORIENTATION + ORIENT_PORTRAIT_FLIPPED,
         lambda log, sd: (
             config(sd)["ui_orientation"] == 2
             and config(sd).get("orientation", 0) == 0
-            and "drawSettingsScreen" in log.split("TAP_224_400")[-1]
+            and "drawOrientationSettingsScreen" in log.split("TAP_240_245")[-1]
         ),
     ),
     (
         "settings: frontlight + button",
-        HOME_SETTINGS + SET_LIGHT + "T442,124;" + BACK,
+        HOME_SETTINGS + SET_LIGHT + "T424,188;" + BACK,
         lambda log, sd: "[Light] brightness 10%" in log and config(sd)["frontlight"] == 10,
     ),
     (
         "Wi-Fi: SSID typed on the on-screen keyboard by tap",
-        HOME_SETTINGS + SET_WIFI + "[T60,385;T430,448;]" + SET_WIFI + "w",
+        HOME_SETTINGS + SET_WIFI + "[T65,460;T430,526;]" + WIFI_SSID + "w",
         lambda log, sd: config(sd)["wifi_ssid"].endswith("x"),
     ),
     (
         "Wi-Fi: keyboard left by the title (nothing saved)",
-        HOME_SETTINGS + SET_WIFI + "[T60,385;T240,20;]" + SET_WIFI + "w",
+        HOME_SETTINGS + SET_WIFI + "[T65,460;T240,20;]" + WIFI_SSID + "w",
         lambda log, sd: not config(sd)["wifi_ssid"].endswith("x"),
     ),
     (
         "Wi-Fi: network list, title tap goes back",
-        HOME_SETTINGS + SET_WIFI + "[T240,20;]" + "T240,90;w",
+        HOME_SETTINGS + SET_WIFI + "[T240,20;]" + WIFI_SCAN + "w",
         lambda log, sd: "Starting Wi-Fi network scan" in log,
     ),
     (
@@ -269,17 +273,17 @@ CASES = [
         "[T240,400;]" + HOME_SYNC + "ww",
         lambda log, sd: "Operation aborted by user" in log,
     ),
-    # Landscape: the home rows sit beside the book card (stacked they were below
-    # the screen). Taps in the panel's portrait coordinates: the Settings row.
+    # Landscape: the home tiles sit beside the book card (stacked they were below
+    # the screen). Taps in the panel's portrait coordinates: the Settings tile.
     (
-        "home in landscape: the Settings row is on screen and opens by tap",
-        "T250,620;",
+        "home in landscape: the Settings tile is on screen and opens by tap",
+        "T163,701;",
         lambda log, sd: "drawSettingsScreen" in log,
         {"ui_orientation": 1},
     ),
     (
         "home in landscape (the other way): Sync now is on screen",
-        "T300,200;",
+        "T316,264;",
         lambda log, sd: "[Sync]" in log or "SYNC" in log or "Wi-Fi" in log,
         {"ui_orientation": 3},
     ),
@@ -292,13 +296,13 @@ CASES = [
     # is a swipe away (the page swipe moves the selection to the next page).
     (
         "catalog in landscape: swipe up to the second page, open Downloaded",
-        "T355,620;W129,400,329,400;T399,400;",
+        "T347,535;W129,400,329,400;T368,400;",
         lambda log, sd: "drawCatalogScreen" in log and "List /books: 5 rows" in log,
         {"ui_orientation": 1},
     ),
     (
         "book menu in landscape: swipe up to the second page, Close book",
-        "T229,200;wT240,400;W129,400,329,400;T254,400;",
+        "T254,230;wT240,400;W129,400,329,400;T93,400;",
         lambda log, sd: "[Reader] Close" in log and log.rstrip().count("drawHomeScreen") >= 2,
         {"ui_orientation": 1},
     ),
@@ -323,13 +327,24 @@ CASES = [
     # C5: "-" and "+" beside a value (line spacing: the third row).
     (
         "appearance: '-' beside a value steps it down, '+' up (C5)",
-        HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + "T320,140;",
+        HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + "T297,241;",
         lambda log, sd: config(sd).get("line_spacing", 100) < 100,
     ),
     (
         "appearance: '+' beside a value steps it up (C5)",
-        HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + "T432,140;",
+        HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + "T422,241;",
         lambda log, sd: config(sd).get("line_spacing", 100) > 100,
+    ),
+    # The second page of Appearance ("More"): a switch flipped by a tap, the
+    # title goes back to the first page, then to the book.
+    (
+        "appearance: 'More' page, hyphenation switched off by a tap, back twice",
+        HOME_CARD + "w" + READ_MIDDLE + RMENU_FONT + APPEAR_MORE + MORE_HYPHENATION + TITLE + TITLE,
+        lambda log, sd: (
+            config(sd).get("hyphenation") is False
+            and "Appearance preview laid out" in log.split(">>> TAP_240_20")[1]
+            and "[Reader] Page" in log.split(">>> TAP_240_20")[-1]
+        ),
     ),
     # C1: a bookmark added, then deleted by the "delete" beside it.
     (
@@ -342,7 +357,7 @@ CASES = [
         + MARKS_THIS_PAGE
         + READ_MIDDLE
         + RMENU_MARKS
-        + "T430,165;",
+        + "T426,222;",
         lambda log, sd: "[Bookmarks] added" in log and "[Bookmarks] removed" in log,
     ),
     # The frontlight: a swipe down from the top edge on any screen (no book menu
@@ -380,11 +395,11 @@ CASES = [
     ),
     (
         "book menu: no frontlight item (the edge swipe has it)",
-        HOME_CARD + "w" + READ_MIDDLE + "T240,658;",
+        HOME_CARD + "w" + READ_MIDDLE + "T240,700;",
         lambda log, sd: (
             "drawFrontlightScreen" not in log
             and "Frontlight by the edge swipe" not in log
-            and "[Light]" not in log.split(">>> TAP_240_658")[-1]
+            and "[Light]" not in log.split(">>> TAP_240_700")[-1]
         ),
     ),
     # C4: the touch panel silent: a held DOWN is OK (opens the book on the home

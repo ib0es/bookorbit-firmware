@@ -27,6 +27,17 @@ void updateSyncSettingsSelection(AppContext& ctx, int prevIndex, int newIndex);
 void updateSyncSettingsItem(AppContext& ctx, int index);
 
 void drawSleepCoverSettingsScreen(AppContext& ctx, bool fullRefresh = false);
+// Settings -> Screen orientation: Auto (with a motion sensor) and the four turns.
+void drawOrientationSettingsScreen(AppContext& ctx, bool fullRefresh = false);
+void updateOrientationSettingsSelection(AppContext& ctx, int prevIndex, int newIndex);
+// A setting with a few values as a list, the one in use checked (Choices, ctx.choiceKind).
+void drawChoiceScreen(AppContext& ctx, bool fullRefresh = false);
+void updateChoiceSelection(AppContext& ctx, int prevIndex, int newIndex);
+// Status bar -> Bottom: the items of the line under the text, as switches, a preview below.
+void drawSbBottomScreen(AppContext& ctx, bool fullRefresh = false);
+void updateSbBottomSelection(AppContext& ctx, int prevIndex, int newIndex);
+// The SbBottomItem bit of row `index` of that screen.
+int sbBottomItemAt(int index);
 void updateSleepCoverSettingsSelection(AppContext& ctx, int prevIndex, int newIndex);
 void updateSleepCoverSettingsItem(AppContext& ctx, int index);
 

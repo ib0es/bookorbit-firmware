@@ -25,81 +25,60 @@ void clipUtf8(char* s) {
 }
 
 void drawRow(Frame& f, Rect r, const BookItem& item, bool selected, int index) {
-    const Color ink = selected ? Color::White : Color::Black;
-    if (selected)
-        fill(r, Color::Black);
-    else
-        frameRect(r, Color::Black);
+    if (selected) selectionFrame(r);
     f.hit(r, ActionOpenItem, (int16_t)index);
 
-    Rect inner = insetX(r, 10);
-    const int16_t iconY = (int16_t)(r.y + r.height / 2 - 5);
-    char badgeBuf[32];
-    const char* badge = badgeBuf;
-    bool badgeDark = true;
+    Rect inner = insetXY(r, 14, 4);
+    // Icon: a folder, a book on the card, or a cloud (only on the server).
+    const int16_t iconS = 30;
+    Rect iconBox{inner.x, (int16_t)(r.y + (r.height - iconS) / 2), iconS, iconS};
+    char statusBuf[32];
+    const char* status = statusBuf;
+    statusBuf[0] = '\0';
 
     if (item.isDirectory) {
-        icon::folder(inner.x, iconY, ink);
+        icon::folderLarge(iconBox, Color::Black);
         if (item.title.startsWith("..")) {
-            badge = tr(MsgId::LIB_BADGE_UP);
+            status = tr(MsgId::LIB_BADGE_UP);
         } else if (item.subItemCount > 0) {
-            snprintf(badgeBuf, sizeof(badgeBuf), "%d", item.subItemCount);
+            snprintf(statusBuf, sizeof(statusBuf), "%d", item.subItemCount);
         } else {
-            badge = tr(MsgId::LIB_BADGE_FOLDER);
+            status = tr(MsgId::LIB_BADGE_FOLDER);
         }
     } else {
-        // Icon: where the book is. Badge: how far it is read (or where it is).
         if (item.isDownloaded)
-            icon::check(inner.x, iconY, ink);
+            icon::bookOutline(iconBox, Color::Black);
         else
-            icon::cloud(inner.x, iconY, ink);
-        // Filled pill = on the card (how far it is read), outlined pill = only
-        // in the cloud (no position: none is asked for until it is downloaded).
-        char pct[12];
-        const char* read = nullptr;
-        if (item.progress >= LibraryManager::kCompletedAt) read = tr(MsgId::LIB_BADGE_COMPLETED);
-        // Any position at all, rounded as on the home screen's card (a book just
-        // begun showed "0%" there and nothing here below 1%).
-        else if (item.progress > 0.0f) {
-            snprintf(pct, sizeof(pct), "%d%%", (int)roundf(item.progress * 100.0f));
-            read = pct;
-        }
-        if (item.isDownloaded) {
-            snprintf(badgeBuf, sizeof(badgeBuf), "%s", read ? read : tr(MsgId::HOME_CAT_DOWNLOADED));  // pct is local
-        } else {
-            badgeDark = false;
-            badge = tr(MsgId::HOME_CAT_CLOUD);
+            icon::cloudLarge(iconBox, Color::Black);
+        // On the card: how far it is read; only in the cloud: say so (no position
+        // is asked for until it is downloaded).
+        if (!item.isDownloaded) {
+            status = tr(MsgId::HOME_CAT_CLOUD);
+        } else if (item.progress >= LibraryManager::kCompletedAt) {
+            status = tr(MsgId::LIB_BADGE_COMPLETED);
+        } else if (item.progress > 0.0f) {
+            // Any position at all, rounded as on the home screen's card.
+            snprintf(statusBuf, sizeof(statusBuf), "%d%%", (int)roundf(item.progress * 100.0f));
         }
     }
-
     // A format the reader cannot open yet (format list).
-    if (item.formatRow >= 0 && !BookFormats::readable((BookFormats::Kind)item.activeKind())) {
-        badge = tr(MsgId::LIB_BADGE_UNSUPPORTED);
-        badgeDark = false;
-    }
-
-    const int16_t badgeW = pillWidth(badge);
-    const int16_t badgeH = (int16_t)(lineHeight(FontSmall) + 6);
-    pill(Rect{(int16_t)(inner.right() - badgeW), (int16_t)(r.y + (r.height - badgeH) / 2), badgeW, badgeH}, badge,
-         badgeDark, selected);
-    int16_t pillsW = badgeW;
+    if (item.formatRow >= 0 && !BookFormats::readable((BookFormats::Kind)item.activeKind()))
+        status = tr(MsgId::LIB_BADGE_UNSUPPORTED);
 
     // A book in several formats: their labels ("EPUB · FB2"), shortened to
     // "EPUB +3" when they would take too much of the row.
+    std::string formats;
     if (!item.isDirectory && item.formatRow < 0 && item.formats.size() > 1) {
         std::vector<BookFormats::Kind> kinds;
         for (const auto& fm : item.formats) kinds.push_back((BookFormats::Kind)fm.kind);
-        std::string labels = BookFormats::labels(kinds);
-        if (pillWidth(labels.c_str()) > inner.width / 3) {
-            const size_t sep = labels.find(' ');
+        formats = BookFormats::labels(kinds);
+        if (textWidth(FontSmall, formats.c_str()) > inner.width / 3) {
+            const size_t sep = formats.find(' ');
             char shortBuf[24];
-            snprintf(shortBuf, sizeof(shortBuf), "%s +%d", labels.substr(0, sep).c_str(), (int)item.formats.size() - 1);
-            labels = shortBuf;
+            snprintf(shortBuf, sizeof(shortBuf), "%s +%d", formats.substr(0, sep).c_str(),
+                     (int)item.formats.size() - 1);
+            formats = shortBuf;
         }
-        const int16_t w = pillWidth(labels.c_str());
-        pill(Rect{(int16_t)(inner.right() - badgeW - kGap - w), (int16_t)(r.y + (r.height - badgeH) / 2), w, badgeH},
-             labels.c_str(), false, selected);
-        pillsW = (int16_t)(pillsW + kGap + w);
     }
 
     String displayTitle = item.title;
@@ -107,27 +86,45 @@ void drawRow(Frame& f, Rect r, const BookItem& item, bool selected, int index) {
         displayTitle = "#" + String(item.seriesIndex) + " " + item.title;
     }
 
+    const int16_t lh = lineHeight(FontBody), sh = lineHeight(FontSmall);
+    Rect text0{(int16_t)(iconBox.right() + 14), inner.y, (int16_t)(inner.right() - iconBox.right() - 14), inner.height};
+    // The status on the right of the first line (one-line rows: of the row).
+    const int16_t statusW = *status ? (int16_t)(textWidth(FontSmall, status) + 4) : 0;
+    const bool twoLines = r.height >= lh + sh;
+
+    if (item.isDirectory || !twoLines) {
+        if (statusW)
+            text(Rect{(int16_t)(text0.right() - statusW), r.y, statusW, r.height}, status, FontSmall, Color::Black,
+                 TextAlign::Right);
+        text(Rect{text0.x, r.y, (int16_t)(text0.width - statusW - (statusW ? kGap : 0)), r.height},
+             displayTitle.c_str(), FontBody);
+        return;
+    }
     // U1: two lines, so books of one series ("Saga. Book 1", "Saga. Book 2")
     // are told apart: a title that does not fit wraps onto the second line;
-    // one that fits has its author there. Folders keep one line.
-    Rect title{(int16_t)(inner.x + 24), r.y, (int16_t)(inner.width - 24 - pillsW - kGap), r.height};
-    const int16_t lh = lineHeight(FontBody);
-    if (item.isDirectory || r.height < 2 * lh + 8) {
-        text(title, displayTitle.c_str(), FontBody, ink);
+    // one that fits has its author there.
+    const int16_t titleW = (int16_t)(text0.width - statusW - (statusW ? kGap : 0));
+    const bool wraps = wrappedHeight(displayTitle.c_str(), FontBody, titleW, 2) > lh + 2;
+    const bool author = !wraps && (item.author.length() > 0 || !formats.empty());
+    const int16_t blockH = (wraps || author) ? (int16_t)(2 * lh - 4) : lh;
+    const int16_t top = (int16_t)(r.y + (r.height - blockH) / 2);
+    if (statusW)
+        text(Rect{(int16_t)(text0.right() - statusW), top, statusW, lh}, status, FontSmall, Color::Black,
+             TextAlign::Right);
+    if (wraps) {
+        text(Rect{text0.x, top, titleW, blockH}, displayTitle.c_str(), FontBody, Color::Black, TextAlign::Left, 2);
         return;
     }
-    const bool wraps = wrappedHeight(displayTitle.c_str(), FontBody, title.width, 2) > lh + 2;
-    const bool author = !wraps && item.author.length() > 0 && item.formatRow < 0;
-    if (wraps || !author) {
-        const int16_t h = wraps ? (int16_t)(2 * lh + 2) : lh;
-        text(Rect{title.x, (int16_t)(r.y + (r.height - h) / 2), title.width, h}, displayTitle.c_str(), FontBody, ink,
-             TextAlign::Left, 2);
-        return;
+    text(Rect{text0.x, top, titleW, lh}, displayTitle.c_str(), FontBody);
+    if (!author) return;
+    Rect second{text0.x, (int16_t)(top + lh - 2), text0.width, sh};
+    if (!formats.empty()) {
+        const int16_t fw = (int16_t)(textWidth(FontSmall, formats.c_str()) + 4);
+        text(Rect{(int16_t)(second.right() - fw), second.y, fw, sh}, formats.c_str(), FontSmall, Color::Black,
+             TextAlign::Right);
+        second.width = (int16_t)(second.width - fw - kGap);
     }
-    const int16_t sh = lineHeight(FontSmall);
-    const int16_t top = (int16_t)(r.y + (r.height - lh - sh - 4) / 2);
-    text(Rect{title.x, top, title.width, lh}, displayTitle.c_str(), FontBody, ink);
-    text(Rect{title.x, (int16_t)(top + lh + 4), title.width, sh}, item.author.c_str(), FontSmall, ink);
+    if (item.formatRow < 0) text(second, item.author.c_str(), FontSmall);
 }
 
 }  // namespace
@@ -247,32 +244,30 @@ void drawLibraryScreen(AppContext& ctx, bool fullRefresh) {
                  ActionLaunchWeb, 0);
         }
     } else {
-        const int16_t rowH = (int16_t)(2 * lineHeight(FontBody) + 18);  // two lines (U1)
-        const int16_t step = (int16_t)(rowH + 5);
-        int perPage = (area.height + 5) / step;
+        const int16_t rowH = (int16_t)(2 * lineHeight(FontBody) + 8);  // two lines (U1)
+        const int16_t gap = 6;
+        const int16_t step = (int16_t)(rowH + gap);
+        int perPage = (area.height + gap) / step;
         if (perPage < 1) perPage = 1;
         s_rowsPerPage = perPage;
         const int pageStart = (lib.selectedBookIndex / perPage) * perPage;
+        // Room on the right for the scroll track when there is more than a page.
+        const bool paged = total > perPage;
+        Rect listArea = area;
+        if (paged) listArea.width = (int16_t)(listArea.width - 14);
+        const Rect track{(int16_t)(area.right() - 6), area.y, 8, (int16_t)(perPage * step - gap)};
         for (int i = pageStart; i < total && i < pageStart + perPage; i++) {
-            Rect row = takeTop(area, rowH);
-            takeTop(area, 5);
+            Rect row = takeTop(listArea, rowH);
+            takeTop(listArea, gap);
             drawRow(f, row, lib.rowAt(i), i == lib.selectedBookIndex, i);
         }
         // A search with no match: say so under the ".." row.
         if (entries == 0 && (lib.currentFilter == FILTER_SEARCH || folder.equalsIgnoreCase("@search"))) {
-            takeTop(area, 20);
-            text(takeTop(area, (int16_t)(lineHeight(FontBody) + 8)), tr(MsgId::CATALOG_SEARCH_NOT_FOUND), FontBody,
+            takeTop(listArea, 20);
+            text(takeTop(listArea, (int16_t)(lineHeight(FontBody) + 8)), tr(MsgId::CATALOG_SEARCH_NOT_FOUND), FontBody,
                  Color::Black, TextAlign::Center);
         }
-        // Page indicator when the list has more than one page.
-        const int pages = (total + perPage - 1) / perPage;
-        if (pages > 1) {
-            const int16_t trackX = (int16_t)(width() - 6);
-            Rect track{trackX, (int16_t)(lineHeight(FontTitle) + 28), 3, (int16_t)(perPage * step - 5)};
-            vline(trackX + 1, track.y, track.bottom(), Color::Black, 1);
-            const int16_t thumbH = (int16_t)(track.height / pages);
-            fill(Rect{trackX, (int16_t)(track.y + (pageStart / perPage) * thumbH), 3, thumbH}, Color::Black);
-        }
+        if (paged) scrollbar(track, pageStart, perPage, total);
     }
 
     present(fullRefresh);

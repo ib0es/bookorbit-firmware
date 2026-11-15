@@ -39,5 +39,7 @@ private:
     uint32_t _lastImuPollMs = 0;
     uint32_t _lastClockCheckMs = 0;
     int32_t _lastClockMinute = -1;
+    int32_t _lastHomeClockMinute = -1;
+    uint32_t _lastHomeClockCheckMs = 0;
     uint32_t _usbNoHostSince = 0;   // USB mass storage: since when no computer is seen (B8)
 };

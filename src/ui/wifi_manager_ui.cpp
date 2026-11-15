@@ -60,7 +60,7 @@ static void drawNetworkList(const std::vector<ScannedNet>& list, int selectedInd
     area = keyHints(f, area, keys);
     area = insetXY(area, kMargin, 10);
 
-    const int16_t rowH = (int16_t)(lineHeight(FontBody) + lineHeight(FontSmall) + 20);
+    const int16_t rowH = rowHeight(true);
     const int16_t step = (int16_t)(rowH + 6);
     int perPage = (area.height + 6) / step;
     if (perPage < 1) perPage = 1;
@@ -71,11 +71,8 @@ static void drawNetworkList(const std::vector<ScannedNet>& list, int selectedInd
         takeTop(area, 6);
         const bool selected = (i == selectedIndex);
         const ScannedNet& net = list[i];
-        const Color ink = selected ? Color::White : Color::Black;
-        if (selected)
-            fill(row, Color::Black);
-        else
-            frameRect(row, Color::Black);
+        const Color ink = Color::Black;
+        if (selected) selectionFrame(row);
         f.hit(row, 1, (int16_t)i);
 
         if (i == (int)list.size() - 1 && net.rssi == 0 && net.ssid.startsWith("[")) {

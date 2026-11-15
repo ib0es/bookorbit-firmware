@@ -15,6 +15,8 @@ enum Row : int { TOP, PAGES, PERCENT, BATTERY, BOTTOM, CLOCK, TIMEZONE, COUNT };
 
 const char* label(int row);
 const char* value(const AppConfig& cfg, int row, char* buf, size_t len);
+// An on / off row (percent, battery, clock): 0 or 1, drawn as a switch; else -1.
+int toggleState(const AppConfig& cfg, int row);
 void step(AppConfig& cfg, int row, int dir);
 BookReader::StatusBar options(const AppConfig& cfg);
 

@@ -1034,11 +1034,27 @@ void streamPortalPage(WebServer& server, const AppConfig& cfg, const std::vector
     addCheckbox(out, "sb_percent", tr(MsgId::SB_PERCENT), cfg.sbPercent);
     addCheckbox(out, "sb_battery", tr(MsgId::SB_BATTERY), cfg.sbBattery);
 
-    beginSelect(out, "sb_bottom", tr(MsgId::SB_BOTTOM));
-    addOption(out, "0", tr(MsgId::SB_BOTTOM_FULL), cfg.sbBottom == 0);
-    addOption(out, "1", tr(MsgId::SB_BOTTOM_BAR), cfg.sbBottom == 1);
-    addOption(out, "2", tr(MsgId::SB_NONE), cfg.sbBottom == 2);
-    endSelect(out);
+    // The bottom line: its items, each a checkbox (sbb_<bit>).
+    {
+        static const struct {
+            int bit;
+            MsgId label;
+        } kBottom[] = {{SB_BOTTOM_CH_PAGES, MsgId::SBB_CH_PAGES},
+                       {SB_BOTTOM_CH_PERCENT, MsgId::SBB_CH_PERCENT},
+                       {SB_BOTTOM_CH_BAR, MsgId::SBB_CH_BAR},
+                       {SB_BOTTOM_BOOK_PAGES, MsgId::SBB_BOOK_PAGES},
+                       {SB_BOTTOM_BOOK_PERCENT, MsgId::SBB_BOOK_PERCENT},
+                       {SB_BOTTOM_BOOK_BAR, MsgId::SBB_BOOK_BAR},
+                       {SB_BOTTOM_CH_TITLE, MsgId::SBB_CH_TITLE},
+                       {SB_BOTTOM_CH_NUMBER, MsgId::SBB_CH_NUMBER}};
+        for (const auto& b : kBottom) {
+            char name[12];
+            snprintf(name, sizeof(name), "sbb_%d", b.bit);
+            char label[96];
+            snprintf(label, sizeof(label), "%s: %s", tr(MsgId::SB_BOTTOM), tr(b.label));
+            addCheckbox(out, name, label, (cfg.sbBottomItems & b.bit) != 0);
+        }
+    }
 
     addCheckbox(out, "sb_clock", tr(MsgId::SB_CLOCK), cfg.sbClock);
 
@@ -1199,7 +1215,16 @@ void applySubmittedConfig(WebServer& server, AppConfig& cfg, bool refreshFont = 
     if (parseIntArg(server, "sb_pages", v)) cfg.sbPages = clampInt(v, 0, 2);
     cfg.sbPercent = server.hasArg("sb_percent");
     cfg.sbBattery = server.hasArg("sb_battery");
-    if (parseIntArg(server, "sb_bottom", v)) cfg.sbBottom = clampInt(v, 0, 2);
+    {   // the bottom line's checkboxes (sent only when checked); an older form's preset
+        int items = 0;
+        for (int bit = 1; bit <= SB_BOTTOM_ALL; bit <<= 1) {
+            char name[12];
+            snprintf(name, sizeof(name), "sbb_%d", bit);
+            if (server.hasArg(name)) items |= bit;
+        }
+        if (parseIntArg(server, "sb_bottom", v)) items = v == 0 ? SB_BOTTOM_DEFAULT : v == 1 ? SB_BOTTOM_BOOK_BAR : 0;
+        cfg.sbBottomItems = items;
+    }
     cfg.sbClock = server.hasArg("sb_clock");
     if (parseIntArg(server, "utc_offset", v)) cfg.utcOffsetMin = TimeUtils::clampUtcOffset(v);
 

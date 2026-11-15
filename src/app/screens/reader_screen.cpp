@@ -1,4 +1,5 @@
 #include "screens.h"
+#include "choices.h"
 #include <algorithm>
 #include "appearance.h"
 #include "../orientation.h"
@@ -94,6 +95,7 @@ void executeMenuAction(AppContext& ctx, int index) {
             break;
         case 1:  // Оформление
             Reader.stopBackground();   // its memory lays out the preview
+            ctx.appearancePage = 0;
             ctx.currentState = STATE_APPEARANCE_MENU;
             drawAppearanceScreen(ctx, false);
             break;
@@ -509,20 +511,27 @@ void handleAppearanceEvent(AppContext& ctx, const ButtonEvent& event) {
     if (event.action != ACTION_CLICK) return;
     const Action key = Actions::onValue(Actions::of(event));
     int& sel = ctx.selectedAppearanceIndex;
-    const int row = Appearance::rowAt(sel);
+    int& page = ctx.appearancePage;
+    const int n = Appearance::count(page);
+    const int row = Appearance::rowAt(sel, page);
     switch (key) {
         case Action::Down:
-            sel = (sel + 1) % Appearance::count();
+            sel = (sel + 1) % n;
             drawAppearanceScreen(ctx, false);
             break;
         case Action::Up:
-            sel = (sel - 1 + Appearance::count()) % Appearance::count();
+            sel = (sel - 1 + n) % n;
             drawAppearanceScreen(ctx, false);
             break;
         case Action::Less:
         case Action::More:
         case Action::Select:
-            if (row == Appearance::TYPEFACE && key != Action::Less) {
+            if (row == Appearance::MORE) {
+                if (key == Action::Less) break;
+                page = 1;   // the second page, from its first row
+                sel = 0;
+                drawAppearanceScreen(ctx, false);
+            } else if (row == Appearance::TYPEFACE && key != Action::Less) {
                 openTypefaces(ctx);
             } else if (row == Appearance::SIZE && key == Action::Select) {
                 ctx.selectedFontIndex = ctx.config.readerFontSize;
@@ -534,6 +543,13 @@ void handleAppearanceEvent(AppContext& ctx, const ButtonEvent& event) {
             }
             break;
         case Action::Back:
+            if (page == 1) {   // "More" -> back to Appearance, on its "More" row
+                page = 0;
+                for (int i = 0; i < Appearance::count(0); i++)
+                    if (Appearance::rowAt(i, 0) == Appearance::MORE) sel = i;
+                drawAppearanceScreen(ctx, false);
+                break;
+            }
             returnToReading(ctx);   // laid out once, with everything changed here
             break;
         default:
@@ -557,6 +573,19 @@ void handleStatusBarEvent(AppContext& ctx, const ButtonEvent& event) {
         case Action::Less:
         case Action::More:
         case Action::Select:
+            if (key == Action::Select && (sel == StatusBarMenu::TOP || sel == StatusBarMenu::PAGES)) {
+                // A list of its own (LEFT / RIGHT still step it here).
+                SettingsScreen::openChoice(ctx, sel == StatusBarMenu::TOP ? Choices::SB_TOP : Choices::SB_PAGES);
+                break;
+            }
+            if (sel == StatusBarMenu::BOTTOM) {   // its items: a screen of switches
+                if (key != Action::Less) {
+                    ctx.selectedSbBottomIndex = 0;
+                    ctx.currentState = STATE_SB_BOTTOM;
+                    drawSbBottomScreen(ctx, false);
+                }
+                break;
+            }
             StatusBarMenu::step(ctx.config, sel, key == Action::Less ? -1 : 1);
             ctx.config.save();
             drawStatusBarScreen(ctx, false);
