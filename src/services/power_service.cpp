@@ -249,38 +249,59 @@ void PowerService::enterDeepSleep(AppContext& ctx, bool syncAllowed) {
     // 1. Sync reading progress before sleep only if explicitly enabled and local changes exist
     // (never on a critical battery: the progress stays queued for the next sync)
     if (!syncAllowed) Serial.println("[Power] Critical battery: no sync before sleep; progress stays queued.");
-    if (syncAllowed && ctx.config.syncOnSleep && ctx.config.wifiSsid.length() > 0 &&
-        ctx.config.serverHost.length() > 0 && lib.lastBook.filePath.length() > 0 &&
-        !LibraryManager::isOfflinePath(lib.lastBook.filePath) && lib.currentRecord().state.localDirty) {
-        Serial.println("[Power] syncOnSleep enabled: uploading progress to Book Orbit...");
-        Ui::status(tr(MsgId::POWER_SYNC_BEFORE_SLEEP), tr(MsgId::POWER_SYNC_SAVING),
-                   utf8Prefix(lib.lastBook.title, 64).c_str());
-        SyncService::syncCurrentBookProgress(ctx, true);
-    }
+    const bool shouldSync = syncAllowed && ctx.config.syncOnSleep && ctx.config.wifiSsid.length() > 0 &&
+                            ctx.config.serverHost.length() > 0 && lib.lastBook.filePath.length() > 0 &&
+                            !LibraryManager::isOfflinePath(lib.lastBook.filePath) &&
+                            lib.currentRecord().state.localDirty;
 
     // 2. Render Sleep Screen (drawn by the UI: A5)
-    {
-        SleepScreen s;
-        String coverPath;
-        s.withCover = ctx.config.coverOnSleep && lib.lastBook.filePath.length() > 0;
-        if (s.withCover) {
-            coverPath = LibraryManager::resolveCoverPath(lib.lastBook.filePath, lib.lastBook.title,
-                                                         lib.lastBook.coverPath, true);
-            if (coverPath.length() > 0) {
-                Serial.printf("[Power] Drawing sleep cover: %s (mode=%d)\n", coverPath.c_str(),
-                              ctx.config.sleepCoverFitMode);
-            }
+    SleepScreen s;
+    String coverPath;
+    s.withCover = ctx.config.coverOnSleep && lib.lastBook.filePath.length() > 0;
+    if (s.withCover) {
+        coverPath = LibraryManager::resolveCoverPath(lib.lastBook.filePath, lib.lastBook.title, lib.lastBook.coverPath,
+                                                     true);
+        if (coverPath.length() > 0) {
+            Serial.printf("[Power] Drawing sleep cover: %s (mode=%d)\n", coverPath.c_str(),
+                          ctx.config.sleepCoverFitMode);
         }
-        s.coverPath = coverPath.c_str();
-        s.coverCrop = ctx.config.sleepCoverFitMode == 1;
-        s.title = lib.lastBook.title.c_str();
-        s.author = lib.lastBook.author.c_str();
-        s.progress = lib.lastBook.progress;
-        Ui::sleepScreen(s);
     }
+    s.coverPath = coverPath.c_str();
+    s.coverCrop = ctx.config.sleepCoverFitMode == 1;
+    s.title = lib.lastBook.title.c_str();
+    s.author = lib.lastBook.author.c_str();
+    s.progress = lib.lastBook.progress;
+    s.banner = shouldSync ? tr(MsgId::POWER_SYNC_IN_PROGRESS) : tr(MsgId::POWER_SLEEP_BANNER);
+    Serial.printf("[Power] Sleep screen banner: %s\n", s.banner);
 
+    Ui::sleepScreen(s);
     Display.update(REFRESH_FULL);
     Display.waitSync();
+
+    // Turn off frontlight if applicable
+    if (Frontlight.present()) {
+        Frontlight.setEnabled(false);
+        Frontlight.prepareForSleep();
+    }
+
+    // 3. Perform sync if enabled and pending
+    if (shouldSync) {
+        Serial.println("[Power] syncOnSleep enabled: uploading progress to Book Orbit...");
+        const bool ok = SyncService::syncCurrentBookProgress(ctx, true);
+        s.progress = lib.lastBook.progress;
+        const char* resultBanner = ok ? tr(MsgId::POWER_SYNC_SUCCESS) : tr(MsgId::POWER_SYNC_FAILED);
+        Serial.printf("[Power] Sleep screen banner: %s\n", resultBanner);
+        Ui::updateSleepBanner(s, resultBanner);
+        Display.update(REFRESH_PARTIAL);
+        Display.waitSync();
+        delay(1000);
+
+        const char* finalBanner = tr(MsgId::POWER_SLEEP_BANNER);
+        Serial.printf("[Power] Sleep screen banner: %s\n", finalBanner);
+        Ui::updateSleepBanner(s, finalBanner);
+        Display.update(REFRESH_PARTIAL);
+        Display.waitSync();
+    }
 
     // Power down display controller
     Display.sleep();
@@ -298,4 +319,5 @@ void PowerService::enterDeepSleep(AppContext& ctx, bool syncAllowed) {
     // simulator it does, so restart the idle timer to avoid re-entering sleep
     // on every poll.
     ctx.lastActivityTime = millis();
+    Frontlight.setEnabled(Buttons.hasLightSwitch() ? Buttons.lightSwitchOn() : true);
 }

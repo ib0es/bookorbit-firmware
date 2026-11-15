@@ -26,6 +26,7 @@ void install() {
     p.modalRemainingMs = []() { return Modal.remainingAutoCloseMs(); };
     p.coverCacheChanged = []() { JpegViewer::clearCache(); };
     p.sleepScreen = [](const SleepScreen& s) { drawSleepScreen(s); };
+    p.updateSleepBanner = [](const SleepScreen& s, const char* banner) { updateSleepBanner(s, banner); };
     p.portalScreen = [](const char* apSsid, const char* apPass, const char* url, int page, bool fullRefresh) {
         drawPortalScreen(apSsid, apPass, url, page, fullRefresh);
     };

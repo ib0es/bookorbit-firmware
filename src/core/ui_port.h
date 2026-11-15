@@ -7,6 +7,7 @@
 // every call does nothing.
 
 #include <cstdint>
+#include <stdint.h>
 
 struct SleepScreen {
     bool withCover = false;        // Settings: the book's cover on the sleep screen
@@ -15,6 +16,7 @@ struct SleepScreen {
     const char* title = "";
     const char* author = "";
     float progress = 0.0f;         // 0..1, 0 when unknown
+    const char* banner = nullptr;  // status line: nullptr = default POWER_SLEEP_BANNER
 };
 
 enum class PortalAction : uint8_t {
@@ -33,6 +35,7 @@ struct UiPort {
     uint32_t (*modalRemainingMs)() = nullptr;
     void (*coverCacheChanged)() = nullptr;           // covers on the card changed: drop decoded ones
     void (*sleepScreen)(const SleepScreen& s) = nullptr;   // drawn, not yet on the panel
+    void (*updateSleepBanner)(const SleepScreen& s, const char* banner) = nullptr;
     void (*portalScreen)(const char* apSsid, const char* apPass, const char* url, int page, bool fullRefresh) = nullptr;
     PortalAction (*portalEvent)(int btnId, int btnAction, int16_t x, int16_t y, int& page) = nullptr;
 };
@@ -62,6 +65,9 @@ inline void coverCacheChanged() {
 }
 inline void sleepScreen(const SleepScreen& s) {
     if (port().sleepScreen) port().sleepScreen(s);
+}
+inline void updateSleepBanner(const SleepScreen& s, const char* banner) {
+    if (port().updateSleepBanner) port().updateSleepBanner(s, banner);
 }
 inline void portalScreen(const char* apSsid, const char* apPass, const char* url, int page = 0,
                          bool fullRefresh = false) {
