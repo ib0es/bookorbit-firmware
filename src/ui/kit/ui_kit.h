@@ -180,7 +180,7 @@ void row(Frame& f, Rect r, const char* title, const char* subtitle, const RowOpt
 int16_t rowHeight(bool twoLines);
 // A small section caption above a group of rows ("Reading", "Display").
 int16_t sectionHeight();
-void section(Rect r, const char* caption);
+void section(Rect r, const char* caption, bool withSeparator = false);
 // The selection frame of rows, tiles and cards.
 void selectionFrame(Rect r);
 // An on / off switch (about 44x24) centred in r.

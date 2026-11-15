@@ -56,7 +56,7 @@ CASES = [
         {"SIM_RTC_UTC": "1735689600", "SIM_IMU_PRESENT": "1"},
     ),
     (
-        "settings: 11 rows in sections (Reading=0, Orientation=1, USB Drive=7, Device Info=10)",
+        "settings: 13 rows in sections (Reading=0, Orientation=1, USB Drive=7, Device Info=12)",
         SETTINGS + "UC" + "B",
         lambda log, sd: (
             "device info" in log and "[RTC] Ready (UTC 1735689600)" in log and "[UI] drawSettingsScreen finished" in log
@@ -79,7 +79,7 @@ CASES = [
     (
         "usb-msc: pure button workflow (disable guard, enable, host events, CONFIRM & BACK exits)",
         SETTINGS
-        + "UUUUC"  # Settings -> wrap up to USB Drive (row 7) -> submenu (0 = Connect)
+        + "UUUUUUC"  # Settings -> wrap up to USB Drive (row 7) -> submenu (0 = Connect)
         + "DC"  # Toggle USB Drive Mode OFF
         + "UC"  # Attempt Connect while disabled -> modal guard
         + "B"  # Close modal
@@ -120,7 +120,7 @@ CASES = [
     # (3 s in this case), the mode is left; the usual idle sleep follows.
     (
         "usb-msc: no computer for the idle timeout leaves the mode, then the device sleeps (B8)",
-        SETTINGS + "UUUUCC" + "www",
+        SETTINGS + "UUUUUUCC" + "www",
         lambda log, sd: (
             "Detaching filesystem" in log
             and "No computer for the idle timeout: leaving USB mass storage" in log
@@ -132,7 +132,7 @@ CASES = [
     ),
     (
         "usb-msc: POWER exits USB-MSC safely without sleeping, then POWER sleeps/wakes normally",
-        SETTINGS + "UUUUCC" + "P" + "B" + "PZ",
+        SETTINGS + "UUUUUUCC" + "P" + "B" + "PZ",
         lambda log, sd: (
             "Detaching filesystem" in log
             and log.count("Entering Deep Sleep") == 1

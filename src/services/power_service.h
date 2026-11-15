@@ -11,6 +11,7 @@ public:
     // into the app controller).
     static void setContext(AppContext& ctx);
     static void handleAccidentalWakeup();
+    static void setWakeHoldSec(int sec);
     static int getSavedRtcState();
 
     // A book that could not be opened for want of memory (the heap is cut up

@@ -595,8 +595,11 @@ int16_t rowHeight(bool twoLines) {
 
 int16_t sectionHeight() { return (int16_t)(lineHeight(FontSmall) + 12); }
 
-void section(Rect r, const char* caption) {
+void section(Rect r, const char* caption, bool withSeparator) {
     if (!caption || !*caption) return;
+    if (withSeparator) {
+        hline((int16_t)(r.x + 6), (int16_t)(r.right() - 6), (int16_t)(r.y + 1));
+    }
     text(Rect{(int16_t)(r.x + 14), (int16_t)(r.y + 6), (int16_t)(r.width - 28), (int16_t)(r.height - 6)}, caption,
          FontSmall);
 }

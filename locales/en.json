@@ -646,6 +646,12 @@
     "SETTINGS_ITEM_TOUCH_WAKE": "Touch Wake (Light Sleep)",
     "SETTINGS_TOUCH_WAKE_ON": "[ON] Wake on touch & keys during idle",
     "SETTINGS_TOUCH_WAKE_OFF": "[OFF] Stay active until deep sleep",
+    "SETTINGS_ITEM_SLEEP_HOLD": "Hold to sleep",
+    "SETTINGS_ITEM_WAKE_HOLD": "Hold to wake",
+    "CHOICE_TITLE_SLEEP_HOLD": "Hold button to sleep",
+    "CHOICE_TITLE_WAKE_HOLD": "Hold button to wake",
+    "POWER_HOLD_IMMEDIATE": "Immediately",
+    "POWER_HOLD_SEC_FMT": "%d sec",
     "SETTINGS_TAG_SLEEP_LIGHT": "SLEEP",
     "SETTINGS_ITEM_READING": "Reading",
     "SETTINGS_TAG_READING": "READING >",
@@ -758,5 +764,5 @@
     "SBB_CH_PERCENT": "Chapter percent",
     "SBB_BOOK_PERCENT": "Book percent",
     "SBB_CH_NUMBER": "Chapter number (2/12)",
-    "SBB_BOOK_PAGES": "Book page (12/340)",
+    "SBB_BOOK_PAGES": "Book page (12/340)"
 }

@@ -992,6 +992,19 @@ void streamPortalPage(WebServer& server, const AppConfig& cfg, const std::vector
     if (hasTouchWakeSetting()) {
         addCheckbox(out, "touch_wake", tr(MsgId::SETTINGS_ITEM_TOUCH_WAKE), cfg.touchWakeEnabled);
     }
+    if (hasPowerButtonSettings()) {
+        static constexpr int kHold[] = {5, 3, 2, 1, 0};
+        auto buildHoldText = [](int val) -> String {
+            if (val <= 0) return tr(MsgId::POWER_HOLD_IMMEDIATE);
+            char b[32];
+            snprintf(b, sizeof(b), tr(MsgId::POWER_HOLD_SEC_FMT), val);
+            return String(b);
+        };
+        addIntSelect(out, "sleep_hold_sec", tr(MsgId::SETTINGS_ITEM_SLEEP_HOLD), kHold,
+                     sizeof(kHold) / sizeof(kHold[0]), cfg.sleepHoldSec, buildHoldText);
+        addIntSelect(out, "wake_hold_sec", tr(MsgId::SETTINGS_ITEM_WAKE_HOLD), kHold, sizeof(kHold) / sizeof(kHold[0]),
+                     cfg.wakeHoldSec, buildHoldText);
+    }
     if (hasUsbMscSetting()) {
         addCheckbox(out, "usb_msc", tr(MsgId::USB_MSC_ITEM_TOGGLE), cfg.usbMscEnabled);
     }
@@ -1217,6 +1230,10 @@ void applySubmittedConfig(WebServer& server, AppConfig& cfg, bool refreshFont = 
     if (hasTouchWakeSetting()) cfg.touchWakeEnabled = server.hasArg("touch_wake");
     if (hasUsbMscSetting()) cfg.usbMscEnabled = server.hasArg("usb_msc");
     cfg.hideCompleted = server.hasArg("hide_completed");
+    if (hasPowerButtonSettings()) {
+        if (parseIntArg(server, "sleep_hold_sec", v)) cfg.sleepHoldSec = clampInt(v, 0, 5);
+        if (parseIntArg(server, "wake_hold_sec", v)) cfg.wakeHoldSec = clampInt(v, 0, 5);
+    }
 
     if (parseIntArg(server, "full_refresh", v)) cfg.fullRefreshEvery = clampInt(v, 0, 50);
     if (parseIntArg(server, "sharp_images", v)) cfg.sharpImages = (v != 0);
