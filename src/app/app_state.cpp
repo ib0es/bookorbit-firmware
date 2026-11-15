@@ -10,8 +10,6 @@ bool hasUsbMscSetting() { return Platform::kDevice.usbMassStorage; }
 
 bool hasTouchWakeSetting() { return Platform::kDevice.touchWake; }
 
-bool hasPowerButtonSettings() { return Platform::kDevice.hasPowerButton; }
-
 int readerMenuItemCount() { return NUM_READER_MENU_ITEMS; }
 
 // Settings: the fixed items, frontlight (boards with one), Reading, screen
@@ -26,19 +24,8 @@ int touchWakeSettingIndex() {
     return orientationSettingIndex() + 1 + (hasUsbMscSetting() ? 1 : 0);
 }
 
-int sleepHoldSettingIndex() {
-    if (!hasPowerButtonSettings()) return -1;
-    return orientationSettingIndex() + 1 + (hasUsbMscSetting() ? 1 : 0) + (hasTouchWakeSetting() ? 1 : 0);
-}
-
-int wakeHoldSettingIndex() {
-    if (!hasPowerButtonSettings()) return -1;
-    return sleepHoldSettingIndex() + 1;
-}
-
 int webSettingIndex() {
-    return orientationSettingIndex() + 1 + (hasUsbMscSetting() ? 1 : 0) + (hasTouchWakeSetting() ? 1 : 0) +
-           (hasPowerButtonSettings() ? 2 : 0);
+    return orientationSettingIndex() + 1 + (hasUsbMscSetting() ? 1 : 0) + (hasTouchWakeSetting() ? 1 : 0);
 }
 
 int settingsItemCount() { return webSettingIndex() + 1; }
@@ -56,7 +43,6 @@ int settingsOrder(int* items, int* sections) {
     const int light = Frontlight.present() ? NUM_SETTINGS_ITEMS - 1 : -1;   // 7 on boards with a light
     add(readingSettingIndex(), 0);
     add(orientationSettingIndex(), -1);
-    add(3, -1);   // sleep screen
     add(light, -1);
     add(1, 1);    // Wi-Fi
     add(2, -1);   // server
@@ -65,8 +51,7 @@ int settingsOrder(int* items, int* sections) {
     add(usbMscSettingIndex(), -1);
     add(0, 2);    // language
     add(touchWakeSettingIndex(), -1);
-    add(sleepHoldSettingIndex(), -1);
-    add(wakeHoldSettingIndex(), -1);
+    add(3, -1);   // sleep mode (device section)
     add(4, -1);   // settings file
     add(5, -1);   // device information
     return n;

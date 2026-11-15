@@ -59,6 +59,8 @@
     "SETTINGS_ITEM_WIFI_NONE": "Red inalámbrica no configurada",
     "SETTINGS_ITEM_SERVER": "Servidor Book Orbit",
     "SETTINGS_ITEM_SERVER_NONE": "Servidor no configurado",
+    "SETTINGS_ITEM_SLEEP": "Modo suspensión",
+    "SLEEP_SETTINGS_TITLE": "Modo suspensión",
     "SETTINGS_ITEM_SLEEP_COVER": "Portada en suspensión",
     "SLEEP_COVER_TITLE": "Portada en suspensión",
     "SLEEP_COVER_MODE_FIT": "Mantener proporción",

@@ -64,15 +64,12 @@ static void testX4ClassicDefaultsAndSettingsLayout() {
 
     CHECK(hasUsbMscSetting());
     CHECK(!hasTouchWakeSetting());
-    CHECK(hasPowerButtonSettings());
     CHECK(readingSettingIndex() == 7);
     CHECK(orientationSettingIndex() == 8);
     CHECK(usbMscSettingIndex() == 9);
     CHECK(touchWakeSettingIndex() == -1);
-    CHECK(sleepHoldSettingIndex() == 10);
-    CHECK(wakeHoldSettingIndex() == 11);
-    CHECK(webSettingIndex() == 12);
-    CHECK(settingsItemCount() == 13);
+    CHECK(webSettingIndex() == 10);
+    CHECK(settingsItemCount() == 11);
     CHECK(cfg.sleepHoldSec == 0);
     CHECK(cfg.wakeHoldSec == 3);
 }

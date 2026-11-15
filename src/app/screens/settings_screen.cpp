@@ -115,14 +115,6 @@ void executeSetting(AppContext& ctx, int index) {
         updateSettingsItem(ctx, index);
         return;
     }
-    if (index == sleepHoldSettingIndex()) {
-        SettingsScreen::openChoice(ctx, Choices::SLEEP_HOLD);
-        return;
-    }
-    if (index == wakeHoldSettingIndex()) {
-        SettingsScreen::openChoice(ctx, Choices::WAKE_HOLD);
-        return;
-    }
     if (index == webSettingIndex()) {
         SettingsScreen::openWebSettings(ctx, STATE_SETTINGS);
         return;
@@ -165,16 +157,10 @@ void executeSetting(AppContext& ctx, int index) {
             ctx.selectedServerSettingIndex = 0;
             drawServerSettingsScreen(ctx, false);
             break;
-        case 3:  // Sleep cover submenu
-            ctx.currentState = STATE_SLEEP_COVER_SETTINGS;
-            if (!ctx.config.coverOnSleep) {
-                ctx.selectedSleepCoverIndex = 2;
-            } else if (ctx.config.sleepCoverFitMode == 1) {
-                ctx.selectedSleepCoverIndex = 1;
-            } else {
-                ctx.selectedSleepCoverIndex = 0;
-            }
-            drawSleepCoverSettingsScreen(ctx, false);
+        case 3:  // Sleep mode submenu
+            ctx.currentState = STATE_SLEEP_SETTINGS;
+            ctx.selectedSleepSettingIndex = 0;
+            drawSleepSettingsScreen(ctx, false);
             break;
         case 4:  // Settings file: reload / save
             ctx.currentState = STATE_SD_SETTINGS;
@@ -447,6 +433,29 @@ void executeSyncSetting(AppContext& ctx, int index) {
     updateSyncSettingsItem(ctx, index);
 }
 
+// ---------------------------------------------------------------- sleep settings
+void executeSleepSetting(AppContext& ctx, int index) {
+    switch (index) {
+        case 0:
+            ctx.currentState = STATE_SLEEP_COVER_SETTINGS;
+            if (!ctx.config.coverOnSleep) {
+                ctx.selectedSleepCoverIndex = 2;
+            } else if (ctx.config.sleepCoverFitMode == 1) {
+                ctx.selectedSleepCoverIndex = 1;
+            } else {
+                ctx.selectedSleepCoverIndex = 0;
+            }
+            drawSleepCoverSettingsScreen(ctx, false);
+            break;
+        case 1:
+            SettingsScreen::openChoice(ctx, Choices::SLEEP_HOLD);
+            break;
+        case 2:
+            SettingsScreen::openChoice(ctx, Choices::WAKE_HOLD);
+            break;
+    }
+}
+
 // ---------------------------------------------------------------- sleep cover settings
 void executeSleepCoverSetting(AppContext& ctx, int index) {
     switch (index) {
@@ -673,6 +682,8 @@ void handleChoiceEvent(AppContext& ctx, const ButtonEvent& event) {
             ctx.currentState = Choices::parent(kind);
             if (ctx.currentState == STATE_READING_SETTINGS)
                 drawReadingSettingsScreen(ctx, false);
+            else if (ctx.currentState == STATE_SLEEP_SETTINGS)
+                drawSleepSettingsScreen(ctx, false);
             else if (ctx.currentState == STATE_SETTINGS)
                 drawSettingsScreen(ctx, false);
             else
@@ -755,9 +766,14 @@ void handleOrientationSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
                executeOrientationSetting, STATE_SETTINGS, drawSettingsScreen, false);
 }
 
+void handleSleepSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
+    handleMenu(ctx, event, ctx.selectedSleepSettingIndex, NUM_SLEEP_SETTINGS_ITEMS, updateSleepSettingsSelection,
+               executeSleepSetting, STATE_SETTINGS, drawSettingsScreen, false);
+}
+
 void handleSleepCoverSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
     handleMenu(ctx, event, ctx.selectedSleepCoverIndex, NUM_SLEEP_COVER_ITEMS, updateSleepCoverSettingsSelection,
-               executeSleepCoverSetting, STATE_SETTINGS, drawSettingsScreen, false);
+               executeSleepCoverSetting, STATE_SLEEP_SETTINGS, drawSleepSettingsScreen, false);
 }
 
 void handleLanguageSettingsEvent(AppContext& ctx, const ButtonEvent& event) {

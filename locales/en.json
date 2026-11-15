@@ -59,6 +59,8 @@
     "SETTINGS_ITEM_WIFI_NONE": "Wireless network not configured",
     "SETTINGS_ITEM_SERVER": "Book Orbit Server",
     "SETTINGS_ITEM_SERVER_NONE": "Server parameters not configured",
+    "SETTINGS_ITEM_SLEEP": "Sleep mode",
+    "SLEEP_SETTINGS_TITLE": "Sleep mode",
     "SETTINGS_ITEM_SLEEP_COVER": "Sleep Screen Cover",
     "SLEEP_COVER_TITLE": "Sleep screen cover",
     "SLEEP_COVER_MODE_FIT": "Keep aspect ratio",

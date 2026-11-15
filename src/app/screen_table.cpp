@@ -36,6 +36,8 @@ const ScreenEntry kScreens[] = {
         {STATE_FONT_MENU, ReaderScreen::handleFontMenuEvent, drawFontMenuScreen, &C::selectedFontIndex, false},
         {STATE_SYNC_SETTINGS, SettingsScreen::handleSyncSettingsEvent, drawSyncSettingsScreen,
          &C::selectedSyncSettingIndex, true},
+        {STATE_SLEEP_SETTINGS, SettingsScreen::handleSleepSettingsEvent, drawSleepSettingsScreen,
+         &C::selectedSleepSettingIndex, true},
         {STATE_SLEEP_COVER_SETTINGS, SettingsScreen::handleSleepCoverSettingsEvent, drawSleepCoverSettingsScreen,
          &C::selectedSleepCoverIndex, true},
         {STATE_ORIENTATION_SETTINGS, SettingsScreen::handleOrientationSettingsEvent, drawOrientationSettingsScreen,
