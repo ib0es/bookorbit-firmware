@@ -81,6 +81,8 @@ public:
     bool isDebouncePending() const { return _freeinkInput.isDebouncePending(); }
     int8_t touchWakeIrqPin() const { return _freeinkInput.touchWakeIrqPin(); }
     bool touchWakeIrqActiveLow() const { return _freeinkInput.touchWakeIrqActiveLow(); }
+    void setSleepHoldSec(int sec);
+    int sleepHoldSec() const { return _sleepHoldSec; }
 
 private:
     InputManager _freeinkInput;
@@ -96,6 +98,9 @@ private:
     ButtonEvent _pendingEvent;
     bool _hasPendingEvent;
     bool _powerLongPressFired;
+    int _sleepHoldSec = 0;
+    bool _powerHoldActive = false;
+    uint32_t _powerHoldSince = 0;
     bool _lightSwitchChanged = false;
     // Auto-repeat of a held arrow key.
     ButtonId _heldKey = BTN_NONE;

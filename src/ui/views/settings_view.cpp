@@ -153,7 +153,7 @@ void drawListScreen(const AppContext& ctx, const char* title, ItemDefFn def, int
     Rect list = Rect{area.x, area.y, (int16_t)(area.width - (paged ? 14 : 0)), listH};
     const int16_t listTop = list.y;
     for (int i = first; i < first + perPage; i++) {
-        if (const char* cap = caption(i)) section(takeTop(list, sectionHeight()), cap);
+        if (const char* cap = caption(i)) section(takeTop(list, sectionHeight()), cap, i > first);
         const SettingItemDef& it = items[i];
         RowOpts o;
         if (!it.under && it.value.length()) o.value = it.value.c_str();
@@ -180,6 +180,16 @@ SettingItemDef getSettingItemDef(const AppContext& ctx, int index) {
     }
     if (index == touchWakeSettingIndex()) {
         return switchRow(tr(MsgId::SETTINGS_ITEM_TOUCH_WAKE), ctx.config.touchWakeEnabled);
+    }
+    if (index == sleepHoldSettingIndex()) {
+        char buf[32];
+        Choices::label(Choices::SLEEP_HOLD, Choices::active(ctx.config, Choices::SLEEP_HOLD), buf, sizeof(buf));
+        return valueRow(tr(MsgId::SETTINGS_ITEM_SLEEP_HOLD), String(buf));
+    }
+    if (index == wakeHoldSettingIndex()) {
+        char buf[32];
+        Choices::label(Choices::WAKE_HOLD, Choices::active(ctx.config, Choices::WAKE_HOLD), buf, sizeof(buf));
+        return valueRow(tr(MsgId::SETTINGS_ITEM_WAKE_HOLD), String(buf));
     }
     if (index == webSettingIndex()) {
         return valueRow(tr(MsgId::SETTINGS_ITEM_WEB), "");

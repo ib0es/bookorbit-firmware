@@ -88,6 +88,8 @@ struct AppConfig {
     bool hideCompleted = false;
     bool usbMscEnabled = true;
     bool touchWakeEnabled = true;
+    int sleepHoldSec = 0;        // 0 = immediately (default), or 1, 2, 3, 5 seconds to sleep
+    int wakeHoldSec = 3;         // 3 seconds (default), or 0 = immediately, 1, 2, 5 to wake up
 
     bool load();
     bool save();
@@ -99,6 +101,7 @@ const int NUM_CATALOG_ITEMS =
 const int NUM_SETTINGS_ITEMS = 8;  // base count before optional Frontlight, USB-MSC, Touch Wake
 bool hasUsbMscSetting();
 bool hasTouchWakeSetting();
+bool hasPowerButtonSettings();
 int settingsItemCount();
 // The main settings as shown: grouped in sections (reading, connections, the
 // device), so a row's place differs from the item's index above.
@@ -111,6 +114,8 @@ int settingsSectionAt(int pos);
 int orientationSettingIndex();
 int usbMscSettingIndex();
 int touchWakeSettingIndex();
+int sleepHoldSettingIndex();
+int wakeHoldSettingIndex();
 int webSettingIndex();
 int readingSettingIndex();   // Settings -> Reading: just before screen orientation
 const int NUM_WIFI_SETTINGS_ITEMS = 5;

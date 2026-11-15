@@ -972,7 +972,7 @@ CASES = [
         "settings: a language takes effect without a 'Saved' dialog (U5)",
         None,
         {},
-        SETTINGS + "UUUC" + "D" + "C",  # Language: third from the end
+        SETTINGS + "UUUUUC" + "D" + "C",  # Language: fifth from the end
         language_direct,
     ),
     (

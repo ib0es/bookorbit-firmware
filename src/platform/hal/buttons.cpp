@@ -17,6 +17,11 @@ void ButtonManager::setHoldFallback(bool on) {
 #endif
 }
 
+void ButtonManager::setSleepHoldSec(int sec) {
+    _sleepHoldSec = sec < 0 ? 0 : sec;
+    _powerHoldActive = false;
+}
+
 void ButtonManager::begin() {
     _freeinkInput.begin();
     Serial.printf("[Buttons] FreeInk InputManager initialized, touch: %s, homeKey: %s\n",
@@ -74,7 +79,7 @@ void ButtonManager::update() {
     }
 
     if (_sharedPowerKey != BTN_NONE) {
-        constexpr uint32_t kHoldMs = 600;
+        const uint32_t kHoldMs = _sleepHoldSec > 0 ? (uint32_t)_sleepHoldSec * 1000 : 600;
         if (!isPressed(_sharedPowerKey)) {
             if (!_sharedPowerFired) {
                 _pendingEvent = {_sharedPowerKey, ACTION_CLICK};
@@ -90,6 +95,19 @@ void ButtonManager::update() {
                 _hasPendingEvent = true;
                 Serial.printf("[Buttons] Event: HOLD %s -> POWER (shared)\n", getName(_sharedPowerKey));
             }
+            return;
+        }
+    }
+
+    if (_powerHoldActive) {
+        if (!isPressed(BTN_POWER)) {
+            _powerHoldActive = false;
+            Serial.println("[Buttons] Power button released before hold duration");
+        } else if (millis() - _powerHoldSince >= (uint32_t)_sleepHoldSec * 1000) {
+            _powerHoldActive = false;
+            _pendingEvent = {BTN_POWER, ACTION_CLICK};
+            _hasPendingEvent = true;
+            Serial.printf("[Buttons] Event: HOLD POWER (%d s)\n", _sleepHoldSec);
             return;
         }
     }
@@ -150,9 +168,15 @@ void ButtonManager::update() {
         _hasPendingEvent = true;
         Serial.println("[Buttons] Event: CLICK BACK");
     } else if (_freeinkInput.wasPressed(InputManager::BTN_POWER)) {
-        _pendingEvent = {BTN_POWER, ACTION_CLICK};
-        _hasPendingEvent = true;
-        Serial.println("[Buttons] Event: CLICK POWER");
+        if (_sleepHoldSec <= 0) {
+            _pendingEvent = {BTN_POWER, ACTION_CLICK};
+            _hasPendingEvent = true;
+            Serial.println("[Buttons] Event: CLICK POWER");
+        } else {
+            _powerHoldActive = true;
+            _powerHoldSince = millis();
+            Serial.printf("[Buttons] Power button pressed, waiting %d s hold...\n", _sleepHoldSec);
+        }
     } else if (_freeinkInput.wasHomeKeyTapped()) {
         _pendingEvent = {BTN_BACK, ACTION_CLICK};
         _hasPendingEvent = true;

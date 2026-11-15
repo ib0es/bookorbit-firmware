@@ -32,6 +32,7 @@ bool isUsbCdcConnected() { return Platform::usbSerialConnected(); }
 }  // namespace
 
 RTC_DATA_ATTR static int rtcSavedState = STATE_HOME;
+RTC_DATA_ATTR static int rtcWakeHoldSec = 3;
 // Kept through a software restart: RTC_DATA_ATTR variables are loaded again by the
 // bootloader at every boot except a deep-sleep wake-up (the first version lost the
 // flag and the restart ended on the home screen); RTC_NOINIT_ATTR ones are not.
@@ -69,18 +70,26 @@ bool PowerService::takeRestartIntoBook() {
     return yes;
 }
 
+void PowerService::setWakeHoldSec(int sec) { rtcWakeHoldSec = sec < 0 ? 0 : sec; }
+
 void PowerService::handleAccidentalWakeup() {
     if (!Platform::kDevice.hasPowerButton) return;
     esp_sleep_wakeup_cause_t wakeupCause = esp_sleep_get_wakeup_cause();
     // C3 wakes through the deep-sleep GPIO source, S3 through RTC ext1.
     if (wakeupCause == ESP_SLEEP_WAKEUP_GPIO || wakeupCause == ESP_SLEEP_WAKEUP_EXT1) {
+        if (rtcWakeHoldSec <= 0) {
+            Serial.println("[Power] Power button wake-up (immediate). Waking up!");
+            freeink::PowerManager::waitForPowerButtonRelease();
+            return;
+        }
+
         const int8_t pPin = BoardConfig::ACTIVE.input.power;
         if (pPin >= 0) {
             const bool activeHigh = BoardConfig::ACTIVE.input.powerActiveHigh;
             pinMode(pPin, activeHigh ? INPUT_PULLDOWN : INPUT_PULLUP);
             const int pressedLevel = activeHigh ? HIGH : LOW;
 
-            const unsigned long requiredHoldMs = 1200;
+            const unsigned long requiredHoldMs = (unsigned long)rtcWakeHoldSec * 1000;
             unsigned long startWait = millis();
             bool aborted = false;
 
@@ -93,11 +102,12 @@ void PowerService::handleAccidentalWakeup() {
             }
 
             if (aborted) {
-                Serial.println("[Power] Accidental wake-up ignored (released early). Returning to sleep...");
+                Serial.printf("[Power] Accidental wake-up ignored (released before %d s). Returning to sleep...\n",
+                              rtcWakeHoldSec);
                 freeink::PowerManager::deepSleepUntilPowerButton();
             }
 
-            Serial.println("[Power] Power button held long enough (~1-2s). Waking up!");
+            Serial.printf("[Power] Power button held long enough (%d s). Waking up!\n", rtcWakeHoldSec);
             freeink::PowerManager::waitForPowerButtonRelease();
         }
     }
@@ -235,6 +245,7 @@ void PowerService::enterDeepSleep(AppContext& ctx, bool syncAllowed) {
 
     // Save active state to RTC memory across deep sleep
     rtcSavedState = ctx.currentState;
+    rtcWakeHoldSec = ctx.config.wakeHoldSec;
     // The frontlight screen and panel save when left: going to sleep from them keeps the level too.
     if (ctx.currentState == STATE_FRONTLIGHT_SETTINGS || Ui::modalActive()) ctx.config.save();
 

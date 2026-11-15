@@ -19,6 +19,7 @@
 #include "../../net/web_config.h"
 #include "../../reader/reader.h"
 #include "../../services/sync_service.h"
+#include "../../services/power_service.h"
 #include "../../ui/keyboard_ui.h"
 #include "../../ui/modal.h"
 #include "../../ui/wifi_manager_ui.h"
@@ -112,6 +113,14 @@ void executeSetting(AppContext& ctx, int index) {
         ctx.config.touchWakeEnabled = !ctx.config.touchWakeEnabled;
         ctx.config.save();
         updateSettingsItem(ctx, index);
+        return;
+    }
+    if (index == sleepHoldSettingIndex()) {
+        SettingsScreen::openChoice(ctx, Choices::SLEEP_HOLD);
+        return;
+    }
+    if (index == wakeHoldSettingIndex()) {
+        SettingsScreen::openChoice(ctx, Choices::WAKE_HOLD);
         return;
     }
     if (index == webSettingIndex()) {
@@ -651,6 +660,11 @@ void handleChoiceEvent(AppContext& ctx, const ButtonEvent& event) {
         case Action::Select:
         case Action::Next:
             Choices::apply(ctx.config, kind, sel);
+            if (kind == Choices::SLEEP_HOLD) {
+                Buttons.setSleepHoldSec(ctx.config.sleepHoldSec);
+            } else if (kind == Choices::WAKE_HOLD) {
+                PowerService::setWakeHoldSec(ctx.config.wakeHoldSec);
+            }
             ctx.config.save();
             drawChoiceScreen(ctx, false);
             break;
@@ -659,6 +673,8 @@ void handleChoiceEvent(AppContext& ctx, const ButtonEvent& event) {
             ctx.currentState = Choices::parent(kind);
             if (ctx.currentState == STATE_READING_SETTINGS)
                 drawReadingSettingsScreen(ctx, false);
+            else if (ctx.currentState == STATE_SETTINGS)
+                drawSettingsScreen(ctx, false);
             else
                 drawStatusBarScreen(ctx, false);
             break;

@@ -12,6 +12,8 @@ namespace Choices {
 
 enum Kind : int {
     FULL_REFRESH,   // Settings -> Reading: a full refresh every N pages, or never
+    SLEEP_HOLD,     // Settings -> Device: hold button to sleep
+    WAKE_HOLD,      // Settings -> Device: hold button to wake
     COUNT
 };
 

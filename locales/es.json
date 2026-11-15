@@ -646,6 +646,12 @@
     "SETTINGS_ITEM_TOUCH_WAKE": "Toque en reposo (Light Sleep)",
     "SETTINGS_TOUCH_WAKE_ON": "[SÍ] Despertar al tocar o pulsar botones",
     "SETTINGS_TOUCH_WAKE_OFF": "[NO] Esperar hasta el reposo profundo",
+    "SETTINGS_ITEM_SLEEP_HOLD": "Mantener para suspender",
+    "SETTINGS_ITEM_WAKE_HOLD": "Mantener para despertar",
+    "CHOICE_TITLE_SLEEP_HOLD": "Mantener botón para suspender",
+    "CHOICE_TITLE_WAKE_HOLD": "Mantener botón para despertar",
+    "POWER_HOLD_IMMEDIATE": "Inmediatamente",
+    "POWER_HOLD_SEC_FMT": "%d s",
     "SETTINGS_TAG_SLEEP_LIGHT": "REPOSO",
     "SETTINGS_ITEM_READING": "Lectura",
     "SETTINGS_TAG_READING": "LECTURA >",
@@ -758,5 +764,5 @@
     "SBB_CH_PERCENT": "Porcentaje del capítulo",
     "SBB_BOOK_PERCENT": "Porcentaje del libro",
     "SBB_CH_NUMBER": "Número de capítulo (2/12)",
-    "SBB_BOOK_PAGES": "Página del libro (12/340)",
+    "SBB_BOOK_PAGES": "Página del libro (12/340)"
 }

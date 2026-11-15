@@ -241,6 +241,8 @@ void AppController::applyConfig() {
     applyOrientation(c.uiOrientation, c.orientation);
     Reader.setStatusBar(StatusBarMenu::options(c));
     Reader.setFontSize(c.readerFontSize);
+    Buttons.setSleepHoldSec(c.sleepHoldSec);
+    PowerService::setWakeHoldSec(c.wakeHoldSec);
     LibraryManager::getInstance().setHideCompleted(c.hideCompleted);
 }
 
