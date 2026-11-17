@@ -240,16 +240,20 @@ BookItem* LibraryManager::formatBookItem() {
     return (formatsBook >= 0 && formatsBook < (int)vec.size()) ? &vec[formatsBook] : nullptr;
 }
 
+// Positive row keys below this bit index masterBooks; the bit marks offlineBooks.
+static constexpr int kOfflineRow = 1 << 30;
+
 int LibraryManager::rowCount() const { return (int)rows.size(); }
 
 BookItem& LibraryManager::rowAt(int i) {
     const int r = rows[i];
     if (r < 0) return folderRows[-1 - r];
-    return (currentFilter == FILTER_OFFLINE) ? offlineBooks[r] : masterBooks[r];
+    return (r & kOfflineRow) ? offlineBooks[r & ~kOfflineRow] : masterBooks[r];
 }
 
 int LibraryManager::rowMasterIndex(int i) const {
-    return (currentFilter != FILTER_OFFLINE && i >= 0 && i < (int)rows.size() && rows[i] >= 0) ? rows[i] : -1;
+    if (i < 0 || i >= rowCount() || rows[i] < 0 || (rows[i] & kOfflineRow)) return -1;
+    return rows[i];
 }
 
 const String& LibraryManager::libraryOf(const BookItem& b) const {
@@ -394,8 +398,10 @@ void LibraryManager::chooseFormat(BookItem& b) {
     selectFormat(b, pick);
 }
 
-void LibraryManager::openFormats(int idx) {
-    const bool fromOffline = (currentFilter == FILTER_OFFLINE);
+void LibraryManager::openFormats(int row) {
+    if (row < 0 || row >= rowCount() || rows[row] < 0) return;
+    const bool fromOffline = (rows[row] & kOfflineRow) != 0;
+    const int idx = rows[row] & ~kOfflineRow;
     auto& src = fromOffline ? offlineBooks : masterBooks;
     if (idx < 0 || idx >= (int)src.size()) return;
     if (!currentFolder.equals("@formats")) {
@@ -955,12 +961,20 @@ void LibraryManager::rebuildRows() {
     } else if (currentFilter == FILTER_SEARCH || f.equalsIgnoreCase("@search")) {
         upItem("@catalog", tr(MsgId::HOME_CAT_CATALOG));
         const String needle = foldString(searchQuery);
-        members(
-                [&](const BookItem& b) {
-                    return needle.length() == 0 || foldString(b.title).indexOf(needle) >= 0 ||
-                           foldString(b.author).indexOf(needle) >= 0 || foldString(b.series).indexOf(needle) >= 0;
-                },
-                byTitle);
+        auto matches = [&](const BookItem& book) {
+            return visible(book) &&
+                   (needle.length() == 0 || foldString(book.title).indexOf(needle) >= 0 ||
+                    foldString(book.author).indexOf(needle) >= 0 || foldString(book.series).indexOf(needle) >= 0);
+        };
+        for (int i = 0; i < (int)masterBooks.size(); ++i)
+            if (matches(masterBooks[i])) rows.push_back(i);
+        for (int i = 0; i < (int)offlineBooks.size(); ++i)
+            if (matches(offlineBooks[i])) rows.push_back(i | kOfflineRow);
+        auto title = [&](int key) -> const String& {
+            return (key & kOfflineRow) ? offlineBooks[key & ~kOfflineRow].title : masterBooks[key].title;
+        };
+        std::stable_sort(rows.begin() + 1, rows.end(),
+                         [&](int lhs, int rhs) { return foldCompare(title(lhs), title(rhs)) < 0; });
     } else if (f.startsWith("/books") && (currentFilter == FILTER_FOLDERS || f.length() > 6)) {
         // SD folders: the top level lists the folders of /books, a folder its
         // subfolders and book files.
@@ -1024,10 +1038,11 @@ void LibraryManager::rebuildRows() {
     } else if (currentFilter == FILTER_OFFLINE) {
         for (int i = 0; i < (int)offlineBooks.size(); i++) {
             if (!visible(offlineBooks[i])) continue;
-            rows.push_back(i);
+            rows.push_back(i | kOfflineRow);
         }
-        std::stable_sort(rows.begin(), rows.end(),
-                         [&](int a, int b) { return foldCompare(offlineBooks[a].title, offlineBooks[b].title) < 0; });
+        std::stable_sort(rows.begin(), rows.end(), [&](int a, int b) {
+            return foldCompare(offlineBooks[a & ~kOfflineRow].title, offlineBooks[b & ~kOfflineRow].title) < 0;
+        });
     } else {
         // "/books": all books, downloaded or completed: the ones on the card, then
         // the ones only on the server, each by title (was the order of the card

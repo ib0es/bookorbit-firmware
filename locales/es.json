@@ -766,5 +766,6 @@
     "SBB_CH_PERCENT": "Porcentaje del capítulo",
     "SBB_BOOK_PERCENT": "Porcentaje del libro",
     "SBB_CH_NUMBER": "Número de capítulo (2/12)",
-    "SBB_BOOK_PAGES": "Página del libro (12/340)"
+    "SBB_BOOK_PAGES": "Página del libro (12/340)",
+    "CATALOG_ONLINE": "En línea"
 }

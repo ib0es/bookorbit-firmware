@@ -24,13 +24,14 @@ void clipUtf8(char* s) {
     if (n - (i - 1) < need) s[i - 1] = '\0';
 }
 
-void drawRow(Frame& f, Rect r, const BookItem& item, bool selected, int index) {
+void drawRow(Frame& f, Rect r, const BookItem& item, bool selected, int index, bool searchResult, bool offline) {
     if (selected) selectionFrame(r);
     f.hit(r, ActionOpenItem, (int16_t)index);
 
     Rect inner = insetXY(r, 14, 4);
-    // Icon: a folder, a book on the card, or a cloud (only on the server).
-    const int16_t iconS = 30;
+    // Search results use the catalog icons, independently of download status.
+    const int16_t iconS = searchResult && !item.isDirectory ? 40 : 30;
+    const bool savedOnline = searchResult && !offline && !item.isDirectory && item.isDownloaded;
     Rect iconBox{inner.x, (int16_t)(r.y + (r.height - iconS) / 2), iconS, iconS};
     char statusBuf[32];
     const char* status = statusBuf;
@@ -46,7 +47,10 @@ void drawRow(Frame& f, Rect r, const BookItem& item, bool selected, int index) {
             status = tr(MsgId::LIB_BADGE_FOLDER);
         }
     } else {
-        if (item.isDownloaded)
+        if (searchResult) {
+            const auto drawIcon = offline ? icon::cloudOff : (savedOnline ? icon::cloudDone : icon::cloudDownload);
+            drawIcon(iconBox, Color::Black);
+        } else if (item.isDownloaded)
             icon::bookOutline(iconBox, Color::Black);
         else
             icon::cloudLarge(iconBox, Color::Black);
@@ -261,7 +265,9 @@ void drawLibraryScreen(AppContext& ctx, bool fullRefresh) {
         for (int i = pageStart; i < total && i < pageStart + perPage; i++) {
             Rect row = takeTop(listArea, rowH);
             takeTop(listArea, gap);
-            drawRow(f, row, lib.rowAt(i), i == lib.selectedBookIndex, i);
+            const bool searchResult = folder.equalsIgnoreCase("@search");
+            drawRow(f, row, lib.rowAt(i), i == lib.selectedBookIndex, i, searchResult,
+                    searchResult && lib.rowMasterIndex(i) < 0);
         }
         // A search with no match: say so under the ".." row.
         if (entries == 0 && (lib.currentFilter == FILTER_SEARCH || folder.equalsIgnoreCase("@search"))) {

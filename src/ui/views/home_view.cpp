@@ -150,11 +150,10 @@ void drawHomeScreen(AppContext& ctx, bool fullRefresh) {
         curBook.progress = 0.0f;
     }
 
-    const Tile tiles[4] = {
-            {1, MsgId::HOME_TILE_CATALOG, icon::cloudOutline, lib.getCounts().total},
-            {2, MsgId::HOME_TILE_OFFLINE, icon::menuBook, lib.offlineCount()},
-            {3, MsgId::HOME_TILE_SYNC, icon::syncLarge, -1},
-            {4, MsgId::HOME_CAT_SETTINGS, icon::settings, -1},
+    const Tile tiles[] = {
+            {HOME_CATALOG, MsgId::HOME_TILE_CATALOG, icon::menuBook, -1},
+            {HOME_SYNC_NOW, MsgId::HOME_TILE_SYNC, icon::syncLarge, -1},
+            {HOME_SETTINGS, MsgId::HOME_CAT_SETTINGS, icon::settings, -1},
     };
 
     // Portrait: the book card on top, three tiles a row under it. Landscape (the
@@ -177,10 +176,11 @@ void drawHomeScreen(AppContext& ctx, bool fullRefresh) {
     }
     const int16_t gap = 18;
     const int16_t cellW = (int16_t)((grid.width - (cols - 1) * gap) / cols);
-    const int rows = (4 + cols - 1) / cols;
+    constexpr int tileCount = sizeof(tiles) / sizeof(tiles[0]);
+    const int rows = (tileCount + cols - 1) / cols;
     const int16_t cellH =
             (int16_t)std::min<int>(cellW + lineHeight(FontBody) + 8, (grid.height - (rows - 1) * gap) / rows);
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < tileCount; i++) {
         const int r = i / cols, c = i % cols;
         Rect cell{(int16_t)(grid.x + c * (cellW + gap)), (int16_t)(grid.y + r * (cellH + gap)), cellW, cellH};
         drawTile(f, cell, tiles[i], ctx.selectedHomeIndex == tiles[i].index);

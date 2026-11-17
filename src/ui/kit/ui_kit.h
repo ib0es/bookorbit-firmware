@@ -173,6 +173,7 @@ struct RowOpts {
     bool checked = false;         // a check mark on the right (the active choice)
     bool chevron = false;         // "›": opens a screen of its own
     const char* badge = nullptr;  // a small outlined label on the right
+    void (*leadingIcon)(Rect, Color) = nullptr;
 };
 void row(Frame& f, Rect r, const char* title, const char* subtitle, const RowOpts& opts, bool selected,
          fi::ActionId action = fi::NO_ACTION, int16_t value = 0);
@@ -246,6 +247,10 @@ void signal(int16_t x, int16_t y, int bars, Color c);  // 22x20, bars 1..4
 void wifi(int16_t x, int16_t y, Color c);              // 22x16
 // Home tiles: drawn to fit a square box of side s (about 48..72).
 void folderLarge(Rect box, Color c);
+void cloudOff(Rect box, Color c);
+void cloudDone(Rect box, Color c);
+void cloudDownload(Rect box, Color c);
+void search(Rect box, Color c);
 void cloudOutline(Rect box, Color c);                  // Material Symbols "cloud" (40 px and up)
 void menuBook(Rect box, Color c);                      // Material Symbols "menu_book"
 void syncLarge(Rect box, Color c);                     // Material Symbols "sync"

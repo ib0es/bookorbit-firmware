@@ -18,6 +18,7 @@ using C = AppContext;
 const ScreenEntry kScreens[] = {
         // state                      input                                        drawing                       tap selects                     paged
         {STATE_HOME, HomeScreen::handleEvent, drawHomeScreen, nullptr, false},
+        {STATE_CATALOG_SOURCES, CatalogScreen::handleEvent, drawCatalogSourcesScreen, &C::selectedCatalogSource, false},
         {STATE_CATALOG, CatalogScreen::handleEvent, drawCatalogScreen, &C::selectedCatalogIndex, true},
         {STATE_LIBRARY, LibraryScreen::handleEvent, drawLibraryScreen, nullptr, false},
         {STATE_READING, ReaderScreen::handleReadingEvent, drawReading, nullptr, false},
