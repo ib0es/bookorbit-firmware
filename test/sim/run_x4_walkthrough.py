@@ -9,8 +9,8 @@ Every case runs the headless runner on a fresh copy of simulator/sdcard (with
 test/sim/config.json), after an optional setup of the card, and checks the log
 and the files the steps must have left. It covers what the sync scenarios
 (run_sync_scenarios.py) do not: the screens and keys, the power rules, the
-files on the card. Navigation (X4): home rows 0 book, 1 catalog, 2 offline,
-3 sync, 4 settings; reader menu 0 contents, 1 appearance, 2 bookmarks, 3 sync, 4 resume,
+files on the card. Navigation (X4): home rows 0 book, 1 catalog (online/offline),
+2 sync, 3 settings; reader menu 0 contents, 1 appearance, 2 bookmarks, 3 sync, 4 resume,
 5 close; settings 0 language, 1 Wi-Fi, 2 server, 3 sleep cover, 4 settings
 file, 5 info, 6 sync, 7 orientation; catalog 0 search, 1 all books ...
 """
@@ -39,14 +39,17 @@ def kb_tap(x, y):
     return f"T{round(x * SCREEN_W / 480)},{y};"
 
 
-ALL_BOOKS = "DC" + "DC"  # home -> catalog -> "All books"
+SEARCH = "DCU"  # Highlight Search; the bracketed sequence opens the keyboard.
+ONLINE = "DCDC"  # Home -> Catalog -> Online
+OFFLINE = "DCC"  # Home -> Catalog -> Offline
+ALL_BOOKS = ONLINE + "C"
 OPEN_BOOK = "C"  # home: the book on the card
 READER_MENU = "C"  # reading: the book menu
 APPEARANCE = READER_MENU + "DC"  # reading -> menu -> Appearance
 SETTINGS = "UC"  # home -> settings (the last tile)
 SETTINGS_FILE = SETTINGS + "UUC"  # -> "Settings file" submenu (above Device information)
 READING = SETTINGS + "C"  # -> Reading (the first row)
-HOME_SYNC = "DDDCww"  # home: the "Sync" tile
+HOME_SYNC = "DDCww"  # home: the "Sync" tile
 SORTED = [
     "01. Frankenstein (1818)",
     "Alice in Wonderland",
@@ -567,8 +570,16 @@ def saved_file(log, sd):
     return "Config saved to MicroSD" in after(log, ">>> CONFIRM")
 
 
+def search_both_catalogs(sd):
+    russian(sd)
+    os.makedirs(os.path.join(sd, "offline"), exist_ok=True)
+    with open(os.path.join(sd, "offline", "Тест офлайн.txt"), "w", encoding="utf-8") as book:
+        book.write("Offline search fixture")
+
+
 def search_cyrillic(log, sd):
-    return "[Library] Search 'тес'" in log and "List @search: 2 rows" in log
+    results = {title for _, _, title, _ in library_rows(after(log, "[Library] Search 'тес'"))}
+    return {"Тестовая книга", "Тест офлайн"} <= results and "drawCatalogSourcesScreen" in after(log, ">>> BACK")
 
 
 def search_backspace(log, sd):
@@ -1006,17 +1017,17 @@ CASES = [
     ),
     ("settings file: save writes config.json (U7)", None, {}, SETTINGS_FILE + "D" + "C", saved_file),
     (
-        "keyboard: search typed in Cyrillic (U2)",
-        russian,
+        "search: Cyrillic query finds both online and offline books and Back returns to Catalog",
+        search_both_catalogs,
         {},
-        "DC" + "[" + kb_tap(215, 460) + kb_tap(177, 340) + kb_tap(100, 460) + kb_tap(430, 526) + "]" + "C",
+        SEARCH + "[" + kb_tap(215, 460) + kb_tap(177, 340) + kb_tap(100, 460) + kb_tap(430, 526) + "]" + "CDDB",
         search_cyrillic,
     ),
     (
         "keyboard: backspace removes a whole Cyrillic letter (U2)",
         russian,
         {},
-        "DC" + "[" + kb_tap(215, 460) + kb_tap(177, 340) + kb_tap(278, 526) + kb_tap(430, 526) + "]" + "C",
+        SEARCH + "[" + kb_tap(215, 460) + kb_tap(177, 340) + kb_tap(278, 526) + kb_tap(430, 526) + "]" + "C",
         search_backspace,
     ),
     # Upside down the front keys are turned for the keyboard's own input loop too
@@ -1027,14 +1038,14 @@ CASES = [
         "keyboard upside down: LEFT and RIGHT follow the screen (C7)",
         upside_down,
         {},
-        "DC" + "[" + "DU" + "CC" + "DDD" + "R" + "C" + "]" + "C",
+        SEARCH + "[" + "DU" + "CC" + "DDD" + "R" + "C" + "]" + "C",
         lambda log, sd: re.search(r"\[Library\] Search '.+'", log),
     ),
     (
         "keyboard the right way up: LEFT from Shift wraps to OK (C7)",
         None,
         {},
-        "DC" + "[" + "DU" + "CC" + "DDD" + "L" + "C" + "]" + "C",
+        SEARCH + "[" + "DU" + "CC" + "DDD" + "L" + "C" + "]" + "C",
         lambda log, sd: re.search(r"\[Library\] Search '.+'", log),
     ),
     # U4: Shift is for one letter: Shift, a letter, a letter -> "Xx" (the first
@@ -1043,14 +1054,14 @@ CASES = [
         "keyboard: Shift is for one letter (U4)",
         None,
         {},
-        "DC" + "[" + "DU" + "C" + "DDD" + "C" + "UUU" + "C" + "C" + "DDD" + "L" + "C" + "]" + "C",
+        SEARCH + "[" + "DU" + "C" + "DDD" + "C" + "UUU" + "C" + "C" + "DDD" + "L" + "C" + "]" + "C",
         lambda log, sd: re.search(r"\[Library\] Search '[A-Z][a-z]'", log),
     ),
     (
         "keyboard: BACK held leaves without saving (U4)",
         None,
         {},
-        "DC" + "[" + "DU" + "CC" + "h" + "]" + "w",
+        SEARCH + "[" + "DU" + "CC" + "h" + "]" + "w",
         lambda log, sd: "[Keyboard] BACK held: left without saving" in log and "[Library] Search" not in log,
     ),
     (
@@ -1065,14 +1076,14 @@ CASES = [
         "catalog: entered again, the card is not walked again (P3)",
         None,
         {},
-        "DC" + "B" + "C",
+        ONLINE + "B" + "C",
         lambda log, sd: log.count("Card unchanged since the last walk") == 1,
     ),
     (
         "library: a book in a subfolder gets a cache of its own (B13)",
         subfolder_book,
         {},
-        "DC" + "DDDDD" + "C" + "D" + "C" + "D" + "C",
+        ONLINE + "DDDD" + "C" + "D" + "C" + "D" + "C",
         subfolder_cache,
     ),
     (
@@ -1137,7 +1148,7 @@ CASES = [
         "status bar: clock and UTC+3 saved and active from RTC",
         lambda sd: merge_config(sd, sb_top_items=256 | 512),  # Book title + battery; enable clock through the menu.
         {"SIM_RTC_UTC": "1794391200"},
-        READING + "C" + "C" + "UC" + "B" + "U" + "RRRRRR" + "BBB" + "UUUU" + OPEN_BOOK,
+        READING + "C" + "C" + "UC" + "B" + "U" + "RRRRRR" + "BBB" + "UUU" + OPEN_BOOK,
         lambda log, sd: (
             "[RTC] Ready" in log
             and "[Clock] Restored from RTC" in log
@@ -1170,42 +1181,55 @@ CASES = [
         ),
     ),
     (
-        "offline: empty Offline library shows 0 rows and BACK returns to Home",
+        "catalog: BACK from Online returns to Catalog and then Home",
         None,
         {},
-        "DDC" + "B",
+        ONLINE + "BB",
         lambda log, sd: (
-            "List /offline: 0 rows" in log and "drawLibraryScreen" in log and "drawHomeScreen" in after(log, ">>> BACK")
+            "drawCatalogScreen" in log
+            and "drawCatalogSourcesScreen" in log.split("drawCatalogScreen", 1)[1]
+            and "drawHomeScreen" in after(log, ">>> BACK")
+        ),
+    ),
+    (
+        "offline: empty Offline library shows 0 rows and BACK returns to Catalog",
+        None,
+        {},
+        OFFLINE + "B",
+        lambda log, sd: (
+            "List /offline: 0 rows" in log
+            and "drawLibraryScreen" in log
+            and "drawCatalogSourcesScreen" in after(log, ">>> BACK")
         ),
     ),
     (
         "offline: empty Offline library launches Web settings via CONFIRM and returns via BACK",
         None,
         {},
-        "DDC" + "C" + "B" + "B",
+        OFFLINE + "C" + "B" + "B",
         lambda log, sd: (
             "List /offline: 0 rows" in log
             and "drawWebSettingsScreen" in log
             and "drawLibraryScreen" in log.split("drawWebSettingsScreen")[1]
-            and "drawHomeScreen" in after(log, ">>> BACK")
+            and "drawCatalogSourcesScreen" in after(log, ">>> BACK")
         ),
     ),
     (
         "offline: book menu and RIGHT key transition to Web settings from offline library",
         offline_epub,
         {},
-        "DDC" + "R" + "B" + "L" + "DDC" + "B" + "BB",
+        OFFLINE + "R" + "B" + "L" + "DDC" + "BB",
         lambda log, sd: (
             log.count("drawWebSettingsScreen") >= 2
             and "drawLibraryScreen" in log
-            and "drawHomeScreen" in after(log.rsplit("drawWebSettingsScreen", 1)[1], ">>> BACK")
+            and "drawCatalogSourcesScreen" in after(log.rsplit("drawWebSettingsScreen", 1)[1], ">>> BACK")
         ),
     ),
     (
         "offline: books in /offline are isolated from Catalog and delete removes only the file",
         offline_epub,
         {},
-        ALL_BOOKS + "BB" + "DC" + "L" + "D" + "C" + "C" + "w",
+        ALL_BOOKS + "BB" + "UC" + "L" + "D" + "C" + "C" + "w",
         lambda log, sd: (
             "List /books: 7 rows" in log
             and "List /offline: 1 rows" in log
@@ -1218,14 +1242,14 @@ CASES = [
         "offline: deleting a book takes its position, bookmarks, caches and covers",
         offline_traces,
         {},
-        "w" + "DDC" + "L" + "D" + "C" + "C" + "w",
+        "w" + OFFLINE + "L" + "D" + "C" + "C" + "w",
         lambda log, sd: delete_asked_over_menu(log, sd) and offline_traces_gone(log, sd),
     ),
     (
         "offline: BACK on the delete question keeps the book",
         offline_traces,
         {},
-        "w" + "DDC" + "L" + "D" + "C" + "B" + "w",
+        "w" + OFFLINE + "L" + "D" + "C" + "B" + "w",
         offline_delete_cancelled,
     ),
     (

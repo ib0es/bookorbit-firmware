@@ -780,7 +780,8 @@ enum class MsgId : uint16_t {
     SBB_BOOK_PERCENT = 765,
     SBB_CH_NUMBER = 766,
     SBB_BOOK_PAGES = 767,
-    COUNT = 768
+    CATALOG_ONLINE = 768,
+    COUNT = 769
 };
 
 // Language: English (en)
@@ -1553,6 +1554,7 @@ static const char* const STRINGS_EN[(size_t)MsgId::COUNT] PROGMEM = {
     /* SBB_BOOK_PERCENT */ "Book percent",
     /* SBB_CH_NUMBER */ "Chapter number (2/12)",
     /* SBB_BOOK_PAGES */ "Book page (12/340)",
+    /* CATALOG_ONLINE */ "Online",
 };
 
 // Language: Russian (ru)
@@ -2325,6 +2327,7 @@ static const char* const STRINGS_RU[(size_t)MsgId::COUNT] PROGMEM = {
     /* SBB_BOOK_PERCENT */ "Процент книги",
     /* SBB_CH_NUMBER */ "Номер главы (2/12)",
     /* SBB_BOOK_PAGES */ "Страница книги (12/340)",
+    /* CATALOG_ONLINE */ "Онлайн",
 };
 
 // Language: Spanish (es)
@@ -3097,6 +3100,7 @@ static const char* const STRINGS_ES[(size_t)MsgId::COUNT] PROGMEM = {
     /* SBB_BOOK_PERCENT */ "Porcentaje del libro",
     /* SBB_CH_NUMBER */ "Número de capítulo (2/12)",
     /* SBB_BOOK_PAGES */ "Página del libro (12/340)",
+    /* CATALOG_ONLINE */ "En línea",
 };
 
 static const char* const* const I18N_ALL_TABLES[(size_t)AppLanguage::COUNT] = {

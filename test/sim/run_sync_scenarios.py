@@ -24,7 +24,7 @@ SD_TEMPLATE = os.path.join(ROOT, "simulator/sdcard")
 TEST_CONFIG = os.path.join(ROOT, "test/sim/config.json")  # replaces a local simulator/sdcard/config.json
 BOOK = "Alice in Wonderland"
 SYNC = "CDDDCw"  # in the reader: menu -> "Синхронизация" (4th) -> wait
-HOME_SYNC = "DDDCww"  # on the home screen: "Синхронизация сейчас" -> wait
+HOME_SYNC = "DDCww"  # on the home screen: "Синхронизация сейчас" -> wait
 
 
 def srv(pct=None, upd="NOW-100", fail=False, **extra):
@@ -281,11 +281,11 @@ def run_one(scenario):
 
 
 CLOUD = (
-    "B" + "DC" + "DC" + "UC"
+    "B" + "DCDC" + "C" + "UC"
 )  # after a home sync: Home -> Catalog -> All Books -> wrap up to cloud book ("Moby Dick")
 # After a home sync: Home -> Catalog -> All Books -> "Alice in Wonderland" -> book menu -> Formats.
 # The fake server has Alice as EPUB (101), TXT (131), AZW3 (121) and FB2 (111), in that order.
-FORMATS = "B" + "DC" + "DC" + "D" + "L" + "DC"
+FORMATS = "B" + "DCDC" + "C" + "D" + "L" + "DC"
 P40 = [{"fileId": f, "percentage": 40, "updatedAt": "NOW-50"} for f in (101, 102, 103)]
 
 # name, server state, server after 'S', script, log must match (all), log must not match (any)
@@ -612,7 +612,7 @@ LOG_SCENARIOS = [
         "saved catalog of older firmware: its address still downloads",
         {},
         None,
-        "DC" + "DC" + "UUC" + "w",  # cloud books last, by title: Moby Dick, The Time Machine
+        "DCDC" + "C" + "UUC" + "w",  # cloud books last, by title: Moby Dick, The Time Machine
         [r"GET /api/v1/download/103 -> 200", r"Book /books/Moby Dick \[3\]\.epub downloaded successfully"],
         [],
     ),
@@ -654,7 +654,7 @@ LOG_SCENARIOS = [
         "the format read last opens from the list; BACK leaves the formats list",
         {},
         None,
-        HOME_SYNC + FORMATS + "DCw" + "B" + "C" + "DC" + "D" + "C" + "w" + "B" + "C" + "DC" + "D" + "LDC" + "B",
+        HOME_SYNC + FORMATS + "DCw" + "B" + "CDCC" + "D" + "C" + "w" + "B" + "CDCC" + "D" + "LDC" + "B",
         [
             r"Book /books/Alice in Wonderland \[1\]\.txt downloaded successfully",
             r"Formats of 'Alice in Wonderland': 4(.|\n)*Formats of 'Alice in Wonderland': 4",
@@ -668,7 +668,7 @@ LOG_SCENARIOS = [
         "book menu: sync one book",
         {"progress": P40},
         None,
-        HOME_SYNC + "B" + "DC" + "DC" + "D" + "L" + "DDC",
+        HOME_SYNC + "B" + "DCDC" + "C" + "D" + "L" + "DDC",
         [r"GET /api/v1/books/1/progress", r"Book menu sync of 'Alice in Wonderland': result 0"],
         [],
     ),
@@ -676,7 +676,7 @@ LOG_SCENARIOS = [
         "book menu: sync fails when the server is down",
         {"progress": P40},
         {"fail": True},
-        HOME_SYNC + "S" + "B" + "DC" + "DC" + "D" + "L" + "DDC",
+        HOME_SYNC + "S" + "B" + "DCDC" + "C" + "D" + "L" + "DDC",
         [r"Book menu sync of 'Alice in Wonderland': result 1"],
         [],
     ),
@@ -684,7 +684,7 @@ LOG_SCENARIOS = [
         "book menu: sync without Wi-Fi settings",
         {"_config": {"wifi_ssid": ""}},
         None,
-        "DC" + "DC" + "D" + "L" + "DC",  # one format: no "Formats" row
+        "DCDC" + "C" + "D" + "L" + "DC",  # one format: no "Formats" row
         [r"Book menu sync of 'Alice in Wonderland': result 2"],
         [r"\[WiFi\] Initializing"],
     ),

@@ -766,5 +766,6 @@
     "SBB_CH_PERCENT": "Chapter percent",
     "SBB_BOOK_PERCENT": "Book percent",
     "SBB_CH_NUMBER": "Chapter number (2/12)",
-    "SBB_BOOK_PAGES": "Book page (12/340)"
+    "SBB_BOOK_PAGES": "Book page (12/340)",
+    "CATALOG_ONLINE": "Online"
 }

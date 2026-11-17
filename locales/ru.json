@@ -766,5 +766,6 @@
     "SBB_CH_PERCENT": "Процент главы",
     "SBB_BOOK_PERCENT": "Процент книги",
     "SBB_CH_NUMBER": "Номер главы (2/12)",
-    "SBB_BOOK_PAGES": "Страница книги (12/340)"
+    "SBB_BOOK_PAGES": "Страница книги (12/340)",
+    "CATALOG_ONLINE": "Онлайн"
 }

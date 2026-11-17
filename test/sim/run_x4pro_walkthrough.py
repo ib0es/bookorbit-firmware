@@ -27,13 +27,13 @@ TITLE = "T240,20;"  # title bar back hit area
 HOME_KEY_TAP = "k"  # GT911 Home Key short tap -> BTN_BACK click
 HOME_KEY_LONG = "K"  # GT911 Home Key long press -> Reader menu (only in reading)
 HOME_CARD = "T240,180;"
-HOME_CATALOG = "T90,400;"  # the home tiles: Catalog, Offline, Sync; Settings below
-CATALOG_ALL_BOOKS = "T200,186;"
+HOME_CATALOG = "T90,400;"  # Catalog, Sync, Settings
+CATALOG_ALL_BOOKS = "T200,180;T200,127;"
 HOME_ALL_BOOKS = HOME_CATALOG + CATALOG_ALL_BOOKS
 LIB_FRANKENSTEIN = "T200,295;"  # 3rd row (two-line rows, U1)
-HOME_OFFLINE = "T240,400;"
-HOME_SETTINGS = "T90,580;"
-HOME_SYNC = "T390,400;"
+HOME_OFFLINE = HOME_CATALOG + "T240,110;"
+HOME_SETTINGS = "T390,400;"
+HOME_SYNC = "T240,400;"
 READ_MIDDLE = "T240,400;"
 READ_RIGHT = "T400,400;"
 READ_LEFT = "T80,400;"
@@ -262,14 +262,16 @@ CASES = [
     ),
     (
         "home in landscape: Settings tile opens cleanly",
-        "T163,701;",
+        "T163,535;",
         lambda log, sd: "drawSettingsScreen" in log,
         {"ui_orientation": 1},
     ),
     (
-        "offline: tap Offline library opens /offline and Home Key returns Home",
+        "offline: tap Offline library opens /offline and Home Key returns to Catalog",
         HOME_OFFLINE + HOME_KEY_TAP,
-        lambda log, sd: "List /offline: 0 rows" in log and "drawHomeScreen" in log.split(">>> HOME_TAP", 1)[1],
+        lambda log, sd: (
+            "List /offline: 0 rows" in log and "drawCatalogSourcesScreen" in log.split(">>> HOME_TAP", 1)[1]
+        ),
     ),
     (
         "Wi-Fi: SSID typed on keyboard, Home Key tap cancels cleanly",

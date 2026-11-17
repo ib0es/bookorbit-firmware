@@ -20,7 +20,7 @@ import tempfile
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ICONS = ["settings", "sync", "menu_book", "cloud"]
+ICONS = ["settings", "sync", "menu_book", "cloud", "cloud_off", "search", "cloud_done", "cloud_download"]
 SIZES = [40, 48, 56, 64, 72, 80]
 
 

@@ -66,7 +66,7 @@ CASES: list[tuple[str, str, Callable[..., bool], Any, Any]] = [
     ),
     (
         "library: OK on a book opens its menu (okOpensBookMenu)",
-        "DDC" + "C",  # Home -> Offline -> Open book menu
+        "DCC" + "C",  # Home -> Catalog -> Offline -> Open book menu
         lambda log, sd: (
             "[UI] drawBookMenuScreen finished" in log
             or "openBookMenu" in log

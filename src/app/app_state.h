@@ -35,7 +35,8 @@ enum AppState {
     STATE_ORIENTATION_SETTINGS,
     STATE_CHOICE,   // a setting with a few values, as a list (Choices::Kind in choiceKind)
     STATE_SB_TOP,   // status bar: the top line's items, as switches
-    STATE_SB_BOTTOM   // status bar: the bottom line's items, as switches
+    STATE_SB_BOTTOM,  // status bar: the bottom line's items, as switches
+    STATE_CATALOG_SOURCES
 };
 
 // Status bar, bottom line: what it shows (AppConfig::sbBottomItems, SbBottomItem bits).
@@ -96,9 +97,10 @@ struct AppConfig {
     bool save();
 };
 
-const int NUM_HOME_ITEMS = 5;      // 0=Recent, 1=Catalog, 2=Offline, 3=Sync, 4=Settings
+enum HomeItem { HOME_RECENT_BOOK, HOME_CATALOG, HOME_SYNC_NOW, HOME_SETTINGS, NUM_HOME_ITEMS };
+enum CatalogSource { CATALOG_OFFLINE, CATALOG_ONLINE, CATALOG_SEARCH, NUM_CATALOG_SOURCES };
 const int NUM_CATALOG_ITEMS =
-        9;   // Search, All, Libraries, Authors, Series, Folders, Downloaded, Completed, Toggle Hide Completed
+        8;   // All, Libraries, Authors, Series, Folders, Downloaded, Completed, Toggle Hide Completed
 const int NUM_SETTINGS_ITEMS = 8;  // base count before optional Frontlight, USB-MSC, Touch Wake
 bool hasUsbMscSetting();
 bool hasTouchWakeSetting();
@@ -132,6 +134,7 @@ struct AppContext {
     AppConfig config;
 
     int selectedHomeIndex = 0;
+    int selectedCatalogSource = CATALOG_OFFLINE;
     int selectedCatalogIndex = 0;
     int selectedSettingIndex = 0;
     int selectedWifiSettingIndex = 0;

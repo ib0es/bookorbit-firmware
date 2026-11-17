@@ -96,8 +96,8 @@ public:
 
     // Names of the server libraries (BookItem::libraryIdx), each stored once.
     std::vector<String> libraryNames;
-    // The current list (library screen): rows are indices into masterBooks (or
-    // offlineBooks when FILTER_OFFLINE), or -1-i for folderRows[i].
+    // Current list: indices into masterBooks, tagged indices into offlineBooks,
+    // or -1-i for folderRows[i].
     std::vector<int> rows;
     std::vector<BookItem> folderRows;
     int rowCount() const;
@@ -236,7 +236,7 @@ public:
     // Position of the active format from progress.json (after switching formats).
     void refreshProgressOf(BookItem& b);
     // Opens the list of the formats of the book at master index `idx`.
-    void openFormats(int idx);
+    void openFormats(int row);
     // Leaves it (back to the list it was opened from).
     void closeFormats();
 

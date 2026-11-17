@@ -26,13 +26,13 @@ BIN = os.environ.get("PICCO_HEADLESS") or os.path.join(ROOT, "test/sim/build-pic
 BACK = "W100,300,400,300;"  # swipe right = back
 TITLE = "T240,20;"  # ◀ in the title bar = back
 HOME_CARD = "T240,180;"
-HOME_CATALOG = "T90,400;"  # the home tiles: Catalog, Offline, Sync; Settings below
-CATALOG_ALL_BOOKS = "T200,186;"
+HOME_CATALOG = "T90,400;"  # Catalog, Sync, Settings
+CATALOG_ALL_BOOKS = "T200,180;T200,127;"
 HOME_ALL_BOOKS = HOME_CATALOG + CATALOG_ALL_BOOKS
 LIB_FRANKENSTEIN = "T200,295;"  # 3rd row of All Books (sorted by title; two-line rows, U1)
-HOME_OFFLINE = "T240,400;"
-HOME_SETTINGS = "T90,580;"
-HOME_SYNC = "T390,400;"
+HOME_OFFLINE = HOME_CATALOG + "T240,110;"
+HOME_SETTINGS = "T390,400;"
+HOME_SYNC = "T240,400;"
 READ_MIDDLE = "T240,400;"  # reading: middle third = book menu
 READ_RIGHT = "T400,400;"
 READ_LEFT = "T80,400;"
@@ -188,7 +188,7 @@ CASES = [
     ),
     (
         "library: book menu Back and title tap return",
-        HOME_ALL_BOOKS + LIB_FRANKENSTEIN + TITLE + LIB_FRANKENSTEIN + BACK + TITLE + TITLE,
+        HOME_ALL_BOOKS + LIB_FRANKENSTEIN + TITLE + LIB_FRANKENSTEIN + BACK + TITLE + TITLE + TITLE,
         lambda log, sd: log.rstrip().endswith("frames") and "drawHomeScreen" in log.split("TAP_240_20")[-1],
     ),
     (
@@ -270,33 +270,33 @@ CASES = [
     ("home: sync now by tap", HOME_SYNC + "ww", lambda log, sd: "[Sync]" in log),
     (
         "home: a tap cancels a running sync",
-        "[T240,400;]" + HOME_SYNC + "ww",
+        "[T390,400;]" + HOME_SYNC + "ww",
         lambda log, sd: "Operation aborted by user" in log,
     ),
     # Landscape: the home tiles sit beside the book card (stacked they were below
     # the screen). Taps in the panel's portrait coordinates: the Settings tile.
     (
         "home in landscape: the Settings tile is on screen and opens by tap",
-        "T163,701;",
+        "T163,535;",
         lambda log, sd: "drawSettingsScreen" in log,
         {"ui_orientation": 1},
     ),
     (
         "home in landscape (the other way): Sync now is on screen",
-        "T316,264;",
+        "T133,100;",
         lambda log, sd: "[Sync]" in log or "SYNC" in log or "Wi-Fi" in log,
         {"ui_orientation": 3},
     ),
     (
-        "offline: tap Offline library opens /offline and title bar returns Home",
+        "offline: tap Offline library opens /offline and title bar returns to Catalog",
         HOME_OFFLINE + TITLE,
-        lambda log, sd: "List /offline: 0 rows" in log and "drawHomeScreen" in log.rsplit(">>> TAP", 1)[1],
+        lambda log, sd: "List /offline: 0 rows" in log and "drawCatalogSourcesScreen" in log.rsplit(">>> TAP", 1)[1],
     ),
     # Landscape lists: cards keep their second line inside, and what does not fit
     # is a swipe away (the page swipe moves the selection to the next page).
     (
-        "catalog in landscape: swipe up to the second page, open Downloaded",
-        "T347,535;W129,400,329,400;T368,400;",
+        "catalog in landscape: open Downloaded from Online",
+        "T347,535;T302,400;T72,400;",
         lambda log, sd: "drawCatalogScreen" in log and "List /books: 5 rows" in log,
         {"ui_orientation": 1},
     ),

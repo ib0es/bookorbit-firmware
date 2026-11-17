@@ -638,6 +638,12 @@ void row(Frame& f, Rect r, const char* title, const char* subtitle, const RowOpt
     Rect in = insetXY(r, 16, 3);
     const int16_t lb = lineHeight(FontBody), ls = lineHeight(FontSmall);
 
+    if (o.leadingIcon) {
+        o.leadingIcon(Rect{in.x, in.y, 40, in.height}, Color::Black);
+        in.x += 52;
+        in.width -= 52;
+    }
+
     // Right side, from the edge inwards: chevron, switch / check, badge, value.
     int16_t right = in.right();
     if (o.chevron) {
@@ -899,6 +905,14 @@ void syncLarge(Rect b, Color c) { bitmapIcon(b, icons::kSync, c); }
 void menuBook(Rect b, Color c) { bitmapIcon(b, icons::kMenuBook, c); }
 
 void cloudOutline(Rect b, Color c) { bitmapIcon(b, icons::kCloud, c); }
+
+void cloudOff(Rect b, Color c) { bitmapIcon(b, icons::kCloudOff, c); }
+
+void cloudDone(Rect b, Color c) { bitmapIcon(b, icons::kCloudDone, c); }
+
+void cloudDownload(Rect b, Color c) { bitmapIcon(b, icons::kCloudDownload, c); }
+
+void search(Rect b, Color c) { bitmapIcon(b, icons::kSearch, c); }
 
 void settings(Rect b, Color c) { bitmapIcon(b, icons::kSettings, c); }
 

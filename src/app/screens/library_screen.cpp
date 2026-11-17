@@ -59,8 +59,7 @@ void openBookFormat(AppContext& ctx, BookItem& book) {
 
 void openSelected(AppContext& ctx) {
     auto& lib = LibraryManager::getInstance();
-    int masterIdx = -1;
-    BookItem* book = selectedBook(lib, &masterIdx);
+    BookItem* book = selectedBook(lib);
     if (!book) return;
 
     // A row of the format list: that format of the book becomes the active one.
@@ -83,14 +82,10 @@ void openSelected(AppContext& ctx) {
     }
     // A book in several formats opens in the one read last; never read here,
     // the formats are listed to choose from.
-    const int listIdx = (lib.currentFilter == FILTER_OFFLINE && lib.selectedBookIndex >= 0 &&
-                         lib.selectedBookIndex < lib.rowCount())
-                                ? lib.rows[lib.selectedBookIndex]
-                                : masterIdx;
-    if (!book->isDirectory && book->formats.size() > 1 && listIdx >= 0) {
+    if (book->formats.size() > 1 && lib.rows[lib.selectedBookIndex] >= 0) {
         const int last = LibraryManager::lastReadFormat(*book);
         if (last < 0) {
-            lib.openFormats(listIdx);
+            lib.openFormats(lib.selectedBookIndex);
             drawLibraryScreen(ctx, uikit::periodicFullRefresh());
             return;
         }
@@ -100,6 +95,7 @@ void openSelected(AppContext& ctx) {
 
     if (book->isDirectory) {
         if (book->filePath == "@catalog") {
+            if (lib.currentFilter == FILTER_SEARCH) return goBack(ctx);
             ctx.currentState = STATE_CATALOG;
             drawCatalogScreen(ctx, false);
             return;
@@ -276,10 +272,13 @@ void goBack(AppContext& ctx) {
         lib.scanLocalBooks();
         drawLibraryScreen(ctx, uikit::periodicFullRefresh());
     } else if (lib.currentFolder.equalsIgnoreCase("@libraries") || lib.currentFolder.equalsIgnoreCase("@authors") ||
-               lib.currentFolder.equalsIgnoreCase("@series") || lib.currentFolder.equalsIgnoreCase("@search") ||
-               lib.currentFilter == FILTER_SEARCH) {
+               lib.currentFolder.equalsIgnoreCase("@series")) {
         ctx.currentState = STATE_CATALOG;
         drawCatalogScreen(ctx, false);
+    } else if (lib.currentFilter == FILTER_SEARCH) {
+        ctx.currentState = STATE_CATALOG_SOURCES;
+        ctx.selectedCatalogSource = CATALOG_SEARCH;
+        drawCatalogSourcesScreen(ctx);
     } else if (!lib.currentFolder.equalsIgnoreCase("/books") &&
                !lib.currentFolder.equalsIgnoreCase(LibraryManager::kOfflineDir) && !lib.currentFolder.equals("/")) {
         int lastSlash = lib.currentFolder.lastIndexOf('/');
@@ -288,8 +287,9 @@ void goBack(AppContext& ctx) {
         lib.scanLocalBooks();
         drawLibraryScreen(ctx, uikit::periodicFullRefresh());
     } else if (lib.currentFilter == FILTER_OFFLINE) {
-        ctx.currentState = STATE_HOME;
-        drawHomeScreen(ctx, false);
+        ctx.currentState = STATE_CATALOG_SOURCES;
+        ctx.selectedCatalogSource = CATALOG_OFFLINE;
+        drawCatalogSourcesScreen(ctx, false);
     } else {
         ctx.currentState = STATE_CATALOG;
         drawCatalogScreen(ctx, false);
@@ -355,14 +355,9 @@ void handleEvent(AppContext& ctx, const ButtonEvent& event) {
 
 bool openFormatsOfSelected(AppContext& ctx) {
     auto& lib = LibraryManager::getInstance();
-    int masterIdx = -1;
-    BookItem* book = selectedBook(lib, &masterIdx);
-    const int listIdx = (lib.currentFilter == FILTER_OFFLINE && lib.selectedBookIndex >= 0 &&
-                         lib.selectedBookIndex < lib.rowCount())
-                                ? lib.rows[lib.selectedBookIndex]
-                                : masterIdx;
-    if (!book || book->isDirectory || listIdx < 0 || book->formats.size() < 2) return false;
-    lib.openFormats(listIdx);
+    BookItem* book = selectedBook(lib);
+    if (!book || book->isDirectory || lib.rows[lib.selectedBookIndex] < 0 || book->formats.size() < 2) return false;
+    lib.openFormats(lib.selectedBookIndex);
     ctx.currentState = STATE_LIBRARY;
     drawLibraryScreen(ctx, uikit::periodicFullRefresh());
     return true;

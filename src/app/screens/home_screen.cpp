@@ -11,27 +11,6 @@
 
 namespace {
 
-enum HomeItem {
-    HOME_RECENT_BOOK = 0,
-    HOME_CATALOG,
-    HOME_OFFLINE,
-    HOME_SYNC_NOW,
-    HOME_SETTINGS,
-};
-
-void openLibrary(AppContext& ctx, LibraryFilter filter, bool rescan) {
-    auto& lib = LibraryManager::getInstance();
-    ctx.currentState = STATE_LIBRARY;
-    lib.currentFolder = (filter == FILTER_OFFLINE) ? LibraryManager::kOfflineDir : "/books";
-    lib.currentFilter = filter;
-    lib.selectedBookIndex = 0;
-    if (rescan)
-        lib.scanLocalBooks();
-    else
-        lib.rebuildFilteredIndices();
-    drawLibraryScreen(ctx);
-}
-
 void cycleRecentBook(AppContext& ctx, int step) {
     auto& lib = LibraryManager::getInstance();
     std::vector<RecentBookInfo> recent = lib.getRecentBooks();
@@ -46,7 +25,12 @@ void openRecentBook(AppContext& ctx) {
     auto& lib = LibraryManager::getInstance();
     std::vector<RecentBookInfo> recent = lib.getRecentBooks();
     if (recent.empty()) {
-        openLibrary(ctx, FILTER_ALL, /*rescan=*/true);
+        lib.currentFolder = "/books";
+        lib.currentFilter = FILTER_ALL;
+        lib.selectedBookIndex = 0;
+        lib.scanLocalBooks();
+        ctx.currentState = STATE_LIBRARY;
+        drawLibraryScreen(ctx);
         return;
     }
     if (lib.recentBookIndex >= (int)recent.size()) lib.recentBookIndex = 0;
@@ -79,16 +63,9 @@ void activateItem(AppContext& ctx, int index) {
             openRecentBook(ctx);
             break;
         case HOME_CATALOG:
-            // Books copied to / removed from the card since the last scan (USB, web
-            // portal, a download): walked only when that may have happened (P3).
-            LibraryManager::getInstance().refreshLocalFilesIfChanged();
-            ctx.currentState = STATE_CATALOG;
-            ctx.selectedCatalogIndex = 0;
-            drawCatalogScreen(ctx, false);
-            break;
-        case HOME_OFFLINE:
-            LibraryManager::getInstance().scanOfflineBooks();
-            openLibrary(ctx, FILTER_OFFLINE, /*rescan=*/false);
+            ctx.currentState = STATE_CATALOG_SOURCES;
+            ctx.selectedCatalogSource = CATALOG_OFFLINE;
+            drawCatalogSourcesScreen(ctx);
             break;
         case HOME_SETTINGS:
             ctx.currentState = STATE_SETTINGS;
