@@ -16,12 +16,18 @@ public:
     bool isOpen() const { return _open; }
     int32_t readAt(uint64_t offset, void* dst, uint32_t len) override;
     uint64_t size() const override { return _size; }
+    void setReadGuard(bool (*cancelled)(), uint32_t budget) {
+        _cancelled = cancelled;
+        _budget = budget;
+    }
 
 private:
     FsFile _file;
     uint64_t _size = 0;
     uint64_t _pos = UINT64_MAX;   // file position after the last read (skips needless seeks)
     bool _open = false;
+    bool (*_cancelled)() = nullptr;
+    uint32_t _budget = UINT32_MAX;
 };
 
 // One directory per book. A file is written as "<name>.tmp" and renamed on

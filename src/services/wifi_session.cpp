@@ -1,6 +1,7 @@
 #include "wifi_session.h"
 
 #include "sync_service.h"
+#include "offline_metadata.h"
 #include "../net/bookorbit_client.h"
 #include "../platform/device.h"
 #include "../platform/hal/mem_stats.h"
@@ -10,6 +11,7 @@
 namespace WifiSession {
 
 void prepare() {
+    OfflineMetadata::stop();
     if (!Platform::kMemory.wifiTakesReaderMemory) {
         Serial.println("[WiFi] The reader keeps its memory (large memory tier).");
         return;

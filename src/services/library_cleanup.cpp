@@ -1,5 +1,6 @@
 #include "library_manager.h"
 #include "library_internal.h"
+#include "offline_metadata.h"
 #include "../core/progress_sync.h"
 #include "sync_clock.h"
 #include "../reader/reader.h"
@@ -50,6 +51,7 @@ void removeCoverStem(const String& stem) {
 }  // namespace LibraryInternal
 
 void LibraryManager::deleteBookArtifacts(const BookItem& book, bool removeCover) {
+    if (isOfflinePath(book.filePath)) OfflineMetadata::invalidate(book.filePath, true);
     removeIfExists(book.filePath);
     // Legacy indices kept next to the book file.
     removeIfExists(book.filePath + ".idx");
@@ -181,7 +183,7 @@ void LibraryManager::cleanOrphanFiles() {
     }
     for (const String& n : catalogKnown ? Storage.listFileNames("/covers") : std::vector<String>()) {
         const String owner = coverOwner(n);
-        if (owner.length() > 0 && !contains(covers, owner)) {
+        if (!n.startsWith("offmeta-") && owner.length() > 0 && !contains(covers, owner)) {
             removeIfExists("/covers/" + n);
             removed++;
         }

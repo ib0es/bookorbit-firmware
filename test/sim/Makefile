@@ -80,6 +80,12 @@ $(BUILD)/reader_roundtrip: $(filter-out $(BUILD)/src/main.o,$(APP_OBJS)) $(BUILD
 $(BUILD)/engine_shots: $(filter-out $(BUILD)/src/main.o,$(APP_OBJS)) $(BUILD)/test/sim/engine_shots.o
 	$(CXX) $(LDEXTRA) $^ -o $@ -lpthread
 
+$(BUILD)/offline_metadata_tests: $(filter-out $(BUILD)/src/main.o,$(APP_OBJS)) $(BUILD)/test/sim/offline_metadata_tests.o
+	$(CXX) $(LDEXTRA) $^ -o $@ -lpthread
+
+offline-metadata-test: $(BUILD)/offline_metadata_tests
+	@tmp=$$(mktemp -d) && $(BUILD)/offline_metadata_tests $$tmp; rc=$$?; rm -rf $$tmp; exit $$rc
+
 $(BUILD)/cover_shots: $(filter-out $(BUILD)/src/main.o,$(APP_OBJS)) $(BUILD)/test/sim/cover_shots.o
 	$(CXX) $(LDEXTRA) $^ -o $@ -lpthread
 
@@ -111,7 +117,7 @@ $(BUILD)/%.o: %.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-test: all status-bar-test
+test: all status-bar-test offline-metadata-test
 	X4_HEADLESS=$(BUILD)/x4_headless python3 test/sim/run_sync_scenarios.py
 	X4_HEADLESS=$(BUILD)/x4_headless python3 test/sim/run_x4_walkthrough.py
 	X4_HEADLESS=$(BUILD)/x4_headless python3 test/sim/run_portal_server.py

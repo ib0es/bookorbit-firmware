@@ -7,7 +7,8 @@
 #include <algorithm>
 #include <cstring>
 #include <string>
-#include <vector>
+#include <memory>
+#include <cstdlib>
 
 namespace convert {
 
@@ -69,7 +70,8 @@ bool hasImageMagic(const uint8_t* d, size_t n) {
 
 class StorageIn : public InFile {
 public:
-    bool open(const char* path) {
+    bool open(const char* path, bool (*cancelled)()) {
+        _cancelled = cancelled;
         _f = Storage.open(path, O_RDONLY);
         return (bool)_f;
     }
@@ -78,11 +80,17 @@ public:
     }
     bool rewind() override { return _f.seek(0); }
     bool seek(uint64_t pos) override { return _f.seek((uint32_t)pos); }
-    int32_t read(void* dst, uint32_t len) override { return _f.read((uint8_t*)dst, len); }
+    int32_t read(void* dst, uint32_t len) override {
+        if ((_cancelled && _cancelled()) || len > _budget) return -1;
+        _budget -= len;
+        return _f.read((uint8_t*)dst, len);
+    }
     uint64_t size() const override { return const_cast<FsFile&>(_f).size(); }
 
 private:
     FsFile _f;
+    bool (*_cancelled)() = nullptr;
+    uint32_t _budget = 16 * 1024 * 1024;
 };
 
 class StorageOut : public OutFile {
@@ -154,16 +162,18 @@ struct MobiMeta {
 bool parseMobiRecord0Meta(const uint8_t* r, uint32_t n, MobiMeta& meta) {
     if (n < 0x84 || memcmp(r + 16, "MOBI", 4) != 0) return false;
     const uint32_t headerLength = be32(r + 20);
+    if (headerLength < 0x74 || headerLength > n - 16) return false;
     meta.firstImage = be32(r + 0x6C);
     const uint32_t exthFlags = be32(r + 0x80);
     const uint32_t exth = 16 + headerLength;
     if ((exthFlags & 0x40) && exth + 12 <= n && memcmp(r + exth, "EXTH", 4) == 0) {
         const uint32_t count = be32(r + exth + 8);
+        if (count > 1024) return false;
         uint32_t p = exth + 12;
         for (uint32_t i = 0; i < count && p + 8 <= n; i++) {
             const uint32_t type = be32(r + p);
             const uint32_t len = be32(r + p + 4);
-            if (len < 8 || p + len > n) break;
+            if (len < 8 || len > n - p) break;
             if (type == 201 && len - 8 >= 4) meta.coverOffset = be32(r + p + 8);
             if (type == 121 && len - 8 >= 4) meta.kf8Boundary = be32(r + p + 8);
             p += len;
@@ -209,6 +219,7 @@ bool extractFb2Cover(InFile& in, OutFile& out) {
         if (decLen == 0) return true;
         if (!out.write(dec, (uint32_t)decLen)) return false;
         totalWritten += decLen;
+        if (totalWritten > 4 * 1024 * 1024) return false;
         decLen = 0;
         return true;
     };
@@ -220,6 +231,7 @@ bool extractFb2Cover(InFile& in, OutFile& out) {
         if (n < 0) return false;
         if (n == 0) break;
         bytesRead += (uint64_t)n;
+        if (bytesRead > 16 * 1024 * 1024) return false;
 
         int32_t i = 0;
         while (i < n) {
@@ -341,11 +353,12 @@ bool extractMobiCover(InFile& in, OutFile& out) {
     const uint32_t rec0Len = rec0End - rec0Off;
     if (rec0Len < 0x84 || rec0Len > 131072) return false;
 
-    std::vector<uint8_t> rec0(rec0Len);
-    if (!in.seek(rec0Off) || in.read(rec0.data(), rec0Len) != (int32_t)rec0Len) return false;
+    std::unique_ptr<uint8_t, decltype(&free)> rec0(static_cast<uint8_t*>(malloc(rec0Len)), free);
+    if (!rec0 || !in.seek(rec0Off) || in.read(rec0.get(), rec0Len) != (int32_t)rec0Len) return false;
 
     MobiMeta meta;
-    if (!parseMobiRecord0Meta(rec0.data(), rec0Len, meta)) return false;
+    if (!parseMobiRecord0Meta(rec0.get(), rec0Len, meta)) return false;
+    rec0.reset();
 
     // Combined MOBI+KF8 files sometimes hold EXTH 201 on the KF8 header record.
     if (meta.coverOffset == 0xFFFFFFFF && meta.kf8Boundary != 0xFFFFFFFF && meta.kf8Boundary < numRecords) {
@@ -353,10 +366,10 @@ bool extractMobiCover(InFile& in, OutFile& out) {
         if (readRecordRange(in, numRecords, fileSize, meta.kf8Boundary, kfOff, kfEnd)) {
             const uint32_t kfLen = kfEnd - kfOff;
             if (kfLen >= 0x84 && kfLen <= 131072) {
-                std::vector<uint8_t> kf(kfLen);
-                if (in.seek(kfOff) && in.read(kf.data(), kfLen) == (int32_t)kfLen) {
+                std::unique_ptr<uint8_t, decltype(&free)> kf(static_cast<uint8_t*>(malloc(kfLen)), free);
+                if (kf && in.seek(kfOff) && in.read(kf.get(), kfLen) == (int32_t)kfLen) {
                     MobiMeta kfMeta;
-                    if (parseMobiRecord0Meta(kf.data(), kfLen, kfMeta)) {
+                    if (parseMobiRecord0Meta(kf.get(), kfLen, kfMeta)) {
                         if (kfMeta.coverOffset != 0xFFFFFFFF) meta.coverOffset = kfMeta.coverOffset;
                         if (meta.firstImage == 0xFFFFFFFF) meta.firstImage = kfMeta.firstImage;
                     }
@@ -392,14 +405,14 @@ bool extractMobiCover(InFile& in, OutFile& out) {
     return true;
 }
 
-bool extractDirectCover(const String& srcPath, const String& dstPath) {
+bool extractDirectCover(const String& srcPath, const String& dstPath, bool (*cancelled)()) {
     const BookFormats::Kind kind = BookFormats::fromPath(srcPath.c_str());
     if (kind != BookFormats::Fb2 && kind != BookFormats::Mobi && kind != BookFormats::Azw3 &&
         kind != BookFormats::Azw) {
         return false;
     }
     StorageIn in;
-    if (!in.open(srcPath.c_str())) return false;
+    if (!in.open(srcPath.c_str(), cancelled)) return false;
 
     const String tmpPath = dstPath + ".tmp";
     StorageOut out;

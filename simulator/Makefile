@@ -55,6 +55,8 @@ SRCS_CXX = \
     src/app/screens/settings_screen.cpp \
     src/ui/modal.cpp \
     src/services/library_manager.cpp \
+    src/services/offline_metadata.cpp \
+    src/services/offline_metadata_parser.cpp \
     src/services/library_covers.cpp \
     src/services/library_cleanup.cpp \
     src/services/library_progress.cpp \

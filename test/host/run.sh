@@ -54,6 +54,7 @@ build_fib() {   # name sources... (with the engine; its own warnings are not our
     mkdir -p "$OUT/$name"
     (cd "$OUT/$name" && $CXX $FLAGS -Wno-unused-parameter $FIB_INC "$@" $FIB_CORE "$OUT"/fib/*.o -o "$OUT/$name/test")
 }
+build_fib offmeta "$ROOT/test/host/test_offline_metadata.cpp" "$ROOT/src/services/offline_metadata_parser.cpp"
 build_fib hyph "$ROOT/test/host/test_hyphenation.cpp"
 build_fib fb2 "$ROOT/test/host/test_fb2_to_epub.cpp" "$ROOT/src/convert/fb2_to_epub.cpp" "$ROOT/src/convert/zip_writer.cpp"
 build_fib mobi "$ROOT/test/host/test_mobi_to_epub.cpp" "$ROOT/src/convert/mobi_to_epub.cpp" "$ROOT/src/convert/fb2_to_epub.cpp" "$ROOT/src/convert/zip_writer.cpp"
@@ -84,6 +85,7 @@ echo "== X4ClassicFeatures"; "$OUT/x4c/test" || rc=1
 echo "== DeviceInputMatrix"; "$OUT/devmat/test" || rc=1
 echo "== StorageWipe";       "$OUT/wipe/test" || rc=1
 echo "== CoverExtract";      "$OUT/covext/test" "$ROOT/test/books" || rc=1
+echo "== OfflineMetadata";   "$OUT/offmeta/test" "$ROOT/simulator/sdcard/books/Alice in Wonderland.epub" "$ROOT/test/books" || rc=1
 echo "== FB2 to EPUB";       "$OUT/fb2/test" "$ROOT/test/books" || rc=1
 echo "== MOBI to EPUB";      "$OUT/mobi/test" "$ROOT/test/books" || rc=1
 echo "== TXT to EPUB";       "$OUT/txt/test" "$ROOT/test/books" || rc=1

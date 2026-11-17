@@ -734,6 +734,186 @@ def _():
     return r
 
 
+def metadata_sample(data):
+    payload = len(data).to_bytes(8, "little")
+    for start in (0, len(data) // 2, max(0, len(data) - 1024)):
+        payload += data[start : start + 1024]
+    value = 14695981039346656037
+    for byte in payload:
+        value = ((value ^ byte) * 1099511628211) & ((1 << 64) - 1)
+    return f"{value:016x}"
+
+
+def metadata_request(data=b"b" * 3000, **changes):
+    fields = {"name": "Alpha.epub", "title": "Embedded title", "author": "Ada", "sample": metadata_sample(data)}
+    fields.update(changes)
+    return post("/api/offline-metadata", fields, files=[book("cover.jpg", 0)])
+
+
+@case("metadata: optional local title/author survives restart without changing filename")
+def _():
+    r = run([post("/api/upload?sizes=3000", files=[book("Alpha.epub")]), metadata_request(), get("/api/books")])
+    r.expect(r.code(0) == 200 and r.code(1) == 200, "upload and metadata succeed independently")
+    rows = (r.json(2) or {}).get("books", [])
+    r.expect(
+        any(
+            b.get("title") == "Embedded title" and b.get("author") == "Ada" and b["name"] == "Alpha.epub" for b in rows
+        ),
+        "embedded metadata is listed with original filename",
+    )
+    r.expect(len(files(r.sd, "cache/offmeta/*.json")) == 1, "metadata is persisted")
+    return r
+
+
+@case("metadata: Unicode series and fractional number survive cache and listing")
+def _():
+    r = run(
+        [
+            post("/api/upload?sizes=3000", files=[book("Alpha.epub")]),
+            metadata_request(series="Цикл & Saga", seriesIndex="1.5"),
+            get("/api/books"),
+        ]
+    )
+    r.expect(r.code(1) == 200, "series hint accepted")
+    row = (r.json(2) or {}).get("books", [{}])[0]
+    r.expect(row.get("series") == "Цикл & Saga" and row.get("seriesIndex") == 1.5, "fractional series listed")
+    cached = json.loads(open(files(r.sd, "cache/offmeta/*.json")[0]).read())
+    r.expect(cached.get("version") == 2 and cached.get("seriesIndex") == 1.5, "schema two cache preserves fraction")
+    return r
+
+
+@case("metadata: malformed series hints remain optional and cannot replace good metadata")
+def _():
+    invalid = [
+        {"series": "Bad\x01", "seriesIndex": "1.5"},
+        {"series": "Ц" * 257, "seriesIndex": "1.5"},
+        {"series": "", "seriesIndex": "1.5"},
+        *({"series": "Series", "seriesIndex": n} for n in ("NaN", "Infinity", "-1", "1e2", "1x", "1000001", "1" * 33)),
+    ]
+    r = run(
+        [
+            post("/api/upload?sizes=3000", files=[book("Alpha.epub")]),
+            metadata_request(series="Good", seriesIndex="1.5"),
+            *(metadata_request(**fields) for fields in invalid),
+            get("/api/books"),
+        ]
+    )
+    r.expect(all(r.code(i) == 400 for i in range(2, 2 + len(invalid))), "all invalid series hints rejected")
+    row = (r.json(2 + len(invalid)) or {}).get("books", [{}])[0]
+    r.expect(row.get("series") == "Good" and row.get("seriesIndex") == 1.5, "good series remains unchanged")
+    return r
+
+
+@case("metadata: rejected hints never undo a successful upload")
+def _():
+    r = run(
+        [
+            post("/api/upload?sizes=3000", files=[book("Alpha.epub")]),
+            metadata_request(sample="0" * 16),
+            metadata_request(title="invalid\x01"),
+            metadata_request(name="../Alpha.epub"),
+            get("/api/books"),
+        ]
+    )
+    r.expect(r.code(0) == 200 and all(r.code(i) == 400 for i in (1, 2, 3)), "invalid hints are rejected separately")
+    r.expect(read(r.sd, "offline/Alpha.epub") == b"b" * 3000, "successful upload remains intact")
+    r.expect(not files(r.sd, "cache/offmeta/*.json"), "invalid hints are not cached")
+    return r
+
+
+@case("metadata: overwrite with keep_progress invalidates only catalogue cache")
+def _():
+    def setup(sd):
+        put(sd, "bookmarks/offline#Alpha.epub.json", "keep bookmarks")
+
+    r = run(
+        [
+            post("/api/upload?sizes=3000", files=[book("Alpha.epub")]),
+            metadata_request(),
+            post("/api/upload?sizes=3000&overwrite=1&keep_progress=1", files=[book("Alpha.epub")]),
+            get("/api/books"),
+        ],
+        setup,
+    )
+    r.expect(all(r.code(i) == 200 for i in range(4)), "overwrite succeeds")
+    r.expect(read(r.sd, "bookmarks/offline#Alpha.epub.json") == b"keep bookmarks", "bookmarks are preserved")
+    r.expect(
+        not files(r.sd, "cache/offmeta/*.json"), "metadata invalidated even when replacement has same size/content"
+    )
+    return r
+
+
+@case("metadata: deleting source removes its path-owned cache")
+def _():
+    r = run(
+        [
+            post("/api/upload?sizes=3000", files=[book("Alpha.epub")]),
+            metadata_request(),
+            post("/api/books/delete", {"name": "Alpha.epub"}),
+        ]
+    )
+    r.expect(all(r.code(i) == 200 for i in range(3)), "delete succeeds")
+    r.expect(
+        not files(r.sd, "cache/offmeta/*.json") and not files(r.sd, "offline/Alpha.epub"), "source and cache removed"
+    )
+    return r
+
+
+@case("metadata: baseline JPEG from local browser is validated and persisted")
+def _():
+    import base64
+
+    # A real, locally generated 10x10 baseline JPEG, not an image-header mock.
+    image = base64.b64decode(
+        "/9j/4AAQSkZJRgABAQAASABIAAD/4QBMRXhpZgAATU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAACqADAAQAAAABAAAACgAAAAD/7QA4UGhvdG9zaG9wIDMuMAA4QklNBAQAAAAAAAA4QklNBCUAAAAAABDUHYzZjwCyBOmACZjs+EJ+/8AAEQgACgAKAwEiAAIRAQMRAf/EAB8AAAEFAQEBAQEBAAAAAAAAAAABAgMEBQYHCAkKC//EALUQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+v/EAB8BAAMBAQEBAQEBAQEAAAAAAAABAgMEBQYHCAkKC//EALURAAIBAgQEAwQHBQQEAAECdwABAgMRBAUhMQYSQVEHYXETIjKBCBRCkaGxwQkjM1LwFWJy0QoWJDThJfEXGBkaJicoKSo1Njc4OTpDREVGR0hJSlNUVVZXWFlaY2RlZmdoaWpzdHV2d3h5eoKDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uLj5OXm5+jp6vLz9PX29/j5+v/bAEMAAgICAgICAwICAwUDAwMFBgUFBQUGCAYGBgYGCAoICAgICAgKCgoKCgoKCgwMDAwMDA4ODg4ODw8PDw8PDw8PD//bAEMBAgICBAQEBwQEBxALCQsQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEP/dAAQAAf/aAAwDAQACEQMRAD8A/n/ooooA/9k="
+    )
+    hint = metadata_request()
+    hint["files"] = [{"name": "cover.jpg", "size": len(image), "hex": image.hex()}]
+    bad = []
+    for kind in ("progressive", "dimensions"):
+        data = bytearray(image)
+        frame = data.index(b"\xff\xc0")
+        if kind == "progressive":
+            data[frame + 1] = 0xC2
+        else:
+            data[frame + 7 : frame + 9] = b"\x7f\xff"
+        request = metadata_request()
+        request["files"] = [{"name": "cover.jpg", "size": len(data), "hex": data.hex()}]
+        bad.append(request)
+    r = run([post("/api/upload?sizes=3000", files=[book("Alpha.epub")]), hint] + bad)
+    r.expect(r.code(0) == 200 and r.code(1) == 200, "valid local cover is accepted")
+    r.expect(r.code(2) == 400 and r.code(3) == 400, "progressive and oversized dimension covers are rejected")
+    covers = files(r.sd, "cache/offmeta/*.json.jpg")
+    r.expect(len(covers) == 1 and open(covers[0], "rb").read() == image, "validated embedded cover is persisted intact")
+    return r
+
+
+@case("metadata: oversized and non-image cover hints are optional and rejected")
+def _():
+    invalid = metadata_request()
+    invalid["files"] = [book("cover.jpg", 500)]
+    oversized = metadata_request()
+    oversized["files"] = [book("cover.jpg", 70000)]
+    r = run([post("/api/upload?sizes=3000", files=[book("Alpha.epub")]), invalid, oversized])
+    r.expect(
+        r.code(0) == 200 and r.code(1) == 400 and r.code(2) == 400, "invalid covers rejected after successful upload"
+    )
+    r.expect(read(r.sd, "offline/Alpha.epub") == b"b" * 3000, "book survives image failure")
+    r.expect(
+        not files(r.sd, "cache/offmeta/*.jpg") and not files(r.sd, "cache/offmeta/*.part"),
+        "no invalid cover or temporary upload remains",
+    )
+    return r
+
+
+@case("metadata: home Wi-Fi endpoint requires PIN")
+def _():
+    r = run([metadata_request()], script=STA)
+    r.expect(r.code(0) == 401, "metadata endpoint is authenticated")
+    r.expect(not files(r.sd, "cache/offmeta/*.json"), "unauthenticated data is not cached")
+    return r
+
+
 # ---------------------------------------------------------------- the runner
 def run_case(case_):
     name, fn = case_
