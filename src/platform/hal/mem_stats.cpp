@@ -262,6 +262,14 @@ void printMarks() {
     g_marks[0] = 0;
 }
 
+uint32_t stackLeft() {
+#if defined(ESP_PLATFORM)
+    return (uint32_t)uxTaskGetStackHighWaterMark(nullptr);
+#else
+    return 0;
+#endif
+}
+
 String summary() {
     const Snapshot s = now();
     char buf[64];

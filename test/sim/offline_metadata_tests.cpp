@@ -222,10 +222,16 @@ int main(int argc, char** argv) {
         lib.scanOfflineBooks();
         write(victim.c_str(), fb2("Leak again"));
     };
+    // Measured with the worker idle: a book half-indexed holds its buffers, which is not a leak.
+    auto quiet = [&]() {
+        drain();
+        OfflineMetadata::stop();
+        return heapInUse();
+    };
     for (int i = 0; i < 24; ++i) cycle(i);   // warm-up: caches, pools, the first-time allocations
-    const size_t before = heapInUse();
+    const size_t before = quiet();
     for (int i = 0; i < 240; ++i) cycle(i);
-    const size_t after = heapInUse();
+    const size_t after = quiet();
     printf("Offline lifecycle heap: %zu -> %zu bytes after 240 delete/rescan cycles\n", before, after);
     assert(after < before + 16 * 1024);
     OfflineMetadata::stop();

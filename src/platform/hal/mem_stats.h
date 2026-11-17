@@ -46,6 +46,9 @@ void logMap(const char* where);
 void mark(const char* step);
 void printMarks();
 
+// Bytes of the calling task's stack never used so far (0 where unknown, e.g. the simulator).
+uint32_t stackLeft();
+
 // One line for the device info screen.
 String summary();
 

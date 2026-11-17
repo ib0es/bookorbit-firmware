@@ -210,7 +210,8 @@ int main(int argc, char** argv) {
         assert(r.title != "opaque" && r.title.length() > 0);
         assert(r.author.length() > 0);
     }
-    if (argc > 2)
+    // The generated fixtures above always run; real books are local and optional in CI.
+    if (argc > 2 && std::filesystem::is_directory(argv[2]))
         for (const auto& entry : std::filesystem::directory_iterator(argv[2])) {
             std::ifstream f(entry.path(), std::ios::binary);
             Source book("");

@@ -268,11 +268,11 @@ bool parseXml(SdBookSource& src, const ZipEntry& e, XmlHandler& h) {
     ZipEntryReader reader;
     if (reader.open(src, e, a) != BookStatus::Ok) return false;
     struct ParseState {
-        XmlHandler& handler;
+        XmlHandler* handler = nullptr;
         XML_Parser parser;
         unsigned depth = 0, elements = 0;
         bool rejected = false;
-    } state{h, XML_ParserCreate(nullptr)};
+    } state{&h, XML_ParserCreate(nullptr)};
     if (!state.parser) return false;
     XML_SetUserData(state.parser, &state);
     XML_SetElementHandler(
@@ -283,15 +283,15 @@ bool parseXml(SdBookSource& src, const ZipEntry& e, XmlHandler& h) {
                     s.rejected = true;
                     XML_StopParser(s.parser, XML_FALSE);
                 } else
-                    s.handler.onStartElement(name, attrs);
+                    s.handler->onStartElement(name, attrs);
             },
             [](void* user, const char* name) {
                 auto& s = *static_cast<ParseState*>(user);
-                s.handler.onEndElement(name);
+                s.handler->onEndElement(name);
                 --s.depth;
             });
     XML_SetCharacterDataHandler(state.parser, [](void* user, const char* text, int length) {
-        static_cast<ParseState*>(user)->handler.onText(text, length);
+        static_cast<ParseState*>(user)->handler->onText(text, length);
     });
     XML_SetStartDoctypeDeclHandler(state.parser, [](void* user, const char*, const char*, const char*, int) {
         auto& s = *static_cast<ParseState*>(user);
