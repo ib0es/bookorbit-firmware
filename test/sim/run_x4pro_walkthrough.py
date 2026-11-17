@@ -27,13 +27,13 @@ TITLE = "T240,20;"  # title bar back hit area
 HOME_KEY_TAP = "k"  # GT911 Home Key short tap -> BTN_BACK click
 HOME_KEY_LONG = "K"  # GT911 Home Key long press -> Reader menu (only in reading)
 HOME_CARD = "T240,180;"
-HOME_CATALOG = "T90,400;"  # Catalog, Sync, Settings
+HOME_CATALOG = "T90,690;"  # Catalog, Sync, Settings
 CATALOG_ALL_BOOKS = "T200,180;T200,127;"
 HOME_ALL_BOOKS = HOME_CATALOG + CATALOG_ALL_BOOKS
 LIB_FRANKENSTEIN = "T200,295;"  # 3rd row (two-line rows, U1)
 HOME_OFFLINE = HOME_CATALOG + "T240,110;"
-HOME_SETTINGS = "T390,400;"
-HOME_SYNC = "T240,400;"
+HOME_SETTINGS = "T390,690;"
+HOME_SYNC = "T240,690;"
 READ_MIDDLE = "T240,400;"
 READ_RIGHT = "T400,400;"
 READ_LEFT = "T80,400;"
@@ -262,7 +262,7 @@ CASES = [
     ),
     (
         "home in landscape: Settings tile opens cleanly",
-        "T163,535;",
+        "T80,724;",
         lambda log, sd: "drawSettingsScreen" in log,
         {"ui_orientation": 1},
     ),
