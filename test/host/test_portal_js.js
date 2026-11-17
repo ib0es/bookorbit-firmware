@@ -434,9 +434,12 @@ async function scenarios(lang) {
 
   // ---- local metadata: real Palm containers, malformed files and optional failures
   w = await start(lang);
-  for (const name of fs
-    .readdirSync(path.join(ROOT, "test/books"))
-    .filter((n) => /\.(mobi|azw3)$/i.test(n))) {
+  // test/books is a local, untracked set (CI has none): its real books are checked only when present.
+  const localBooks = path.join(ROOT, "test/books");
+  for (const name of (fs.existsSync(localBooks)
+    ? fs.readdirSync(localBooks)
+    : []
+  ).filter((n) => /\.(mobi|azw3)$/i.test(n))) {
     const data = fs.readFileSync(path.join(ROOT, "test/books", name));
     w.context.localBook = {
       name,

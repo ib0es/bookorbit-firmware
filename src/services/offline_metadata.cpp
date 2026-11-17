@@ -196,10 +196,9 @@ void work(void*) {
     // Serialized through a small buffer and swapped in only when complete.
     if (!isCancelled() && measureJson(doc) < kMaxCacheFile) JsonFile::write(cachePath(workPath).c_str(), doc);
     published = true;
-#if defined(ESP_PLATFORM)
-    Serial.printf("[Offline] %s indexed, worker stack high-water mark: %u B left of 8192\n", workPath.c_str(),
-                  (unsigned)uxTaskGetStackHighWaterMark(nullptr));
-#endif
+    if (const uint32_t left = MemStats::stackLeft())
+        Serial.printf("[Offline] %s indexed, worker stack high-water mark: %u B left of 8192\n", workPath.c_str(),
+                      (unsigned)left);
 }
 }  // namespace
 String cachePath(const String& path) {
