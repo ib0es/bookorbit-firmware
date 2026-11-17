@@ -230,7 +230,9 @@ void deleteBookFile(int masterIdx, const String& path) {
     }
 }
 
-void askDeleteSelected() {
+// Asked over the book menu: the catalog comes back only once the answer is known
+// (deleted: the list without the book; cancelled: the menu it was asked from).
+void askDeleteSelected(AppContext& ctx) {
     auto& lib = LibraryManager::getInstance();
     int masterIdx = -1;
     BookItem* book = selectedBook(lib, &masterIdx);
@@ -241,8 +243,12 @@ void askDeleteSelected() {
         const String path = book->filePath;
         Modal.showConfirm(
                 tr(MsgId::LIB_DELETE_TITLE), utf8Prefix(book->title, 64), tr(MsgId::LIB_DELETE_LINE1), noteLine,
-                tr(MsgId::LIB_DELETE_FOOTER), [masterIdx, path]() { deleteBookFile(masterIdx, path); }, nullptr,
-                tr(MsgId::LIB_DELETE_BTN));
+                tr(MsgId::LIB_DELETE_FOOTER),
+                [&ctx, masterIdx, path]() {
+                    ctx.currentState = STATE_LIBRARY;
+                    deleteBookFile(masterIdx, path);
+                },
+                nullptr, tr(MsgId::LIB_DELETE_BTN));
     } else {
         Modal.showMessage(tr(MsgId::LIB_FILTER_CLOUD), utf8Prefix(book->title, 64), tr(MsgId::LIB_EMPTY_MSG_1),
                           tr(MsgId::LIB_HINT_DOWNLOAD_BOOK), "", 1800, false, tr(MsgId::COMMON_BACK));
@@ -424,8 +430,8 @@ void handleBookMenuEvent(AppContext& ctx, const ButtonEvent& event) {
             openFormatsOfSelected(ctx);
             break;
         case BOOK_MENU_DELETE:
-            drawLibraryScreen(ctx);
-            askDeleteSelected();
+            ctx.currentState = STATE_BOOK_MENU;
+            askDeleteSelected(ctx);
             break;
         case BOOK_MENU_WEB:
             openWebSettingsFromOffline(ctx);
