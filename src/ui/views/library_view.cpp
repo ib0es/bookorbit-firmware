@@ -83,7 +83,9 @@ void drawRow(Frame& f, Rect r, const BookItem& item, bool selected, int index) {
 
     String displayTitle = item.title;
     if (!item.isDirectory && item.seriesIndex > 0) {
-        displayTitle = "#" + String(item.seriesIndex) + " " + item.title;
+        char position[40];
+        snprintf(position, sizeof(position), "%.15g", item.seriesIndex);
+        displayTitle = "#" + String(position) + " " + item.title;
     }
 
     const int16_t lh = lineHeight(FontBody), sh = lineHeight(FontSmall);

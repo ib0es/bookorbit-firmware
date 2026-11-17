@@ -1,5 +1,6 @@
 #include "library_manager.h"
 #include "library_internal.h"
+#include "offline_metadata.h"
 #include "../platform/system.h"
 #include "../platform/device.h"
 #include "../core/progress_sync.h"
@@ -58,6 +59,15 @@ std::vector<RecentBookInfo> LibraryManager::getRecentBooks() {
         r.xpath = lastBook.xpath;
         r.totalPages = max(1, lastBook.totalPages);
         r.isDownloaded = true;
+        if (isOfflinePath(r.filePath)) {
+            for (const auto& b : offlineBooks)
+                if (b.filePath == r.filePath) {
+                    r.title = b.title;
+                    r.author = b.author;
+                    r.coverPath = b.coverPath;
+                    break;
+                }
+        }
         for (const auto& b : masterBooks) {
             if ((lastBook.fileId > 0 && b.fileId == lastBook.fileId) ||
                 b.filePath.equalsIgnoreCase(lastBook.filePath)) {
@@ -321,6 +331,21 @@ void LibraryManager::selectFormat(BookItem& b, int i) {
     b.filePath = path;
     b.fileId = b.formats[i].fileId;
     b.isDownloaded = b.formats[i].onCard;
+    if (isOfflinePath(path)) {
+        OfflineMetadata::Record metadata;
+        b.title = OfflineMetadata::fallbackTitle(path);
+        b.author = "";
+        b.coverPath = "";
+        b.series = "";
+        b.seriesIndex = 0;
+        if (OfflineMetadata::load(path, metadata)) {
+            b.title = metadata.title;
+            b.author = metadata.author;
+            b.coverPath = metadata.coverPath;
+            b.series = metadata.series;
+            b.seriesIndex = metadata.seriesIndex;
+        }
+    }
 }
 
 int LibraryManager::lastReadFormat(const BookItem& b) {
@@ -561,12 +586,13 @@ void LibraryManager::refreshProgress() {
 }
 
 void LibraryManager::scanOfflineBooks() {
+    OfflineMetadata::reset();
     touch();
     offlineBooks.clear();
     if (!Storage.isAvailable()) return;
     Storage.ensureDirectories();
     collectAllLocalBooks(kOfflineDir, 0, offlineBooks, nullptr);
-    for (auto& item : offlineBooks) chooseFormat(item);
+    for (auto& item : offlineBooks) chooseFormat(item);  // selectFormat applies cached metadata only
     ProgressStore& store = ProgressStore::instance();
     for (auto& item : offlineBooks) {
         if (store.find(item.fileId, item.filePath)) refreshProgressOf(item);
@@ -715,6 +741,7 @@ void LibraryManager::rebuildFilteredIndices() {
 }
 
 bool LibraryManager::releaseListsForReader() {
+    OfflineMetadata::stop();
     if (!Platform::kMemory.wifiTakesReaderMemory) return false;
     if (masterBooks.capacity() == 0 && offlineBooks.capacity() == 0 && libraryNames.capacity() == 0 &&
         rows.capacity() == 0 && folderRows.capacity() == 0)

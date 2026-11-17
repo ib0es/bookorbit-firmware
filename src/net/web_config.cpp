@@ -26,6 +26,7 @@
 #include "../reader/font_store.h"
 #include "../reader/reader.h"
 #include "services/library_manager.h"
+#include "services/offline_metadata.h"
 #include "services/power_service.h"
 #include "services/sync_service.h"
 #include "services/wifi_session.h"
@@ -228,23 +229,36 @@ function showTab(id,btn){
   if(id==='fonts')loadFonts();
 }
 var booksLoading=false;
+// Names of the books on the card (the last list read): a file already there is not sent at all.
+var onCard=Object.create(null);
+function knownOnCard(f){return !$('overwrite').checked&&!!onCard[f.name.toLowerCase()];}
+// While the list is read the device is busy: choosing and sending books wait for it.
+function booksBusy(on){
+  booksLoading=on;
+  $('file-input').disabled=on||uploading;
+  $('btn-up').disabled=on||uploading||!upQueue.length;
+}
 function loadBooks(){
   if(booksLoading)return;
-  booksLoading=true;
+  booksBusy(true);
   $('sd-info').textContent='...';showLoading($('blist'));
     fetch('/api/books?pin='+encodeURIComponent(pin)).then(function(r){if(!r.ok)throw Error(T.err);return r.json();}).then(function(d){
-    booksLoading=false;
+    booksBusy(false);
     $('sd-info').textContent=(d.free?fmtSz(d.free):'?')+' / '+(d.total?fmtSz(d.total):'?');
     var list=$('blist');list.textContent='';
     var books=d.books||[];$('book-cnt').textContent=books.length;
+    onCard=Object.create(null);books.forEach(function(b){onCard[String(b.name).toLowerCase()]=true;});
+    if(!uploading&&upQueue.length)renderQueue();
     if(!books.length){list.appendChild(listRow(T.noBooks));return;}
       books.forEach(function(b){
       var del=deleteButton(T.del,function(){
           askConfirm(T.del,b.name).then(function(yes){if(yes)delBook(b.name);});
       });
-      list.appendChild(listRow(b.name+' ('+fmtSz(b.size)+')',del));
+      var label=b.title?b.title+(b.author?' — '+b.author:'')+' ['+b.name+']':b.name;
+      if(b.series)label+=' — '+b.series+(b.seriesIndex?' #'+b.seriesIndex:'');
+      list.appendChild(listRow(label+' ('+fmtSz(b.size)+')',del));
     });
-  }).catch(function(){booksLoading=false;showFailed($('blist'),loadBooks);});
+  }).catch(function(){booksBusy(false);showFailed($('blist'),loadBooks);});
 }
 function delBook(name){
   fetch('/api/books/delete?pin='+encodeURIComponent(pin),{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(name)})
@@ -259,7 +273,7 @@ $('file-input').addEventListener('change',function(){
   $('prog-wrap').style.display='none';
   $('p-batch').value=0;
   $('p-label').textContent='';
-  $('btn-up').disabled=!upQueue.length;
+  $('btn-up').disabled=!upQueue.length||booksLoading;
 });
 function renderQueue(states){
   var q=$('queue');q.innerHTML='';
@@ -267,7 +281,8 @@ function renderQueue(states){
     var row=document.createElement('div');row.className='qitem';
     var nm=document.createElement('span');nm.className='qname';nm.textContent=f.name+' ('+fmtSz(f.size)+')';
     var st=document.createElement('span');st.id='qst-'+i;st.className='badge';
-    st.textContent=(states&&states[i])?states[i]:'...';
+    var skip=!states&&knownOnCard(f);
+    st.textContent=(states&&states[i])?states[i]:skip?'skip':'...';if(skip)st.className='badge b-skip';
     row.appendChild(nm);row.appendChild(st);q.appendChild(row);
   });
 }
@@ -275,23 +290,186 @@ function updateOverwriteUi(){
   var ow=$('overwrite');
   $('lbl-keep-prog').style.display=ow.checked?'flex':'none';
 }
-$('overwrite').addEventListener('change',updateOverwriteUi);
+$('overwrite').addEventListener('change',function(){updateOverwriteUi();if(!uploading&&upQueue.length)renderQueue();});
+// Local-only catalogue hints. Every failure is optional: upload completion is independent.
+function offlineText(s){
+  var text=String(s||'').replace(/[\x00-\x20\x7f]+/g,' ').replace(/^ +| +$/g,''),out='',bytes=0;
+  for(var c of text){var cp=c.codePointAt(0),n=cp<128?1:cp<2048?2:cp<65536?3:4;if(cp>=0xd800&&cp<=0xdfff)return '';if(bytes+n>512)break;out+=c;bytes+=n;}
+  return out;
+}
+function offlineXml(text){
+  if(text.length>131072||/<!DOCTYPE|<!ENTITY/i.test(text)||(text.match(/</g)||[]).length>2048)throw Error('metadata limits');
+  var doc=new DOMParser().parseFromString(text,'application/xml');
+  if(doc.getElementsByTagName('parsererror').length)throw Error('invalid XML');return doc;
+}
+function offlineElements(doc,name){return Array.from(doc.getElementsByTagNameNS('*',name));}
+function offlineFirst(doc,name){var e=offlineElements(doc,name)[0];return e?offlineText(e.textContent):'';}
+function offlineSeriesIndex(value){
+  var text=String(value||'');return text.length<=32&&/^[0-9]+(?:\.[0-9]+)?$/.test(text)&&Number(text)<=1000000?Number(text):0;
+}
+function offlineSeriesPosition(number){
+  var parts=String(number).split('e-');return parts.length===1?parts[0]:'0.'+'0'.repeat(Number(parts[1])-1)+parts[0].replace('.','');
+}
+function offlineSeries(metadata,meta,fb2){
+  if(fb2){
+    var sequences=offlineElements(metadata,'sequence').filter(function(e){return e.parentNode===metadata;});
+    var seq=sequences.find(function(e){return offlineText(e.getAttribute('name'));});
+    if(seq){meta.series=offlineText(seq.getAttribute('name'));meta.seriesIndex=offlineSeriesIndex(offlineText(seq.getAttribute('number')));}return;
+  }
+  var entries=offlineElements(metadata,'meta').filter(function(e){return e.parentNode===metadata;}).slice(0,64);
+  var calibre=entries.find(function(e){return e.getAttribute('name')==='calibre:series'&&offlineText(e.getAttribute('content'));});
+  var index=entries.find(function(e){return e.getAttribute('name')==='calibre:series_index'&&offlineText(e.getAttribute('content'));});
+  if(calibre){meta.series=offlineText(calibre.getAttribute('content'));meta.seriesIndex=offlineSeriesIndex(index&&offlineText(index.getAttribute('content')));}
+  for(var collection of entries){
+    if(collection.getAttribute('property')!=='belongs-to-collection'||!collection.getAttribute('id')||!offlineText(collection.textContent))continue;
+    var ref='#'+collection.getAttribute('id');
+    var type=entries.find(function(e){return e.getAttribute('refines')===ref&&e.getAttribute('property')==='collection-type'&&offlineText(e.textContent);});
+    if(!type||offlineText(type.textContent)!=='series')continue;
+    var position=entries.find(function(e){return e.getAttribute('refines')===ref&&e.getAttribute('property')==='group-position'&&offlineText(e.textContent);});
+    meta.series=offlineText(collection.textContent);meta.seriesIndex=offlineSeriesIndex(position&&offlineText(position.textContent));break;
+  }
+}
+function offlineFb2Cover(text,id,deadline){
+  for(var pos=0;pos<text.length&&Date.now()<deadline;){
+    var start=text.indexOf('<binary',pos);if(start<0)return null;
+    var tagEnd=text.indexOf('>',start+7);if(tagEnd<0||tagEnd-start>1024)return null;
+    var close=text.indexOf('</binary>',tagEnd+1);if(close<0)return null;
+    var attr=text.slice(start+7,tagEnd).match(/\bid\s*=\s*(['"])(.*?)\1/);pos=close+9;
+    if(!attr||attr[2]!==id)continue;
+    if(close-tagEnd>3*1024*1024)return null;
+    var b64=text.slice(tagEnd+1,close).replace(/\s/g,'');
+    if(b64.length>2800000||!/^[A-Za-z0-9+/]*={0,2}$/.test(b64))return null;
+    var binary=atob(b64);return Uint8Array.from(binary,function(c){return c.charCodeAt(0);});
+  }
+  return null;
+}
+async function offlineBook(file){
+  if(!file.arrayBuffer||file.size>32*1024*1024)return null;
+  var ext=file.name.split('.').pop().toLowerCase(),deadline=Date.now()+3000,meta={title:'',author:'',series:'',seriesIndex:0,cover:null};
+  if(!/^(epub|fb2|mobi|azw3|azw)$/.test(ext))return null;
+  var bytes=new Uint8Array(await file.arrayBuffer()),view=new DataView(bytes.buffer);
+  function be(p){if(p<0||p+4>bytes.length)throw Error('range');return view.getUint32(p,false);}
+  function slice(p,n,max){if(p<0||n<0||n>max||p+n>bytes.length)throw Error('range');return bytes.subarray(p,p+n);}
+  if(ext==='epub'){
+    var end=-1;
+    for(var p=bytes.length-22;p>=Math.max(0,bytes.length-65557);p--)if(view.getUint32(p,true)===0x06054b50&&p+22+view.getUint16(p+20,true)===bytes.length){end=p;break;}
+    if(end<0||view.getUint32(end+4,true)!==0)throw Error('ZIP');
+    var count=view.getUint16(end+10,true),at=view.getUint32(end+16,true),dirEnd=at+view.getUint32(end+12,true),entries=Object.create(null);
+    if(count>2048||count!==view.getUint16(end+8,true)||dirEnd>end||dirEnd-at>262144)throw Error('ZIP limits');
+    for(var i=0;i<count;i++){
+      if(at+46>dirEnd||view.getUint32(at,true)!==0x02014b50)throw Error('ZIP');
+      var nl=view.getUint16(at+28,true),el=view.getUint16(at+30,true),cl=view.getUint16(at+32,true);
+      if(at+46+nl+el+cl>dirEnd||nl>255)throw Error('ZIP name');
+      var name=new TextDecoder().decode(bytes.subarray(at+46,at+46+nl));
+      entries[name]={flags:view.getUint16(at+8,true),method:view.getUint16(at+10,true),crc:view.getUint32(at+16,true),compressed:view.getUint32(at+20,true),size:view.getUint32(at+24,true),local:view.getUint32(at+42,true)};
+      at+=46+nl+el+cl;
+    }
+    async function entry(name,max){
+      var e=entries[name];if(!e||e.flags&1||e.size>max||e.compressed>max||Date.now()>deadline)throw Error('entry limits');
+      var l=e.local;if(l+30>bytes.length||view.getUint32(l,true)!==0x04034b50||view.getUint16(l+8,true)!==e.method)throw Error('local entry');
+      var start=l+30+view.getUint16(l+26,true)+view.getUint16(l+28,true),payload=slice(start,e.compressed,max),out;
+      if(start+e.compressed>dirEnd)throw Error('entry range');
+      if(e.method===0)out=payload;
+      else if(e.method===8&&typeof DecompressionStream!=='undefined'){
+        var reader=new Blob([payload]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader(),parts=[],total=0;
+        try{for(;;){var chunk=await reader.read();if(chunk.done)break;total+=chunk.value.length;if(total>e.size||total>max||Date.now()>deadline)throw Error('inflate limits');parts.push(chunk.value);}}
+        finally{await reader.cancel().catch(function(){});}
+        out=new Uint8Array(total);var o=0;parts.forEach(function(c){out.set(c,o);o+=c.length;});
+      }else throw Error('inflate unavailable');
+      if(out.length!==e.size||fontCrc32(out)!==e.crc)throw Error('entry checksum');return out;
+    }
+    var container=offlineXml(new TextDecoder().decode(await entry('META-INF/container.xml',131072)));
+    var root=offlineElements(container,'rootfile')[0],opfPath=root&&root.getAttribute('full-path');
+    if(!opfPath)throw Error('container');
+    var opf=offlineXml(new TextDecoder().decode(await entry(opfPath,131072))),metadata=offlineElements(opf,'metadata')[0];
+    if(metadata){meta.title=offlineFirst(metadata,'title');meta.author=offlineFirst(metadata,'creator');offlineSeries(metadata,meta,false);}
+    var coverId='';offlineElements(opf,'meta').forEach(function(e){if(e.getAttribute('name')==='cover')coverId=e.getAttribute('content');});
+    var item=offlineElements(opf,'item').find(function(e){return /(^|\s)cover(-image)?(\s|$)/.test(e.getAttribute('properties')||'')||(coverId&&e.getAttribute('id')===coverId);});
+    if(item)try{
+      var href=item.getAttribute('href')||'';if(/[\\:\x00]/.test(href))throw Error('href');
+      var parts=(opfPath.slice(0,opfPath.lastIndexOf('/')+1)+decodeURIComponent(href.split('#')[0])).split('/'),resolved=[];
+      parts.forEach(function(s){if(s==='..'){if(!resolved.length)throw Error('href');resolved.pop();}else if(s&&s!=='.')resolved.push(s);});
+      meta.cover=await entry(resolved.join('/'),2*1024*1024);
+    }catch(e){}
+  }else if(ext==='fb2'){
+    var head=new TextDecoder().decode(bytes.subarray(0,131072)),encoding=(head.match(/encoding=['"]([^'"]+)['"]/i)||[])[1];
+    var decoder=new TextDecoder(encoding||'utf-8');head=decoder.decode(bytes.subarray(0,131072));
+    var close=head.indexOf('</description>');if(close<0)throw Error('description');
+    var doc=offlineXml(head.slice(0,close+14)+'</FictionBook>'),info=offlineElements(doc,'title-info')[0];
+    if(info){meta.title=offlineFirst(info,'book-title');var author=offlineElements(info,'author')[0];if(author)meta.author=offlineText(['first-name','middle-name','last-name'].map(function(n){return offlineFirst(author,n);}).filter(Boolean).join(' '))||offlineFirst(author,'nickname');}
+    if(info)offlineSeries(info,meta,true);
+    var cp=offlineElements(doc,'coverpage')[0],image=cp&&offlineElements(cp,'image')[0];
+    var id=image&&(image.getAttribute('l:href')||image.getAttribute('xlink:href')||image.getAttribute('href'));
+    if(id&&id[0]==='#'&&bytes.length<=8*1024*1024)try{
+      meta.cover=offlineFb2Cover(decoder.decode(bytes),id.slice(1),deadline);
+    }catch(e){}
+  }else{
+    if(bytes.length<96||new TextDecoder().decode(bytes.subarray(60,68))!=='BOOKMOBI')throw Error('MOBI');
+    var off=be(78),recEnd=be(86),record=slice(off,recEnd-off,131072),rv=new DataView(record.buffer,record.byteOffset,record.byteLength);
+    function rb(p){if(p+4>record.length)throw Error('MOBI header');return rv.getUint32(p,false);}
+    if(new TextDecoder().decode(record.subarray(16,20))!=='MOBI'||rv.getUint16(12,false))throw Error('MOBI header');
+    var enc=rb(28),dec=new TextDecoder(enc===65001?'utf-8':enc===1252?'windows-1252':'unsupported');
+    function rt(p,n){if(p+n>record.length||n>512)throw Error('MOBI text');return offlineText(dec.decode(record.subarray(p,p+n)));}
+    meta.title=rt(rb(84),rb(88));var coverOffset=-1,firstImage=rb(108),exth=16+rb(20);
+    if((rb(128)&64)&&exth+12<=record.length&&new TextDecoder().decode(record.subarray(exth,exth+4))==='EXTH'){
+      var exEnd=exth+rb(exth+4),num=rb(exth+8),pos=exth+12;if(exEnd>record.length||num>1024)throw Error('EXTH');
+      for(var k=0;k<num&&pos+8<=exEnd;k++){var type=rb(pos),len=rb(pos+4);if(len<8||pos+len>exEnd)throw Error('EXTH');
+        if(type===100&&!meta.author)meta.author=rt(pos+8,len-8);if(type===503)meta.title=rt(pos+8,len-8);if(type===201&&len>=12)coverOffset=rb(pos+8);pos+=len;}
+    }
+    if(coverOffset>=0)try{var idx=firstImage+coverOffset,records=view.getUint16(76,false);if(idx>=records)throw Error('cover record');var a=be(78+8*idx),b=idx+1<records?be(86+8*idx):bytes.length;meta.cover=slice(a,b-a,2*1024*1024);}catch(e){}
+  }
+  return meta;
+}
+async function offlineJpeg(bytes){
+  if(!bytes||bytes.length>2*1024*1024||typeof createImageBitmap==='undefined')return null;
+  var v=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength),w=0,h=0,type='';
+  if(bytes.length>24&&v.getUint32(0,false)===0x89504e47&&v.getUint32(4,false)===0x0d0a1a0a){w=v.getUint32(16,false);h=v.getUint32(20,false);type='image/png';}
+  else if(bytes.length>4&&bytes[0]===255&&bytes[1]===216){
+    type='image/jpeg';var p=2;
+    for(var i=0;i<128&&p+9<bytes.length;i++){if(bytes[p]!==255)break;var m=bytes[p+1];if(m===255){p++;continue;}var n=v.getUint16(p+2,false);if(n<2||p+2+n>bytes.length)break;
+      if(m>=0xc0&&m<=0xcf&&m!==0xc4&&m!==0xc8&&m!==0xcc){h=v.getUint16(p+5,false);w=v.getUint16(p+7,false);break;}p+=2+n;}
+  }
+  if(!w||!h||w>8192||h>8192||w*h>16000000)return null;
+  var bitmap=await createImageBitmap(new Blob([bytes],{type:type}));
+  try{var scale=Math.min(1,300/w,450/h),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(w*scale));canvas.height=Math.max(1,Math.round(h*scale));var ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+    var blob=await new Promise(function(resolve){canvas.toBlob(resolve,'image/jpeg',0.8);});return blob&&blob.size<=65536?blob:null;
+  }finally{bitmap.close();}
+}
+async function enrichOffline(file){
+  try{var meta=await offlineBook(file);if(!meta)return;var cover=null;try{cover=await offlineJpeg(meta.cover);}catch(e){}
+    var fd=new FormData();fd.append('file',cover||new Blob([]),'cover.jpg');
+    var source=new Uint8Array(await file.arrayBuffer()),hash=BigInt('14695981039346656037'),prime=BigInt('1099511628211'),mask=BigInt('18446744073709551615');
+    function add(c){hash=((hash^BigInt(c))*prime)&mask;}
+    var size=BigInt(file.size);for(var j=0;j<8;j++){add(Number(size&BigInt(255)));size>>=BigInt(8);}
+    [0,Math.floor(file.size/2),Math.max(0,file.size-1024)].forEach(function(at){source.subarray(at,Math.min(file.size,at+1024)).forEach(add);});
+    var sample=hash.toString(16).padStart(16,'0');
+    var response=await fetch('/api/offline-metadata?pin='+encodeURIComponent(pin)+'&name='+encodeURIComponent(file.name)+'&title='+encodeURIComponent(meta.title)+'&author='+encodeURIComponent(meta.author)+'&series='+encodeURIComponent(meta.series)+'&seriesIndex='+encodeURIComponent(meta.series?offlineSeriesPosition(meta.seriesIndex):'')+'&sample='+sample,{method:'POST',body:fd});return response.ok;
+  }catch(e){} // Missing browser APIs, malformed books and extraction failures never fail uploads.
+}
 function startUpload(){
   if(uploading||fontUploading||!upQueue.length)return;
+  // The device answers one request at a time on a small heap: let the list finish first, then send.
+  if(booksLoading)return;
   uploading=true;$('btn-up').disabled=true;$('file-input').disabled=true;$('prog-wrap').style.display='block';
+  // Closing (or saving) mid-upload would stop the server under the book: both wait for the end.
+  $('btn-close').disabled=true;$('btn-save').disabled=true;
   var ow=$('overwrite').checked?'1':'0';
   var keepProg=$('keep-progress').checked?'1':'0';
-  var files=upQueue.slice(),total=0,ends=[],sizes=[];
+  // Books already on the card are skipped here, without sending a byte (unless replacing them).
+  var queued=upQueue.slice(),slot=[],files=queued.filter(function(f,i){if(knownOnCard(f))return false;slot.push(i);return true;}),total=0,ends=[],sizes=[];
   // Every file in one request: one connection for the whole batch.
   var fd=new FormData();
   files.forEach(function(f){fd.append('file',f,f.name);total+=f.size;ends.push(total);sizes.push(f.size);});
-  function badge(i,txt,cls){var st=$('qst-'+i);if(st){st.textContent=txt;st.className='badge'+(cls?' '+cls:'');}}
+  function badge(i,txt,cls){var st=$('qst-'+slot[i]);if(st){st.textContent=txt;st.className='badge'+(cls?' '+cls:'');}}
   function finish(){
     uploading=false;upQueue=[];
     $('file-input').value='';$('file-input').disabled=false;$('btn-up').disabled=true;
+    if(!fontUploading){$('btn-close').disabled=false;$('btn-save').disabled=false;}
     $('p-batch').value=100;
     setTimeout(loadBooks,150);
   }
+  queued.forEach(function(f,i){if(slot.indexOf(i)<0){var st=$('qst-'+i);if(st){st.textContent='skip';st.className='badge b-skip';}}});
+  if(!files.length){finish();return;}
   var cur=-1;
   var xhr=new XMLHttpRequest();
   xhr.timeout=0;
@@ -319,6 +497,8 @@ function startUpload(){
       else if(r.exists)badge(i,'skip','b-skip');
       else badge(i,r.error||'err','b-err');
     });
+    var enrich=Promise.resolve();
+    files.forEach(function(f,i){if(out[i]&&out[i].ok)enrich=enrich.then(function(){return enrichOffline(f).then(function(changed){if(changed)setTimeout(loadBooks,150);});});});
     finish();
   };
   xhr.onerror=xhr.ontimeout=function(){files.forEach(function(f,i){badge(i,'err','b-err');});finish();};
@@ -549,6 +729,7 @@ $('cfg-form').addEventListener('submit',function(ev){
   .catch(function(){toast(T.err,false);});
 });
 function closePortal(){
+  if(uploading||fontUploading)return;
   fetch('/api/close?pin='+encodeURIComponent(pin),{method:'POST'}).then(function(){toast(T.closed,true);}).catch(function(){toast(T.closed,true);});
 }
 loadBooks();
@@ -1445,13 +1626,16 @@ void sendBooksListJson(WebServer& server) {
         s_portalFreeKnown = true;
         Platform::feedWatchdog();
     }
-    String json;
-    json.reserve(1024);
+    // Streamed piece by piece: a list built in one String (and copied again by send()) needs a block
+    // of its whole size on a heap whose largest free block can be under 10 KB.
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.send(200, "application/json; charset=utf-8", "");
+    PortalWriter out(server);
 
     char hdr[96];
     snprintf(hdr, sizeof(hdr), "{\"total\":%llu,\"free\":%llu,\"books\":[", (unsigned long long)s_portalTotalBytes,
              (unsigned long long)s_portalFreeBytes);
-    json += hdr;
+    out += hdr;
 
     if (Storage.isAvailable()) {
         const auto entries = Storage.listDirectory(LibraryManager::kOfflineDir);
@@ -1460,22 +1644,40 @@ void sendBooksListJson(WebServer& server) {
             Platform::feedWatchdog();
             if (e.isDirectory || e.name.startsWith(".")) continue;
             if (BookFormats::fromPath(e.name.c_str()) == BookFormats::Unknown) continue;
-            if (!first) json += ',';
+            if (!first) out += ',';
             first = false;
-            json += "{\"name\":\"";
-            json += jsonEscape(e.name);
-            json += "\",\"size\":";
-            json += String((unsigned long long)e.size);
-            json += "}";
+            out += "{\"name\":\"";
+            out += jsonEscape(e.name);
+            out += "\",\"size\":";
+            out += String((unsigned long long)e.size);
+            OfflineMetadata::Record metadata;
+            if (OfflineMetadata::load(e.fullPath, metadata)) {
+                out += ",\"title\":\"";
+                out += jsonEscape(metadata.title);
+                out += "\",\"author\":\"";
+                out += jsonEscape(metadata.author);
+                out += "\",\"series\":\"";
+                out += jsonEscape(metadata.series);
+                char position[40];
+                snprintf(position, sizeof(position), "\",\"seriesIndex\":%.15g", metadata.seriesIndex);
+                out += position;
+            }
+            out += '}';
         }
     }
-    json += "]}";
-    server.send(200, "application/json; charset=utf-8", json);
+    out += "]}";
+    out.flush();
+    server.sendContent("");
 }
 
 }  // namespace
 
 bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
+    OfflineMetadata::stop();
+    // Decoded covers held for the lists are not needed here and are re-read from the card later:
+    // the portal, its Wi-Fi and the TCP buffers need every byte on a small heap.
+    Ui::coverCacheChanged();
+    MemStats::log("portal start");
     Serial.printf("[WebConfig] Starting Web Configuration Portal (mode=%d)...\n", (int)mode);
 
     s_portalTotalBytes = Storage.totalBytes();
@@ -1750,6 +1952,82 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
         server.send(200, "application/json", "{\"ok\":true}");
     });
 
+    struct HintUpload {
+        FsFile file;
+        String tmp = "/cache/offmeta/portal-cover.part";
+        size_t bytes = 0;
+        unsigned parts = 0;
+        bool failed = true;
+        void close() {
+            if (file) file.close();
+        }
+        ~HintUpload() {
+            close();
+            Storage.remove(tmp.c_str());
+        }
+    } hints;
+    server.on(
+            "/api/offline-metadata", HTTP_POST,
+            [&]() {
+                PowerService::noteActivity();
+                sendNoCache();
+                hints.close();
+                if (!checkAuth()) {
+                    Storage.remove(hints.tmp.c_str());
+                    return;
+                }
+                String name;
+                const bool valid = !hints.failed && hints.parts == 1 &&
+                                   sanitizeUploadFilename(server.arg("name"), name) && name == server.arg("name") &&
+                                   server.arg("sample").length() == 16;
+                const bool ok =
+                        valid && OfflineMetadata::storeHints(String(LibraryManager::kOfflineDir) + "/" + name,
+                                                             server.arg("title"), server.arg("author"),
+                                                             hints.bytes ? hints.tmp : String(), server.arg("sample"),
+                                                             server.arg("series"), server.arg("seriesIndex"));
+                Storage.remove(hints.tmp.c_str());
+                hints.parts = 0;
+                hints.failed = true;
+                if (ok) {
+                    booksChanged = true;
+                    LibraryManager::getInstance().touch();
+                }
+                server.send(ok ? 200 : 400, "application/json", ok ? "{\"ok\":true}" : "{\"ok\":false}");
+            },
+            [&]() {
+                HTTPUpload& upload = server.upload();
+                if (upload.status == UPLOAD_FILE_START) {
+                    hints.close();
+                    hints.bytes = 0;
+                    hints.failed = ++hints.parts != 1 || !checkAuth();
+                    String name;
+                    if (!sanitizeUploadFilename(server.arg("name"), name) || name != server.arg("name") ||
+                        server.arg("title").length() > 512 || server.arg("author").length() > 512 ||
+                        server.arg("series").length() > 512 || server.arg("seriesIndex").length() > 32 ||
+                        server.arg("sample").length() != 16)
+                        hints.failed = true;
+                    if (!hints.failed) {
+                        Storage.mkdir("/cache");
+                        Storage.mkdir("/cache/offmeta");
+                        hints.file = Storage.open(hints.tmp.c_str(), O_WRONLY | O_CREAT | O_TRUNC);
+                        if (!hints.file) hints.failed = true;
+                    }
+                } else if (upload.status == UPLOAD_FILE_WRITE && !hints.failed) {
+                    if (upload.currentSize > 65536 - hints.bytes ||
+                        hints.file.write(upload.buf, upload.currentSize) != upload.currentSize)
+                        hints.failed = true;
+                    else
+                        hints.bytes += upload.currentSize;
+                } else if (upload.status == UPLOAD_FILE_END || upload.status == UPLOAD_FILE_ABORTED) {
+                    hints.close();
+                    if (upload.status == UPLOAD_FILE_ABORTED) {
+                        hints.failed = true;
+                        hints.parts = 0;
+                        Storage.remove(hints.tmp.c_str());
+                    }
+                }
+            });
+
     server.on(
             "/api/upload", HTTP_POST,
             [&]() {
@@ -1877,6 +2155,7 @@ bool WebConfigManager::runPortal(AppConfig& cfg, WebPortalMode mode) {
                             }
                         }
                         ok = ok && Storage.replaceFile(up.partPath.c_str(), up.targetPath.c_str());
+                        if (ok && !fontUpload) OfflineMetadata::invalidate(up.targetPath);
                         if (ok) {
                             if (fontUpload)
                                 fontsChanged = true;

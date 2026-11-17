@@ -13,6 +13,7 @@
 #include "../ui/i18n.h"
 #include "../core/ui_port.h"
 #include "library_manager.h"
+#include "offline_metadata.h"
 #include "../core/light_sleep_policy.h"
 #include "../core/power_policy.h"
 #include "sync_service.h"
@@ -148,7 +149,7 @@ void PowerService::idleWaitOrLightSleep(AppContext& ctx) {
     in.touchWakeIrqPin = irqPin;
     in.wifiOff = (WiFi.getMode() == WIFI_OFF);
     in.syncBgActive = SyncService::backgroundActive();
-    in.readerBgActive = Reader.backgroundActive();
+    in.readerBgActive = Reader.backgroundActive() || OfflineMetadata::busy();
     in.usbMscActive = UsbMsc.active();
     in.debouncePending = Buttons.isDebouncePending();
     in.touchPressed = Buttons.isTouchPressed();
@@ -240,6 +241,7 @@ bool PowerService::pollModalEvent(ButtonEvent& event) {
 }
 
 void PowerService::enterDeepSleep(AppContext& ctx, bool syncAllowed) {
+    OfflineMetadata::stop();
     Serial.println("[Power] Entering Deep Sleep. Goodnight!");
     SyncService::cancelBackground();   // a background upload in progress stays queued
 

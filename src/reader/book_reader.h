@@ -187,9 +187,11 @@ public:
     // `cacheDir`: where the book's index lives (default: the EPUB's own; an EPUB
     // converted from another format sits in the cache directory of that file).
     static bool extractCover(const String& epubPath, const String& outPath, bool* noMemory = nullptr,
-                             const String& cacheDir = String());
+                             const String& cacheDir = String(), bool catalogueOnly = false,
+                             bool (*cancelled)() = nullptr);
     // Converts a raw PNG or progressive JPEG image file on SD into an 8-bit gray BMP cover.
-    static bool convertCoverImage(const String& imgPath, const String& bmpPath, bool* noMemory = nullptr);
+    static bool convertCoverImage(const String& imgPath, const String& bmpPath, bool* noMemory = nullptr,
+                                  bool (*cancelled)() = nullptr);
 
     // The book's layout cache directory on the card ("/cache/<file name>.fib").
     static String cacheDirFor(const String& bookPath);

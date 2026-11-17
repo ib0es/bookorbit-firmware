@@ -1,5 +1,6 @@
 #include "library_manager.h"
 #include "library_internal.h"
+#include "offline_metadata.h"
 #include "../core/progress_sync.h"
 #include "sync_clock.h"
 #include "../reader/reader.h"
@@ -115,6 +116,12 @@ bool LibraryInternal::isEpubPath(const String& filePath) {
 
 String LibraryManager::resolveCoverPath(const String& filePath, const String& title, const String& explicitCoverPath,
                                         bool allowExtract) {
+    if (isOfflinePath(filePath)) {
+        // Offline catalogue images are embedded-only and prepared by the idle worker.
+        OfflineMetadata::Record metadata;
+        if (!OfflineMetadata::load(filePath, metadata)) return "";
+        return isValidCoverFile(metadata.coverPath) ? metadata.coverPath : String();
+    }
     // Old extracted BMPs bypass the rendered-cache version check entirely.
     // Refresh only the managed EPUB copy; user-supplied neighbouring covers
     // and covers of books no longer on the card are left alone. Extraction

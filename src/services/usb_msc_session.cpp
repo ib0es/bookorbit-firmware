@@ -1,6 +1,7 @@
 #include "usb_msc_session.h"
 
 #include "library_manager.h"
+#include "offline_metadata.h"
 #include "power_service.h"
 #include "sync_service.h"
 #include "../app/app_state.h"
@@ -16,6 +17,7 @@ bool begin(AppContext& ctx) {
     if (!UsbMsc.present()) return false;
     if (UsbMsc.active()) return true;
 
+    OfflineMetadata::stop();
     SyncService::cancelBackground();
     BookOrbit.disconnectWiFi();
     Reader.stopBackground();

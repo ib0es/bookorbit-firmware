@@ -28,6 +28,7 @@
 #include "../net/bookorbit_client.h"
 #include "../reader/reader.h"
 #include "../services/library_manager.h"
+#include "../services/offline_metadata.h"
 #include "../services/power_service.h"
 #include "../services/sync_service.h"
 #include "../storage/progress_store.h"
@@ -257,9 +258,16 @@ static uint32_t s_restUntil = 0;
 void AppController::loop() {
     Buttons.update();
     Battery.tick();
-    SyncService::tickBackground(_ctx);
+    if (OfflineMetadata::busy()) {
+        if (millis() - _ctx.lastActivityTime >= Platform::sleepTimeoutMs())
+            OfflineMetadata::stop();
+        else if (OfflineMetadata::tick(/*startNext=*/false))   // the next book waits for an idle moment
+            redrawCurrentScreen(false);
+    }
+    if (!OfflineMetadata::busy()) SyncService::tickBackground(_ctx);
 
     if (Buttons.takeLightSwitchChange()) {
+        OfflineMetadata::stop();
         _ctx.lastActivityTime = millis();
         const bool on = Buttons.lightSwitchOn();
         // Switched on with the light set to 0: pick a usable level, else the
@@ -274,6 +282,7 @@ void AppController::loop() {
 
     ButtonEvent event;
     if (Buttons.getEvent(event)) {
+        OfflineMetadata::stop();
         const uint32_t tEvent = millis();
         _ctx.lastActivityTime = tEvent;
         Serial.printf("[Event] Button: %s | Action: %d at %lu ms\n", Buttons.getName(event.id), event.action,
@@ -310,6 +319,12 @@ void AppController::loop() {
         _ctx.lastActivityTime = millis();
     }
 
+    // While the worker owns the card, only input and battery sampling run.
+    // Cancellation joins before any screen, reader, radio or power transition.
+    if (OfflineMetadata::busy()) {
+        delay(1);
+        return;
+    }
     Modal.tick();
 
     // Auto-rotate from IMU when enabled (paused while modals or sync dialogs are open).
@@ -421,6 +436,11 @@ void AppController::loop() {
         if (worked) return;
     }
 
+    if ((st == STATE_HOME || st == STATE_LIBRARY) && !Reader.isOpened() && !Modal.isActive() &&
+        !SyncService::backgroundActive() && !BookOrbit.isConnected() && millis() - _ctx.lastActivityTime > 1500) {
+        if (OfflineMetadata::tick()) redrawCurrentScreen(false);
+        if (OfflineMetadata::busy()) return;
+    }
     PowerService::idleWaitOrLightSleep(_ctx);
 }
 

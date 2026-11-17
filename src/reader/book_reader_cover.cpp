@@ -2,6 +2,7 @@
 #include <epub/ImageProbe.h>
 #include <epub/PackageParsers.h>
 #include <epub/XmlSax.h>
+#include <expat.h>
 
 namespace {
 
@@ -29,8 +30,10 @@ struct GrayBmp {
     size_t stride = 0;
     uint8_t* row = nullptr;
     bool ok = true;
+    bool (*cancelled)() = nullptr;
 
     bool put(const uint8_t* gray, uint16_t w) {
+        if (cancelled && cancelled()) return false;
         memset(row, 0xFF, stride);
         if (gray) memcpy(row, gray, w < width ? w : width);
         if (out.write(row, stride) != stride) return false;
@@ -100,12 +103,17 @@ CoverKind coverKindOf(const String& path, ImageInfo& info) {
     return CoverKind::Unusable;
 }
 
-bool imageFileToGrayBmp(const String& imgPath, const ImageInfo& info, const String& bmpPath, bool& oom) {
+bool imageFileToGrayBmp(const String& imgPath, const ImageInfo& info, const String& bmpPath, bool& oom,
+                        bool (*cancelled)() = nullptr) {
+    if (cancelled && (cancelled() || info.width > 8192 || info.height > 8192 ||
+                      uint64_t(info.width) * info.height > 4 * 1024 * 1024))
+        return false;
     FsFile f = Storage.open(imgPath.c_str(), O_RDONLY);
     if (!f) return false;
     const uint32_t size = (uint32_t)f.size();
     f.close();
 
+    if (cancelled && size > 2 * 1024 * 1024) return false;
     uint32_t w = info.width, h = info.height;
     if (w > kCoverMaxW) {
         h = h * kCoverMaxW / w;
@@ -124,6 +132,7 @@ bool imageFileToGrayBmp(const String& imgPath, const ImageInfo& info, const Stri
         return false;
     }
     GrayBmp bmp;
+    bmp.cancelled = cancelled;
     bmp.width = (uint16_t)w;
     bmp.height = (uint16_t)h;
     bmp.stride = ((w + 3) / 4) * 4;
@@ -139,6 +148,7 @@ bool imageFileToGrayBmp(const String& imgPath, const ImageInfo& info, const Stri
     if (ok) {
         SdBookSource src;
         if (src.open(imgPath)) {
+            if (cancelled) src.setReadGuard(cancelled, 4 * 1024 * 1024);
             const OneImage one(ZipEntryReader::rawEntry(size));
             const PageImage place{"cover", 0, 0, bmp.width, bmp.height};
             Arena a(scratch.p, scratch.n);
@@ -152,7 +162,7 @@ bool imageFileToGrayBmp(const String& imgPath, const ImageInfo& info, const Stri
     }
     free(bmp.row);
     if (bmp.out) bmp.out.close();
-    if (ok && Storage.replaceFile(tmp.c_str(), bmpPath.c_str())) return true;
+    if (ok && !(cancelled && cancelled()) && Storage.replaceFile(tmp.c_str(), bmpPath.c_str())) return true;
     Storage.remove(tmp.c_str());
     Serial.printf("[Reader] Cover picture %ux%u not converted (%s)\n", (unsigned)info.width, (unsigned)info.height,
                   bookStatusName(st));
@@ -230,12 +240,20 @@ struct RootfileHandler : XmlHandler {
 // books use instead of EPUB 3's "cover-image", which the book's index knows).
 struct CoverPropertyHandler : XmlHandler {
     char href[256] = {};
+    char coverId[128] = {};
     void onStartElement(const char* name, const char** atts) override {
+        if (strcmp(localName(name), "meta") == 0) {
+            const char* n = attr(atts, "name");
+            const char* id = attr(atts, "content");
+            if (n && strcmp(n, "cover") == 0 && id && strlen(id) < sizeof(coverId)) strcpy(coverId, id);
+        }
         if (strcmp(localName(name), "item") != 0 || href[0]) return;
         const char* props = attr(atts, "properties");
         const char* h = attr(atts, "href");
         const char* type = attr(atts, "media-type");
-        if (!h || !props || !hasToken(props, "cover")) return;
+        const char* id = attr(atts, "id");
+        const bool declared = id && coverId[0] && strcmp(id, coverId) == 0;
+        if (!h || (!declared && (!props || (!hasToken(props, "cover") && !hasToken(props, "cover-image"))))) return;
         if (type && strncmp(type, "image/", 6) != 0) return;
         if (strlen(h) < sizeof(href)) strcpy(href, h);
         stopParse = href[0] != 0;
@@ -243,10 +261,56 @@ struct CoverPropertyHandler : XmlHandler {
 };
 
 bool parseXml(SdBookSource& src, const ZipEntry& e, XmlHandler& h) {
+    if (e.uncompressedSize > 128 * 1024 || e.compressedSize > 128 * 1024) return false;
     Buffer mem(kInflateBytes + 8 * 1024);
     if (!mem.p) return false;
     Arena a(mem.p, mem.n);
-    return XmlSax::parseEntry(src, e, a, h) == BookStatus::Ok;
+    ZipEntryReader reader;
+    if (reader.open(src, e, a) != BookStatus::Ok) return false;
+    struct ParseState {
+        XmlHandler& handler;
+        XML_Parser parser;
+        unsigned depth = 0, elements = 0;
+        bool rejected = false;
+    } state{h, XML_ParserCreate(nullptr)};
+    if (!state.parser) return false;
+    XML_SetUserData(state.parser, &state);
+    XML_SetElementHandler(
+            state.parser,
+            [](void* user, const char* name, const char** attrs) {
+                auto& s = *static_cast<ParseState*>(user);
+                if (++s.depth > 32 || ++s.elements > 2048) {
+                    s.rejected = true;
+                    XML_StopParser(s.parser, XML_FALSE);
+                } else
+                    s.handler.onStartElement(name, attrs);
+            },
+            [](void* user, const char* name) {
+                auto& s = *static_cast<ParseState*>(user);
+                s.handler.onEndElement(name);
+                --s.depth;
+            });
+    XML_SetCharacterDataHandler(state.parser, [](void* user, const char* text, int length) {
+        static_cast<ParseState*>(user)->handler.onText(text, length);
+    });
+    XML_SetStartDoctypeDeclHandler(state.parser, [](void* user, const char*, const char*, const char*, int) {
+        auto& s = *static_cast<ParseState*>(user);
+        s.rejected = true;
+        XML_StopParser(s.parser, XML_FALSE);
+    });
+    XML_SetParamEntityParsing(state.parser, XML_PARAM_ENTITY_PARSING_NEVER);
+    char buf[1024];
+    bool ok = true;
+    while (!h.stopParse) {
+        const int n = reader.read(buf, sizeof(buf));
+        if (n < 0 || XML_Parse(state.parser, buf, n < 0 ? 0 : n, n == 0) == XML_STATUS_ERROR) {
+            ok = false;
+            break;
+        }
+        if (!n) break;
+    }
+    XML_ParserFree(state.parser);
+    return ok && !state.rejected;
 }
 
 // The cover of a book that marks it properties="cover": container.xml, then the
@@ -298,12 +362,14 @@ bool coverByName(SdBookSource& src, ZipEntry& out) {
 
 // ------------------------------------------------------------------ cover
 
-bool BookReader::extractCover(const String& epubPath, const String& outPath, bool* noMemory, const String& cacheDir) {
+bool BookReader::extractCover(const String& epubPath, const String& outPath, bool* noMemory, const String& cacheDir,
+                              bool catalogueOnly, bool (*cancelled)()) {
     Platform::feedWatchdog();
     if (noMemory) *noMemory = false;
     bool oom = false;
     SdBookSource src;
     if (!src.open(epubPath)) return false;
+    if (catalogueOnly) src.setReadGuard(cancelled, 8 * 1024 * 1024);
     SdCacheStorage cache;
     Storage.mkdir("/cache");
     cache.setDir(cacheDir.length() ? cacheDir : cacheDirFor(epubPath));
@@ -316,7 +382,7 @@ bool BookReader::extractCover(const String& epubPath, const String& outPath, boo
     BookStatus st = BookStatus::Stale;
     size_t resident = 0;
     uint8_t* mem = nullptr;
-    for (int attempt = 0; attempt < 2 && st == BookStatus::Stale; attempt++) {
+    for (int attempt = 0; !catalogueOnly && attempt < 2 && st == BookStatus::Stale; attempt++) {
         if ((attempt > 0 || !cache.exists(BookCatalog::kCatalogName)) && !buildContainerIndex(src, cache, oom)) break;
         if (BookCatalog::residentBytes(cache, &resident) != BookStatus::Ok) continue;
         free(mem);
@@ -339,7 +405,10 @@ bool BookReader::extractCover(const String& epubPath, const String& outPath, boo
     catalog = BookCatalog();
     free(mem);
     mem = nullptr;
-    if (st == BookStatus::Ok && !hasCover) hasCover = coverByProperty(src, entry) || coverByName(src, entry);
+    if ((catalogueOnly || st == BookStatus::Ok) && !hasCover)
+        hasCover = coverByProperty(src, entry) || coverByName(src, entry);
+    if (catalogueOnly && (entry.uncompressedSize > 2 * 1024 * 1024 || entry.compressedSize > 2 * 1024 * 1024))
+        hasCover = false;
     const String tmp = outPath + ".tmp";
     if (hasCover) {
         // A stored image (the usual case) is copied; a deflated one needs an inflate stream.
@@ -367,14 +436,14 @@ bool BookReader::extractCover(const String& epubPath, const String& outPath, boo
     // Looked at (and converted) after the inflate stream and the book are given back.
     bool ok = false;
     const char* how = "";
-    if (copied) {
+    if (copied && !(cancelled && cancelled())) {
         ImageInfo info;
         switch (coverKindOf(tmp, info)) {
             case CoverKind::Drawable:
                 ok = Storage.replaceFile(tmp.c_str(), outPath.c_str());
                 break;
             case CoverKind::Convert:
-                ok = imageFileToGrayBmp(tmp, info, outPath, oom);
+                ok = imageFileToGrayBmp(tmp, info, outPath, oom, catalogueOnly ? cancelled : nullptr);
                 how = info.kind == ImageInfo::Kind::Png ? " (PNG as BMP)" : " (progressive JPEG as BMP)";
                 break;
             case CoverKind::Unusable:
@@ -404,13 +473,13 @@ bool BookReader::extractCover(const String& epubPath, const String& outPath, boo
     return ok;
 }
 
-bool BookReader::convertCoverImage(const String& imgPath, const String& bmpPath, bool* noMemory) {
+bool BookReader::convertCoverImage(const String& imgPath, const String& bmpPath, bool* noMemory, bool (*cancelled)()) {
     if (noMemory) *noMemory = false;
     bool oom = false;
     ImageInfo info;
     const CoverKind kind = coverKindOf(imgPath, info);
     if (kind != CoverKind::Convert) return false;
-    const bool ok = imageFileToGrayBmp(imgPath, info, bmpPath, oom);
+    const bool ok = imageFileToGrayBmp(imgPath, info, bmpPath, oom, cancelled);
     if (noMemory) *noMemory = oom && !ok;
     return ok;
 }

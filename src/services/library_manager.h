@@ -31,7 +31,7 @@ struct BookItem {
     String docId;        // KOReader document MD5 hash
     String xpath;        // KOReader progress XPath
     String series;       // Series name e.g. "The Wheel of Time"
-    int seriesIndex = 0; // Series index e.g. 1
+    double seriesIndex = 0; // Series position, including fractional values e.g. 1.5
     int16_t libraryIdx = -1;  // server library: index into LibraryManager::libraryNames (-1 = none)
     int subItemCount = 0;// Child count for virtual folder (for badge)
     bool isDownloaded = false;   // true if file exists on SD card

@@ -20,7 +20,8 @@ void SdBookSource::close() {
 }
 
 int32_t SdBookSource::readAt(uint64_t offset, void* dst, uint32_t len) {
-    if (!_open) return -1;
+    if (!_open || (_cancelled && _cancelled()) || len > _budget) return -1;
+    if (_budget != UINT32_MAX) _budget -= len;
     if (offset >= _size) return 0;
     if (offset != _pos && !_file.seek((uint32_t)offset)) return -1;
     const int n = _file.read((uint8_t*)dst, len);
