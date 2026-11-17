@@ -26,13 +26,13 @@ BIN = os.environ.get("PICCO_HEADLESS") or os.path.join(ROOT, "test/sim/build-pic
 BACK = "W100,300,400,300;"  # swipe right = back
 TITLE = "T240,20;"  # ◀ in the title bar = back
 HOME_CARD = "T240,180;"
-HOME_CATALOG = "T90,400;"  # Catalog, Sync, Settings
+HOME_CATALOG = "T90,690;"  # Catalog, Sync, Settings
 CATALOG_ALL_BOOKS = "T200,180;T200,127;"
 HOME_ALL_BOOKS = HOME_CATALOG + CATALOG_ALL_BOOKS
 LIB_FRANKENSTEIN = "T200,295;"  # 3rd row of All Books (sorted by title; two-line rows, U1)
 HOME_OFFLINE = HOME_CATALOG + "T240,110;"
-HOME_SETTINGS = "T390,400;"
-HOME_SYNC = "T240,400;"
+HOME_SETTINGS = "T390,690;"
+HOME_SYNC = "T240,690;"
 READ_MIDDLE = "T240,400;"  # reading: middle third = book menu
 READ_RIGHT = "T400,400;"
 READ_LEFT = "T80,400;"
@@ -74,6 +74,17 @@ def config(sd):
 
 
 CASES = [
+    (
+        "home in landscape: tap the second book card to open it",
+        "T250,495;w",
+        lambda log, sd: "Opening book: /books/01. Frankenstein (1818).epub" in log,
+        {"ui_orientation": 1},
+    ),
+    (
+        "home: next-book arrow changes the card without opening it",
+        "T423,282;" + HOME_CARD + "w",
+        lambda log, sd: "Frankenstein (1818)" in log.split("Opening book:")[-1] and pages(log),
+    ),
     (
         "home: swipe steps through recent books, tap opens the book",
         "W300,200,60,200;" + HOME_CARD + "w",
@@ -270,20 +281,20 @@ CASES = [
     ("home: sync now by tap", HOME_SYNC + "ww", lambda log, sd: "[Sync]" in log),
     (
         "home: a tap cancels a running sync",
-        "[T390,400;]" + HOME_SYNC + "ww",
+        "[" + HOME_SETTINGS + "]" + HOME_SYNC + "ww",
         lambda log, sd: "Operation aborted by user" in log,
     ),
     # Landscape: the home tiles sit beside the book card (stacked they were below
     # the screen). Taps in the panel's portrait coordinates: the Settings tile.
     (
         "home in landscape: the Settings tile is on screen and opens by tap",
-        "T163,535;",
+        "T80,724;",
         lambda log, sd: "drawSettingsScreen" in log,
         {"ui_orientation": 1},
     ),
     (
         "home in landscape (the other way): Sync now is on screen",
-        "T133,100;",
+        "T240,76;",
         lambda log, sd: "[Sync]" in log or "SYNC" in log or "Wi-Fi" in log,
         {"ui_orientation": 3},
     ),
@@ -296,7 +307,7 @@ CASES = [
     # is a swipe away (the page swipe moves the selection to the next page).
     (
         "catalog in landscape: open Downloaded from Online",
-        "T347,535;T302,400;T72,400;",
+        "T380,724;T302,400;T72,400;",
         lambda log, sd: "drawCatalogScreen" in log and "List /books: 5 rows" in log,
         {"ui_orientation": 1},
     ),

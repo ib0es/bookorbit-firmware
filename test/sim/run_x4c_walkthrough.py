@@ -21,6 +21,7 @@ SD_LEFTOVERS = shutil.ignore_patterns("offline", "offline#*")
 BIN = os.environ.get("X4C_HEADLESS") or os.path.join(ROOT, "test/sim/build-x4c/x4_headless")
 
 OPEN_BOOK = "C"
+HOME_BOOK = "UUU"  # From the Settings tile back to the book card.
 READER_MENU = "C"
 
 SETTINGS = "UC"  # Home -> Settings (the last tile). Rows: 0 Reading, 1 Orientation, 2 Sleep
@@ -91,7 +92,7 @@ CASES = [
         + "C"  # Re-enter USB Drive (cursor remembered at 0 = Connect) -> Connect
         + "B"  # Exit via physical BACK -> remounts SD -> Settings
         + "B"
-        + "UUUU"
+        + HOME_BOOK
         + OPEN_BOOK
         + "w",
         lambda log, sd: (
@@ -156,7 +157,7 @@ CASES = [
     ),
     (
         "rtc: BM8563 clock and UTC+3 timezone configured with buttons and shown in status bar",
-        READING + "C" + "C" + "UC" + "B" + "U" + "RRRRRR" + "BBB" + "UUUU" + OPEN_BOOK,
+        READING + "C" + "C" + "UC" + "B" + "U" + "RRRRRR" + "BBB" + HOME_BOOK + OPEN_BOOK,
         lambda log, sd: (
             "[RTC] Ready" in log
             and "[Clock] Restored from RTC" in log

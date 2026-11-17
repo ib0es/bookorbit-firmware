@@ -87,8 +87,13 @@ bool translate(AppContext& ctx, const ButtonEvent& tap, ButtonEvent& out) {
 
     switch (ctx.currentState) {
         case STATE_HOME:
-            // home_view: 1 = continue-reading card, 2 = a tile, 3 = settings.
-            ctx.selectedHomeIndex = (action == 1) ? HOME_RECENT_BOOK : (action == 3 ? HOME_SETTINGS : value);
+            if (action == HomeHit::PreviousBook || action == HomeHit::NextBook) {
+                ctx.selectedHomeIndex = HOME_RECENT_BOOK;
+                out = make(action == HomeHit::PreviousBook ? BTN_LEFT : BTN_RIGHT);
+                return true;
+            }
+            if (action == HomeHit::OpenBook) LibraryManager::getInstance().recentBookIndex = value;
+            ctx.selectedHomeIndex = action == HomeHit::OpenBook ? HOME_RECENT_BOOK : value;
             break;
         case STATE_LIBRARY: {
             if (action == 2) {
