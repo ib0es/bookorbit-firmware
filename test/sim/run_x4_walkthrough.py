@@ -319,6 +319,21 @@ def offline_traces(sd):
         open(os.path.join(sd, "covers/offline#OfflineOne" + sfx), "w").write("x")
 
 
+def delete_asked_over_menu(log, sd):
+    # The OK on "Delete" in the book menu asks at once: the list is not drawn under the question first.
+    i = log.find("[Modal] confirm: ")
+    pressed = log.rfind("[Event] Button", 0, i)
+    return i > 0 and pressed >= 0 and "Library row" not in log[pressed:i]
+
+
+def offline_delete_cancelled(log, sd):
+    return (
+        delete_asked_over_menu(log, sd)
+        and "Deleting downloaded book file" not in log
+        and os.path.exists(os.path.join(sd, "offline/OfflineOne.epub"))
+    )
+
+
 def offline_traces_gone(log, sd):
     rec = json.load(open(os.path.join(sd, "books/progress.json")))["books"]
     last = json.load(open(os.path.join(sd, "books/last_book.json")))
@@ -330,6 +345,13 @@ def offline_traces_gone(log, sd):
         and not os.path.exists(os.path.join(sd, "cache/offline#OfflineOne.epub.fib"))
         and not files(sd, "covers/offline#OfflineOne*")
     )
+
+
+def offline_cover_cache(sd, path):
+    value = 14695981039346656037
+    for byte in path.encode("utf-8"):
+        value = ((value ^ byte) * 1099511628211) & ((1 << 64) - 1)
+    return os.path.join(sd, "cache", "offmeta", f"offmeta-{value:016x}.json.jpg")
 
 
 def offline_legacy_cover(sd):
@@ -1197,16 +1219,23 @@ CASES = [
         offline_traces,
         {},
         "w" + "DDC" + "L" + "D" + "C" + "C" + "w",
-        offline_traces_gone,
+        lambda log, sd: delete_asked_over_menu(log, sd) and offline_traces_gone(log, sd),
+    ),
+    (
+        "offline: BACK on the delete question keeps the book",
+        offline_traces,
+        {},
+        "w" + "DDC" + "L" + "D" + "C" + "B" + "w",
+        offline_delete_cancelled,
     ),
     (
         "offline: a progressive JPEG cover is drawn (converted to BMP), an old no-cover marker retried",
         offline_progressive_cover,
         {},
-        "w",
+        "ww",
         lambda log, sd: (
             "progressive JPEG as BMP" in log
-            and open(os.path.join(sd, "covers/offline#Prog.jpg"), "rb").read(2) == b"BM"
+            and open(offline_cover_cache(sd, "/offline/Prog.epub"), "rb").read(2) == b"BM"
             and not os.path.exists(os.path.join(sd, "covers/offline#Prog.jpg.nocover"))
         ),
     ),
@@ -1216,8 +1245,9 @@ CASES = [
         {},
         "ww",
         lambda log, sd: (
-            log.count("Refreshing legacy EPUB cover: /covers/offline#Prog.jpg") == 1
-            and open(os.path.join(sd, "covers/offline#Prog.jpg"), "rb").read(9)[6:9] == b"BG\x01"
+            log.count("Cover of /offline/Prog.epub:") == 1
+            and open(offline_cover_cache(sd, "/offline/Prog.epub"), "rb").read(9)[6:9] == b"BG\x01"
+            and not os.path.exists(os.path.join(sd, "covers/offline#Prog.jpg"))
             and all(
                 not os.path.exists(os.path.join(sd, "covers/offline#Prog" + suffix))
                 for suffix in ("_thumb_fit.bmp", "_thumb_crop.bmp", "_fit.bmp", "_crop.bmp")
@@ -1228,26 +1258,25 @@ CASES = [
         "offline: a cover the EPUB does not declare is found by its name",
         offline_undeclared_cover,
         {},
-        "w",
-        lambda log, sd: "Cover of /offline/NoDecl.epub: /covers/offline#NoDecl.jpg" in log,
+        "ww",
+        lambda log, sd: os.path.getsize(offline_cover_cache(sd, "/offline/NoDecl.epub")) > 0,
     ),
     (
         "offline: a cover marked properties=\"cover\" is found",
         offline_cover_property,
         {},
-        "w",
-        lambda log, sd: "Cover of /offline/PropCover.epub: /covers/offline#PropCover.jpg" in log,
+        "ww",
+        lambda log, sd: os.path.getsize(offline_cover_cache(sd, "/offline/PropCover.epub")) > 0,
     ),
     (
-        "offline: unconverted FB2 and MOBI extract covers directly into /covers",
+        "offline: unconverted FB2 and MOBI extract path-owned covers without full conversion",
         offline_covers,
         {},
-        "w" + "DDC" + "D" + "C" + "w",
+        "ww",
         lambda log, sd: (
-            bool(files(sd, "covers/offline#OffCover*.jpg"))
-            and any(os.path.getsize(p) > 0 for p in files(sd, "covers/offline#OffCover*.jpg"))
-            and bool(files(sd, "covers/offline#OffMobi*.jpg"))
-            and any(os.path.getsize(p) > 0 for p in files(sd, "covers/offline#OffMobi*.jpg"))
+            os.path.getsize(offline_cover_cache(sd, "/offline/OffCover.fb2")) > 0
+            and os.path.getsize(offline_cover_cache(sd, "/offline/OffMobi.mobi")) > 0
+            and not files(sd, "cache/offline#*.fib/book.epub")
         ),
     ),
 ]
