@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import re
 import sys
 
 
@@ -27,6 +28,14 @@ def main():
         ("EN", "en", "English", "English"),
         ("RU", "ru", "Russian", "Русский"),
         ("ES", "es", "Spanish", "Español"),
+        ("DE", "de", "German", "Deutsch"),
+        ("FR", "fr", "French", "Français"),
+        ("IT", "it", "Italian", "Italiano"),
+        ("PT_PT", "pt-PT", "European Portuguese", "Português (Portugal)"),
+        ("PT_BR", "pt-BR", "Brazilian Portuguese", "Português (Brasil)"),
+        ("ZH_HANS", "zh-Hans", "Simplified Chinese", "简体中文"),
+        ("JA", "ja", "Japanese", "日本語"),
+        ("KO", "ko", "Korean", "한국어"),
     ]
 
     en_path = os.path.join(locales_dir, "en.json")
@@ -37,8 +46,6 @@ def main():
     def load_json_relaxed(path):
         with open(path, encoding="utf-8") as f:
             text = f.read()
-        import re
-
         text = re.sub(r',\s*([}\]])', r'\1', text)
         return json.loads(text)
 
@@ -46,6 +53,7 @@ def main():
 
     keys = list(en_data.keys())
 
+    markers = re.compile(r"%[A-Z][A-Z0-9_]*%|%%|%[-+ #0]*\d*(?:\.\d+)?(?:ll|l|z)?[diufscxX]")
     languages = []
     for enum_name, code, name, native_name in languages_config:
         lang_path = os.path.join(locales_dir, f"{code}.json")
@@ -63,6 +71,18 @@ def main():
                 )
                 for k in missing:
                     lang_data[k] = en_data[k]
+
+        if code not in {"en", "ru", "es"}:
+            # Validate the source file, not its English-filled output.
+            source = load_json_relaxed(lang_path)
+            if source.keys() != en_data.keys():
+                sys.exit(f"[i18n] {code}: keys differ from en.json")
+            for key in keys:
+                val = source[key]
+                if not isinstance(val, str) or (en_data[key].strip() and not val.strip()):
+                    sys.exit(f"[i18n] {code}: missing translation for {key}")
+                if markers.findall(val) != markers.findall(en_data[key]):
+                    sys.exit(f"[i18n] {code}: format markers differ for {key}")
 
         languages.append((enum_name, code, name, native_name, lang_data))
 

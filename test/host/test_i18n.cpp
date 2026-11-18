@@ -7,7 +7,29 @@ int main() {
     printf("Testing I18n subsystem...\n");
 
     // 1. Language count
-    assert(I18n::getLanguageCount() == 3);
+    const char* codes[] = {"en", "ru", "es", "de", "fr", "it", "pt-PT", "pt-BR", "zh-Hans", "ja", "ko"};
+    const char* names[] = {"English",
+                           "Русский",
+                           "Español",
+                           "Deutsch",
+                           "Français",
+                           "Italiano",
+                           "Português (Portugal)",
+                           "Português (Brasil)",
+                           "简体中文",
+                           "日本語",
+                           "한국어"};
+    assert(I18n::getLanguageCount() == sizeof(codes) / sizeof(codes[0]));
+    for (int i = 0; i < I18n::getLanguageCount(); ++i) {
+        const auto lang = static_cast<AppLanguage>(i);
+        assert(I18n::languageFromCode(codes[i]) == lang);
+        assert(strcmp(I18n::getLanguageCode(lang), codes[i]) == 0);
+        assert(strcmp(I18n::getLanguageName(lang), names[i]) == 0);
+        I18n::setLanguage(lang);
+        assert(tr(MsgId::HOME_CAT_SETTINGS)[0]);
+        if (i) assert(strcmp(tr(MsgId::HOME_CAT_SETTINGS), "Settings") != 0);
+    }
+    assert(I18n::languageFromCode("pt-PT") != I18n::languageFromCode("pt-BR"));
 
     // 2. Default language should be EN
     I18n::setLanguage(AppLanguage::EN);
@@ -50,7 +72,7 @@ int main() {
     assert(strcmp(tr(MsgId::HOME_CAT_SETTINGS), "Настройки") == 0);
 
     // Unknown code should fallback to EN
-    assert(I18n::languageFromCode("de") == AppLanguage::EN);
+    assert(I18n::languageFromCode("zh-Hant") == AppLanguage::EN);
     assert(I18n::languageFromCode("unknown") == AppLanguage::EN);
 
     // 5b. Button-only USB-MSC exit hints differ from touch prompts

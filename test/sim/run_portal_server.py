@@ -620,6 +620,17 @@ def _():
     return r
 
 
+@case("settings: language selector offers all locales and preserves full locale codes")
+def _():
+    codes = ("de", "fr", "it", "pt-PT", "pt-BR", "zh-Hans", "ja", "ko")
+    r = run([get("/")] + [post("/save?ajax=1", {"lang": code}) for code in codes])
+    page = r.resp[0]["body"]
+    r.expect(all(f'value="{code}"' in page or f"value='{code}'" in page for code in codes), "all locales are listed")
+    r.expect(all(r.code(i) == 200 for i in range(1, len(codes) + 1)), "all codes accepted")
+    r.expect(cfg(r.sd).get("language") == "ko", "selected language is persisted")
+    return r
+
+
 @case("settings: a box left unchecked is saved as off, an empty password keeps the saved one")
 def _():
     r = run(

@@ -175,7 +175,7 @@ CASES = [
     ),
     (
         "settings: language by tap",
-        HOME_SETTINGS + SET_LANG + "T240,210;w",
+        HOME_SETTINGS + SET_LANG + "T240,175;w",  # Русский: second single-line row
         lambda log, sd: config(sd)["language"] in ("ru", 1, "RU"),
     ),
     (
