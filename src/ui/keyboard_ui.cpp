@@ -8,10 +8,11 @@
 #include "ui/kit/ui_kit.h"
 #include "platform/device.h"
 #include "actions.h"
+#include "keyboard_layers.h"
 
 // -----------------------------------------------------------------------------
 // Keyboard layouts: 4 rows of 12 keys each, UTF-8 (a key is one character).
-// The UI fonts carry ASCII, Latin-1 and Cyrillic: every key here is drawable.
+// The UI fonts cover the Latin accents and Cyrillic used by these layouts.
 // -----------------------------------------------------------------------------
 struct Layout {
     const char* rows[4];
@@ -29,8 +30,8 @@ static const Layout kLayouts[] = {
          {"!\"#;%:?*()_+", "ЙЦУКЕНГШЩЗХЪ", "ФЫВАПРОЛДЖЭ,", "ЯЧСМИТЬБЮЁ_@"},
          MsgId::KEYBOARD_LAYER_CYR,
          "абв"},
-        {{"1234567890¿¡", "áéíóúüñçàèìò", "ùâêîôûäëïöß'", "£«»¢§°\"-_.,@"},
-         {"1234567890¿¡", "ÁÉÍÓÚÜÑÇÀÈÌÒ", "ÙÂÊÎÔÛÄËÏÖß'", "£«»¢§°\"-_.,@"},
+        {{"1234567890¿¡", "áéíóúüñçàèìò", "ùâêîôûäëïöß'", "ã«»õœ°\"-_.,@"},
+         {"1234567890¿¡", "ÁÉÍÓÚÜÑÇÀÈÌÒ", "ÙÂÊÎÔÛÄËÏÖß'", "Ã«»ÕŒ°\"-_.,@"},
          MsgId::KEYBOARD_LAYER_ACC,
          "áéñ"},
         {{"1234567890!?", "@#$%^&*()-_+", "=[]{}\\|;:'\"~", "<>,./`:;!?-_"},
@@ -40,6 +41,9 @@ static const Layout kLayouts[] = {
 };
 static constexpr int kLayoutCount = sizeof(kLayouts) / sizeof(kLayouts[0]);
 static constexpr int kSymbolLayout = 3;
+static int s_extraLayers = 0;
+
+void KeyboardUI::setExtraLayers(int extras) { s_extraLayers = extras; }
 
 // The 12 keys of a row as separate UTF-8 characters.
 static void splitRow(const char* row, char out[12][5]) {
@@ -73,7 +77,30 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
     int selCol = 0;
     // Text in the interface's language starts in its alphabet; logins, passwords
     // and addresses in Latin letters.
-    int layout = (mode == KB_MODE_TEXT && I18n::getLanguage() == AppLanguage::RU) ? 1 : 0;
+    const int enabledLayers = KeyboardLayers::effective(s_extraLayers, I18n::getLanguage());
+    int layers[kLayoutCount];
+    int layerCount = 0;
+    for (int index = 0; index < kSymbolLayout; ++index) {
+        const bool forcedLatin = index == 0 && mode != KB_MODE_TEXT;
+        if (forcedLatin || (enabledLayers & (1 << index))) layers[layerCount++] = index;
+    }
+    layers[layerCount++] = kSymbolLayout;
+    auto nextLayout = [&](int current) {
+        for (int i = 0; i < layerCount; ++i)
+            if (layers[i] == current) return layers[(i + 1) % layerCount];
+        return layers[0];
+    };
+    int layout = layers[0];
+    if (mode == KB_MODE_TEXT && I18n::getLanguage() == AppLanguage::RU && (enabledLayers & KeyboardLayers::CYRILLIC))
+        layout = 1;
+    {
+        char names[48] = {};
+        for (int i = 0; i < layerCount; ++i) {
+            if (i) strlcat(names, ",", sizeof(names));
+            strlcat(names, kLayouts[layers[i]].label, sizeof(names));
+        }
+        Serial.printf("[Keyboard] layouts: %s\n", names);
+    }
     bool shift = false;
     String currentText = inOutText;
     char keyText[48][5];
@@ -173,7 +200,7 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
             if (b == 0)
                 label = layout == kSymbolLayout ? "—" : (shift ? "a/A" : "A/a");
             else if (b == 1)
-                label = kLayouts[(layout + 1) % kLayoutCount].label;   // the one it switches to
+                label = kLayouts[nextLayout(layout)].label;   // the one it switches to
             const bool sel = (selRow == 4 && selCol == b);
             const fi::FontId font = actionBtns[b].fontScale == 0 ? FontSmall : FontBody;
             if (sel)
@@ -285,7 +312,7 @@ bool KeyboardUI::show(const String& title, const String& subtitle, String& inOut
                             loadKeys();
                             renderKeyboard();
                         } else if (selCol == 1) { // the next layout: Latin, Cyrillic, accents, symbols
-                            layout = (layout + 1) % kLayoutCount;
+                            layout = nextLayout(layout);
                             if (layout == kSymbolLayout) shift = false;
                             loadKeys();
                             renderKeyboard();

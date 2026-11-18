@@ -767,5 +767,8 @@
     "SBB_BOOK_PERCENT": "Percentuale del libro",
     "SBB_CH_NUMBER": "Numero del capitolo (2/12)",
     "SBB_BOOK_PAGES": "Pagina del libro (12/340)",
-    "CATALOG_ONLINE": "Online"
+    "CATALOG_ONLINE": "Online",
+    "SETTINGS_ITEM_KEYBOARDS": "Tastiere",
+    "KEYBOARDS_CYRILLIC": "Cirillico (абв)",
+    "KEYBOARDS_ACCENTS": "Accenti latini (áéñ)"
 }

@@ -59,6 +59,7 @@ void drawUsbMscScreen(const AppContext& ctx, bool fullRefresh = false);
 void drawLanguageSettingsScreen(AppContext& ctx, bool fullRefresh = false);
 void updateLanguageSettingsSelection(AppContext& ctx, int prevIndex, int newIndex);
 void updateLanguageSettingsItem(AppContext& ctx, int index);
+void drawKeyboardSettingsScreen(AppContext& ctx, bool fullRefresh = false);
 
 // Settings -> Frontlight: sliders, Turn on / Turn off.
 void drawFrontlightScreen(AppContext& ctx, bool fullRefresh = false);

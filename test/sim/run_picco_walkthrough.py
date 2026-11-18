@@ -47,11 +47,11 @@ SB_TOP, SB_BOTTOM = "T240,127;", "T240,184;"  # "Top" and "Bottom" rows of the s
 CHOICE_1, CHOICE_3, CHOICE_5 = "T240,127;", "T240,245;", "T240,363;"  # rows of a list of values
 # Settings rows, in sections: Reading & screen (Reading, Screen orientation, Sleep
 # screen, Frontlight), Connections (Wi-Fi, Server, Sync, Web), Device (Language,
-# Settings file, then on the second page, a swipe up, Device information).
+# Keyboards, Sleep mode, then on the second page, a swipe up, Settings file and Device information).
 SET_PAGE2 = "W240,600,240,200;"
 SET_READING, SET_ORIENTATION, SET_LIGHT = "T240,145;", "T240,205;", "T240,265;"
 SET_WIFI, SET_SERVER, SET_SYNC = "T240,360;", "T240,420;", "T240,480;"
-SET_LANG, SET_SLEEP, SET_INFO = "T240,635;", "T240,695;", SET_PAGE2 + "T240,111;"
+SET_LANG, SET_SLEEP, SET_INFO = "T240,635;", "T240,755;", SET_PAGE2 + "T240,170;"
 WIFI_SCAN, WIFI_SSID = "T240,135;", "T240,202;"  # rows of the Wi-Fi screen
 FL_BRIGHT_PLUS, FL_ONOFF, FL_OUTSIDE = "T424,138;", "T240,329;", "T240,600;"  # the frontlight panel (top edge swipe)
 READING_STATUS_BAR = "T240,135;"  # its first row

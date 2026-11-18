@@ -36,11 +36,14 @@ enum AppState {
     STATE_CHOICE,   // a setting with a few values, as a list (Choices::Kind in choiceKind)
     STATE_SB_TOP,   // status bar: the top line's items, as switches
     STATE_SB_BOTTOM,  // status bar: the bottom line's items, as switches
-    STATE_CATALOG_SOURCES
+    STATE_CATALOG_SOURCES,
+    STATE_KEYBOARD_SETTINGS
 };
 
 // Status bar, bottom line: what it shows (AppConfig::sbBottomItems, SbBottomItem bits).
 #include "../core/status_line.h"
+
+#include "../ui/keyboard_layers.h"
 
 struct AppConfig {
     String wifiSsid = DEFAULT_WIFI_SSID;
@@ -54,6 +57,7 @@ struct AppConfig {
     bool syncOnClose = true;   // upload the position in the background after closing a book
     bool syncOnWake = false;   // sync the current book in the background after waking up
     bool coverOnSleep = true;
+    int keyboardExtras = 0;   // KeyboardLayers bits added to the language's own keyboards
     int sleepCoverFitMode = 0; // 0 = Scale / Fit (Keep aspect ratio), 1 = Crop / Fill (Fullscreen crop)
     int readerFontSize = 2;   // book font size index: 0 = 12 pt ... 18 = 48 pt (FontEngine)
     String readerFont;        // book font family: "" = the built-in one, else one installed from /fonts
@@ -117,6 +121,7 @@ int orientationSettingIndex();
 int usbMscSettingIndex();
 int touchWakeSettingIndex();
 int webSettingIndex();
+int keyboardSettingIndex();   // Settings -> Keyboards: the last item, shown after Language
 int readingSettingIndex();   // Settings -> Reading: just before screen orientation
 const int NUM_WIFI_SETTINGS_ITEMS = 5;
 const int NUM_WEB_SETTINGS_ITEMS = 2;
@@ -159,6 +164,7 @@ struct AppContext {
     int selectedOrientationIndex = 0;
     int choiceKind = 0;            // which setting STATE_CHOICE lists (Choices::Kind)
     int selectedChoiceIndex = 0;
+    int selectedKeyboardIndex = 0;
     int selectedSbTopIndex = 0;
     int selectedSbBottomIndex = 0;
     int selectedSdSettingIndex = 0;

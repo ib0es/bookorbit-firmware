@@ -167,6 +167,20 @@ void drawListScreen(const AppContext& ctx, const char* title, ItemDefFn def, int
     Serial.printf("[UI] %s finished in %lu ms.\n", logName, millis() - t0);
 }
 
+static String keyboardSummary(const AppContext& ctx) {
+    const int mask = KeyboardLayers::effective(ctx.config.keyboardExtras, ctx.config.language);
+    String summary;
+    auto add = [&](int bit, const char* label) {
+        if (!(mask & bit)) return;
+        if (summary.length()) summary += " \xC2\xB7 ";
+        summary += label;
+    };
+    add(KeyboardLayers::LATIN, "abc");
+    add(KeyboardLayers::CYRILLIC, "\xD0\xB0\xD0\xB1\xD0\xB2");
+    add(KeyboardLayers::ACCENTS, "\xC3\xA1\xC3\xA9\xC3\xB1");
+    return summary;
+}
+
 SettingItemDef getSettingItemDef(const AppContext& ctx, int index) {
     if (index == usbMscSettingIndex()) {
         return valueRow(tr(MsgId::SETTINGS_ITEM_USB_MSC),
@@ -177,6 +191,9 @@ SettingItemDef getSettingItemDef(const AppContext& ctx, int index) {
     }
     if (index == webSettingIndex()) {
         return valueRow(tr(MsgId::SETTINGS_ITEM_WEB), "");
+    }
+    if (index == keyboardSettingIndex()) {
+        return valueRow(tr(MsgId::SETTINGS_ITEM_KEYBOARDS), keyboardSummary(ctx));
     }
     if (index == readingSettingIndex()) {
         return valueRow(tr(MsgId::SETTINGS_ITEM_READING), "");
@@ -420,6 +437,12 @@ SettingItemDef getUsbMscSettingItemDef(const AppContext& ctx, int index) {
     return switchRow(tr(MsgId::USB_MSC_ITEM_TOGGLE), ctx.config.usbMscEnabled);
 }
 
+SettingItemDef getKeyboardItemDef(const AppContext& ctx, int i) {
+    const int bit = KeyboardLayers::optionBit(ctx.config.language, i);
+    return switchRow(tr(bit == KeyboardLayers::CYRILLIC ? MsgId::KEYBOARDS_CYRILLIC : MsgId::KEYBOARDS_ACCENTS),
+                     (ctx.config.keyboardExtras & bit) != 0);
+}
+
 SettingItemDef getLanguageItemDef(const AppContext& ctx, int i) {
     const auto language = static_cast<AppLanguage>(i);
     return choiceRow(I18n::getLanguageName(language), nullptr, ctx.config.language == language);
@@ -555,6 +578,12 @@ void drawUsbMscScreen(const AppContext& ctx, bool fullRefresh) {
 void drawLanguageSettingsScreen(AppContext& ctx, bool fullRefresh) {
     drawListScreen(ctx, tr(MsgId::LANG_SCREEN_TITLE), getLanguageItemDef, (int)AppLanguage::COUNT,
                    ctx.selectedLanguageIndex, nullptr, fullRefresh, "drawLanguageSettingsScreen");
+}
+
+void drawKeyboardSettingsScreen(AppContext& ctx, bool fullRefresh) {
+    drawListScreen(ctx, tr(MsgId::SETTINGS_ITEM_KEYBOARDS), getKeyboardItemDef,
+                   KeyboardLayers::optionCount(ctx.config.language), ctx.selectedKeyboardIndex, nullptr, fullRefresh,
+                   "drawKeyboardSettingsScreen");
 }
 
 void drawOrientationSettingsScreen(AppContext& ctx, bool fullRefresh) {

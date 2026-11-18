@@ -46,16 +46,16 @@ SB_TOP, SB_BOTTOM = "T240,127;", "T240,184;"  # "Top" and "Bottom" rows
 
 # Settings rows (13 on X4 Pro), in sections: Reading & screen (Reading, Screen
 # orientation, Sleep screen, Frontlight), Connections (Wi-Fi, Server, Sync, Web,
-# USB drive), Device (Language; on the second page Touch wake, Settings file,
-# Device information).
+# USB drive), Device (Language, Keyboards; on the second page Touch wake, Sleep mode,
+# Settings file, Device information).
 SET_PAGE2 = "W240,600,240,200;"
 SET_READING, SET_ORIENTATION, SET_LIGHT = "T240,145;", "T240,205;", "T240,265;"
 SET_WIFI, SET_SERVER, SET_SYNC = "T240,360;", "T240,420;", "T240,480;"
 SET_USB_MSC = "T240,600;"
 SET_LANG = "T240,695;"
-SET_TOUCH_WAKE = "T240,755;"
-SET_SLEEP = SET_PAGE2 + "T240,111;"
-SET_INFO = SET_PAGE2 + "T240,229;"
+SET_TOUCH_WAKE = SET_PAGE2 + "T240,111;"
+SET_SLEEP = SET_PAGE2 + "T240,170;"
+SET_INFO = SET_PAGE2 + "T240,288;"
 READING_STATUS_BAR = "T240,135;"
 ORIENT_PORTRAIT_FLIPPED = "T240,245;"  # Settings -> Screen orientation: its third row
 WIFI_SSID = "T240,202;"  # second row of the Wi-Fi screen

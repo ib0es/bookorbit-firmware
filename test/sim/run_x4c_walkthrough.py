@@ -25,7 +25,7 @@ HOME_BOOK = "UUU"  # From the Settings tile back to the book card.
 READER_MENU = "C"
 
 SETTINGS = "UC"  # Home -> Settings (the last tile). Rows: 0 Reading, 1 Orientation, 2 Sleep
-# cover, 3 Wi-Fi, 4 Server, 5 Sync, 6 Web, 7 USB Drive, 8 Language, 9 Settings file, 10 Device info
+# cover, 3 Wi-Fi, 4 Server, 5 Sync, 6 Web, 7 USB Drive, 8 Language, 9 Keyboards, 10 Settings file, 11 Device info
 READING = SETTINGS + "C"  # -> Reading (row 0)
 
 
@@ -57,7 +57,7 @@ CASES = [
         {"SIM_RTC_UTC": "1735689600", "SIM_IMU_PRESENT": "1"},
     ),
     (
-        "settings: 11 rows in sections (Reading=0, Orientation=1, USB Drive=6, Device Info=10)",
+        "settings: 12 rows in sections (Reading=0, Orientation=1, USB Drive=6, Keyboards=8, Device Info=11)",
         SETTINGS + "UC" + "B",
         lambda log, sd: (
             "device info" in log and "[RTC] Ready (UTC 1735689600)" in log and "[UI] drawSettingsScreen finished" in log
@@ -80,7 +80,7 @@ CASES = [
     (
         "usb-msc: pure button workflow (disable guard, enable, host events, CONFIRM & BACK exits)",
         SETTINGS
-        + "UUUUUC"  # Settings -> wrap up to USB Drive (row 6) -> submenu (0 = Connect)
+        + "UUUUUUC"  # Settings -> wrap up to USB Drive (row 6) -> submenu (0 = Connect)
         + "DC"  # Toggle USB Drive Mode OFF
         + "UC"  # Attempt Connect while disabled -> modal guard
         + "B"  # Close modal
@@ -121,7 +121,7 @@ CASES = [
     # (3 s in this case), the mode is left; the usual idle sleep follows.
     (
         "usb-msc: no computer for the idle timeout leaves the mode, then the device sleeps (B8)",
-        SETTINGS + "UUUUUCC" + "www",
+        SETTINGS + "UUUUUUCC" + "www",
         lambda log, sd: (
             "Detaching filesystem" in log
             and "No computer for the idle timeout: leaving USB mass storage" in log
@@ -133,7 +133,7 @@ CASES = [
     ),
     (
         "usb-msc: POWER exits USB-MSC safely without sleeping, then POWER sleeps/wakes normally",
-        SETTINGS + "UUUUUCC" + "P" + "B" + "PZ",
+        SETTINGS + "UUUUUUCC" + "P" + "B" + "PZ",
         lambda log, sd: (
             "Detaching filesystem" in log
             and log.count("Entering Deep Sleep") == 1

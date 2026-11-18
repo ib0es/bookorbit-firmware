@@ -767,5 +767,8 @@
     "SBB_BOOK_PERCENT": "책 읽은 비율",
     "SBB_CH_NUMBER": "장 번호 (2/12)",
     "SBB_BOOK_PAGES": "책 전체 페이지 (12/340)",
-    "CATALOG_ONLINE": "온라인"
+    "CATALOG_ONLINE": "온라인",
+    "SETTINGS_ITEM_KEYBOARDS": "키보드",
+    "KEYBOARDS_CYRILLIC": "키릴 문자 (абв)",
+    "KEYBOARDS_ACCENTS": "라틴 악센트 문자 (áéñ)"
 }

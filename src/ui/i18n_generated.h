@@ -789,7 +789,10 @@ enum class MsgId : uint16_t {
     SBB_CH_NUMBER = 766,
     SBB_BOOK_PAGES = 767,
     CATALOG_ONLINE = 768,
-    COUNT = 769
+    SETTINGS_ITEM_KEYBOARDS = 769,
+    KEYBOARDS_CYRILLIC = 770,
+    KEYBOARDS_ACCENTS = 771,
+    COUNT = 772
 };
 
 // Language: English (en)
@@ -1563,6 +1566,9 @@ static const char* const STRINGS_EN[(size_t)MsgId::COUNT] PROGMEM = {
     /* SBB_CH_NUMBER */ "Chapter number (2/12)",
     /* SBB_BOOK_PAGES */ "Book page (12/340)",
     /* CATALOG_ONLINE */ "Online",
+    /* SETTINGS_ITEM_KEYBOARDS */ "Keyboards",
+    /* KEYBOARDS_CYRILLIC */ "Cyrillic (абв)",
+    /* KEYBOARDS_ACCENTS */ "Latin accents (áéñ)",
 };
 
 // Language: Russian (ru)
@@ -2336,6 +2342,9 @@ static const char* const STRINGS_RU[(size_t)MsgId::COUNT] PROGMEM = {
     /* SBB_CH_NUMBER */ "Номер главы (2/12)",
     /* SBB_BOOK_PAGES */ "Страница книги (12/340)",
     /* CATALOG_ONLINE */ "Онлайн",
+    /* SETTINGS_ITEM_KEYBOARDS */ "Клавиатуры",
+    /* KEYBOARDS_CYRILLIC */ "Кириллица (абв)",
+    /* KEYBOARDS_ACCENTS */ "Латиница с акцентами (áéñ)",
 };
 
 // Language: Spanish (es)
@@ -3109,6 +3118,9 @@ static const char* const STRINGS_ES[(size_t)MsgId::COUNT] PROGMEM = {
     /* SBB_CH_NUMBER */ "Número de capítulo (2/12)",
     /* SBB_BOOK_PAGES */ "Página del libro (12/340)",
     /* CATALOG_ONLINE */ "En línea",
+    /* SETTINGS_ITEM_KEYBOARDS */ "Teclados",
+    /* KEYBOARDS_CYRILLIC */ "Cirílico (абв)",
+    /* KEYBOARDS_ACCENTS */ "Acentos latinos (áéñ)",
 };
 
 // Language: German (de)
@@ -3882,6 +3894,9 @@ static const char* const STRINGS_DE[(size_t)MsgId::COUNT] PROGMEM = {
     /* SBB_CH_NUMBER */ "Kapitelnummer (2/12)",
     /* SBB_BOOK_PAGES */ "Buchseite (12/340)",
     /* CATALOG_ONLINE */ "Online",
+    /* SETTINGS_ITEM_KEYBOARDS */ "Tastaturen",
+    /* KEYBOARDS_CYRILLIC */ "Kyrillisch (абв)",
+    /* KEYBOARDS_ACCENTS */ "Lateinische Akzente (áéñ)",
 };
 
 // Language: French (fr)
@@ -4655,6 +4670,9 @@ static const char* const STRINGS_FR[(size_t)MsgId::COUNT] PROGMEM = {
     /* SBB_CH_NUMBER */ "Numéro du chapitre (2/12)",
     /* SBB_BOOK_PAGES */ "Page du livre (12/340)",
     /* CATALOG_ONLINE */ "En ligne",
+    /* SETTINGS_ITEM_KEYBOARDS */ "Claviers",
+    /* KEYBOARDS_CYRILLIC */ "Cyrillique (абв)",
+    /* KEYBOARDS_ACCENTS */ "Accents latins (áéñ)",
 };
 
 // Language: Italian (it)
@@ -5428,6 +5446,9 @@ static const char* const STRINGS_IT[(size_t)MsgId::COUNT] PROGMEM = {
     /* SBB_CH_NUMBER */ "Numero del capitolo (2/12)",
     /* SBB_BOOK_PAGES */ "Pagina del libro (12/340)",
     /* CATALOG_ONLINE */ "Online",
+    /* SETTINGS_ITEM_KEYBOARDS */ "Tastiere",
+    /* KEYBOARDS_CYRILLIC */ "Cirillico (абв)",
+    /* KEYBOARDS_ACCENTS */ "Accenti latini (áéñ)",
 };
 
 // Language: European Portuguese (pt-PT)
@@ -6201,6 +6222,9 @@ static const char* const STRINGS_PT_PT[(size_t)MsgId::COUNT] PROGMEM = {
     /* SBB_CH_NUMBER */ "Número do capítulo (2/12)",
     /* SBB_BOOK_PAGES */ "Página do livro (12/340)",
     /* CATALOG_ONLINE */ "Online",
+    /* SETTINGS_ITEM_KEYBOARDS */ "Teclados",
+    /* KEYBOARDS_CYRILLIC */ "Cirílico (абв)",
+    /* KEYBOARDS_ACCENTS */ "Acentos latinos (áéñ)",
 };
 
 // Language: Brazilian Portuguese (pt-BR)
@@ -6974,6 +6998,9 @@ static const char* const STRINGS_PT_BR[(size_t)MsgId::COUNT] PROGMEM = {
     /* SBB_CH_NUMBER */ "Número do capítulo (2/12)",
     /* SBB_BOOK_PAGES */ "Página do livro (12/340)",
     /* CATALOG_ONLINE */ "Online",
+    /* SETTINGS_ITEM_KEYBOARDS */ "Teclados",
+    /* KEYBOARDS_CYRILLIC */ "Cirílico (абв)",
+    /* KEYBOARDS_ACCENTS */ "Acentos latinos (áéñ)",
 };
 
 // Language: Simplified Chinese (zh-Hans)
@@ -7747,6 +7774,9 @@ static const char* const STRINGS_ZH_HANS[(size_t)MsgId::COUNT] PROGMEM = {
     /* SBB_CH_NUMBER */ "章节编号 (2/12)",
     /* SBB_BOOK_PAGES */ "全书页码 (12/340)",
     /* CATALOG_ONLINE */ "在线",
+    /* SETTINGS_ITEM_KEYBOARDS */ "键盘",
+    /* KEYBOARDS_CYRILLIC */ "西里尔字母 (абв)",
+    /* KEYBOARDS_ACCENTS */ "拉丁变音字母 (áéñ)",
 };
 
 // Language: Japanese (ja)
@@ -8520,6 +8550,9 @@ static const char* const STRINGS_JA[(size_t)MsgId::COUNT] PROGMEM = {
     /* SBB_CH_NUMBER */ "章番号（2/12）",
     /* SBB_BOOK_PAGES */ "書籍全体のページ（12/340）",
     /* CATALOG_ONLINE */ "オンライン",
+    /* SETTINGS_ITEM_KEYBOARDS */ "キーボード",
+    /* KEYBOARDS_CYRILLIC */ "キリル文字 (абв)",
+    /* KEYBOARDS_ACCENTS */ "ラテン文字のアクセント (áéñ)",
 };
 
 // Language: Korean (ko)
@@ -9293,6 +9326,9 @@ static const char* const STRINGS_KO[(size_t)MsgId::COUNT] PROGMEM = {
     /* SBB_CH_NUMBER */ "장 번호 (2/12)",
     /* SBB_BOOK_PAGES */ "책 전체 페이지 (12/340)",
     /* CATALOG_ONLINE */ "온라인",
+    /* SETTINGS_ITEM_KEYBOARDS */ "키보드",
+    /* KEYBOARDS_CYRILLIC */ "키릴 문자 (абв)",
+    /* KEYBOARDS_ACCENTS */ "라틴 악센트 문자 (áéñ)",
 };
 
 static const char* const* const I18N_ALL_TABLES[(size_t)AppLanguage::COUNT] = {

@@ -69,7 +69,8 @@ static void testX4ClassicDefaultsAndSettingsLayout() {
     CHECK(usbMscSettingIndex() == 9);
     CHECK(touchWakeSettingIndex() == -1);
     CHECK(webSettingIndex() == 10);
-    CHECK(settingsItemCount() == 11);
+    CHECK(keyboardSettingIndex() == 11);
+    CHECK(settingsItemCount() == 12);
     CHECK(cfg.sleepHoldSec == 0);
     CHECK(cfg.wakeHoldSec == 3);
 }
