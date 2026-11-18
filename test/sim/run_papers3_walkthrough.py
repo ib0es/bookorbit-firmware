@@ -36,6 +36,13 @@ def pages(log):
 
 CASES: list[tuple[str, str, Callable[..., bool], Any, Any]] = [
     (
+        "settings: language by tap without physical buttons",
+        "T450,860;T270,580;T270,175;",
+        lambda log, saved: "drawLanguageSettingsScreen" in log and saved.get("language") == "ru",
+        {"language": "en"},
+        {},
+    ),
+    (
         "boot: papers3 reports M5STACK PAPERS3, touch=1, no power button, no up/down",
         "",
         lambda log, sd: "[BOOT] device=M5STACK PAPERS3" in log and "touch=1" in log,
@@ -87,7 +94,7 @@ def run(script, config_mods=None, srv=None, env=None, setup=None):
         if env:
             run_env.update(env)
         p = subprocess.run([BIN, frames, sd, script], capture_output=True, text=True, env=run_env)
-        return p.stdout + p.stderr, sd, p.returncode
+        return p.stdout + p.stderr, config(sd), p.returncode
     finally:
         shutil.rmtree(tmp)
 
@@ -100,14 +107,14 @@ def main():
         return 2
     failed = 0
     for name, script, check, config_mods, env in CASES:
-        log, sd, rc = run(script, config_mods, env=env)
+        log, saved, rc = run(script, config_mods, env=env)
         if rc != 0:
             print(f"FAIL  {name} (exit code {rc})")
             print(log[-1000:])
             failed += 1
             continue
         try:
-            passed = check(log, sd)
+            passed = check(log, saved)
         except Exception as e:
             print(f"FAIL  {name} (exception: {e})")
             failed += 1
