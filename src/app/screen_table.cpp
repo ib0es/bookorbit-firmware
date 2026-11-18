@@ -30,6 +30,8 @@ const ScreenEntry kScreens[] = {
          &C::selectedServerSettingIndex, true},
         {STATE_LANGUAGE_SETTINGS, SettingsScreen::handleLanguageSettingsEvent, drawLanguageSettingsScreen,
          &C::selectedLanguageIndex, true},
+        {STATE_KEYBOARD_SETTINGS, SettingsScreen::handleKeyboardSettingsEvent, drawKeyboardSettingsScreen,
+         &C::selectedKeyboardIndex, true},
         {STATE_TOC, ReaderScreen::handleTocEvent, drawTocScreen, &C::selectedTocIndex, false},
         {STATE_READER_MENU, ReaderScreen::handleMenuEvent, drawReaderMenuScreen, &C::selectedReaderMenuIndex, true},
         {STATE_FRONTLIGHT_SETTINGS, SettingsScreen::handleFrontlightEvent, drawFrontlightScreen, nullptr, false},

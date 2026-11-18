@@ -767,5 +767,8 @@
     "SBB_BOOK_PERCENT": "書籍の進捗率",
     "SBB_CH_NUMBER": "章番号（2/12）",
     "SBB_BOOK_PAGES": "書籍全体のページ（12/340）",
-    "CATALOG_ONLINE": "オンライン"
+    "CATALOG_ONLINE": "オンライン",
+    "SETTINGS_ITEM_KEYBOARDS": "キーボード",
+    "KEYBOARDS_CYRILLIC": "キリル文字 (абв)",
+    "KEYBOARDS_ACCENTS": "ラテン文字のアクセント (áéñ)"
 }

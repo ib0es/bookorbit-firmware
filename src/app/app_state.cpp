@@ -28,7 +28,9 @@ int webSettingIndex() {
     return orientationSettingIndex() + 1 + (hasUsbMscSetting() ? 1 : 0) + (hasTouchWakeSetting() ? 1 : 0);
 }
 
-int settingsItemCount() { return webSettingIndex() + 1; }
+int keyboardSettingIndex() { return webSettingIndex() + 1; }
+
+int settingsItemCount() { return keyboardSettingIndex() + 1; }
 
 namespace {
 // Display order: {item, section starting here}. Items a board lacks are skipped.
@@ -50,6 +52,7 @@ int settingsOrder(int* items, int* sections) {
     add(webSettingIndex(), -1);
     add(usbMscSettingIndex(), -1);
     add(0, 2);    // language
+    add(keyboardSettingIndex(), -1);
     add(touchWakeSettingIndex(), -1);
     add(3, -1);   // sleep mode (device section)
     add(4, -1);   // settings file

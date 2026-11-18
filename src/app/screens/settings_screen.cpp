@@ -120,6 +120,12 @@ void executeSetting(AppContext& ctx, int index) {
         SettingsScreen::openWebSettings(ctx, STATE_SETTINGS);
         return;
     }
+    if (index == keyboardSettingIndex()) {
+        ctx.selectedKeyboardIndex = 0;
+        ctx.currentState = STATE_KEYBOARD_SETTINGS;
+        drawKeyboardSettingsScreen(ctx, false);
+        return;
+    }
     if (index == readingSettingIndex()) {
         s_readingSettingsReturnState = STATE_SETTINGS;
         ctx.selectedReadingSettingIndex = 0;
@@ -779,6 +785,43 @@ void handleSleepSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
 void handleSleepCoverSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
     handleMenu(ctx, event, ctx.selectedSleepCoverIndex, NUM_SLEEP_COVER_ITEMS, updateSleepCoverSettingsSelection,
                executeSleepCoverSetting, STATE_SLEEP_SETTINGS, drawSleepSettingsScreen, false);
+}
+
+namespace {
+void flipKeyboardItem(AppContext& ctx, int index) {
+    AppConfig& config = ctx.config;
+    config.keyboardExtras ^= KeyboardLayers::optionBit(config.language, index);
+    KeyboardUI::setExtraLayers(config.keyboardExtras);
+    config.save();
+    drawKeyboardSettingsScreen(ctx, false);
+}
+}  // namespace
+
+void handleKeyboardSettingsEvent(AppContext& ctx, const ButtonEvent& event) {
+    if (event.action != ACTION_CLICK) return;
+    int& selected = ctx.selectedKeyboardIndex;
+    const int count = KeyboardLayers::optionCount(ctx.config.language);
+    switch (Actions::of(event)) {
+        case Action::Down:
+            selected = (selected + 1) % count;
+            drawKeyboardSettingsScreen(ctx, false);
+            break;
+        case Action::Up:
+            selected = (selected - 1 + count) % count;
+            drawKeyboardSettingsScreen(ctx, false);
+            break;
+        case Action::Select:
+        case Action::Next:
+            flipKeyboardItem(ctx, selected);
+            break;
+        case Action::Back:
+        case Action::Prev:
+            ctx.currentState = STATE_SETTINGS;
+            drawSettingsScreen(ctx, false);
+            break;
+        default:
+            break;
+    }
 }
 
 void handleLanguageSettingsEvent(AppContext& ctx, const ButtonEvent& event) {

@@ -67,6 +67,7 @@ void openChoice(AppContext& ctx, int kind);
 void handleSbTopEvent(AppContext& ctx, const ButtonEvent& event);
 void handleSbBottomEvent(AppContext& ctx, const ButtonEvent& event);
 void handleLanguageSettingsEvent(AppContext& ctx, const ButtonEvent& event);
+void handleKeyboardSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleSdSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleUsbMscSettingsEvent(AppContext& ctx, const ButtonEvent& event);
 void handleUsbMscEvent(AppContext& ctx, const ButtonEvent& event);

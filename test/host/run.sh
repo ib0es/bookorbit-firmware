@@ -19,6 +19,7 @@ build() {   # name sources...
     (cd "$OUT/$name" && $CXX $FLAGS "$@" -o "$OUT/$name/test")
 }
 build buttonrepeat -include "$ROOT/test/sim/prelude.h" -I"$ROOT/include" -DFREEINK_DEVICE_X4=1 "$ROOT/test/host/test_button_repeat.cpp" "$ROOT/src/platform/hal/buttons.cpp"
+build keyboardlayers "$ROOT/test/host/test_keyboard_layers.cpp"
 build statusline "$ROOT/test/host/test_status_line.cpp"
 build backgroundtask -pthread "$ROOT/test/host/test_background_task.cpp"
 build portalstream "$ROOT/test/host/test_template_stream.cpp"
@@ -63,6 +64,7 @@ build_fib ttf "$ROOT/test/host/test_ttf_font.cpp" "$ROOT/src/reader/engine/ttf_b
 build_fib counter "$ROOT/test/host/test_engine_text_counter.cpp" "$ROOT/src/reader/engine/engine_text_counter.cpp" "$ROOT/src/core/epub_cfi.cpp"
 
 rc=0
+echo "== Keyboard layers"; "$OUT/keyboardlayers/test" || rc=1
 echo "== Status line"; "$OUT/statusline/test" || rc=1
 echo "== Button repeat"; "$OUT/buttonrepeat/test" || rc=1
 echo "== BackgroundTask"; "$OUT/backgroundtask/test" || rc=1

@@ -767,5 +767,8 @@
     "SBB_BOOK_PERCENT": "Процент книги",
     "SBB_CH_NUMBER": "Номер главы (2/12)",
     "SBB_BOOK_PAGES": "Страница книги (12/340)",
-    "CATALOG_ONLINE": "Онлайн"
+    "CATALOG_ONLINE": "Онлайн",
+    "SETTINGS_ITEM_KEYBOARDS": "Клавиатуры",
+    "KEYBOARDS_CYRILLIC": "Кириллица (абв)",
+    "KEYBOARDS_ACCENTS": "Латиница с акцентами (áéñ)"
 }

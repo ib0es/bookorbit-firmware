@@ -1,4 +1,5 @@
 #include "app_controller.h"
+#include "../ui/keyboard_ui.h"
 #include "../platform/device.h"
 #include "../platform/hal/mem_stats.h"
 #include <Preferences.h>
@@ -232,6 +233,7 @@ void AppController::setup() {
 void AppController::applyConfig() {
     const AppConfig& c = _ctx.config;
     I18n::setLanguage(c.language);
+    KeyboardUI::setExtraLayers(c.keyboardExtras);
     Frontlight.apply(c.frontlight, c.frontlightWarm);
     BoardImu.setActive(c.autoRotate);
     _autoRotate.reset();

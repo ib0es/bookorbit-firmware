@@ -767,5 +767,8 @@
     "SBB_BOOK_PERCENT": "全书进度百分比",
     "SBB_CH_NUMBER": "章节编号 (2/12)",
     "SBB_BOOK_PAGES": "全书页码 (12/340)",
-    "CATALOG_ONLINE": "在线"
+    "CATALOG_ONLINE": "在线",
+    "SETTINGS_ITEM_KEYBOARDS": "键盘",
+    "KEYBOARDS_CYRILLIC": "西里尔字母 (абв)",
+    "KEYBOARDS_ACCENTS": "拉丁变音字母 (áéñ)"
 }

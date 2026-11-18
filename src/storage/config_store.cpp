@@ -134,6 +134,7 @@ bool ConfigStore::load(AppConfig& cfg) {
                 intIn("utc_offset_min", cfg.utcOffsetMin, -720, 840);
                 boolIn("usb_msc", cfg.usbMscEnabled);
                 boolIn("touch_wake", cfg.touchWakeEnabled);
+                intIn("keyboard_extras", cfg.keyboardExtras, 0, KeyboardLayers::ALL);
                 intIn("sleep_hold_sec", cfg.sleepHoldSec, 0, 5);
                 intIn("wake_hold_sec", cfg.wakeHoldSec, 0, 5);
 
@@ -253,6 +254,7 @@ bool ConfigStore::save(const AppConfig& cfg) {
     doc["wake_hold_sec"] = cfg.wakeHoldSec;
     doc["full_refresh_every"] = cfg.fullRefreshEvery;
     doc["language"] = I18n::getLanguageCode(cfg.language);
+    doc["keyboard_extras"] = cfg.keyboardExtras;
     const bool ok = JsonFile::write("/config.json", doc, /*pretty=*/true);
     if (ok) {
         Serial.println("[Storage] Config saved to MicroSD.");

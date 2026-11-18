@@ -1005,15 +1005,57 @@ CASES = [
         "settings: a language takes effect without a 'Saved' dialog (U5)",
         None,
         {},
-        SETTINGS + "UUUUC" + "D" + "C",  # Language: fourth from the end
+        SETTINGS + "UUUUUC" + "D" + "C",  # Language: fifth from the end
         language_direct,
     ),
     (
         "settings: select Korean from the far end of the language list",
         None,
         {},
-        SETTINGS + "UUUUCUC",
+        SETTINGS + "UUUUUCUC",  # the list wraps up to Korean
         lambda log, sd: cfg(sd)["language"] == "ko" and "drawSettingsScreen" in after(log, ">>> CONFIRM"),
+    ),
+    (
+        "keyboards: English offers Latin and symbols",
+        None,
+        {},
+        SEARCH + "[h]" + "C",
+        lambda log, sd: "[Keyboard] layouts: abc,#+=" in log and "Search" not in log,
+    ),
+    (
+        "keyboards: Russian text fields cycle Latin, Cyrillic, symbols",
+        russian,
+        {},
+        SEARCH + "[h]" + "C",
+        lambda log, sd: "[Keyboard] layouts: abc,абв,#+=" in log and "Search" not in log,
+    ),
+    (
+        "keyboards: Spanish offers Latin accents",
+        lambda sd: merge_config(sd, language="es"),
+        {},
+        SEARCH + "[h]" + "C",
+        lambda log, sd: "[Keyboard] layouts: abc,áéñ,#+=" in log and "Search" not in log,
+    ),
+    (
+        "keyboards: Korean has no keyboard of its own yet",
+        lambda sd: merge_config(sd, language="ko"),
+        {},
+        SEARCH + "[h]" + "C",
+        lambda log, sd: "[Keyboard] layouts: abc,#+=" in log and "Search" not in log,
+    ),
+    (
+        "keyboards: Cyrillic added for English is saved and offered",
+        None,
+        {},
+        SETTINGS + "UUUUC" + "C" + "BB" + "L" + SEARCH + "[h]" + "C",
+        lambda log, sd: cfg(sd).get("keyboard_extras") == 2 and "[Keyboard] layouts: abc,абв,#+=" in log,
+    ),
+    (
+        "keyboards: Russian already has Cyrillic, so only accents can be added",
+        russian,
+        {},
+        SETTINGS + "UUUUC" + "C" + "BB" + "L" + SEARCH + "[h]" + "C",
+        lambda log, sd: cfg(sd).get("keyboard_extras") == 4 and "[Keyboard] layouts: abc,абв,áéñ,#+=" in log,
     ),
     (
         "settings file: reload applies everything in config.json (U7, B12)",
