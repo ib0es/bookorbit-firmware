@@ -770,5 +770,9 @@
     "CATALOG_ONLINE": "En ligne",
     "SETTINGS_ITEM_KEYBOARDS": "Claviers",
     "KEYBOARDS_CYRILLIC": "Cyrillique (абв)",
-    "KEYBOARDS_ACCENTS": "Accents latins (áéñ)"
+    "KEYBOARDS_ACCENTS": "Accents latins (áéñ)",
+    "SYNC_STAGE_PROGRESS_FMT": "-> Progression de la lecture : %d sur %d",
+    "SYNC_STAGE_CATALOG_FMT": "-> Récupération du catalogue : %d livres",
+    "SYNC_STAGE_MATCH_FMT": "-> Vérification des livres : %d sur %d",
+    "SYNC_STAGE_COVERS_FMT": "-> Téléchargement des couvertures : %d sur %d"
 }

@@ -486,6 +486,7 @@ bool BookOrbitClient::fetchCatalogFromUrl(const String& serverHost, const String
                     b.coverUrl = e.coverUrl.c_str();
                     b.library = libraryName;
                     outBooks.push_back(b);
+                    if (onCatalogProgress) onCatalogProgress((int)outBooks.size());
                     Serial.printf("[OPDS] Found book: %s (id=%s, fileId=%d, %u formats, lib=%s)\n", b.title.c_str(),
                                   b.id.c_str(), b.fileId, (unsigned)b.formats.size(), b.library.c_str());
                     return true;

@@ -770,5 +770,9 @@
     "CATALOG_ONLINE": "온라인",
     "SETTINGS_ITEM_KEYBOARDS": "키보드",
     "KEYBOARDS_CYRILLIC": "키릴 문자 (абв)",
-    "KEYBOARDS_ACCENTS": "라틴 악센트 문자 (áéñ)"
+    "KEYBOARDS_ACCENTS": "라틴 악센트 문자 (áéñ)",
+    "SYNC_STAGE_PROGRESS_FMT": "-> 읽기 진행: %d / %d",
+    "SYNC_STAGE_CATALOG_FMT": "-> 카탈로그 가져오는 중: 책 %d권",
+    "SYNC_STAGE_MATCH_FMT": "-> 도서 확인 중: %d / %d",
+    "SYNC_STAGE_COVERS_FMT": "-> 표지 다운로드 중: %d / %d"
 }

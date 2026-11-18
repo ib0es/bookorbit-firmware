@@ -792,7 +792,11 @@ enum class MsgId : uint16_t {
     SETTINGS_ITEM_KEYBOARDS = 769,
     KEYBOARDS_CYRILLIC = 770,
     KEYBOARDS_ACCENTS = 771,
-    COUNT = 772
+    SYNC_STAGE_PROGRESS_FMT = 772,
+    SYNC_STAGE_CATALOG_FMT = 773,
+    SYNC_STAGE_MATCH_FMT = 774,
+    SYNC_STAGE_COVERS_FMT = 775,
+    COUNT = 776
 };
 
 // Language: English (en)
@@ -1569,6 +1573,10 @@ static const char* const STRINGS_EN[(size_t)MsgId::COUNT] PROGMEM = {
     /* SETTINGS_ITEM_KEYBOARDS */ "Keyboards",
     /* KEYBOARDS_CYRILLIC */ "Cyrillic (абв)",
     /* KEYBOARDS_ACCENTS */ "Latin accents (áéñ)",
+    /* SYNC_STAGE_PROGRESS_FMT */ "-> Reading progress: %d of %d",
+    /* SYNC_STAGE_CATALOG_FMT */ "-> Fetching catalog: %d books",
+    /* SYNC_STAGE_MATCH_FMT */ "-> Checking books: %d of %d",
+    /* SYNC_STAGE_COVERS_FMT */ "-> Downloading covers: %d of %d",
 };
 
 // Language: Russian (ru)
@@ -2345,6 +2353,10 @@ static const char* const STRINGS_RU[(size_t)MsgId::COUNT] PROGMEM = {
     /* SETTINGS_ITEM_KEYBOARDS */ "Клавиатуры",
     /* KEYBOARDS_CYRILLIC */ "Кириллица (абв)",
     /* KEYBOARDS_ACCENTS */ "Латиница с акцентами (áéñ)",
+    /* SYNC_STAGE_PROGRESS_FMT */ "-> Прогресс чтения: %d из %d",
+    /* SYNC_STAGE_CATALOG_FMT */ "-> Получение каталога: %d книг",
+    /* SYNC_STAGE_MATCH_FMT */ "-> Проверка книг: %d из %d",
+    /* SYNC_STAGE_COVERS_FMT */ "-> Загрузка обложек: %d из %d",
 };
 
 // Language: Spanish (es)
@@ -3121,6 +3133,10 @@ static const char* const STRINGS_ES[(size_t)MsgId::COUNT] PROGMEM = {
     /* SETTINGS_ITEM_KEYBOARDS */ "Teclados",
     /* KEYBOARDS_CYRILLIC */ "Cirílico (абв)",
     /* KEYBOARDS_ACCENTS */ "Acentos latinos (áéñ)",
+    /* SYNC_STAGE_PROGRESS_FMT */ "-> Progreso de lectura: %d de %d",
+    /* SYNC_STAGE_CATALOG_FMT */ "-> Obteniendo catálogo: %d libros",
+    /* SYNC_STAGE_MATCH_FMT */ "-> Verificando libros: %d de %d",
+    /* SYNC_STAGE_COVERS_FMT */ "-> Descargando portadas: %d de %d",
 };
 
 // Language: German (de)
@@ -3897,6 +3913,10 @@ static const char* const STRINGS_DE[(size_t)MsgId::COUNT] PROGMEM = {
     /* SETTINGS_ITEM_KEYBOARDS */ "Tastaturen",
     /* KEYBOARDS_CYRILLIC */ "Kyrillisch (абв)",
     /* KEYBOARDS_ACCENTS */ "Lateinische Akzente (áéñ)",
+    /* SYNC_STAGE_PROGRESS_FMT */ "-> Lesefortschritt: %d von %d",
+    /* SYNC_STAGE_CATALOG_FMT */ "-> Katalog wird abgerufen: %d Bücher",
+    /* SYNC_STAGE_MATCH_FMT */ "-> Bücher werden geprüft: %d von %d",
+    /* SYNC_STAGE_COVERS_FMT */ "-> Cover werden heruntergeladen: %d von %d",
 };
 
 // Language: French (fr)
@@ -4673,6 +4693,10 @@ static const char* const STRINGS_FR[(size_t)MsgId::COUNT] PROGMEM = {
     /* SETTINGS_ITEM_KEYBOARDS */ "Claviers",
     /* KEYBOARDS_CYRILLIC */ "Cyrillique (абв)",
     /* KEYBOARDS_ACCENTS */ "Accents latins (áéñ)",
+    /* SYNC_STAGE_PROGRESS_FMT */ "-> Progression de la lecture : %d sur %d",
+    /* SYNC_STAGE_CATALOG_FMT */ "-> Récupération du catalogue : %d livres",
+    /* SYNC_STAGE_MATCH_FMT */ "-> Vérification des livres : %d sur %d",
+    /* SYNC_STAGE_COVERS_FMT */ "-> Téléchargement des couvertures : %d sur %d",
 };
 
 // Language: Italian (it)
@@ -5449,6 +5473,10 @@ static const char* const STRINGS_IT[(size_t)MsgId::COUNT] PROGMEM = {
     /* SETTINGS_ITEM_KEYBOARDS */ "Tastiere",
     /* KEYBOARDS_CYRILLIC */ "Cirillico (абв)",
     /* KEYBOARDS_ACCENTS */ "Accenti latini (áéñ)",
+    /* SYNC_STAGE_PROGRESS_FMT */ "-> Avanzamento lettura: %d di %d",
+    /* SYNC_STAGE_CATALOG_FMT */ "-> Recupero catalogo: %d libri",
+    /* SYNC_STAGE_MATCH_FMT */ "-> Controllo libri: %d di %d",
+    /* SYNC_STAGE_COVERS_FMT */ "-> Download copertine: %d di %d",
 };
 
 // Language: European Portuguese (pt-PT)
@@ -6225,6 +6253,10 @@ static const char* const STRINGS_PT_PT[(size_t)MsgId::COUNT] PROGMEM = {
     /* SETTINGS_ITEM_KEYBOARDS */ "Teclados",
     /* KEYBOARDS_CYRILLIC */ "Cirílico (абв)",
     /* KEYBOARDS_ACCENTS */ "Acentos latinos (áéñ)",
+    /* SYNC_STAGE_PROGRESS_FMT */ "-> Progresso de leitura: %d de %d",
+    /* SYNC_STAGE_CATALOG_FMT */ "-> A obter o catálogo: %d livros",
+    /* SYNC_STAGE_MATCH_FMT */ "-> A verificar livros: %d de %d",
+    /* SYNC_STAGE_COVERS_FMT */ "-> A transferir capas: %d de %d",
 };
 
 // Language: Brazilian Portuguese (pt-BR)
@@ -7001,6 +7033,10 @@ static const char* const STRINGS_PT_BR[(size_t)MsgId::COUNT] PROGMEM = {
     /* SETTINGS_ITEM_KEYBOARDS */ "Teclados",
     /* KEYBOARDS_CYRILLIC */ "Cirílico (абв)",
     /* KEYBOARDS_ACCENTS */ "Acentos latinos (áéñ)",
+    /* SYNC_STAGE_PROGRESS_FMT */ "-> Progresso de leitura: %d de %d",
+    /* SYNC_STAGE_CATALOG_FMT */ "-> Buscando catálogo: %d livros",
+    /* SYNC_STAGE_MATCH_FMT */ "-> Verificando livros: %d de %d",
+    /* SYNC_STAGE_COVERS_FMT */ "-> Baixando capas: %d de %d",
 };
 
 // Language: Simplified Chinese (zh-Hans)
@@ -7777,6 +7813,10 @@ static const char* const STRINGS_ZH_HANS[(size_t)MsgId::COUNT] PROGMEM = {
     /* SETTINGS_ITEM_KEYBOARDS */ "键盘",
     /* KEYBOARDS_CYRILLIC */ "西里尔字母 (абв)",
     /* KEYBOARDS_ACCENTS */ "拉丁变音字母 (áéñ)",
+    /* SYNC_STAGE_PROGRESS_FMT */ "-> 阅读进度：%d / %d",
+    /* SYNC_STAGE_CATALOG_FMT */ "-> 正在获取目录：%d 本书",
+    /* SYNC_STAGE_MATCH_FMT */ "-> 正在检查书籍：%d / %d",
+    /* SYNC_STAGE_COVERS_FMT */ "-> 正在下载封面：%d / %d",
 };
 
 // Language: Japanese (ja)
@@ -8553,6 +8593,10 @@ static const char* const STRINGS_JA[(size_t)MsgId::COUNT] PROGMEM = {
     /* SETTINGS_ITEM_KEYBOARDS */ "キーボード",
     /* KEYBOARDS_CYRILLIC */ "キリル文字 (абв)",
     /* KEYBOARDS_ACCENTS */ "ラテン文字のアクセント (áéñ)",
+    /* SYNC_STAGE_PROGRESS_FMT */ "-> 読書の進捗: %d / %d",
+    /* SYNC_STAGE_CATALOG_FMT */ "-> カタログを取得中: %d 冊",
+    /* SYNC_STAGE_MATCH_FMT */ "-> 書籍を確認中: %d / %d",
+    /* SYNC_STAGE_COVERS_FMT */ "-> 表紙をダウンロード中: %d / %d",
 };
 
 // Language: Korean (ko)
@@ -9329,6 +9373,10 @@ static const char* const STRINGS_KO[(size_t)MsgId::COUNT] PROGMEM = {
     /* SETTINGS_ITEM_KEYBOARDS */ "키보드",
     /* KEYBOARDS_CYRILLIC */ "키릴 문자 (абв)",
     /* KEYBOARDS_ACCENTS */ "라틴 악센트 문자 (áéñ)",
+    /* SYNC_STAGE_PROGRESS_FMT */ "-> 읽기 진행: %d / %d",
+    /* SYNC_STAGE_CATALOG_FMT */ "-> 카탈로그 가져오는 중: 책 %d권",
+    /* SYNC_STAGE_MATCH_FMT */ "-> 도서 확인 중: %d / %d",
+    /* SYNC_STAGE_COVERS_FMT */ "-> 표지 다운로드 중: %d / %d",
 };
 
 static const char* const* const I18N_ALL_TABLES[(size_t)AppLanguage::COUNT] = {

@@ -770,5 +770,9 @@
     "CATALOG_ONLINE": "Online",
     "SETTINGS_ITEM_KEYBOARDS": "Keyboards",
     "KEYBOARDS_CYRILLIC": "Cyrillic (абв)",
-    "KEYBOARDS_ACCENTS": "Latin accents (áéñ)"
+    "KEYBOARDS_ACCENTS": "Latin accents (áéñ)",
+    "SYNC_STAGE_PROGRESS_FMT": "-> Reading progress: %d of %d",
+    "SYNC_STAGE_CATALOG_FMT": "-> Fetching catalog: %d books",
+    "SYNC_STAGE_MATCH_FMT": "-> Checking books: %d of %d",
+    "SYNC_STAGE_COVERS_FMT": "-> Downloading covers: %d of %d"
 }

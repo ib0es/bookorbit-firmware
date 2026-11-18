@@ -770,5 +770,9 @@
     "CATALOG_ONLINE": "在线",
     "SETTINGS_ITEM_KEYBOARDS": "键盘",
     "KEYBOARDS_CYRILLIC": "西里尔字母 (абв)",
-    "KEYBOARDS_ACCENTS": "拉丁变音字母 (áéñ)"
+    "KEYBOARDS_ACCENTS": "拉丁变音字母 (áéñ)",
+    "SYNC_STAGE_PROGRESS_FMT": "-> 阅读进度：%d / %d",
+    "SYNC_STAGE_CATALOG_FMT": "-> 正在获取目录：%d 本书",
+    "SYNC_STAGE_MATCH_FMT": "-> 正在检查书籍：%d / %d",
+    "SYNC_STAGE_COVERS_FMT": "-> 正在下载封面：%d / %d"
 }
