@@ -363,6 +363,8 @@ void invalidate(const String& path, bool removed) {
     const String p = cachePath(path);
     const String stem = p.substring(p.lastIndexOf('/') + 1);
     LibraryInternal::removeCoverStem(stem);
+    Storage.remove((BookReader::cacheDirFor(path) + "/" + stem + "-reader.jpg").c_str());
+    LibraryInternal::removeCoverStem(stem + "-reader");
     // Not reset(): that walks and parses every record of the cache, and the portal deletes books one by one.
     // Orphans are swept by the next library rescan. Nor a restart from the first book: deleting books
     // one after another would fingerprint the whole catalog again after each of them.

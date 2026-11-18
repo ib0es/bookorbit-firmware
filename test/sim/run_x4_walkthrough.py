@@ -1264,6 +1264,13 @@ CASES = [
         ),
     ),
     (
+        "offline: sleep shows embedded cover immediately after opening the book",
+        offline_progressive_cover,
+        {},
+        OFFLINE + "CP",
+        lambda log, sd: "[Power] Drawing sleep cover: /cache/" in log,
+    ),
+    (
         "offline: legacy dithered cover is replaced once and derived caches removed",
         offline_legacy_cover,
         {},

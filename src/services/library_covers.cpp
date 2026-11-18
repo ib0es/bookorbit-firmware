@@ -11,6 +11,7 @@
 #include "../net/bookorbit_client.h"
 #include "../core/book_formats.h"
 #include "../ui/i18n.h"
+#include <BookCatalog.h>
 #include <algorithm>
 #include <functional>
 #include <string>
@@ -119,8 +120,19 @@ String LibraryManager::resolveCoverPath(const String& filePath, const String& ti
     if (isOfflinePath(filePath)) {
         // Offline catalogue images are embedded-only and prepared by the idle worker.
         OfflineMetadata::Record metadata;
-        if (!OfflineMetadata::load(filePath, metadata)) return "";
-        return isValidCoverFile(metadata.coverPath) ? metadata.coverPath : String();
+        if (OfflineMetadata::load(filePath, metadata) && isValidCoverFile(metadata.coverPath))
+            return metadata.coverPath;
+        // Home and sleep may need the cover before idle indexing has run.
+        // Keep this fallback with the reader cache, separate from the indexer's metadata files.
+        if (!allowExtract || !isEpubPath(filePath)) return "";
+        const String readerCache = BookReader::cacheDirFor(filePath);
+        const String fingerprinted = OfflineMetadata::cachePath(filePath);
+        const String fallback = readerCache + fingerprinted.substring(fingerprinted.lastIndexOf('/')) + "-reader.jpg";
+        if (isValidCoverFile(fallback)) return fallback;
+        const String index = readerCache + "/" + freeink::book::BookCatalog::kCatalogName;
+        if (Storage.exists(index.c_str()) && BookReader::extractCover(filePath, fallback, nullptr, readerCache, true))
+            return fallback;
+        return "";
     }
     // Old extracted BMPs bypass the rendered-cache version check entirely.
     // Refresh only the managed EPUB copy; user-supplied neighbouring covers
