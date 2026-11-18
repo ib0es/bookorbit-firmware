@@ -10,3 +10,4 @@ src/reader/engine/hyph_ru.h
 freeink-sdk/*
 simulator/lib_*/*
 locales/*
+src/ui/kit/ui_locale_fonts.h

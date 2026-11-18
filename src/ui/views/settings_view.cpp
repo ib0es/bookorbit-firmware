@@ -64,12 +64,6 @@ SettingItemDef choiceRow(const char* title, const char* desc, bool active) {
     return d;
 }
 
-struct LangDef {
-    AppLanguage lang;
-    const char* name;
-    const char* sub;
-};
-
 using ItemDefFn = SettingItemDef (*)(const AppContext&, int);
 
 // Section captions of the main settings (settingsSectionAt()).
@@ -426,13 +420,9 @@ SettingItemDef getUsbMscSettingItemDef(const AppContext& ctx, int index) {
     return switchRow(tr(MsgId::USB_MSC_ITEM_TOGGLE), ctx.config.usbMscEnabled);
 }
 
-const LangDef LANG_DEFS[(size_t)AppLanguage::COUNT] = {{AppLanguage::EN, "English", "English (Default)"},
-                                                       {AppLanguage::RU, "Русский", "Русский язык"},
-                                                       {AppLanguage::ES, "Español", "Idioma español"}};
-
 SettingItemDef getLanguageItemDef(const AppContext& ctx, int i) {
-    const bool active = (ctx.config.language == LANG_DEFS[i].lang);
-    return choiceRow(LANG_DEFS[i].name, LANG_DEFS[i].sub, active);
+    const auto language = static_cast<AppLanguage>(i);
+    return choiceRow(I18n::getLanguageName(language), nullptr, ctx.config.language == language);
 }
 
 }  // namespace

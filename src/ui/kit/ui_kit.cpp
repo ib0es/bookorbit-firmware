@@ -13,6 +13,7 @@
 #include "../../platform/hal/display.h"
 #include "../../services/sync_clock.h"
 #include "ui_fonts.h"
+#include "ui_locale_fonts.h"
 #include "ui_icons.h"
 
 #ifdef BOOKORBIT_UI_TRACE
@@ -37,24 +38,14 @@ ListPager g_pager{};  // the paged list of the last drawn screen
 class SymbolSource final : public fi::RuntimeGlyphSource {
 public:
     bool glyph(uint32_t cp, uint16_t pixelSize, Glyph* out) override {
+        const uint8_t* bitmap = nullptr;
+        if (const auto* g = localeGlyph(cp, pixelSize, bitmap))
+            return unpack(bitmap, g->offset, g->width, g->height, g->x, g->y, g->advance, out);
         const fonts::SymbolSet* set = nullptr;
         const fonts::SymbolGlyph* g = find(cp, pixelSize, set);
         if (!g) return false;
         const fi::FontGlyph& m = g->glyph;
-        const int n = m.width * m.height;
-        if (n > (int)sizeof(cov_)) return false;
-        // 1bpp MSB-first -> 8-bit coverage (0 or 255).
-        for (int i = 0; i < n; ++i) {
-            const uint8_t byte = set->bitmap[m.bitmapOffset + (i >> 3)];
-            cov_[i] = (byte & (0x80 >> (i & 7))) ? 255 : 0;
-        }
-        out->coverage = cov_;
-        out->width = m.width;
-        out->height = m.height;
-        out->xoff = m.xOffset;
-        out->yoff = m.yOffset;
-        out->advance = m.xAdvance;
-        return true;
+        return unpack(set->bitmap, m.bitmapOffset, m.width, m.height, m.xOffset, m.yOffset, m.xAdvance, out);
     }
 
     int16_t advance(uint32_t cp, uint16_t pixelSize) override {
@@ -64,6 +55,41 @@ public:
     }
 
 private:
+    bool unpack(const uint8_t* bitmap, uint32_t offset, int width, int height, int x, int y, int advance, Glyph* out) {
+        const int n = width * height;
+        if (n > (int)sizeof(cov_)) return false;
+        for (int i = 0; i < n; ++i) cov_[i] = (bitmap[offset + (i >> 3)] & (0x80 >> (i & 7))) ? 255 : 0;
+        out->coverage = cov_;
+        out->width = width;
+        out->height = height;
+        out->xoff = x;
+        out->yoff = y;
+        out->advance = advance;
+        return true;
+    }
+
+    static const fonts::LocaleGlyph* localeGlyph(uint32_t cp, uint16_t size, const uint8_t*& bitmap) {
+        if (cp < 0x100) return nullptr;
+        const char* language = I18n::getLanguageCode(I18n::getLanguage());
+        const fonts::LocaleGlyph* fallback = nullptr;
+        for (const auto& set : fonts::kLocaleGlyphSets) {
+            if (set.pixelSize != size) continue;
+            const auto* end = set.glyphs + set.count;
+            const auto* g = std::lower_bound(set.glyphs, end, cp,
+                                             [](const auto& entry, uint32_t value) { return entry.codepoint < value; });
+            if (g == end || g->codepoint != cp) continue;
+            if (!*set.code || strcmp(set.code, language) == 0) {
+                bitmap = set.bitmap;
+                return g;
+            }
+            if (!fallback) {
+                bitmap = set.bitmap;
+                fallback = g;
+            }
+        }
+        return fallback;
+    }
+
     static const fonts::SymbolGlyph* find(uint32_t cp, uint16_t pixelSize, const fonts::SymbolSet*& setOut) {
         for (const auto& set : fonts::kSymbolSets) {
             if (set.pixelSize != pixelSize) continue;

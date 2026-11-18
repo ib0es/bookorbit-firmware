@@ -1009,6 +1009,13 @@ CASES = [
         language_direct,
     ),
     (
+        "settings: select Korean from the far end of the language list",
+        None,
+        {},
+        SETTINGS + "UUUUCUC",
+        lambda log, sd: cfg(sd)["language"] == "ko" and "drawSettingsScreen" in after(log, ">>> CONFIRM"),
+    ),
+    (
         "settings file: reload applies everything in config.json (U7, B12)",
         config_next,
         {},
