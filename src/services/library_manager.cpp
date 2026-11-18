@@ -64,7 +64,7 @@ std::vector<RecentBookInfo> LibraryManager::getRecentBooks() {
                 if (b.filePath == r.filePath) {
                     r.title = b.title;
                     r.author = b.author;
-                    r.coverPath = b.coverPath;
+                    // recentCover() already chose the indexed cover or the reader's fallback.
                     break;
                 }
         }
