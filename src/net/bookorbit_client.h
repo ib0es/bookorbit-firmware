@@ -42,6 +42,8 @@ public:
     BookOrbitClient();
 
     CatalogFetchInfo lastCatalog;
+    // Called after every book read from the catalog (books so far, all libraries); may redraw a screen.
+    void (*onCatalogProgress)(int books) = nullptr;
 
     // Wi-Fi Management
     bool connectWiFi(const char* ssid, const char* pass, uint32_t timeoutMs = 15000, bool (*checkCancel)() = nullptr);

@@ -609,6 +609,18 @@ LOG_SCENARIOS = [
         [r"format FB2", r"download\?fileId=111"],
     ),
     (
+        "sync shows progress of the catalog, the books on the card and the covers",
+        {},
+        None,
+        HOME_SYNC,
+        [
+            r"\[Sync\] Progress: -> Fetching catalog: 1 books",
+            r"\[Sync\] Progress: -> Checking books: 1 of 3",
+            r"\[Sync\] Progress: -> Downloading covers: \d+ of 3",
+        ],
+        [],
+    ),
+    (
         "saved catalog of older firmware: its address still downloads",
         {},
         None,

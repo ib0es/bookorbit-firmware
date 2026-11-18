@@ -27,6 +27,37 @@ namespace {
 
 void returnFromSync(AppContext& ctx, AppState prevState) { SyncService::showState(ctx, prevState); }
 
+// Progress of a sync step: one line under the title, redrawn at most every kProgressMs
+// (a redraw blocks the network for the length of a refresh).
+constexpr uint32_t kProgressMs = 1200;
+AppContext* s_progressCtx = nullptr;
+uint32_t s_progressAt = 0;
+
+void showProgress(const char* line) {
+    if (!s_progressCtx) return;
+    Serial.printf("[Sync] Progress: %s\n", line);
+    Ui::status(tr(MsgId::SYNC_MODAL_TITLE), line, s_progressCtx->config.serverHost.c_str(), nullptr, nullptr,
+               tr(MsgId::COMMON_CANCEL));
+    s_progressAt = millis();
+}
+
+bool progressDue() { return s_progressAt == 0 || millis() - s_progressAt >= kProgressMs; }
+
+// "-> Reading progress: 3 of 12": the numbers come from the step's loop.
+void showCounted(MsgId format, int done, int total, bool force = false) {
+    if (!force && !progressDue()) return;
+    char line[96];
+    snprintf(line, sizeof(line), tr(format), done, total);
+    showProgress(line);
+}
+
+void showCatalogBooks(int books) {
+    if (!progressDue()) return;
+    char line[96];
+    snprintf(line, sizeof(line), tr(MsgId::SYNC_STAGE_CATALOG_FMT), books);
+    showProgress(line);
+}
+
 void showConfigError(AppContext& ctx, AppState prevState, const char* what, const char* line1, const char* line2) {
     Serial.printf("[Sync] Not configured: %s\n", what);
     Ui::status(tr(MsgId::SYNC_CONFIG_ERR_TITLE), line1, line2);
@@ -59,6 +90,7 @@ void syncOpenedBooks(AppContext& ctx, std::vector<int>& synced) {
     auto& records = ProgressStore::instance().records();
     for (size_t i = 0; i < records.size(); i++) {
         if (SyncService::isCancelled() || SyncService::checkSyncCancel()) break;
+        showCounted(MsgId::SYNC_STAGE_PROGRESS_FMT, (int)i + 1, (int)records.size());
         BookProgressRecord& rec = records[i];
         if (LibraryManager::isOfflinePath(rec.filePath)) continue;
         if (rec.filePath.length() > 0 && !Storage.exists(rec.filePath.c_str())) continue;   // deleted book
@@ -94,8 +126,10 @@ void mergeSavedCatalog(std::vector<BookMetadata>& catalog) {
 void downloadCovers(AppContext& ctx, const std::vector<BookMetadata>& catalog) {
     auto& lib = LibraryManager::getInstance();
     int downloaded = 0;
+    int seen = 0;
     for (const auto& b : catalog) {
         if (SyncService::isCancelled() || SyncService::checkSyncCancel()) break;
+        seen++;
         if (b.coverUrl.length() == 0) continue;
 
         const String coverPath =
@@ -105,6 +139,7 @@ void downloadCovers(AppContext& ctx, const std::vector<BookMetadata>& catalog) {
                 lib.lastBook.filePath.equalsIgnoreCase(destPath) || Storage.exists(destPath.c_str()) || downloaded < 4;
         if (wanted && !LibraryManager::isValidCoverFile(coverPath) &&
             !LibraryManager::coverKnownUnusable(coverPath, b.coverUrl)) {
+            showCounted(MsgId::SYNC_STAGE_COVERS_FMT, seen, (int)catalog.size());
             Serial.printf("[Sync] Downloading cover thumbnail: %s -> %s\n", b.title.c_str(), coverPath.c_str());
             if (BookOrbit.downloadCover(ctx.config.serverHost, b.coverUrl, coverPath, ctx.config.bookOrbitUser,
                                         ctx.config.bookOrbitPass, ctx.config.authToken, SyncService::checkSyncCancel)) {
@@ -129,6 +164,14 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
     AppState prevState = ctx.currentState;
     s_syncCancelled = false;
     ctx.currentState = STATE_SYNCING;
+    s_progressCtx = &ctx;
+    s_progressAt = 0;
+    struct ClearProgress {
+        ~ClearProgress() {
+            s_progressCtx = nullptr;
+            BookOrbit.onCatalogProgress = nullptr;
+        }
+    } clearProgress;
 
     // Debounce / wait for release of any buttons pressed when entering sync
     uint32_t waitStart = millis();
@@ -200,6 +243,8 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
     // 2. OPDS catalog (re-login once if the token went stale).
     std::vector<BookMetadata> catalog;
     const uint32_t catalogStarted = millis();
+    s_progressAt = 0;
+    BookOrbit.onCatalogProgress = showCatalogBooks;
     bool catOk = BookOrbit.fetchCatalog(ctx.config.serverHost, ctx.config.bookOrbitUser, ctx.config.bookOrbitPass,
                                         ctx.config.authToken, catalog);
     if (!catOk && ctx.config.bookOrbitUser.length() > 0 && ctx.config.bookOrbitPass.length() > 0) {
@@ -209,6 +254,7 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
                                        ctx.config.authToken, catalog);
     }
 
+    BookOrbit.onCatalogProgress = nullptr;
     Serial.printf("[NetPerf] catalog including discovery/retry: %lu ms\n", (unsigned long)(millis() - catalogStarted));
     if (catOk) {
         if (s_syncCancelled || checkSyncCancel()) {
@@ -249,8 +295,11 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
         //    is a pull. Each format separately: a book read here as FB2 and on the
         //    web as EPUB has two positions. Books only on the server are not asked
         //    about: their position comes when they are downloaded.
+        s_progressAt = 0;
+        int matched = 0;
         for (const auto& b : catalog) {
             if (s_syncCancelled || checkSyncCancel()) break;
+            showCounted(MsgId::SYNC_STAGE_MATCH_FMT, ++matched, (int)catalog.size());
             const int bookId = LibraryManager::catalogBookId(b);
             for (const auto& f : b.formats) {
                 if (s_syncCancelled || checkSyncCancel()) break;
@@ -266,6 +315,7 @@ void SyncService::syncWithBookOrbit(AppContext& ctx) {
         CatalogStore::save(catalog);
         ProgressStore::instance().save();
 
+        s_progressAt = 0;
         const uint32_t coversStarted = millis();
         downloadCovers(ctx, catalog);
         Serial.printf("[NetPerf] catalog covers: %lu ms\n", (unsigned long)(millis() - coversStarted));

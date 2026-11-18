@@ -770,5 +770,9 @@
     "CATALOG_ONLINE": "Online",
     "SETTINGS_ITEM_KEYBOARDS": "Tastiere",
     "KEYBOARDS_CYRILLIC": "Cirillico (абв)",
-    "KEYBOARDS_ACCENTS": "Accenti latini (áéñ)"
+    "KEYBOARDS_ACCENTS": "Accenti latini (áéñ)",
+    "SYNC_STAGE_PROGRESS_FMT": "-> Avanzamento lettura: %d di %d",
+    "SYNC_STAGE_CATALOG_FMT": "-> Recupero catalogo: %d libri",
+    "SYNC_STAGE_MATCH_FMT": "-> Controllo libri: %d di %d",
+    "SYNC_STAGE_COVERS_FMT": "-> Download copertine: %d di %d"
 }

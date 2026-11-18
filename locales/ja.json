@@ -770,5 +770,9 @@
     "CATALOG_ONLINE": "オンライン",
     "SETTINGS_ITEM_KEYBOARDS": "キーボード",
     "KEYBOARDS_CYRILLIC": "キリル文字 (абв)",
-    "KEYBOARDS_ACCENTS": "ラテン文字のアクセント (áéñ)"
+    "KEYBOARDS_ACCENTS": "ラテン文字のアクセント (áéñ)",
+    "SYNC_STAGE_PROGRESS_FMT": "-> 読書の進捗: %d / %d",
+    "SYNC_STAGE_CATALOG_FMT": "-> カタログを取得中: %d 冊",
+    "SYNC_STAGE_MATCH_FMT": "-> 書籍を確認中: %d / %d",
+    "SYNC_STAGE_COVERS_FMT": "-> 表紙をダウンロード中: %d / %d"
 }
