@@ -28,8 +28,41 @@ The firmware natively integrates with your self-hosted **[Book Orbit](https://gi
 * **OPDS Catalog** (`/api/v1/opds`): browse libraries, authors, series, and download books directly to the MicroSD card.
 * **KOReader Reading Progress Sync (KOSync)** (`/api/v1/koreader`): automatic bidirectional reading position sync between the device and Book Orbit web reader.
 * **Extreme Power Efficiency**: Wi-Fi powers on solely during sync or book downloads and turns off immediately; the E-Ink display draws zero power when static; automatically enters **Deep Sleep** during idle (~15–20 µA standby current).
-* **Interface languages**: English, Russian and Spanish (switch in Settings → Interface language). Strings live in `locales/*.json`; after editing them run `python3 tools/generate_i18n.py`.
+* **Interface languages**: English, Russian, Spanish, German, French, Italian, Portuguese (Portugal and Brazil), Simplified Chinese, Japanese and Korean (switch in Settings → Interface language). Strings live in `locales/*.json`; after editing them run `python3 tools/generate_i18n.py`.
 * **Built-in Web Flasher**: flash and pre-configure the device directly from your web browser via the Web Serial API.
+
+---
+
+## Screenshots
+
+Xteink X4, English interface (generated with the simulator: `python3 tools/gen_screenshots.py`).
+
+<table>
+  <tr>
+    <td align="center"><img src="assets/screenshots/home.png" width="200" alt="Home"><br><sub>Home</sub></td>
+    <td align="center"><img src="assets/screenshots/catalog.png" width="200" alt="Catalog"><br><sub>Catalog</sub></td>
+    <td align="center"><img src="assets/screenshots/library.png" width="200" alt="Library"><br><sub>Library</sub></td>
+    <td align="center"><img src="assets/screenshots/reading.png" width="200" alt="Reading"><br><sub>Reading</sub></td>
+    <td align="center"><img src="assets/screenshots/reader-menu.png" width="200" alt="Book menu"><br><sub>Book menu</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="assets/screenshots/settings.png" width="200" alt="Settings"><br><sub>Settings</sub></td>
+    <td align="center"><img src="assets/screenshots/language.png" width="200" alt="Interface language"><br><sub>Interface language</sub></td>
+    <td align="center"><img src="assets/screenshots/keyboards.png" width="200" alt="Keyboards"><br><sub>Keyboards</sub></td>
+    <td align="center"><img src="assets/screenshots/search-keyboard.png" width="200" alt="Search"><br><sub>Search</sub></td>
+    <td align="center"><img src="assets/screenshots/web-qr.png" width="200" alt="Web configuration: Wi-Fi QR code"><br><sub>Web configuration (QR)</sub></td>
+  </tr>
+</table>
+
+Web configuration portal: scan the QR code shown by Settings → Web to join the device’s Wi-Fi (page 2 has the address); the portal then opens in the browser.
+
+<table>
+  <tr>
+    <td align="center"><img src="assets/screenshots/web-books.png" width="300" alt="Web portal: offline books"><br><sub>Offline books upload</sub></td>
+    <td align="center"><img src="assets/screenshots/web-fonts.png" width="300" alt="Web portal: fonts"><br><sub>Fonts</sub></td>
+    <td align="center"><img src="assets/screenshots/web-config.png" width="300" alt="Web portal: settings"><br><sub>Settings</sub></td>
+  </tr>
+</table>
 
 ---
 
